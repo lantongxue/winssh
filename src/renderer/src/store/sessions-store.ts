@@ -1,0 +1,126 @@
+import { create } from 'zustand'
+import type { SessionStateEvent, SessionStatus, SessionSummary } from '@shared/types'
+
+export interface SessionTab extends SessionSummary {
+  connectionStartedAt?: string
+  lastMessage?: string
+  provisional?: boolean
+}
+
+export interface PendingSessionInput {
+  host: string
+  lastMessage?: string
+  port: number
+  serverId: string
+  serverName: string
+  sessionId: string
+}
+
+interface SessionsState {
+  tabs: SessionTab[]
+  activeSessionId: string | null
+  addSession: (summary: SessionSummary) => void
+  addPendingSession: (session: PendingSessionInput) => void
+  replaceSession: (oldSessionId: string, summary: SessionSummary) => void
+  removeSession: (sessionId: string) => void
+  setActiveSession: (sessionId: string | null) => void
+  setSessionState: (sessionId: string, status: SessionStatus, lastMessage?: string) => void
+  updateSessionState: (event: SessionStateEvent) => void
+  setCurrentPath: (sessionId: string, path: string) => void
+  clear: () => void
+}
+
+function setStatus(tab: SessionTab, status: SessionStatus, lastMessage?: string): SessionTab {
+  return {
+    ...tab,
+    status,
+    lastMessage
+  }
+}
+
+export const useSessionsStore = create<SessionsState>((set) => ({
+  tabs: [],
+  activeSessionId: null,
+  addSession: (summary) =>
+    set((state) => {
+      const existing = state.tabs.some((tab) => tab.sessionId === summary.sessionId)
+      const tabs = existing
+        ? state.tabs.map((tab) =>
+            tab.sessionId === summary.sessionId ? { ...tab, ...summary } : tab
+          )
+        : [...state.tabs, summary]
+
+      return {
+        tabs,
+        activeSessionId: summary.sessionId
+      }
+    }),
+  addPendingSession: (session) =>
+    set((state) => {
+      const nextSession: SessionTab = {
+        connectedAt: new Date().toISOString(),
+        connectionStartedAt: new Date().toISOString(),
+        currentPath: '/',
+        host: session.host,
+        lastMessage: session.lastMessage,
+        port: session.port,
+        provisional: true,
+        serverId: session.serverId,
+        serverName: session.serverName,
+        sessionId: session.sessionId,
+        status: 'connecting'
+      }
+
+      const existing = state.tabs.some((tab) => tab.sessionId === session.sessionId)
+      const tabs = existing
+        ? state.tabs.map((tab) => (tab.sessionId === session.sessionId ? nextSession : tab))
+        : [...state.tabs, nextSession]
+
+      return {
+        tabs,
+        activeSessionId: session.sessionId
+      }
+    }),
+  replaceSession: (oldSessionId, summary) =>
+    set((state) => ({
+      tabs: state.tabs.map((tab) =>
+        tab.sessionId === oldSessionId
+          ? {
+              ...summary,
+              lastMessage: summary.status === 'ready' ? undefined : tab.lastMessage
+            }
+          : tab
+      ),
+      activeSessionId: summary.sessionId
+    })),
+  removeSession: (sessionId) =>
+    set((state) => {
+      const tabs = state.tabs.filter((tab) => tab.sessionId !== sessionId)
+      const activeSessionId =
+        state.activeSessionId === sessionId
+          ? (tabs.at(-1)?.sessionId ?? null)
+          : state.activeSessionId
+
+      return { tabs, activeSessionId }
+    }),
+  setActiveSession: (sessionId) => set({ activeSessionId: sessionId }),
+  setSessionState: (sessionId, status, lastMessage) =>
+    set((state) => ({
+      tabs: state.tabs.map((tab) =>
+        tab.sessionId === sessionId ? setStatus(tab, status, lastMessage) : tab
+      )
+    })),
+  updateSessionState: (event) =>
+    set((state) => ({
+      tabs: state.tabs.map((tab) =>
+        tab.sessionId === event.sessionId ? setStatus(tab, event.status, event.message) : tab
+      )
+    })),
+  setCurrentPath: (sessionId, path) =>
+    set((state) => ({
+      tabs: state.tabs.map((tab) =>
+        tab.sessionId === sessionId ? { ...tab, currentPath: path } : tab
+      )
+    })),
+  clear: () => set({ tabs: [], activeSessionId: null })
+}))

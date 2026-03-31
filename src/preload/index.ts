@@ -1,0 +1,69 @@
+import { contextBridge, ipcRenderer } from 'electron'
+import type { WinsshApi } from '@shared/api'
+
+function subscribe<T>(channel: string, callback: (payload: T) => void) {
+  const listener = (_event: Electron.IpcRendererEvent, payload: T) => callback(payload)
+  ipcRenderer.on(channel, listener)
+  return () => ipcRenderer.off(channel, listener)
+}
+
+const api: WinsshApi = {
+  groups: {
+    list: () => ipcRenderer.invoke('groups:list'),
+    create: (input) => ipcRenderer.invoke('groups:create', input),
+    update: (id, input) => ipcRenderer.invoke('groups:update', id, input),
+    delete: (id) => ipcRenderer.invoke('groups:delete', id)
+  },
+  tags: {
+    list: () => ipcRenderer.invoke('tags:list'),
+    create: (input) => ipcRenderer.invoke('tags:create', input),
+    update: (id, input) => ipcRenderer.invoke('tags:update', id, input),
+    delete: (id) => ipcRenderer.invoke('tags:delete', id)
+  },
+  servers: {
+    list: () => ipcRenderer.invoke('servers:list'),
+    create: (input) => ipcRenderer.invoke('servers:create', input),
+    update: (id, input) => ipcRenderer.invoke('servers:update', id, input),
+    delete: (id) => ipcRenderer.invoke('servers:delete', id),
+    toggleFavorite: (id) => ipcRenderer.invoke('servers:toggleFavorite', id),
+    listRecent: () => ipcRenderer.invoke('servers:listRecent'),
+    clearRecent: () => ipcRenderer.invoke('servers:clearRecent')
+  },
+  sessions: {
+    connect: (request) => ipcRenderer.invoke('sessions:connect', request),
+    disconnect: (sessionId) => ipcRenderer.invoke('sessions:disconnect', sessionId),
+    reconnect: (sessionId) => ipcRenderer.invoke('sessions:reconnect', sessionId),
+    write: (sessionId, data) => ipcRenderer.invoke('sessions:write', sessionId, data),
+    resize: (sessionId, columns, rows) =>
+      ipcRenderer.invoke('sessions:resize', sessionId, columns, rows),
+    onData: (callback) => subscribe('sessions:data', callback),
+    onExit: (callback) => subscribe('sessions:exit', callback),
+    onStateChange: (callback) => subscribe('sessions:state', callback),
+    onError: (callback) => subscribe('sessions:error', callback)
+  },
+  sftp: {
+    list: (sessionId, remotePath) => ipcRenderer.invoke('sftp:list', sessionId, remotePath),
+    mkdir: (sessionId, remotePath, name) =>
+      ipcRenderer.invoke('sftp:mkdir', sessionId, remotePath, name),
+    rename: (sessionId, remotePath, newName) =>
+      ipcRenderer.invoke('sftp:rename', sessionId, remotePath, newName),
+    remove: (sessionId, remotePath) => ipcRenderer.invoke('sftp:remove', sessionId, remotePath),
+    uploadFiles: (sessionId, targetPath) =>
+      ipcRenderer.invoke('sftp:uploadFiles', sessionId, targetPath),
+    downloadFile: (sessionId, remotePath) =>
+      ipcRenderer.invoke('sftp:downloadFile', sessionId, remotePath),
+    refresh: (sessionId, remotePath) => ipcRenderer.invoke('sftp:refresh', sessionId, remotePath),
+    onTransferProgress: (callback) => subscribe('sftp:transfer', callback)
+  },
+  settings: {
+    get: () => ipcRenderer.invoke('settings:get'),
+    update: (input) => ipcRenderer.invoke('settings:update', input)
+  },
+  system: {
+    pickPrivateKey: () => ipcRenderer.invoke('system:pickPrivateKey'),
+    getKnownHosts: () => ipcRenderer.invoke('system:getKnownHosts'),
+    getCapabilities: () => ipcRenderer.invoke('system:getCapabilities')
+  }
+}
+
+contextBridge.exposeInMainWorld('winsshApi', api)

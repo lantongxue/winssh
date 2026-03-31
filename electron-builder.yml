@@ -1,0 +1,52 @@
+appId: com.winssh.app
+productName: WinSSH
+directories:
+  buildResources: build
+  output: release/${version}
+files:
+  - '!**/.vscode/*'
+  - '!package/**'
+  - '!*.tgz'
+  - '!**/*.test.*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,README.md}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json,vitest.config.ts,components.json}'
+asarUnpack:
+  - 'node_modules/better-sqlite3/**'
+  - 'node_modules/keytar/**'
+extraMetadata:
+  main: ./out/main/index.js
+win:
+  executableName: winssh
+  target:
+    - nsis
+    - zip
+  artifactName: ${productName}-Windows-${version}-${arch}.${ext}
+nsis:
+  artifactName: ${productName}-Windows-${version}-${arch}-Setup.${ext}
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+  createDesktopShortcut: always
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - dmg
+    - zip
+  hardenedRuntime: false
+  notarize: false
+  entitlementsInherit: build/entitlements.mac.plist
+  artifactName: ${productName}-Mac-${version}-${arch}.${ext}
+dmg:
+  artifactName: ${productName}-Mac-${version}-${arch}.${ext}
+linux:
+  maintainer: winssh
+  category: Development
+  target:
+    - AppImage
+    - deb
+  artifactName: ${productName}-Linux-${version}-${arch}.${ext}
+npmRebuild: false
