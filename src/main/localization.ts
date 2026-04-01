@@ -20,6 +20,7 @@ export type MainTranslationKey =
   | 'dialogs.hostFirstSeen.detail'
   | 'errors.serverNotFound'
   | 'errors.passwordRequired'
+  | 'errors.authFailed'
   | 'errors.privateKeyMissing'
   | 'errors.connectionFailed'
   | 'errors.reconnectUnavailable'
@@ -78,6 +79,7 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
     errors: {
       serverNotFound: 'The selected server could not be found.',
       passwordRequired: 'No saved password is available for this server. Enter a password first.',
+      authFailed: 'Authentication failed. Check the password and try again.',
       privateKeyMissing: 'This server does not have a private key file configured.',
       connectionFailed: 'Connection failed.',
       reconnectUnavailable: 'This tab does not have reusable connection parameters.',
@@ -129,6 +131,7 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
     errors: {
       serverNotFound: '目标服务器不存在',
       passwordRequired: '该服务器未保存密码，请先输入密码后再连接',
+      authFailed: '身份验证失败，请检查密码后重试',
       privateKeyMissing: '该服务器未配置私钥文件',
       connectionFailed: '连接失败',
       reconnectUnavailable: '当前标签缺少可复用的连接参数',

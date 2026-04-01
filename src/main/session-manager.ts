@@ -23,6 +23,8 @@ import type {
   PortForwardRule,
   PortForwardStateEvent,
   RemoteEntry,
+  SessionConnectFailureCode,
+  SessionConnectResult,
   SessionDataEvent,
   SessionErrorEvent,
   SessionExitEvent,
@@ -297,6 +299,29 @@ function isWildcardBindHost(host: string): boolean {
   return host === '0.0.0.0' || host === '::'
 }
 
+class ConnectionFailure extends Error {
+  constructor(
+    readonly code: SessionConnectFailureCode,
+    message: string
+  ) {
+    super(message)
+    this.name = 'ConnectionFailure'
+  }
+}
+
+function isAuthenticationFailure(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  const level = (error as Error & { level?: string }).level
+  if (level === 'client-authentication') {
+    return true
+  }
+
+  return /all configured authentication methods failed|permission denied/i.test(error.message)
+}
+
 export class SessionManager {
   private readonly sessions = new Map<string, SessionRuntime>()
   private readonly history = new Map<string, ConnectionRequest>()
@@ -313,10 +338,41 @@ export class SessionManager {
     private readonly t: MainTranslator
   ) {}
 
-  async connect(request: ConnectionRequest): Promise<SessionSummary> {
+  async connect(request: ConnectionRequest): Promise<SessionConnectResult> {
+    try {
+      const summary = await this.establishConnection(request)
+      return { ok: true, summary }
+    } catch (error) {
+      const failure = this.normalizeConnectionFailure(error)
+      return {
+        ok: false,
+        code: failure.code,
+        message: failure.message
+      }
+    }
+  }
+
+  async reconnect(sessionId: string): Promise<SessionSummary> {
+    const request = this.history.get(sessionId)
+    if (!request) {
+      throw new Error(this.t('errors.reconnectUnavailable'))
+    }
+
+    const result = await this.connect(request)
+    if (!result.ok) {
+      throw new Error(result.message)
+    }
+
+    this.history.delete(sessionId)
+    this.migratePortForwardSnapshots(sessionId, result.summary.sessionId)
+    await this.restoreEnabledPortForwards(result.summary.sessionId)
+    return result.summary
+  }
+
+  private async establishConnection(request: ConnectionRequest): Promise<SessionSummary> {
     const server = this.database.getServerById(request.serverId)
     if (!server) {
-      throw new Error(this.t('errors.serverNotFound'))
+      throw new ConnectionFailure('connection_failed', this.t('errors.serverNotFound'))
     }
 
     const password =
@@ -325,23 +381,16 @@ export class SessionManager {
       request.passphrase ?? (await this.secureStore.getSecret(server.id, 'passphrase')) ?? undefined
 
     if (server.authType === 'password' && !password) {
-      throw new Error(this.t('errors.passwordRequired'))
+      throw new ConnectionFailure('password_required', this.t('errors.passwordRequired'))
     }
 
     let privateKey: string | undefined
     if (server.authType === 'privateKey') {
       if (!server.privateKeyPath) {
-        throw new Error(this.t('errors.privateKeyMissing'))
+        throw new ConnectionFailure('connection_failed', this.t('errors.privateKeyMissing'))
       }
 
       privateKey = await fs.readFile(server.privateKeyPath, 'utf8')
-    }
-
-    if (request.rememberPassword && request.password) {
-      await this.secureStore.setSecret(server.id, 'password', request.password)
-    }
-    if (request.rememberPassphrase && request.passphrase) {
-      await this.secureStore.setSecret(server.id, 'passphrase', request.passphrase)
     }
 
     const sessionId = randomUUID()
@@ -356,13 +405,6 @@ export class SessionManager {
       connectedAt,
       currentPath: '/'
     }
-
-    this.history.set(sessionId, request)
-    this.emitToRenderer('sessions:state', {
-      sessionId,
-      status: 'connecting',
-      message: this.t('session.connecting')
-    })
 
     const client = new Client()
     const connectConfig: ConnectConfig = {
@@ -386,12 +428,9 @@ export class SessionManager {
       let settled = false
 
       const rejectWith = (error: unknown) => {
-        const message = error instanceof Error ? error.message : this.t('errors.connectionFailed')
         if (!settled) {
           settled = true
-          this.emitToRenderer('sessions:error', { sessionId, message })
-          this.emitToRenderer('sessions:state', { sessionId, status: 'error', message })
-          reject(new Error(message))
+          reject(this.normalizeConnectionFailure(error))
         }
       }
 
@@ -452,7 +491,9 @@ export class SessionManager {
           })
 
           this.sessions.set(sessionId, runtime)
+          this.history.set(sessionId, request)
           this.database.recordRecentSession(server.id)
+          await this.persistConnectionSecrets(server.id, server.authType, request)
           this.emitToRenderer('sessions:state', {
             sessionId,
             status: 'ready',
@@ -475,19 +516,6 @@ export class SessionManager {
         rejectWith(error)
       }
     })
-  }
-
-  async reconnect(sessionId: string): Promise<SessionSummary> {
-    const request = this.history.get(sessionId)
-    if (!request) {
-      throw new Error(this.t('errors.reconnectUnavailable'))
-    }
-
-    const summary = await this.connect(request)
-    this.history.delete(sessionId)
-    this.migratePortForwardSnapshots(sessionId, summary.sessionId)
-    await this.restoreEnabledPortForwards(summary.sessionId)
-    return summary
   }
 
   async disconnect(sessionId: string): Promise<void> {
@@ -808,6 +836,41 @@ export class SessionManager {
     this.sessions.clear()
     this.history.clear()
     this.portForwardSnapshots.clear()
+  }
+
+  private normalizeConnectionFailure(error: unknown): ConnectionFailure {
+    if (error instanceof ConnectionFailure) {
+      return error
+    }
+
+    if (isAuthenticationFailure(error)) {
+      return new ConnectionFailure('auth_failed', this.t('errors.authFailed'))
+    }
+
+    const message = error instanceof Error ? error.message : this.t('errors.connectionFailed')
+    return new ConnectionFailure('connection_failed', message)
+  }
+
+  private async persistConnectionSecrets(
+    serverId: string,
+    authType: 'password' | 'privateKey',
+    request: ConnectionRequest
+  ): Promise<void> {
+    if (authType === 'password') {
+      if (request.rememberPassword === false) {
+        await this.secureStore.deleteSecret(serverId, 'password')
+      } else if (request.rememberPassword && request.password) {
+        await this.secureStore.setSecret(serverId, 'password', request.password)
+      }
+
+      return
+    }
+
+    if (request.rememberPassphrase === false) {
+      await this.secureStore.deleteSecret(serverId, 'passphrase')
+    } else if (request.rememberPassphrase && request.passphrase) {
+      await this.secureStore.setSecret(serverId, 'passphrase', request.passphrase)
+    }
   }
 
   private requireSession(sessionId: string): SessionRuntime {

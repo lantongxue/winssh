@@ -76,15 +76,47 @@ function toDefaultValues(
   }
 }
 
-function toPayload(values: ServerFormValues, credentialStorageAvailable: boolean): ServerUpsertInput {
+function toPayload(
+  values: ServerFormValues,
+  credentialStorageAvailable: boolean,
+  options: { includeSecrets?: boolean } = {}
+): ServerUpsertInput {
+  const includeSecrets = options.includeSecrets ?? true
+
   return {
     ...values,
     groupId: values.groupId || null,
     note: values.note || '',
+    password: includeSecrets ? values.password : undefined,
+    passphrase: includeSecrets ? values.passphrase : undefined,
     privateKeyPath: values.privateKeyPath || null,
     rememberPassphrase: credentialStorageAvailable ? values.rememberPassphrase : false,
     rememberPassword: credentialStorageAvailable ? values.rememberPassword : false
   } as ServerUpsertInput
+}
+
+function buildConnectionRequest(
+  serverId: string,
+  values: ServerFormValues,
+  credentialStorageAvailable: boolean
+) {
+  if (values.authType === 'password' && values.password) {
+    return {
+      password: values.password,
+      rememberPassword: credentialStorageAvailable ? values.rememberPassword : false,
+      serverId
+    }
+  }
+
+  if (values.authType === 'privateKey' && values.passphrase) {
+    return {
+      passphrase: values.passphrase,
+      rememberPassphrase: credentialStorageAvailable ? values.rememberPassphrase : false,
+      serverId
+    }
+  }
+
+  return undefined
 }
 
 export function WorkbenchServerEditor({ document }: { document: ServerEditorDocument }) {
@@ -151,8 +183,12 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     })
   }
 
-  const persistServer = async (values: ServerFormValues, announce = true) => {
-    const payload = toPayload(values, credentialStorageAvailable)
+  const persistServer = async (
+    values: ServerFormValues,
+    announce = true,
+    options: { includeSecrets?: boolean } = {}
+  ) => {
+    const payload = toPayload(values, credentialStorageAvailable, options)
     const saved = document.serverId
       ? await window.winsshApi.servers.update(document.serverId, payload)
       : await window.winsshApi.servers.create(payload)
@@ -165,7 +201,11 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
 
     if (announce) {
       toast.success(
-        t(document.serverId ? 'workbench.serverEditor.toasts.updated' : 'workbench.serverEditor.toasts.created')
+        t(
+          document.serverId
+            ? 'workbench.serverEditor.toasts.updated'
+            : 'workbench.serverEditor.toasts.created'
+        )
       )
     }
 
@@ -220,9 +260,12 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
               const targetServer =
                 server && !form.formState.isDirty
                   ? server
-                  : await persistServer(values, Boolean(server))
+                  : await persistServer(values, Boolean(server), { includeSecrets: false })
 
-              await connectServer(targetServer)
+              await connectServer(
+                targetServer,
+                buildConnectionRequest(targetServer.id, values, credentialStorageAvailable)
+              )
             }}
           >
             <ConnectIcon className="size-4" />
@@ -259,7 +302,10 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                   <FormItem>
                     <FormLabel>{t('workbench.serverEditor.fields.name')}</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder={t('workbench.serverEditor.placeholders.name')} />
+                      <Input
+                        {...field}
+                        placeholder={t('workbench.serverEditor.placeholders.name')}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -272,7 +318,10 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                   <FormItem>
                     <FormLabel>{t('workbench.serverEditor.fields.host')}</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder={t('workbench.serverEditor.placeholders.host')} />
+                      <Input
+                        {...field}
+                        placeholder={t('workbench.serverEditor.placeholders.host')}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -328,7 +377,9 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="password">{t('workbench.serverEditor.auth.password')}</SelectItem>
+                        <SelectItem value="password">
+                          {t('workbench.serverEditor.auth.password')}
+                        </SelectItem>
                         <SelectItem value="privateKey">
                           {t('workbench.serverEditor.auth.privateKey')}
                         </SelectItem>
@@ -350,7 +401,9 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={t('workbench.serverEditor.placeholders.ungrouped')} />
+                          <SelectValue
+                            placeholder={t('workbench.serverEditor.placeholders.ungrouped')}
+                          />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -492,7 +545,9 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
 
           <section className="border-b border-[var(--workbench-border)] px-6 py-5">
             <div className="mb-4 flex items-center justify-between gap-3">
-              <div className="text-base font-semibold">{t('workbench.serverEditor.sections.tags')}</div>
+              <div className="text-base font-semibold">
+                {t('workbench.serverEditor.sections.tags')}
+              </div>
               <Badge variant="secondary">
                 {t('common.labels.selectedCount', { count: selectedTagIds.length })}
               </Badge>
@@ -543,7 +598,9 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
           </section>
 
           <section className="px-6 py-5">
-            <div className="mb-4 text-base font-semibold">{t('workbench.serverEditor.sections.note')}</div>
+            <div className="mb-4 text-base font-semibold">
+              {t('workbench.serverEditor.sections.note')}
+            </div>
             <FormField
               control={form.control}
               name="note"

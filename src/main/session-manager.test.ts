@@ -219,7 +219,10 @@ describe('SessionManager port forwarding', () => {
     vi.spyOn(manager, 'connect').mockImplementation(async (request) => {
       getHistoryMap(manager).set('session-new', request)
       getSessionsMap(manager).set('session-new', newRuntime)
-      return newRuntime.summary
+      return {
+        ok: true,
+        summary: newRuntime.summary
+      }
     })
 
     const reconnected = await manager.reconnect('session-old')
@@ -253,7 +256,10 @@ describe('SessionManager port forwarding', () => {
     vi.spyOn(manager, 'connect').mockImplementation(async (request) => {
       getHistoryMap(manager).set('session-new', request)
       getSessionsMap(manager).set('session-new', newRuntime)
-      return newRuntime.summary
+      return {
+        ok: true,
+        summary: newRuntime.summary
+      }
     })
 
     await manager.reconnect('session-old')

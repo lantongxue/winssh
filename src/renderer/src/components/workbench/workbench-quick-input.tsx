@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { LoaderCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { formatQuickConnectTarget } from '@shared/quick-connect'
 import { colorOptions, getColorStyle } from '@/lib/colors'
 import { actionIcons } from '@/lib/action-icons'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
@@ -21,7 +22,13 @@ import { Switch } from '@/components/ui/switch'
 export function WorkbenchQuickInput() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const { quickInput, closeQuickInput, connectServer, refreshWorkspaceData } = useWorkbenchContext()
+  const {
+    quickInput,
+    closeQuickInput,
+    connectQuickConnectTarget,
+    connectServer,
+    refreshWorkspaceData
+  } = useWorkbenchContext()
   const [secret, setSecret] = useState('')
   const [remember, setRemember] = useState(true)
   const [name, setName] = useState('')
@@ -38,7 +45,7 @@ export function WorkbenchQuickInput() {
 
     if (quickInput.kind === 'credentials') {
       setSecret('')
-      setRemember(true)
+      setRemember(quickInput.canRemember ? quickInput.rememberByDefault : false)
       return
     }
 
@@ -81,13 +88,23 @@ export function WorkbenchQuickInput() {
       await refreshWorkspaceData()
       closeQuickInput()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('workbench.quickInput.toasts.saveFailed'))
+      toast.error(
+        error instanceof Error ? error.message : t('workbench.quickInput.toasts.saveFailed')
+      )
     } finally {
       setSubmitting(false)
     }
   }
 
-  const isPassword = quickInput.kind === 'credentials' && quickInput.server.authType === 'password'
+  const isPassword =
+    quickInput.kind === 'credentials' &&
+    (quickInput.source === 'quick-connect' || quickInput.server.authType === 'password')
+  const credentialTargetName =
+    quickInput.kind === 'credentials'
+      ? quickInput.source === 'server'
+        ? quickInput.server.name
+        : formatQuickConnectTarget(quickInput.target)
+      : null
 
   return (
     <Dialog open onOpenChange={(open) => !open && !submitting && closeQuickInput()}>
@@ -110,11 +127,16 @@ export function WorkbenchQuickInput() {
                   isPassword
                     ? 'workbench.quickInput.credentials.descriptions.password'
                     : 'workbench.quickInput.credentials.descriptions.passphrase',
-                  { name: quickInput.server.name }
+                  { name: credentialTargetName }
                 )}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 px-4 py-4">
+              {quickInput.lastErrorMessage ? (
+                <div className="rounded-sm border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  {quickInput.lastErrorMessage}
+                </div>
+              ) : null}
               <div className="space-y-2">
                 <div className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                   {t('workbench.quickInput.credentials.secretLabel')}
@@ -140,7 +162,11 @@ export function WorkbenchQuickInput() {
                     {t('workbench.quickInput.credentials.keychainDescription')}
                   </div>
                 </div>
-                <Switch checked={remember} onCheckedChange={setRemember} />
+                <Switch
+                  checked={quickInput.canRemember ? remember : false}
+                  disabled={!quickInput.canRemember}
+                  onCheckedChange={setRemember}
+                />
               </div>
             </div>
             <DialogFooter className="border-t border-[var(--workbench-border)] px-4 py-3">
@@ -158,19 +184,37 @@ export function WorkbenchQuickInput() {
 
                   setSubmitting(true)
                   try {
-                    await connectServer(quickInput.server, {
-                      passphrase: isPassword ? undefined : secret,
-                      password: isPassword ? secret : undefined,
-                      rememberPassphrase: isPassword ? undefined : remember,
-                      rememberPassword: isPassword ? remember : undefined,
-                      serverId: quickInput.server.id
-                    })
+                    if (quickInput.source === 'quick-connect') {
+                      await connectQuickConnectTarget(
+                        quickInput.target,
+                        secret,
+                        remember,
+                        quickInput.pendingSessionId
+                      )
+                      return
+                    }
+
+                    await connectServer(
+                      quickInput.server,
+                      {
+                        passphrase: isPassword ? undefined : secret,
+                        password: isPassword ? secret : undefined,
+                        rememberPassphrase: isPassword ? undefined : remember,
+                        rememberPassword: isPassword ? remember : undefined,
+                        serverId: quickInput.server.id
+                      },
+                      { pendingSessionId: quickInput.pendingSessionId }
+                    )
                   } finally {
                     setSubmitting(false)
                   }
                 }}
               >
-                {submitting ? <LoaderCircle className="size-4 animate-spin" /> : <ConnectIcon className="size-4" />}
+                {submitting ? (
+                  <LoaderCircle className="size-4 animate-spin" />
+                ) : (
+                  <ConnectIcon className="size-4" />
+                )}
                 {t('common.actions.connect')}
               </Button>
             </DialogFooter>
@@ -189,7 +233,9 @@ export function WorkbenchQuickInput() {
                       : 'workbench.quickInput.entity.titles.renameTag'
                 )}
               </DialogTitle>
-              <DialogDescription>{t('workbench.quickInput.entity.descriptions.create')}</DialogDescription>
+              <DialogDescription>
+                {t('workbench.quickInput.entity.descriptions.create')}
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 px-4 py-4">
               <div className="space-y-2">
@@ -235,8 +281,15 @@ export function WorkbenchQuickInput() {
                 <CancelIcon className="size-4" />
                 {t('common.actions.cancel')}
               </Button>
-              <Button disabled={submitting || !name.trim()} onClick={() => void handleEntitySubmit()}>
-                {submitting ? <LoaderCircle className="size-4 animate-spin" /> : <SaveIcon className="size-4" />}
+              <Button
+                disabled={submitting || !name.trim()}
+                onClick={() => void handleEntitySubmit()}
+              >
+                {submitting ? (
+                  <LoaderCircle className="size-4 animate-spin" />
+                ) : (
+                  <SaveIcon className="size-4" />
+                )}
                 {t('common.actions.save')}
               </Button>
             </DialogFooter>

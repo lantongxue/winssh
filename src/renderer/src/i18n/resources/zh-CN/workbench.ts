@@ -29,15 +29,19 @@ const workbench = {
         title: '命令面板'
       },
       quickOpen: {
-        description: '打开连接、会话或设置编辑器',
+        actions: {
+          connectTo: '连接到 {{target}}'
+        },
+        description: '快速连接到服务器，或跳转到会话和设置编辑器',
         empty: '没有匹配的项目。',
         groups: {
           connections: '连接',
+          quickConnect: '快速连接',
           sessions: '会话',
           workbench: '工作台'
         },
-        placeholder: '跳转到连接或会话',
-        title: '快速打开'
+        placeholder: '输入 ssh user@host，或跳转到连接和会话',
+        title: '快速连接'
       }
     },
     documents: {
@@ -399,7 +403,7 @@ const workbench = {
       maximizeWindow: '最大化窗口',
       minimizeWindow: '最小化窗口',
       restoreWindow: '还原窗口',
-      quickOpenTitle: '快速打开'
+      quickOpenTitle: '快速连接'
     },
     toasts: {
       connectionFailed: '连接失败。',

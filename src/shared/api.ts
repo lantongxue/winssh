@@ -11,6 +11,7 @@ import type {
   Server,
   ServerGroup,
   ServerUpsertInput,
+  SessionConnectResult,
   SessionDataEvent,
   SessionErrorEvent,
   SessionExitEvent,
@@ -48,7 +49,7 @@ export interface WinsshApi {
     clearRecent: () => Promise<void>
   }
   sessions: {
-    connect: (request: ConnectionRequest) => Promise<SessionSummary>
+    connect: (request: ConnectionRequest) => Promise<SessionConnectResult>
     disconnect: (sessionId: string) => Promise<void>
     reconnect: (sessionId: string) => Promise<SessionSummary>
     write: (sessionId: string, data: string) => Promise<void>

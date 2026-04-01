@@ -1,13 +1,8 @@
+import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import {
-  Files,
-  MonitorCog,
-  MoonStar,
-  ServerCog,
-  SunMedium,
-  TerminalSquare
-} from 'lucide-react'
+import { formatQuickConnectTarget, parseQuickConnectInput } from '@shared/quick-connect'
+import { Files, MonitorCog, MoonStar, ServerCog, SunMedium, TerminalSquare } from 'lucide-react'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import { actionIcons } from '@/lib/action-icons'
 import {
@@ -35,8 +30,15 @@ interface WorkbenchCommandCenterProps {
 export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCenterProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const { focusActivity, openServerEditor, openSettingsEditor, disconnectSession, connectServer } =
-    useWorkbenchContext()
+  const [quickConnectQuery, setQuickConnectQuery] = useState('')
+  const {
+    beginQuickConnect,
+    focusActivity,
+    openServerEditor,
+    openSettingsEditor,
+    disconnectSession,
+    connectServer
+  } = useWorkbenchContext()
   const sessions = useSessionsStore((state) => state.tabs)
   const openDocument = useWorkbenchStore((state) => state.openDocument)
   const commandPaletteOpen = useWorkbenchStore((state) => state.commandPaletteOpen)
@@ -69,8 +71,9 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
       : null
   const currentSession =
     activeDocument?.kind === 'session-editor'
-      ? sessions.find((session) => session.sessionId === activeDocument.sessionId) ?? null
+      ? (sessions.find((session) => session.sessionId === activeDocument.sessionId) ?? null)
       : null
+  const quickConnectTarget = parseQuickConnectInput(quickConnectQuery)
 
   return (
     <>
@@ -171,7 +174,9 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
           {currentServer ? (
             <>
               <CommandSeparator />
-              <CommandGroup heading={t('workbench.commandCenter.commandPalette.groups.currentServer')}>
+              <CommandGroup
+                heading={t('workbench.commandCenter.commandPalette.groups.currentServer')}
+              >
                 <CommandItem
                   onSelect={() => {
                     setCommandPaletteOpen(false)
@@ -188,7 +193,9 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
           {currentSession ? (
             <>
               <CommandSeparator />
-              <CommandGroup heading={t('workbench.commandCenter.commandPalette.groups.currentSession')}>
+              <CommandGroup
+                heading={t('workbench.commandCenter.commandPalette.groups.currentSession')}
+              >
                 <CommandItem
                   onSelect={() => {
                     setCommandPaletteOpen(false)
@@ -206,15 +213,47 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
 
       <CommandDialog
         open={quickOpenOpen}
-        onOpenChange={setQuickOpenOpen}
+        onOpenChange={(open) => {
+          setQuickOpenOpen(open)
+          if (!open) {
+            setQuickConnectQuery('')
+          }
+        }}
         className="max-w-2xl rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-0 shadow-2xl"
         showCloseButton={false}
         title={t('workbench.commandCenter.quickOpen.title')}
         description={t('workbench.commandCenter.quickOpen.description')}
       >
-        <CommandInput placeholder={t('workbench.commandCenter.quickOpen.placeholder')} />
+        <CommandInput
+          placeholder={t('workbench.commandCenter.quickOpen.placeholder')}
+          value={quickConnectQuery}
+          onValueChange={setQuickConnectQuery}
+        />
         <CommandList>
           <CommandEmpty>{t('workbench.commandCenter.quickOpen.empty')}</CommandEmpty>
+
+          {quickConnectTarget ? (
+            <>
+              <CommandGroup heading={t('workbench.commandCenter.quickOpen.groups.quickConnect')}>
+                <CommandItem
+                  value={quickConnectQuery}
+                  onSelect={() => {
+                    setQuickOpenOpen(false)
+                    void beginQuickConnect(quickConnectTarget)
+                  }}
+                >
+                  <ConnectIcon className="size-4" />
+                  <span>
+                    {t('workbench.commandCenter.quickOpen.actions.connectTo', {
+                      target: formatQuickConnectTarget(quickConnectTarget)
+                    })}
+                  </span>
+                </CommandItem>
+              </CommandGroup>
+
+              <CommandSeparator />
+            </>
+          ) : null}
 
           <CommandGroup heading={t('workbench.commandCenter.quickOpen.groups.connections')}>
             {(serversQuery.data ?? []).map((server) => (

@@ -29,15 +29,19 @@ const workbench = {
         title: 'Command Palette'
       },
       quickOpen: {
-        description: 'Open a connection, session, or settings editor',
+        actions: {
+          connectTo: 'Connect to {{target}}'
+        },
+        description: 'Connect to a server quickly, or jump to a session or settings editor',
         empty: 'No matching items.',
         groups: {
           connections: 'Connections',
+          quickConnect: 'Quick Connect',
           sessions: 'Sessions',
           workbench: 'Workbench'
         },
-        placeholder: 'Jump to a connection or session',
-        title: 'Quick Open'
+        placeholder: 'Type ssh user@host, or jump to a saved item',
+        title: 'Quick Connect'
       }
     },
     documents: {
@@ -407,7 +411,7 @@ const workbench = {
       closeWindow: 'Close Window',
       maximizeWindow: 'Maximize Window',
       minimizeWindow: 'Minimize Window',
-      quickOpenTitle: 'Quick Open',
+      quickOpenTitle: 'Quick Connect',
       restoreWindow: 'Restore Window'
     },
     toasts: {

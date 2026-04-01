@@ -8,6 +8,7 @@ export type SecretKind = 'password' | 'passphrase'
 export type WindowTitleBarStyle = 'native' | 'custom'
 export type PortForwardKind = 'local' | 'remote'
 export type PortForwardStatus = 'starting' | 'active' | 'stopped' | 'error'
+export type SessionConnectFailureCode = 'password_required' | 'auth_failed' | 'connection_failed'
 
 export interface ServerGroup {
   id: string
@@ -108,6 +109,17 @@ export interface ConnectionRequest {
   rememberPassphrase?: boolean
 }
 
+export type SessionConnectResult =
+  | {
+      ok: true
+      summary: SessionSummary
+    }
+  | {
+      ok: false
+      code: SessionConnectFailureCode
+      message: string
+    }
+
 export interface SessionSummary {
   sessionId: string
   serverId: string
@@ -196,4 +208,11 @@ export interface RuntimeCapabilities {
 
 export interface WindowState {
   isMaximized: boolean
+}
+
+export interface QuickConnectTarget {
+  authType: 'password'
+  host: string
+  port: 22
+  username: string
 }

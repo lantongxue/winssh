@@ -18,7 +18,7 @@ const common = {
     open: '打开',
     openSettings: '打开设置',
     openTerminal: '打开终端',
-    quickOpen: '快速打开',
+    quickOpen: '快速连接',
     reconnect: '重新连接',
     refresh: '刷新',
     rename: '重命名',

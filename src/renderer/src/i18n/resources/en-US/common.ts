@@ -18,7 +18,7 @@ const common = {
     open: 'Open',
     openSettings: 'Open Settings',
     openTerminal: 'Open Terminal',
-    quickOpen: 'Quick Open',
+    quickOpen: 'Quick Connect',
     reconnect: 'Reconnect',
     refresh: 'Refresh',
     rename: 'Rename',
