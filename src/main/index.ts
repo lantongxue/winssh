@@ -21,6 +21,7 @@ import { DatabaseService } from './database'
 import { createMainTranslator, resolveMainLanguage } from './localization'
 import { SecureStoreService } from './secure-store'
 import { SessionManager } from './session-manager'
+import { configureHardwareAcceleration } from './gpu-config'
 import { getWindowChromeOptions } from './window-config'
 
 let mainWindow: BrowserWindow | null = null
@@ -296,6 +297,8 @@ async function bootstrap(): Promise<void> {
     database.close()
   })
 }
+
+configureHardwareAcceleration(app, process.platform, process.env)
 
 app.whenReady().then(bootstrap)
 
