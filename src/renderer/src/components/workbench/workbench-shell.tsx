@@ -221,7 +221,7 @@ function WorkbenchShellContent() {
   )
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[var(--workbench-bg)] text-foreground">
+    <div className="workbench-shell flex h-full min-h-0 flex-col bg-[var(--workbench-bg)] text-foreground">
       <WorkbenchTitlebar />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">

@@ -156,8 +156,29 @@ select {
   font: inherit;
 }
 
+button,
+[role='button'] {
+  cursor: default;
+}
+
+.workbench-shell {
+  cursor: default;
+  user-select: none;
+}
+
+.workbench-shell input,
+.workbench-shell textarea,
+.workbench-shell [contenteditable='true'] {
+  cursor: text;
+  user-select: text;
+}
+
 .terminal-surface {
   background: #1e1e1e;
+}
+
+.xterm {
+  cursor: default;
 }
 
 @keyframes connection-progress-slide {

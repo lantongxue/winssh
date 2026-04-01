@@ -51,7 +51,7 @@ export function TerminalPane({ session, settings, onReconnect }: TerminalPanePro
 
   return (
     <div className="relative h-full terminal-surface">
-      <div ref={terminalRef} className="h-full w-full px-4 py-4" />
+      <div ref={terminalRef} className="h-full w-full overflow-hidden" />
 
       {session.status !== 'ready' ? (
         <div className="absolute inset-0 flex items-center justify-center bg-black/45">
