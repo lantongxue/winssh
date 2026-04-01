@@ -50,7 +50,7 @@
     "toast-radius": "12px",
     "toast-button-radius": "8px",
     "toast-backdrop-blur": "18px",
-    "terminal-surface-bg": "#1e1e1e",
+    "terminal-surface-bg": "#181a1f",
     "terminal-overlay-backdrop": "rgba(0, 0, 0, 0.45)",
     "terminal-overlay-panel": "rgba(9, 9, 11, 0.95)",
     "terminal-overlay-border": "rgba(255, 255, 255, 0.1)",
@@ -69,5 +69,26 @@
     "terminal-scanline-color": "rgba(255, 255, 255, 0)",
     "terminal-scanline-size": "3px"
   },
-  "terminal": {}
+  "terminal": {
+    "background": "#181a1f",
+    "foreground": "#d7dbe0",
+    "cursor": "#3794ff",
+    "selectionBackground": "rgba(55,148,255,0.24)",
+    "black": "#181a1f",
+    "red": "#f14c4c",
+    "green": "#33c481",
+    "yellow": "#f0b44c",
+    "blue": "#3794ff",
+    "magenta": "#bc8cff",
+    "cyan": "#4fd6be",
+    "white": "#d7dbe0",
+    "brightBlack": "#97a3b6",
+    "brightRed": "#ff7b72",
+    "brightGreen": "#5ee6a0",
+    "brightYellow": "#ffd172",
+    "brightBlue": "#74b7ff",
+    "brightMagenta": "#d2a8ff",
+    "brightCyan": "#7ee7d8",
+    "brightWhite": "#f3f6fa"
+  }
 }

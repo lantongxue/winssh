@@ -4,22 +4,19 @@ import type { ThemeDefinition } from '@shared/themes'
 import type { ThemeMode } from '@shared/types'
 import { Toaster } from 'sonner'
 import { WorkbenchShell } from '@/components/workbench/workbench-shell'
+import { usePrefersDark } from '@/hooks/use-prefers-dark'
 import { useSessionEvents } from '@/hooks/use-session-events'
 import i18n from '@/i18n'
 import { resolveAppLanguage } from '@/i18n/format'
 import { applyThemeToRoot } from '@/lib/theme'
 
-function applyTheme(theme: ThemeMode, themes: ThemeDefinition[]) {
-  applyThemeToRoot(
-    document.documentElement,
-    theme,
-    themes,
-    window.matchMedia('(prefers-color-scheme: dark)').matches
-  )
+function applyTheme(theme: ThemeMode, themes: ThemeDefinition[], prefersDark: boolean) {
+  applyThemeToRoot(document.documentElement, theme, themes, prefersDark)
 }
 
 export default function App() {
   useSessionEvents()
+  const prefersDark = usePrefersDark()
   const [bootstrappedLanguage, setBootstrappedLanguage] = useState<string | null>(null)
 
   const settingsQuery = useQuery({
@@ -35,11 +32,17 @@ export default function App() {
     : null
 
   useEffect(() => {
-    if (!settingsQuery.data || !themesQuery.data) {
+    if (!settingsQuery.data?.theme || !themesQuery.data) {
       return
     }
 
-    applyTheme(settingsQuery.data.theme, themesQuery.data)
+    applyTheme(settingsQuery.data.theme, themesQuery.data, prefersDark)
+  }, [prefersDark, settingsQuery.data?.theme, themesQuery.data])
+
+  useEffect(() => {
+    if (!settingsQuery.data) {
+      return
+    }
 
     let cancelled = false
     const nextLanguage = resolveAppLanguage(settingsQuery.data.language)
@@ -53,19 +56,7 @@ export default function App() {
     return () => {
       cancelled = true
     }
-  }, [settingsQuery.data, themesQuery.data])
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    const handleChange = () => {
-      if (settingsQuery.data?.theme === 'system' && themesQuery.data) {
-        applyTheme('system', themesQuery.data)
-      }
-    }
-
-    mediaQuery.addEventListener('change', handleChange)
-    return () => mediaQuery.removeEventListener('change', handleChange)
-  }, [settingsQuery.data?.theme, themesQuery.data])
+  }, [settingsQuery.data])
 
   if (!settingsQuery.data || !themesQuery.data || resolvedLanguage !== bootstrappedLanguage) {
     return <div className="h-full bg-[var(--workbench-bg)]" />

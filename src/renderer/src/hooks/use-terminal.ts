@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useEffectEvent, useMemo, useRef } from 'react'
 import { FitAddon } from '@xterm/addon-fit'
 import { Terminal } from '@xterm/xterm'
 import type { ThemeDefinition } from '@shared/themes'
@@ -12,26 +12,45 @@ export function useTerminal(
   enabled = true
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null)
-
-  useEffect(() => {
-    if (!enabled || !sessionId || !containerRef.current || !theme) {
-      return
+  const terminalRef = useRef<Terminal | null>(null)
+  const fitAddonRef = useRef<FitAddon | null>(null)
+  const selectionDisposableRef = useRef<{ dispose: () => void } | null>(null)
+  const hasTheme = Boolean(theme)
+  const terminalOptions = useMemo(() => {
+    if (!theme) {
+      return null
     }
 
     const terminalAppearance = resolveTerminalAppearance(settings, theme)
-    const terminal = new Terminal({
-      allowTransparency: true,
-      convertEol: true,
+
+    return {
       cursorBlink: settings.cursorBlink,
       cursorStyle: settings.cursorStyle,
       fontFamily: terminalAppearance.fontFamily,
       fontSize: terminalAppearance.fontSize,
       lineHeight: terminalAppearance.lineHeight,
+      theme: { ...terminalAppearance.theme }
+    }
+  }, [settings, theme])
+  const readTerminalOptions = useEffectEvent(() => terminalOptions)
+
+  useEffect(() => {
+    const initialTerminalOptions = readTerminalOptions()
+
+    if (!enabled || !sessionId || !containerRef.current || !initialTerminalOptions) {
+      return
+    }
+
+    const terminal = new Terminal({
+      allowTransparency: true,
+      convertEol: true,
       scrollback: 5000,
-      theme: terminalAppearance.theme
+      ...initialTerminalOptions
     })
 
     const fitAddon = new FitAddon()
+    terminalRef.current = terminal
+    fitAddonRef.current = fitAddon
     terminal.loadAddon(fitAddon)
     terminal.open(containerRef.current)
     fitAddon.fit()
@@ -44,15 +63,6 @@ export function useTerminal(
     const writeDisposable = terminal.onData((data) => {
       void window.winsshApi.sessions.write(sessionId, data)
     })
-
-    const selectionDisposable = settings.copyOnSelect
-      ? terminal.onSelectionChange(() => {
-          const selection = terminal.getSelection()
-          if (selection) {
-            navigator.clipboard.writeText(selection).catch(() => undefined)
-          }
-        })
-      : null
 
     const unsubscribeData = window.winsshApi.sessions.onData((event) => {
       if (event.sessionId === sessionId) {
@@ -67,11 +77,61 @@ export function useTerminal(
     return () => {
       resizeObserver.disconnect()
       unsubscribeData()
-      selectionDisposable?.dispose()
+      selectionDisposableRef.current?.dispose()
+      selectionDisposableRef.current = null
       writeDisposable.dispose()
       terminal.dispose()
+      if (terminalRef.current === terminal) {
+        terminalRef.current = null
+      }
+      if (fitAddonRef.current === fitAddon) {
+        fitAddonRef.current = null
+      }
     }
-  }, [enabled, sessionId, settings, theme])
+  }, [enabled, hasTheme, sessionId])
+
+  useEffect(() => {
+    if (!terminalOptions) {
+      return
+    }
+
+    const terminal = terminalRef.current
+
+    if (!terminal) {
+      return
+    }
+
+    terminal.options = terminalOptions
+
+    fitAddonRef.current?.fit()
+  }, [terminalOptions])
+
+  useEffect(() => {
+    const terminal = terminalRef.current
+
+    if (!terminal) {
+      return
+    }
+
+    selectionDisposableRef.current?.dispose()
+    selectionDisposableRef.current = null
+
+    if (!settings.copyOnSelect) {
+      return
+    }
+
+    selectionDisposableRef.current = terminal.onSelectionChange(() => {
+      const selection = terminal.getSelection()
+      if (selection) {
+        navigator.clipboard.writeText(selection).catch(() => undefined)
+      }
+    })
+
+    return () => {
+      selectionDisposableRef.current?.dispose()
+      selectionDisposableRef.current = null
+    }
+  }, [enabled, hasTheme, sessionId, settings.copyOnSelect])
 
   return containerRef
 }

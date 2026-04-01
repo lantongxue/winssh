@@ -74,6 +74,16 @@
   --terminal-scanline-opacity: 0;
   --terminal-scanline-color: rgba(255, 255, 255, 0);
   --terminal-scanline-size: 3px;
+  --scrollbar-size: 12px;
+  --scrollbar-track: color-mix(in srgb, var(--workbench-panel) 84%, var(--background) 16%);
+  --scrollbar-thumb: color-mix(in srgb, var(--workbench-active) 30%, var(--workbench-muted) 70%);
+  --scrollbar-thumb-hover: color-mix(
+    in srgb,
+    var(--workbench-active) 46%,
+    var(--workbench-muted) 54%
+  );
+  --scrollbar-thumb-active: color-mix(in srgb, var(--workbench-active) 62%, var(--foreground) 38%);
+  --scrollbar-corner: color-mix(in srgb, var(--workbench-panel) 92%, var(--background) 8%);
 }
 
 .dark {
@@ -162,6 +172,42 @@
 
 * {
   @apply border-border;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  min-height: 36px;
+  border: 3px solid var(--scrollbar-track);
+  border-radius: 999px;
+  background: var(--scrollbar-thumb);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: var(--scrollbar-thumb-active);
+}
+
+*::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+*::-webkit-scrollbar-corner {
+  background: var(--scrollbar-corner);
 }
 
 html,
@@ -172,11 +218,7 @@ body,
 
 body {
   @apply bg-background text-foreground antialiased;
-  font-family:
-    'Segoe UI Variable Text',
-    'Segoe UI',
-    'Microsoft YaHei UI',
-    sans-serif;
+  font-family: 'Segoe UI Variable Text', 'Segoe UI', 'Microsoft YaHei UI', sans-serif;
   overflow: hidden;
 }
 
@@ -213,14 +255,13 @@ button,
   content: '';
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(
-      to bottom,
-      var(--terminal-scanline-color),
-      var(--terminal-scanline-color) 1px,
-      transparent 1px,
-      transparent var(--terminal-scanline-size)
-    );
+  background: linear-gradient(
+    to bottom,
+    var(--terminal-scanline-color),
+    var(--terminal-scanline-color) 1px,
+    transparent 1px,
+    transparent var(--terminal-scanline-size)
+  );
   opacity: var(--terminal-scanline-opacity);
   pointer-events: none;
 }

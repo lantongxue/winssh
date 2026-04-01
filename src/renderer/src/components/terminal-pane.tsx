@@ -21,11 +21,7 @@ interface ConnectingOverlayProps {
   serverName: string
 }
 
-function ConnectingOverlay({
-  connectionStages,
-  message,
-  serverName
-}: ConnectingOverlayProps) {
+function ConnectingOverlay({ connectionStages, message, serverName }: ConnectingOverlayProps) {
   const { t } = useTranslation()
   const [stageIndex, setStageIndex] = useState(0)
 
@@ -58,9 +54,7 @@ function ConnectingOverlay({
           <div className="text-xs font-medium uppercase tracking-[0.14em] text-[var(--terminal-overlay-label)]">
             {t('workbench.terminal.connecting.currentStage')}
           </div>
-          <div className="mt-2 text-sm text-[var(--terminal-overlay-accent)]">
-            {activeStage}
-          </div>
+          <div className="mt-2 text-sm text-[var(--terminal-overlay-accent)]">{activeStage}</div>
           <div className="mt-3 space-y-2">
             {connectionStages.map((stage, index) => (
               <div key={stage} className="flex items-center gap-2 text-xs">
@@ -114,7 +108,10 @@ export function TerminalPane({ session, settings, theme, onReconnect }: Terminal
   )
 
   return (
-    <div className="relative h-full terminal-surface">
+    <div
+      className="relative h-full terminal-surface"
+      style={theme ? { backgroundColor: theme.terminal.background } : undefined}
+    >
       <div ref={terminalRef} className="h-full w-full overflow-hidden" />
 
       {session.status !== 'ready' ? (

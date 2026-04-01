@@ -50,7 +50,7 @@
     "toast-radius": "4px",
     "toast-button-radius": "3px",
     "toast-backdrop-blur": "0px",
-    "terminal-surface-bg": "#050b07",
+    "terminal-surface-bg": "#0b1811",
     "terminal-overlay-backdrop": "rgba(1, 10, 4, 0.72)",
     "terminal-overlay-panel": "rgba(7, 17, 11, 0.96)",
     "terminal-overlay-border": "#214d31",
@@ -70,11 +70,11 @@
     "terminal-scanline-size": "3px"
   },
   "terminal": {
-    "background": "#050b07",
+    "background": "#0b1811",
     "foreground": "#9ff6a8",
     "cursor": "#7dff9b",
     "selectionBackground": "rgba(125,255,155,0.22)",
-    "black": "#050b07",
+    "black": "#0b1811",
     "red": "#ff7a6b",
     "green": "#7dff9b",
     "yellow": "#d8ff72",

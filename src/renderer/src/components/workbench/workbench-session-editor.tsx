@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import { actionIcons } from '@/lib/action-icons'
+import { usePrefersDark } from '@/hooks/use-prefers-dark'
 import { resolveThemeDefinition } from '@/lib/theme'
 import { PortForwardPanel } from '@/components/port-forward-panel'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
@@ -12,6 +13,7 @@ import { useSessionsStore } from '@/store/sessions-store'
 
 export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
   const { t } = useTranslation()
+  const prefersDark = usePrefersDark()
   const { reconnectSession, disconnectSession } = useWorkbenchContext()
   const session = useSessionsStore(
     (state) => state.tabs.find((tab) => tab.sessionId === sessionId) ?? null
@@ -50,7 +52,7 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
   const resolvedTheme = resolveThemeDefinition(
     settingsQuery.data.theme,
     themesQuery.data ?? [],
-    window.matchMedia('(prefers-color-scheme: dark)').matches
+    prefersDark
   )
 
   return (

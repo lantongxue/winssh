@@ -16,6 +16,12 @@ const themes = [
     pluginDisplayName: 'WinSSH Default Themes',
     pluginId: 'winssh.default-themes',
     source: 'builtin',
+    terminal: {
+      background: '#ffffff',
+      foreground: '#1f2328',
+      cursor: '#0f6cbd',
+      selectionBackground: 'rgba(15,108,189,0.18)'
+    },
     version: '0.1.0'
   }),
   createThemeDefinition({
@@ -25,6 +31,12 @@ const themes = [
     pluginDisplayName: 'WinSSH Default Themes',
     pluginId: 'winssh.default-themes',
     source: 'builtin',
+    terminal: {
+      background: '#181a1f',
+      foreground: '#d7dbe0',
+      cursor: '#3794ff',
+      selectionBackground: 'rgba(55,148,255,0.24)'
+    },
     version: '0.1.0'
   }),
   createThemeDefinition({
@@ -35,7 +47,7 @@ const themes = [
     pluginId: 'winssh.default-themes',
     source: 'builtin',
     terminal: {
-      background: '#050b07',
+      background: '#0b1811',
       cursor: '#7dff9b',
       foreground: '#9ff6a8',
       selectionBackground: 'rgba(125,255,155,0.22)'
@@ -83,7 +95,7 @@ describe('theme helpers', () => {
     expect(appearance.fontFamily).toBe('Lucida Console, Cascadia Mono, Consolas, monospace')
     expect(appearance.fontSize).toBe(13)
     expect(appearance.lineHeight).toBe(1.08)
-    expect(appearance.theme.background).toBe('#050b07')
+    expect(appearance.theme.background).toBe('#0b1811')
   })
 
   it('keeps user terminal typography overrides under a plugin theme', () => {
@@ -102,7 +114,7 @@ describe('theme helpers', () => {
     expect(appearance.lineHeight).toBe(1.2)
   })
 
-  it('keeps the existing terminal palette for non-pixel themes', () => {
+  it('uses the bundled terminal palette for built-in dark themes', () => {
     const appearance = resolveTerminalAppearance(
       {
         ...DEFAULT_APP_SETTINGS,
@@ -113,7 +125,20 @@ describe('theme helpers', () => {
 
     expect(appearance.fontFamily).toBe(DEFAULT_APP_SETTINGS.terminalFontFamily)
     expect(appearance.fontSize).toBe(DEFAULT_APP_SETTINGS.terminalFontSize)
-    expect(appearance.theme.background).toBe('#09090b')
-    expect(appearance.theme.cursor).toBe('#38bdf8')
+    expect(appearance.theme.background).toBe('#181a1f')
+    expect(appearance.theme.cursor).toBe('#3794ff')
+  })
+
+  it('uses the bundled terminal palette for built-in light themes', () => {
+    const appearance = resolveTerminalAppearance(
+      {
+        ...DEFAULT_APP_SETTINGS,
+        theme: DEFAULT_LIGHT_THEME_ID
+      },
+      themes[0]
+    )
+
+    expect(appearance.theme.background).toBe('#ffffff')
+    expect(appearance.theme.foreground).toBe('#1f2328')
   })
 })
