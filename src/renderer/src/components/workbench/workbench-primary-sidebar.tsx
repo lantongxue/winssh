@@ -1,6 +1,15 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowRight, ChevronDown, ChevronRight, FolderTree, Heart, Plus, Tags } from 'lucide-react'
+import {
+  ArrowRight,
+  ChevronDown,
+  ChevronRight,
+  FolderTree,
+  Heart,
+  LoaderCircle,
+  Plus,
+  Tags
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { Server, ServerGroup, Tag } from '@shared/types'
@@ -18,6 +27,14 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
 
 function SectionHeader({
   action,
@@ -238,6 +255,10 @@ export function WorkbenchPrimarySidebar() {
   const toggleSection = useWorkbenchStore((state) => state.toggleSection)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const [expandedTags, setExpandedTags] = useState<Record<string, boolean>>({})
+  const [pendingDeleteServer, setPendingDeleteServer] = useState<Server | null>(null)
+  const [isDeletingServer, setIsDeletingServer] = useState(false)
+  const CancelIcon = actionIcons.cancel
+  const DeleteIcon = actionIcons.delete
 
   const serversQuery = useQuery({
     queryKey: ['servers'],
@@ -322,341 +343,417 @@ export function WorkbenchPrimarySidebar() {
     toast.success(t('workbench.primarySidebar.toasts.recentCleared'))
   }
 
-  return (
-    <aside className="flex h-full min-h-0 flex-col border-r border-[var(--workbench-border)] bg-[var(--workbench-sidebar)]">
-      <div className="border-b border-[var(--workbench-border)] px-4 py-3">
-        <div className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground">
-          {t('workbench.primarySidebar.title').toUpperCase()}
-        </div>
-        <div className="mt-2 text-sm font-medium text-foreground">{t('workbench.primarySidebar.title')}</div>
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          {t('workbench.primarySidebar.description')}
-        </p>
-      </div>
+  const closeDeleteServerDialog = () => {
+    if (isDeletingServer) {
+      return
+    }
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-2 py-3">
-        <section className="space-y-1">
-          <SectionHeader
-            title={t('workbench.primarySidebar.sections.favorites')}
-            collapsed={Boolean(collapsedSections.favorites)}
-            onToggle={() => toggleSection('favorites')}
-          />
-          {!collapsedSections.favorites ? (
-            <div className="space-y-0.5">
-              <TreeRow
-                active={selectedExplorerNode === 'favorites'}
-                onClick={() => setSelectedExplorerNode('favorites')}
-              >
-                <Heart className="size-4" />
-                <span className="flex-1 truncate">{t('workbench.primarySidebar.sections.favorites')}</span>
-                <span className="text-xs text-muted-foreground">
-                  {servers.filter((server) => server.favorite).length}
-                </span>
-              </TreeRow>
-              {servers
-                .filter((server) => server.favorite)
-                .map((server) => (
+    setPendingDeleteServer(null)
+  }
+
+  const handleDeleteServer = async () => {
+    if (!pendingDeleteServer) {
+      return
+    }
+
+    setIsDeletingServer(true)
+
+    try {
+      await deleteServer(pendingDeleteServer.id)
+      setPendingDeleteServer(null)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t('workbench.primarySidebar.toasts.serverDeleteFailed')
+      )
+    } finally {
+      setIsDeletingServer(false)
+    }
+  }
+
+  return (
+    <>
+      <aside className="flex h-full min-h-0 flex-col border-r border-[var(--workbench-border)] bg-[var(--workbench-sidebar)]">
+        <div className="border-b border-[var(--workbench-border)] px-4 py-3">
+          <div className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground">
+            {t('workbench.primarySidebar.title').toUpperCase()}
+          </div>
+          <div className="mt-2 text-sm font-medium text-foreground">
+            {t('workbench.primarySidebar.title')}
+          </div>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            {t('workbench.primarySidebar.description')}
+          </p>
+        </div>
+
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-2 py-3">
+          <section className="space-y-1">
+            <SectionHeader
+              title={t('workbench.primarySidebar.sections.favorites')}
+              collapsed={Boolean(collapsedSections.favorites)}
+              onToggle={() => toggleSection('favorites')}
+            />
+            {!collapsedSections.favorites ? (
+              <div className="space-y-0.5">
+                <TreeRow
+                  active={selectedExplorerNode === 'favorites'}
+                  onClick={() => setSelectedExplorerNode('favorites')}
+                >
+                  <Heart className="size-4" />
+                  <span className="flex-1 truncate">
+                    {t('workbench.primarySidebar.sections.favorites')}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {servers.filter((server) => server.favorite).length}
+                  </span>
+                </TreeRow>
+                {servers
+                  .filter((server) => server.favorite)
+                  .map((server) => (
+                    <ServerRow
+                      key={server.id}
+                      active={selectedExplorerNode === `server:${server.id}`}
+                      depth={1}
+                      server={server}
+                      onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
+                      onConnect={() => void connectServer(server)}
+                      onDelete={() => setPendingDeleteServer(server)}
+                      onEdit={() => openServerEditor(server.id)}
+                      onToggleFavorite={() => void toggleFavorite(server.id)}
+                    />
+                  ))}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="space-y-1">
+            <SectionHeader
+              title={t('workbench.primarySidebar.sections.recent')}
+              collapsed={Boolean(collapsedSections.recent)}
+              onToggle={() => toggleSection('recent')}
+            />
+            {!collapsedSections.recent ? (
+              <div className="space-y-0.5">
+                <TreeRow
+                  active={selectedExplorerNode === 'recent'}
+                  onClick={() => setSelectedExplorerNode('recent')}
+                >
+                  <FolderTree className="size-4" />
+                  <span className="flex-1 truncate">
+                    {t('workbench.primarySidebar.sections.recent')}
+                  </span>
+                  <button
+                    type="button"
+                    className="flex size-5 shrink-0 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--workbench-muted)]"
+                    title={t('workbench.primarySidebar.actions.clearRecent')}
+                    aria-label={t('workbench.primarySidebar.actions.clearRecent')}
+                    disabled={recents.length === 0}
+                    onMouseDown={(event) => {
+                      event.stopPropagation()
+                    }}
+                    onDoubleClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                    }}
+                    onClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      void handleClearRecent()
+                    }}
+                  >
+                    <ClearIcon className="size-3.5" />
+                  </button>
+                  <span className="text-xs text-muted-foreground">{recents.length}</span>
+                </TreeRow>
+                {recents.map((recent) => {
+                  const server = servers.find((item) => item.id === recent.serverId)
+                  if (!server) {
+                    return null
+                  }
+
+                  return (
+                    <ServerRow
+                      key={recent.id}
+                      active={false}
+                      depth={1}
+                      server={server}
+                      onConnect={() => void connectServer(server)}
+                      onDelete={() => setPendingDeleteServer(server)}
+                      onEdit={() => openServerEditor(server.id)}
+                      onToggleFavorite={() => void toggleFavorite(server.id)}
+                    />
+                  )
+                })}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="space-y-1">
+            <SectionHeader
+              title={t('workbench.primarySidebar.sections.groups')}
+              collapsed={Boolean(collapsedSections.groups)}
+              onToggle={() => toggleSection('groups')}
+              action={
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  className="text-muted-foreground"
+                  title={t('workbench.primarySidebar.actions.createGroup')}
+                  onClick={() => openEntityQuickInput({ entityType: 'group', mode: 'create' })}
+                >
+                  <Plus className="size-3.5" />
+                </Button>
+              }
+            />
+            {!collapsedSections.groups ? (
+              <div className="space-y-0.5">
+                {groups.map((group) => {
+                  const style = getColorStyle(group.color)
+                  const active = selectedExplorerNode === `group:${group.id}`
+                  const expanded = expandedGroups[group.id] ?? false
+                  const groupServers = servers.filter((server) => server.groupId === group.id)
+
+                  return (
+                    <div key={group.id} className="space-y-0.5">
+                      <EntityNode
+                        active={active}
+                        depth={0}
+                        onClick={() => setSelectedExplorerNode(`group:${group.id}`)}
+                        onDelete={() => void handleDeleteGroup(group)}
+                        onRename={() =>
+                          openEntityQuickInput({
+                            entityId: group.id,
+                            entityType: 'group',
+                            initialColor: group.color,
+                            initialName: group.name,
+                            mode: 'rename'
+                          })
+                        }
+                      >
+                        <button
+                          type="button"
+                          className="flex size-4 items-center justify-center"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setExpandedGroups((current) => ({
+                              ...current,
+                              [group.id]: !expanded
+                            }))
+                          }}
+                        >
+                          {expanded ? (
+                            <ChevronDown className="size-3.5" />
+                          ) : (
+                            <ChevronRight className="size-3.5" />
+                          )}
+                        </button>
+                        <span className={`size-2 rounded-full ${style.dot}`} />
+                        <span className="flex-1 truncate">{group.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {groupCounts.get(group.id) ?? 0}
+                        </span>
+                      </EntityNode>
+                      {expanded
+                        ? groupServers.map((server) => (
+                            <ServerRow
+                              key={server.id}
+                              active={selectedExplorerNode === `server:${server.id}`}
+                              depth={1}
+                              server={server}
+                              onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
+                              onConnect={() => void connectServer(server)}
+                              onDelete={() => setPendingDeleteServer(server)}
+                              onEdit={() => openServerEditor(server.id)}
+                              onToggleFavorite={() => void toggleFavorite(server.id)}
+                            />
+                          ))
+                        : null}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="space-y-1">
+            <SectionHeader
+              title={t('workbench.primarySidebar.sections.tags')}
+              collapsed={Boolean(collapsedSections.tags)}
+              onToggle={() => toggleSection('tags')}
+              action={
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  className="text-muted-foreground"
+                  title={t('workbench.primarySidebar.actions.createTag')}
+                  onClick={() => openEntityQuickInput({ entityType: 'tag', mode: 'create' })}
+                >
+                  <Plus className="size-3.5" />
+                </Button>
+              }
+            />
+            {!collapsedSections.tags ? (
+              <div className="space-y-0.5">
+                {tags.map((tag) => {
+                  const style = getColorStyle(tag.color)
+                  const active = selectedExplorerNode === `tag:${tag.id}`
+                  const expanded = expandedTags[tag.id] ?? false
+                  const tagServers = servers.filter((server) =>
+                    server.tags.some((serverTag) => serverTag.id === tag.id)
+                  )
+
+                  return (
+                    <div key={tag.id} className="space-y-0.5">
+                      <EntityNode
+                        active={active}
+                        depth={0}
+                        onClick={() => setSelectedExplorerNode(`tag:${tag.id}`)}
+                        onDelete={() => void handleDeleteTag(tag)}
+                        onRename={() =>
+                          openEntityQuickInput({
+                            entityId: tag.id,
+                            entityType: 'tag',
+                            initialColor: tag.color,
+                            initialName: tag.name,
+                            mode: 'rename'
+                          })
+                        }
+                      >
+                        <button
+                          type="button"
+                          className="flex size-4 items-center justify-center"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setExpandedTags((current) => ({
+                              ...current,
+                              [tag.id]: !expanded
+                            }))
+                          }}
+                        >
+                          {expanded ? (
+                            <ChevronDown className="size-3.5" />
+                          ) : (
+                            <ChevronRight className="size-3.5" />
+                          )}
+                        </button>
+                        <span className={`size-2 rounded-full ${style.dot}`} />
+                        <span className="flex-1 truncate">{tag.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {tagCounts.get(tag.id) ?? 0}
+                        </span>
+                      </EntityNode>
+                      {expanded
+                        ? tagServers.map((server) => (
+                            <ServerRow
+                              key={server.id}
+                              active={selectedExplorerNode === `server:${server.id}`}
+                              depth={1}
+                              server={server}
+                              onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
+                              onConnect={() => void connectServer(server)}
+                              onDelete={() => setPendingDeleteServer(server)}
+                              onEdit={() => openServerEditor(server.id)}
+                              onToggleFavorite={() => void toggleFavorite(server.id)}
+                            />
+                          ))
+                        : null}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="space-y-1">
+            <SectionHeader
+              title={t('workbench.primarySidebar.sections.allServers')}
+              collapsed={Boolean(collapsedSections['all-servers'])}
+              onToggle={() => toggleSection('all-servers')}
+              action={
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  className="text-muted-foreground"
+                  title={t('common.actions.newConnection')}
+                  onClick={() => openServerEditor()}
+                >
+                  <Plus className="size-3.5" />
+                </Button>
+              }
+            />
+            {!collapsedSections['all-servers'] ? (
+              <div className="space-y-0.5">
+                <TreeRow
+                  active={selectedExplorerNode === 'all-servers' || selectedExplorerNode === 'home'}
+                  onClick={() => setSelectedExplorerNode('all-servers')}
+                >
+                  <Tags className="size-4" />
+                  <span className="flex-1 truncate">
+                    {t('workbench.primarySidebar.sections.allServers')}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{filteredServers.length}</span>
+                </TreeRow>
+                {filteredServers.map((server) => (
                   <ServerRow
                     key={server.id}
-                    active={selectedExplorerNode === `server:${server.id}`}
+                    active={
+                      selectedExplorerNode === `server:${server.id}` ||
+                      (activeSessionId
+                        ? sessions.some((session) => session.serverId === server.id)
+                        : false)
+                    }
                     depth={1}
                     server={server}
                     onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
                     onConnect={() => void connectServer(server)}
-                    onDelete={() => void deleteServer(server.id)}
+                    onDelete={() => setPendingDeleteServer(server)}
                     onEdit={() => openServerEditor(server.id)}
                     onToggleFavorite={() => void toggleFavorite(server.id)}
                   />
                 ))}
-            </div>
-          ) : null}
-        </section>
+              </div>
+            ) : null}
+          </section>
+        </div>
+      </aside>
 
-        <section className="space-y-1">
-          <SectionHeader
-            title={t('workbench.primarySidebar.sections.recent')}
-            collapsed={Boolean(collapsedSections.recent)}
-            onToggle={() => toggleSection('recent')}
-          />
-          {!collapsedSections.recent ? (
-            <div className="space-y-0.5">
-              <TreeRow
-                active={selectedExplorerNode === 'recent'}
-                onClick={() => setSelectedExplorerNode('recent')}
-              >
-                <FolderTree className="size-4" />
-                <span className="flex-1 truncate">{t('workbench.primarySidebar.sections.recent')}</span>
-                <button
-                  type="button"
-                  className="flex size-5 shrink-0 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--workbench-muted)]"
-                  title={t('workbench.primarySidebar.actions.clearRecent')}
-                  aria-label={t('workbench.primarySidebar.actions.clearRecent')}
-                  disabled={recents.length === 0}
-                  onMouseDown={(event) => {
-                    event.stopPropagation()
-                  }}
-                  onDoubleClick={(event) => {
-                    event.preventDefault()
-                    event.stopPropagation()
-                  }}
-                  onClick={(event) => {
-                    event.preventDefault()
-                    event.stopPropagation()
-                    void handleClearRecent()
-                  }}
-                >
-                  <ClearIcon className="size-3.5" />
-                </button>
-                <span className="text-xs text-muted-foreground">{recents.length}</span>
-              </TreeRow>
-              {recents.map((recent) => {
-                const server = servers.find((item) => item.id === recent.serverId)
-                if (!server) {
-                  return null
-                }
-
-                return (
-                  <ServerRow
-                    key={recent.id}
-                    active={false}
-                    depth={1}
-                    server={server}
-                    onConnect={() => void connectServer(server)}
-                    onDelete={() => void deleteServer(server.id)}
-                    onEdit={() => openServerEditor(server.id)}
-                    onToggleFavorite={() => void toggleFavorite(server.id)}
-                  />
-                )
+      <Dialog
+        open={pendingDeleteServer !== null}
+        onOpenChange={(open) => !open && closeDeleteServerDialog()}
+      >
+        <DialogContent
+          className="max-w-md rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-0 shadow-2xl"
+          showCloseButton={false}
+        >
+          <DialogHeader className="border-b border-[var(--workbench-border)] px-4 py-4">
+            <DialogTitle>{t('workbench.primarySidebar.dialogs.deleteServer.title')}</DialogTitle>
+            <DialogDescription>
+              {t('workbench.primarySidebar.dialogs.deleteServer.description', {
+                name: pendingDeleteServer?.name ?? ''
               })}
-            </div>
-          ) : null}
-        </section>
-
-        <section className="space-y-1">
-          <SectionHeader
-            title={t('workbench.primarySidebar.sections.groups')}
-            collapsed={Boolean(collapsedSections.groups)}
-            onToggle={() => toggleSection('groups')}
-            action={
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                className="text-muted-foreground"
-                title={t('workbench.primarySidebar.actions.createGroup')}
-                onClick={() => openEntityQuickInput({ entityType: 'group', mode: 'create' })}
-              >
-                <Plus className="size-3.5" />
-              </Button>
-            }
-          />
-          {!collapsedSections.groups ? (
-            <div className="space-y-0.5">
-              {groups.map((group) => {
-                const style = getColorStyle(group.color)
-                const active = selectedExplorerNode === `group:${group.id}`
-                const expanded = expandedGroups[group.id] ?? false
-                const groupServers = servers.filter((server) => server.groupId === group.id)
-
-                return (
-                  <div key={group.id} className="space-y-0.5">
-                    <EntityNode
-                      active={active}
-                      depth={0}
-                      onClick={() => setSelectedExplorerNode(`group:${group.id}`)}
-                      onDelete={() => void handleDeleteGroup(group)}
-                      onRename={() =>
-                        openEntityQuickInput({
-                          entityId: group.id,
-                          entityType: 'group',
-                          initialColor: group.color,
-                          initialName: group.name,
-                          mode: 'rename'
-                        })
-                      }
-                    >
-                      <button
-                        type="button"
-                        className="flex size-4 items-center justify-center"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          setExpandedGroups((current) => ({
-                            ...current,
-                            [group.id]: !expanded
-                          }))
-                        }}
-                      >
-                        {expanded ? (
-                          <ChevronDown className="size-3.5" />
-                        ) : (
-                          <ChevronRight className="size-3.5" />
-                        )}
-                      </button>
-                      <span className={`size-2 rounded-full ${style.dot}`} />
-                      <span className="flex-1 truncate">{group.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {groupCounts.get(group.id) ?? 0}
-                      </span>
-                    </EntityNode>
-                    {expanded
-                      ? groupServers.map((server) => (
-                          <ServerRow
-                            key={server.id}
-                            active={selectedExplorerNode === `server:${server.id}`}
-                            depth={1}
-                            server={server}
-                            onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
-                            onConnect={() => void connectServer(server)}
-                            onDelete={() => void deleteServer(server.id)}
-                            onEdit={() => openServerEditor(server.id)}
-                            onToggleFavorite={() => void toggleFavorite(server.id)}
-                          />
-                        ))
-                      : null}
-                  </div>
-                )
-              })}
-            </div>
-          ) : null}
-        </section>
-
-        <section className="space-y-1">
-          <SectionHeader
-            title={t('workbench.primarySidebar.sections.tags')}
-            collapsed={Boolean(collapsedSections.tags)}
-            onToggle={() => toggleSection('tags')}
-            action={
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                className="text-muted-foreground"
-                title={t('workbench.primarySidebar.actions.createTag')}
-                onClick={() => openEntityQuickInput({ entityType: 'tag', mode: 'create' })}
-              >
-                <Plus className="size-3.5" />
-              </Button>
-            }
-          />
-          {!collapsedSections.tags ? (
-            <div className="space-y-0.5">
-              {tags.map((tag) => {
-                const style = getColorStyle(tag.color)
-                const active = selectedExplorerNode === `tag:${tag.id}`
-                const expanded = expandedTags[tag.id] ?? false
-                const tagServers = servers.filter((server) =>
-                  server.tags.some((serverTag) => serverTag.id === tag.id)
-                )
-
-                return (
-                  <div key={tag.id} className="space-y-0.5">
-                    <EntityNode
-                      active={active}
-                      depth={0}
-                      onClick={() => setSelectedExplorerNode(`tag:${tag.id}`)}
-                      onDelete={() => void handleDeleteTag(tag)}
-                      onRename={() =>
-                        openEntityQuickInput({
-                          entityId: tag.id,
-                          entityType: 'tag',
-                          initialColor: tag.color,
-                          initialName: tag.name,
-                          mode: 'rename'
-                        })
-                      }
-                    >
-                      <button
-                        type="button"
-                        className="flex size-4 items-center justify-center"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          setExpandedTags((current) => ({
-                            ...current,
-                            [tag.id]: !expanded
-                          }))
-                        }}
-                      >
-                        {expanded ? (
-                          <ChevronDown className="size-3.5" />
-                        ) : (
-                          <ChevronRight className="size-3.5" />
-                        )}
-                      </button>
-                      <span className={`size-2 rounded-full ${style.dot}`} />
-                      <span className="flex-1 truncate">{tag.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {tagCounts.get(tag.id) ?? 0}
-                      </span>
-                    </EntityNode>
-                    {expanded
-                      ? tagServers.map((server) => (
-                          <ServerRow
-                            key={server.id}
-                            active={selectedExplorerNode === `server:${server.id}`}
-                            depth={1}
-                            server={server}
-                            onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
-                            onConnect={() => void connectServer(server)}
-                            onDelete={() => void deleteServer(server.id)}
-                            onEdit={() => openServerEditor(server.id)}
-                            onToggleFavorite={() => void toggleFavorite(server.id)}
-                          />
-                        ))
-                      : null}
-                  </div>
-                )
-              })}
-            </div>
-          ) : null}
-        </section>
-
-        <section className="space-y-1">
-          <SectionHeader
-            title={t('workbench.primarySidebar.sections.allServers')}
-            collapsed={Boolean(collapsedSections['all-servers'])}
-            onToggle={() => toggleSection('all-servers')}
-            action={
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                className="text-muted-foreground"
-                title={t('common.actions.newConnection')}
-                onClick={() => openServerEditor()}
-              >
-                <Plus className="size-3.5" />
-              </Button>
-            }
-          />
-          {!collapsedSections['all-servers'] ? (
-            <div className="space-y-0.5">
-              <TreeRow
-                active={selectedExplorerNode === 'all-servers' || selectedExplorerNode === 'home'}
-                onClick={() => setSelectedExplorerNode('all-servers')}
-              >
-                <Tags className="size-4" />
-                <span className="flex-1 truncate">{t('workbench.primarySidebar.sections.allServers')}</span>
-                <span className="text-xs text-muted-foreground">{filteredServers.length}</span>
-              </TreeRow>
-              {filteredServers.map((server) => (
-                <ServerRow
-                  key={server.id}
-                  active={
-                    selectedExplorerNode === `server:${server.id}` ||
-                    (activeSessionId
-                      ? sessions.some((session) => session.serverId === server.id)
-                      : false)
-                  }
-                  depth={1}
-                  server={server}
-                  onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
-                  onConnect={() => void connectServer(server)}
-                  onDelete={() => void deleteServer(server.id)}
-                  onEdit={() => openServerEditor(server.id)}
-                  onToggleFavorite={() => void toggleFavorite(server.id)}
-                />
-              ))}
-            </div>
-          ) : null}
-        </section>
-      </div>
-    </aside>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="border-t border-[var(--workbench-border)] px-4 py-3">
+            <Button variant="ghost" disabled={isDeletingServer} onClick={closeDeleteServerDialog}>
+              <CancelIcon className="size-4" />
+              {t('common.actions.cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={isDeletingServer || !pendingDeleteServer}
+              onClick={() => void handleDeleteServer()}
+            >
+              {isDeletingServer ? (
+                <LoaderCircle className="size-4 animate-spin" />
+              ) : (
+                <DeleteIcon className="size-4" />
+              )}
+              {t('common.actions.delete')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

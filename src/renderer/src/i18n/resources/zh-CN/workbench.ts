@@ -121,6 +121,13 @@ const workbench = {
         rename: '重命名'
       },
       description: '单击打开编辑器，双击建立 SSH 会话。',
+      dialogs: {
+        deleteServer: {
+          description:
+            '将永久删除“{{name}}”的服务器配置，以及已保存的密码或私钥口令。此操作无法撤销。',
+          title: '删除服务器'
+        }
+      },
       sections: {
         allServers: '全部服务器',
         favorites: '收藏',
@@ -132,6 +139,7 @@ const workbench = {
       toasts: {
         groupDeleted: '分组已删除。',
         recentCleared: '最近连接已清除。',
+        serverDeleteFailed: '删除服务器失败。',
         tagDeleted: '标签已删除。'
       }
     },

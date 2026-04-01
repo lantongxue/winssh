@@ -122,6 +122,13 @@ const workbench = {
         rename: 'Rename'
       },
       description: 'Single-click to open the editor, double-click to start an SSH session.',
+      dialogs: {
+        deleteServer: {
+          description:
+            'This permanently deletes the saved configuration for "{{name}}" and any stored password or private key passphrase. This action cannot be undone.',
+          title: 'Delete Server'
+        }
+      },
       sections: {
         allServers: 'All Servers',
         favorites: 'Favorites',
@@ -133,6 +140,7 @@ const workbench = {
       toasts: {
         groupDeleted: 'Group deleted.',
         recentCleared: 'Recent connections cleared.',
+        serverDeleteFailed: 'Failed to delete the server.',
         tagDeleted: 'Tag deleted.'
       }
     },
