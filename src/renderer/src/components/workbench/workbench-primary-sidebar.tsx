@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowRight, ChevronDown, ChevronRight, FolderTree, Heart, Plus, Tags } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -220,6 +220,7 @@ function EntityNode({
 
 export function WorkbenchPrimarySidebar() {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const {
     connectServer,
     deleteServer,
@@ -230,6 +231,7 @@ export function WorkbenchPrimarySidebar() {
   } = useWorkbenchContext()
   const activeSessionId = useSessionsStore((state) => state.activeSessionId)
   const sessions = useSessionsStore((state) => state.tabs)
+  const ClearIcon = actionIcons.clear
   const collapsedSections = useWorkbenchStore((state) => state.collapsedSections)
   const selectedExplorerNode = useWorkbenchStore((state) => state.selectedExplorerNode)
   const setSelectedExplorerNode = useWorkbenchStore((state) => state.setSelectedExplorerNode)
@@ -314,6 +316,12 @@ export function WorkbenchPrimarySidebar() {
     toast.success(t('workbench.primarySidebar.toasts.tagDeleted'))
   }
 
+  const handleClearRecent = async () => {
+    await window.winsshApi.servers.clearRecent()
+    await queryClient.invalidateQueries({ queryKey: ['recent-sessions'] })
+    toast.success(t('workbench.primarySidebar.toasts.recentCleared'))
+  }
+
   return (
     <aside className="flex h-full min-h-0 flex-col border-r border-[var(--workbench-border)] bg-[var(--workbench-sidebar)]">
       <div className="border-b border-[var(--workbench-border)] px-4 py-3">
@@ -378,6 +386,27 @@ export function WorkbenchPrimarySidebar() {
               >
                 <FolderTree className="size-4" />
                 <span className="flex-1 truncate">{t('workbench.primarySidebar.sections.recent')}</span>
+                <button
+                  type="button"
+                  className="flex size-5 shrink-0 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--workbench-muted)]"
+                  title={t('workbench.primarySidebar.actions.clearRecent')}
+                  aria-label={t('workbench.primarySidebar.actions.clearRecent')}
+                  disabled={recents.length === 0}
+                  onMouseDown={(event) => {
+                    event.stopPropagation()
+                  }}
+                  onDoubleClick={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                  }}
+                  onClick={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    void handleClearRecent()
+                  }}
+                >
+                  <ClearIcon className="size-3.5" />
+                </button>
                 <span className="text-xs text-muted-foreground">{recents.length}</span>
               </TreeRow>
               {recents.map((recent) => {

@@ -113,6 +113,7 @@ const workbench = {
     primarySidebar: {
       actions: {
         addToFavorites: 'Add to Favorites',
+        clearRecent: 'Clear Recent Connections',
         connect: 'Connect',
         createGroup: 'New Group',
         createTag: 'New Tag',
@@ -131,6 +132,7 @@ const workbench = {
       title: 'Explorer',
       toasts: {
         groupDeleted: 'Group deleted.',
+        recentCleared: 'Recent connections cleared.',
         tagDeleted: 'Tag deleted.'
       }
     },

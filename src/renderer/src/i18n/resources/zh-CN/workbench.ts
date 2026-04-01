@@ -112,6 +112,7 @@ const workbench = {
     primarySidebar: {
       actions: {
         addToFavorites: '加入收藏',
+        clearRecent: '清除最近连接',
         connect: '连接',
         createGroup: '新建分组',
         createTag: '新建标签',
@@ -130,6 +131,7 @@ const workbench = {
       title: '资源管理器',
       toasts: {
         groupDeleted: '分组已删除。',
+        recentCleared: '最近连接已清除。',
         tagDeleted: '标签已删除。'
       }
     },
