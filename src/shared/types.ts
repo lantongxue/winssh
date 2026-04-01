@@ -1,5 +1,5 @@
 export type AuthType = 'password' | 'privateKey'
-export type ThemeMode = 'system' | 'light' | 'dark'
+export type ThemeMode = 'system' | 'light' | 'dark' | 'pixel'
 export type AppLanguage = 'system' | 'zh-CN' | 'en-US'
 export type CursorStyle = 'block' | 'underline' | 'bar'
 export type SessionStatus = 'connecting' | 'ready' | 'error' | 'disconnected'

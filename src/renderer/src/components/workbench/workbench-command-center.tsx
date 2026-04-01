@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { THEME_OPTIONS } from '@shared/constants'
+import type { ThemeMode } from '@shared/types'
 import { useTranslation } from 'react-i18next'
 import { formatQuickConnectTarget, parseQuickConnectInput } from '@shared/quick-connect'
 import { Files, MonitorCog, MoonStar, ServerCog, SunMedium, TerminalSquare } from 'lucide-react'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
+import { getThemeLabelKey } from '@/lib/theme'
 import { actionIcons } from '@/lib/action-icons'
 import {
   createSessionEditorDocument,
@@ -59,7 +62,14 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
     queryFn: () => window.winsshApi.servers.list()
   })
 
-  const handleThemeChange = async (theme: 'system' | 'light' | 'dark') => {
+  const themeIcons = {
+    dark: MoonStar,
+    light: SunMedium,
+    pixel: TerminalSquare,
+    system: MonitorCog
+  } as const
+
+  const handleThemeChange = async (theme: ThemeMode) => {
     const settings = await window.winsshApi.settings.update({ theme })
     queryClient.setQueryData(['settings'], settings)
     setCommandPaletteOpen(false)
@@ -157,18 +167,16 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
           <CommandSeparator />
 
           <CommandGroup heading={t('workbench.commandCenter.commandPalette.groups.theme')}>
-            <CommandItem onSelect={() => void handleThemeChange('system')}>
-              <MonitorCog className="size-4" />
-              {t('common.theme.system')}
-            </CommandItem>
-            <CommandItem onSelect={() => void handleThemeChange('light')}>
-              <SunMedium className="size-4" />
-              {t('common.theme.light')}
-            </CommandItem>
-            <CommandItem onSelect={() => void handleThemeChange('dark')}>
-              <MoonStar className="size-4" />
-              {t('common.theme.dark')}
-            </CommandItem>
+            {THEME_OPTIONS.map((theme) => {
+              const ThemeIcon = themeIcons[theme]
+
+              return (
+                <CommandItem key={theme} onSelect={() => void handleThemeChange(theme)}>
+                  <ThemeIcon className="size-4" />
+                  {t(getThemeLabelKey(theme))}
+                </CommandItem>
+              )
+            })}
           </CommandGroup>
 
           {currentServer ? (

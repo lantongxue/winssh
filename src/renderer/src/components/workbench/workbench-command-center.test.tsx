@@ -89,4 +89,32 @@ describe('WorkbenchCommandCenter quick connect', () => {
     })
     expect(useWorkbenchStore.getState().quickOpenOpen).toBe(false)
   })
+
+  it('lists the pixel theme and saves it through settings.update', async () => {
+    const updateSettings = vi.fn().mockResolvedValue({
+      copyOnSelect: true,
+      cursorBlink: true,
+      cursorStyle: 'block',
+      language: 'en-US',
+      terminalFontFamily: 'Consolas',
+      terminalFontSize: 14,
+      theme: 'pixel',
+      windowTitleBarStyle: 'custom'
+    })
+
+    window.winsshApi = createWinsshApiMock({
+      settings: {
+        update: updateSettings
+      }
+    })
+
+    useWorkbenchStore.getState().setCommandPaletteOpen(true)
+    renderCommandCenter()
+
+    fireEvent.click(await screen.findByText('Pixel CRT'))
+
+    await waitFor(() => {
+      expect(updateSettings).toHaveBeenCalledWith({ theme: 'pixel' })
+    })
+  })
 })

@@ -40,6 +40,7 @@ const common = {
   theme: {
     dark: 'Dark+',
     light: 'Light+',
+    pixel: 'Pixel CRT',
     system: 'System'
   },
   language: {

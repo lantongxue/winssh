@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { getThemeLabelKey } from '@/lib/theme'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 
@@ -15,6 +16,7 @@ export function WorkbenchStatusBar() {
     queryKey: ['settings'],
     queryFn: () => window.winsshApi.settings.get()
   })
+  const themeLabel = t(getThemeLabelKey(settingsQuery.data?.theme ?? 'system'))
 
   return (
     <footer className="flex h-6 shrink-0 items-center justify-between bg-[var(--workbench-statusbar)] px-3 text-[11px] text-[var(--workbench-statusbar-foreground)]">
@@ -28,7 +30,7 @@ export function WorkbenchStatusBar() {
       <div className="hidden items-center gap-3 md:flex">
         <span>{t(sidebarOpen ? 'workbench.statusBar.sidebarOn' : 'workbench.statusBar.sidebarOff')}</span>
         <span>{t(panelOpen ? 'workbench.statusBar.panelOn' : 'workbench.statusBar.panelOff')}</span>
-        <span>{t('workbench.statusBar.theme', { value: settingsQuery.data?.theme ?? 'system' })}</span>
+        <span>{t('workbench.statusBar.theme', { value: themeLabel })}</span>
         <span>{t('common.shortcuts.toggleSidebar')}</span>
         <span>{t('common.shortcuts.togglePanel')}</span>
         <span>{t('common.shortcuts.quickOpen')}</span>

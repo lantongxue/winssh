@@ -40,6 +40,7 @@ const common = {
   theme: {
     dark: 'Dark+',
     light: 'Light+',
+    pixel: '像素终端',
     system: '跟随系统'
   },
   language: {

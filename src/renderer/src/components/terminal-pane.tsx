@@ -13,9 +13,85 @@ interface TerminalPaneProps {
   onReconnect: (sessionId: string) => Promise<void>
 }
 
-export function TerminalPane({ session, settings, onReconnect }: TerminalPaneProps) {
+interface ConnectingOverlayProps {
+  connectionStages: readonly string[]
+  message: string
+  serverName: string
+}
+
+function ConnectingOverlay({
+  connectionStages,
+  message,
+  serverName
+}: ConnectingOverlayProps) {
   const { t } = useTranslation()
   const [stageIndex, setStageIndex] = useState(0)
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setStageIndex((current) => (current + 1) % connectionStages.length)
+    }, 1100)
+
+    return () => window.clearInterval(timer)
+  }, [connectionStages.length])
+
+  const activeStage = connectionStages[stageIndex]
+
+  return (
+    <div className="flex items-start gap-4">
+      <div className="relative mt-0.5">
+        <span className="absolute inset-0 rounded-full bg-[var(--terminal-overlay-accent-soft)] animate-ping" />
+        <span className="relative flex size-11 items-center justify-center rounded-full bg-[var(--terminal-overlay-accent-soft)] text-[var(--terminal-overlay-accent)]">
+          <LoaderCircle className="size-5 animate-spin" />
+        </span>
+      </div>
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className="space-y-1">
+          <div className="font-medium text-[var(--terminal-overlay-text)]">
+            {t('workbench.terminal.connecting.title', { name: serverName })}
+          </div>
+          <div className="text-sm text-[var(--terminal-overlay-muted)]">{message}</div>
+        </div>
+        <div className="rounded-[calc(var(--terminal-overlay-radius)-1px)] border border-[var(--terminal-overlay-border)] bg-[color-mix(in_srgb,var(--terminal-overlay-panel)_82%,transparent)] p-3">
+          <div className="text-xs font-medium uppercase tracking-[0.14em] text-[var(--terminal-overlay-label)]">
+            {t('workbench.terminal.connecting.currentStage')}
+          </div>
+          <div className="mt-2 text-sm text-[var(--terminal-overlay-accent)]">
+            {activeStage}
+          </div>
+          <div className="mt-3 space-y-2">
+            {connectionStages.map((stage, index) => (
+              <div key={stage} className="flex items-center gap-2 text-xs">
+                {index < stageIndex ? (
+                  <CheckCircle2 className="size-3.5 text-[var(--terminal-overlay-accent)]" />
+                ) : index === stageIndex ? (
+                  <LoaderCircle className="size-3.5 animate-spin text-[var(--terminal-overlay-accent)]" />
+                ) : (
+                  <span className="size-3.5 rounded-full border border-[var(--terminal-overlay-step-border)]" />
+                )}
+                <span
+                  className={
+                    index <= stageIndex
+                      ? 'text-[var(--terminal-overlay-text)]'
+                      : 'text-[var(--terminal-overlay-label)]'
+                  }
+                >
+                  {stage}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--terminal-overlay-accent-soft)_55%,transparent)]">
+            <div className="connection-progress-bar h-full rounded-full bg-[var(--terminal-overlay-progress)]" />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function TerminalPane({ session, settings, onReconnect }: TerminalPaneProps) {
+  const { t } = useTranslation()
   const terminalRef = useTerminal(
     session.provisional ? null : session.sessionId,
     settings,
@@ -34,80 +110,30 @@ export function TerminalPane({ session, settings, onReconnect }: TerminalPanePro
     [t]
   )
 
-  useEffect(() => {
-    if (session.status !== 'connecting') {
-      setStageIndex(0)
-      return
-    }
-
-    const timer = window.setInterval(() => {
-      setStageIndex((current) => (current + 1) % connectionStages.length)
-    }, 1100)
-
-    return () => window.clearInterval(timer)
-  }, [connectionStages.length, session.sessionId, session.status])
-
-  const activeStage = connectionStages[stageIndex]
-
   return (
     <div className="relative h-full terminal-surface">
       <div ref={terminalRef} className="h-full w-full overflow-hidden" />
 
       {session.status !== 'ready' ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/45">
-          <div className="flex w-[min(560px,calc(100%-2rem))] flex-col gap-4 rounded-lg border border-white/10 bg-zinc-950/95 px-6 py-5 text-left shadow-xl">
+        <div className="absolute inset-0 flex items-center justify-center bg-[var(--terminal-overlay-backdrop)]">
+          <div className="flex w-[min(560px,calc(100%-2rem))] flex-col gap-4 rounded-[var(--terminal-overlay-radius)] border border-[var(--terminal-overlay-border)] bg-[var(--terminal-overlay-panel)] px-6 py-5 text-left shadow-xl">
             {session.status === 'connecting' ? (
-              <div className="flex items-start gap-4">
-                <div className="relative mt-0.5">
-                  <span className="absolute inset-0 rounded-full bg-sky-400/30 animate-ping" />
-                  <span className="relative flex size-11 items-center justify-center rounded-full bg-sky-500/15 text-sky-200">
-                    <LoaderCircle className="size-5 animate-spin" />
-                  </span>
-                </div>
-                <div className="min-w-0 flex-1 space-y-2">
-                  <div className="space-y-1">
-                    <div className="font-medium text-zinc-100">
-                      {t('workbench.terminal.connecting.title', { name: session.serverName })}
-                    </div>
-                    <div className="text-sm text-zinc-400">
-                      {session.lastMessage ?? t('workbench.terminal.connecting.defaultMessage')}
-                    </div>
-                  </div>
-                  <div className="rounded-md border border-white/8 bg-white/3 p-3">
-                    <div className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">
-                      {t('workbench.terminal.connecting.currentStage')}
-                    </div>
-                    <div className="mt-2 text-sm text-sky-200">{activeStage}</div>
-                    <div className="mt-3 space-y-2">
-                      {connectionStages.map((stage, index) => (
-                        <div key={stage} className="flex items-center gap-2 text-xs">
-                          {index < stageIndex ? (
-                            <CheckCircle2 className="size-3.5 text-emerald-300" />
-                          ) : index === stageIndex ? (
-                            <LoaderCircle className="size-3.5 animate-spin text-sky-300" />
-                          ) : (
-                            <span className="size-3.5 rounded-full border border-zinc-700" />
-                          )}
-                          <span className={index <= stageIndex ? 'text-zinc-200' : 'text-zinc-500'}>
-                            {stage}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/5">
-                      <div className="connection-progress-bar h-full rounded-full bg-linear-to-r from-sky-400 via-cyan-400 to-sky-500" />
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <ConnectingOverlay
+                key={session.connectionStartedAt ?? session.sessionId}
+                connectionStages={connectionStages}
+                message={session.lastMessage ?? t('workbench.terminal.connecting.defaultMessage')}
+                serverName={session.serverName}
+              />
             ) : (
               <div className="flex items-start gap-4">
-                <div className="flex size-11 items-center justify-center rounded-full bg-amber-500/12 text-amber-300">
+                <div className="flex size-11 items-center justify-center rounded-full bg-[var(--terminal-overlay-warning-soft)] text-[var(--terminal-overlay-warning)]">
                   <RotateCcw className="size-5" />
                 </div>
                 <div className="space-y-2">
-                  <div className="font-medium text-zinc-100">{t('workbench.terminal.unavailable.title')}</div>
-                  <div className="text-sm text-zinc-400">
+                  <div className="font-medium text-[var(--terminal-overlay-text)]">
+                    {t('workbench.terminal.unavailable.title')}
+                  </div>
+                  <div className="text-sm text-[var(--terminal-overlay-muted)]">
                     {session.lastMessage ?? t('workbench.terminal.unavailable.defaultMessage')}
                   </div>
                 </div>

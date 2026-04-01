@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { COLOR_PRESETS } from './constants'
+import { COLOR_PRESETS, THEME_OPTIONS } from './constants'
 
 const colorSchema = z.enum(COLOR_PRESETS)
 
@@ -91,7 +91,7 @@ export const portForwardSchema = z.object({
 
 export const settingsSchema = z.object({
   language: z.enum(['system', 'zh-CN', 'en-US']),
-  theme: z.enum(['system', 'light', 'dark']),
+  theme: z.enum(THEME_OPTIONS),
   terminalFontSize: z.coerce.number().int().min(10).max(24),
   terminalFontFamily: z.string().trim().min(1).max(120),
   cursorStyle: z.enum(['block', 'underline', 'bar']),

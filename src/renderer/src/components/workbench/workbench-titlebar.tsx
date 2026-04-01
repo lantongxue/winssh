@@ -90,7 +90,6 @@ export function WorkbenchTitlebar() {
 
   useEffect(() => {
     if (!customTitleBar) {
-      setIsMaximized(false)
       return
     }
 

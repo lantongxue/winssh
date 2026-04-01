@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { THEME_OPTIONS } from '@shared/constants'
 import { Languages, ShieldCheck, SlidersHorizontal, TerminalSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
@@ -8,6 +9,7 @@ import { toast } from 'sonner'
 import { settingsSchema, type SettingsFormValues } from '@shared/validation'
 import { formatDateTime } from '@/i18n/format'
 import { actionIcons } from '@/lib/action-icons'
+import { getThemeLabelKey } from '@/lib/theme'
 import { useWorkbenchStore } from '@/store/workbench-store'
 import { Button } from '@/components/ui/button'
 import {
@@ -159,7 +161,7 @@ export function WorkbenchSettingsEditor() {
                 const message = Object.values(errors)[0]?.message
                 pushProblem({
                   detail: t('workbench.settings.title'),
-                  id: `settings:${Date.now()}`,
+                  id: 'settings:validation',
                   severity: 'error',
                   title: typeof message === 'string' ? message : t('workbench.settings.validation.failed')
                 })
@@ -213,9 +215,11 @@ export function WorkbenchSettingsEditor() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="system">{t('common.theme.system')}</SelectItem>
-                            <SelectItem value="light">{t('common.theme.light')}</SelectItem>
-                            <SelectItem value="dark">{t('common.theme.dark')}</SelectItem>
+                            {THEME_OPTIONS.map((theme) => (
+                              <SelectItem key={theme} value={theme}>
+                                {t(getThemeLabelKey(theme))}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />

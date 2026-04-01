@@ -3,6 +3,7 @@ import type { AppSettings } from './types'
 export const APP_ID = 'com.winssh.app'
 export const APP_NAME = 'WinSSH'
 export const SECURE_STORE_SERVICE = 'winssh.credentials'
+export const THEME_OPTIONS = ['system', 'light', 'dark', 'pixel'] as const
 
 export const COLOR_PRESETS = [
   'slate',

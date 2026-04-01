@@ -2,29 +2,7 @@ import { useEffect, useRef } from 'react'
 import { FitAddon } from '@xterm/addon-fit'
 import { Terminal } from '@xterm/xterm'
 import type { AppSettings } from '@shared/types'
-
-const terminalTheme = {
-  background: '#09090b',
-  foreground: '#e4e4e7',
-  cursor: '#38bdf8',
-  selectionBackground: 'rgba(14, 165, 233, 0.24)',
-  black: '#09090b',
-  red: '#f87171',
-  green: '#4ade80',
-  yellow: '#facc15',
-  blue: '#60a5fa',
-  magenta: '#c084fc',
-  cyan: '#22d3ee',
-  white: '#f4f4f5',
-  brightBlack: '#71717a',
-  brightRed: '#fb7185',
-  brightGreen: '#86efac',
-  brightYellow: '#fde047',
-  brightBlue: '#93c5fd',
-  brightMagenta: '#d8b4fe',
-  brightCyan: '#67e8f9',
-  brightWhite: '#fafafa'
-}
+import { resolveTerminalAppearance } from '@/lib/theme'
 
 export function useTerminal(sessionId: string | null, settings: AppSettings, enabled = true) {
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -34,16 +12,17 @@ export function useTerminal(sessionId: string | null, settings: AppSettings, ena
       return
     }
 
+    const terminalAppearance = resolveTerminalAppearance(settings)
     const terminal = new Terminal({
       allowTransparency: true,
       convertEol: true,
       cursorBlink: settings.cursorBlink,
       cursorStyle: settings.cursorStyle,
-      fontFamily: settings.terminalFontFamily,
-      fontSize: settings.terminalFontSize,
-      lineHeight: 1.2,
+      fontFamily: terminalAppearance.fontFamily,
+      fontSize: terminalAppearance.fontSize,
+      lineHeight: terminalAppearance.lineHeight,
       scrollback: 5000,
-      theme: terminalTheme
+      theme: terminalAppearance.theme
     })
 
     const fitAddon = new FitAddon()
@@ -86,15 +65,7 @@ export function useTerminal(sessionId: string | null, settings: AppSettings, ena
       writeDisposable.dispose()
       terminal.dispose()
     }
-  }, [
-    enabled,
-    sessionId,
-    settings.copyOnSelect,
-    settings.cursorBlink,
-    settings.cursorStyle,
-    settings.terminalFontFamily,
-    settings.terminalFontSize
-  ])
+  }, [enabled, sessionId, settings])
 
   return containerRef
 }

@@ -1,45 +1,46 @@
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import type { ThemeMode } from '@shared/types'
 import { Toaster } from 'sonner'
 import { WorkbenchShell } from '@/components/workbench/workbench-shell'
 import { useSessionEvents } from '@/hooks/use-session-events'
 import i18n from '@/i18n'
 import { resolveAppLanguage } from '@/i18n/format'
+import { applyThemeToRoot } from '@/lib/theme'
 
-function applyTheme(theme: 'system' | 'light' | 'dark') {
-  const root = document.documentElement
-  const resolvedTheme =
-    theme === 'system'
-      ? window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light'
-      : theme
-
-  root.classList.toggle('dark', resolvedTheme === 'dark')
+function applyTheme(theme: ThemeMode) {
+  applyThemeToRoot(
+    document.documentElement,
+    theme,
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  )
 }
 
 export default function App() {
   useSessionEvents()
-  const [bootstrapped, setBootstrapped] = useState(false)
+  const [bootstrappedLanguage, setBootstrappedLanguage] = useState<string | null>(null)
 
   const settingsQuery = useQuery({
     queryKey: ['settings'],
     queryFn: () => window.winsshApi.settings.get()
   })
+  const resolvedLanguage = settingsQuery.data
+    ? resolveAppLanguage(settingsQuery.data.language)
+    : null
 
   useEffect(() => {
     if (!settingsQuery.data) {
-      setBootstrapped(false)
       return
     }
 
     applyTheme(settingsQuery.data.theme)
 
     let cancelled = false
+    const nextLanguage = resolveAppLanguage(settingsQuery.data.language)
 
-    void i18n.changeLanguage(resolveAppLanguage(settingsQuery.data.language)).then(() => {
+    void i18n.changeLanguage(nextLanguage).then(() => {
       if (!cancelled) {
-        setBootstrapped(true)
+        setBootstrappedLanguage(nextLanguage)
       }
     })
 
@@ -60,7 +61,7 @@ export default function App() {
     return () => mediaQuery.removeEventListener('change', handleChange)
   }, [settingsQuery.data?.theme])
 
-  if (!settingsQuery.data || !bootstrapped) {
+  if (!settingsQuery.data || resolvedLanguage !== bootstrappedLanguage) {
     return <div className="h-full bg-[var(--workbench-bg)]" />
   }
 
