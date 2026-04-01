@@ -25,7 +25,8 @@ import {
   Unplug,
   Route,
   Upload,
-  X
+  X,
+  Link2
 } from 'lucide-react'
 
 export const actionIcons = {
@@ -34,7 +35,7 @@ export const actionIcons = {
   clear: Trash2,
   close: X,
   commandPalette: Command,
-  connect: TerminalSquare,
+  connect: Link2,
   delete: Trash2,
   discard: Undo2,
   disconnect: Unplug,
