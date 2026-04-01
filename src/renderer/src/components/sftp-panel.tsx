@@ -1,16 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  Download,
-  EllipsisVertical,
-  File,
-  Folder,
-  FolderPlus,
-  RefreshCw,
-  Upload
-} from 'lucide-react'
+import { EllipsisVertical, File, Folder } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { getParentRemotePath } from '@shared/sftp'
 import type { RemoteEntry } from '@shared/types'
+import { actionIcons } from '@/lib/action-icons'
 import type { SessionTab } from '@/store/sessions-store'
 import { cn } from '@/lib/utils'
 import { useSessionsStore } from '@/store/sessions-store'
@@ -38,12 +32,22 @@ interface SftpPanelProps {
 }
 
 export function SftpPanel({ session, className }: SftpPanelProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const setCurrentPath = useSessionsStore((state) => state.setCurrentPath)
   const [newFolderOpen, setNewFolderOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
   const [renameTarget, setRenameTarget] = useState<RemoteEntry | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const RefreshIcon = actionIcons.refresh
+  const UploadIcon = actionIcons.upload
+  const NewFolderIcon = actionIcons.newFolder
+  const DownloadIcon = actionIcons.download
+  const RenameIcon = actionIcons.rename
+  const DeleteIcon = actionIcons.delete
+  const CancelIcon = actionIcons.cancel
+  const CreateIcon = actionIcons.newFolder
+  const SaveIcon = actionIcons.save
 
   const listingQuery = useQuery({
     queryKey: ['sftp', session?.sessionId, session?.currentPath],
@@ -71,9 +75,9 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
     return (
       <div className="flex h-full items-center justify-center bg-muted/20">
         <div className="max-w-xs text-center">
-          <div className="mb-2 text-base font-medium">没有活动会话</div>
+          <div className="mb-2 text-base font-medium">{t('workbench.sftp.empty.noSessionTitle')}</div>
           <div className="text-sm text-muted-foreground">
-            先发起 SSH 连接，SFTP 面板会自动跟随当前标签加载。
+            {t('workbench.sftp.empty.noSessionDescription')}
           </div>
         </div>
       </div>
@@ -92,26 +96,29 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
         <div className="border-b px-3 py-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-sm font-semibold">SFTP Explorer</div>
+              <div className="text-sm font-semibold">{t('workbench.sftp.explorer')}</div>
               <div className="truncate text-xs text-muted-foreground">{session.serverName}</div>
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="outline" size="icon-sm" onClick={() => void refresh()}>
-                <RefreshCw className="size-4" />
+              <Button variant="outline" size="icon-sm" title={t('common.actions.refresh')} onClick={() => void refresh()}>
+                <RefreshIcon className="size-4" />
               </Button>
               <Button
                 variant="outline"
                 size="icon-sm"
+                title={t('common.actions.upload')}
                 onClick={() =>
-                  void window.winsshApi.sftp
-                    .uploadFiles(session.sessionId, currentPath)
-                    .then(refresh)
+                  void window.winsshApi.sftp.uploadFiles(session.sessionId, currentPath).then(refresh)
                 }
               >
-                <Upload className="size-4" />
+                <UploadIcon className="size-4" />
               </Button>
-              <Button size="icon-sm" onClick={() => setNewFolderOpen(true)}>
-                <FolderPlus className="size-4" />
+              <Button
+                size="icon-sm"
+                title={t('common.actions.newFolder')}
+                onClick={() => setNewFolderOpen(true)}
+              >
+                <NewFolderIcon className="size-4" />
               </Button>
             </div>
           </div>
@@ -131,7 +138,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                     className="max-w-36 justify-start"
                     onClick={() => setCurrentPath(session.sessionId, target)}
                   >
-                    <span className="truncate">{segment === '/' ? 'root' : segment}</span>
+                    <span className="truncate">{segment === '/' ? t('common.labels.root') : segment}</span>
                   </Button>
                 )
               })}
@@ -144,7 +151,8 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
             className="mt-2 justify-start px-2"
             onClick={() => setCurrentPath(session.sessionId, getParentRemotePath(currentPath))}
           >
-            返回上级目录
+            <Folder className="size-4" />
+            {t('workbench.sftp.actions.backToParent')}
           </Button>
         </div>
 
@@ -185,23 +193,24 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                   <div className="min-w-0 flex-1 text-left">
                     <div className="truncate text-sm font-medium">{entry.name}</div>
                     <div className="truncate text-xs text-muted-foreground">
-                      {entry.kind === 'directory' ? '目录' : `${Math.max(entry.size, 0)} bytes`}
+                      {entry.kind === 'directory'
+                        ? t('workbench.sftp.kinds.directory')
+                        : t('workbench.sftp.kinds.bytes', { count: Math.max(entry.size, 0) })}
                     </div>
                   </div>
                 </Button>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-sm">
+                    <Button variant="ghost" size="icon-sm" title={t('common.actions.open')}>
                       <EllipsisVertical className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {entry.kind === 'directory' ? (
-                      <DropdownMenuItem
-                        onClick={() => setCurrentPath(session.sessionId, entry.path)}
-                      >
-                        打开目录
+                      <DropdownMenuItem onClick={() => setCurrentPath(session.sessionId, entry.path)}>
+                        <Folder className="size-4" />
+                        {t('workbench.sftp.actions.openDirectory')}
                       </DropdownMenuItem>
                     ) : (
                       <DropdownMenuItem
@@ -209,8 +218,8 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                           void window.winsshApi.sftp.downloadFile(session.sessionId, entry.path)
                         }
                       >
-                        <Download className="size-4" />
-                        下载
+                        <DownloadIcon className="size-4" />
+                        {t('common.actions.download')}
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuItem
@@ -219,17 +228,17 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                         setRenameValue(entry.name)
                       }}
                     >
-                      重命名
+                      <RenameIcon className="size-4" />
+                      {t('common.actions.rename')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
                       onClick={() =>
-                        void window.winsshApi.sftp
-                          .remove(session.sessionId, entry.path)
-                          .then(refresh)
+                        void window.winsshApi.sftp.remove(session.sessionId, entry.path).then(refresh)
                       }
                     >
-                      删除
+                      <DeleteIcon className="size-4" />
+                      {t('common.actions.delete')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -238,7 +247,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
 
             {!listingQuery.isLoading && listingQuery.data?.entries.length === 0 ? (
               <div className="m-3 rounded-md border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
-                当前目录为空。
+                {t('workbench.sftp.empty.directory')}
               </div>
             ) : null}
           </div>
@@ -248,16 +257,17 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
       <Dialog open={newFolderOpen} onOpenChange={setNewFolderOpen}>
         <DialogContent className="max-w-sm rounded-xl">
           <DialogHeader>
-            <DialogTitle>新建文件夹</DialogTitle>
+            <DialogTitle>{t('workbench.sftp.dialogs.createFolder')}</DialogTitle>
           </DialogHeader>
           <Input
             value={newFolderName}
             onChange={(event) => setNewFolderName(event.target.value)}
-            placeholder="请输入目录名称"
+            placeholder={t('workbench.sftp.placeholders.directoryName')}
           />
           <DialogFooter>
             <Button variant="ghost" onClick={() => setNewFolderOpen(false)}>
-              取消
+              <CancelIcon className="size-4" />
+              {t('common.actions.cancel')}
             </Button>
             <Button
               onClick={async () => {
@@ -267,7 +277,8 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                 await refresh()
               }}
             >
-              创建
+              <CreateIcon className="size-4" />
+              {t('common.actions.create')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -276,16 +287,17 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
       <Dialog open={Boolean(renameTarget)} onOpenChange={(open) => !open && setRenameTarget(null)}>
         <DialogContent className="max-w-sm rounded-xl">
           <DialogHeader>
-            <DialogTitle>重命名</DialogTitle>
+            <DialogTitle>{t('workbench.sftp.dialogs.rename')}</DialogTitle>
           </DialogHeader>
           <Input
             value={renameValue}
             onChange={(event) => setRenameValue(event.target.value)}
-            placeholder="新名称"
+            placeholder={t('workbench.sftp.placeholders.rename')}
           />
           <DialogFooter>
             <Button variant="ghost" onClick={() => setRenameTarget(null)}>
-              取消
+              <CancelIcon className="size-4" />
+              {t('common.actions.cancel')}
             </Button>
             <Button
               onClick={async () => {
@@ -293,16 +305,13 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                   return
                 }
 
-                await window.winsshApi.sftp.rename(
-                  session.sessionId,
-                  renameTarget.path,
-                  renameValue
-                )
+                await window.winsshApi.sftp.rename(session.sessionId, renameTarget.path, renameValue)
                 setRenameTarget(null)
                 await refresh()
               }}
             >
-              保存
+              <SaveIcon className="size-4" />
+              {t('common.actions.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { getWorkbenchActivity } from '@/lib/workbench'
+import { useTranslation } from 'react-i18next'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 
 export function WorkbenchStatusBar() {
+  const { t } = useTranslation()
   const sessionCount = useSessionsStore((state) => state.tabs.length)
   const activeActivityId = useWorkbenchStore((state) => state.activeActivityId)
   const activePanelId = useWorkbenchStore((state) => state.activePanelId)
@@ -18,19 +19,19 @@ export function WorkbenchStatusBar() {
   return (
     <footer className="flex h-6 shrink-0 items-center justify-between bg-[var(--workbench-statusbar)] px-3 text-[11px] text-[var(--workbench-statusbar-foreground)]">
       <div className="flex min-w-0 items-center gap-3 truncate">
-        <span className="font-semibold">WinSSH</span>
-        <span>{getWorkbenchActivity(activeActivityId).title}</span>
-        <span>{sessionCount} sessions</span>
-        {panelOpen ? <span>{activePanelId}</span> : null}
+        <span className="font-semibold">{t('common.appName')}</span>
+        <span>{t(`workbench.activity.${activeActivityId}.title`)}</span>
+        <span>{t('workbench.statusBar.sessions', { count: sessionCount })}</span>
+        {panelOpen ? <span>{t(`workbench.panel.labels.${activePanelId}`)}</span> : null}
       </div>
 
       <div className="hidden items-center gap-3 md:flex">
-        <span>{sidebarOpen ? 'sidebar on' : 'sidebar off'}</span>
-        <span>{panelOpen ? 'panel on' : 'panel off'}</span>
-        <span>theme {settingsQuery.data?.theme ?? 'system'}</span>
-        <span>Ctrl/Cmd+B</span>
-        <span>Ctrl/Cmd+J</span>
-        <span>Ctrl/Cmd+P</span>
+        <span>{t(sidebarOpen ? 'workbench.statusBar.sidebarOn' : 'workbench.statusBar.sidebarOff')}</span>
+        <span>{t(panelOpen ? 'workbench.statusBar.panelOn' : 'workbench.statusBar.panelOff')}</span>
+        <span>{t('workbench.statusBar.theme', { value: settingsQuery.data?.theme ?? 'system' })}</span>
+        <span>{t('common.shortcuts.toggleSidebar')}</span>
+        <span>{t('common.shortcuts.togglePanel')}</span>
+        <span>{t('common.shortcuts.quickOpen')}</span>
       </div>
     </footer>
   )

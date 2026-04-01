@@ -13,14 +13,12 @@ import type {
 } from '@/lib/workbench'
 import {
   createTransferEntryId,
-  defaultWorkbenchDocument,
-  getDocumentActivity,
-  isPinnedDocument
+  getDocumentActivity
 } from '@/lib/workbench'
 
 interface WorkbenchStateData {
   activeActivityId: WorkbenchActivityId
-  activeDocumentId: WorkbenchDocumentId
+  activeDocumentId: WorkbenchDocumentId | null
   activePanelId: WorkbenchPanelId
   collapsedSections: Partial<Record<WorkbenchExplorerSectionId, boolean>>
   commandPaletteOpen: boolean
@@ -40,12 +38,13 @@ interface WorkbenchState extends WorkbenchStateData {
   clearTransfers: () => void
   closeDocument: (documentId: WorkbenchDocumentId) => void
   dismissProblem: (problemId: string) => void
+  moveDocument: (documentId: WorkbenchDocumentId, targetIndex: number) => void
   openDocument: (document: WorkbenchDocument) => void
   pushProblem: (problem: Omit<WorkbenchProblemEntry, 'createdAt'>) => void
   replaceDocument: (currentDocumentId: WorkbenchDocumentId, document: WorkbenchDocument) => void
   reset: () => void
   setActiveActivity: (activityId: WorkbenchActivityId) => void
-  setActiveDocument: (documentId: WorkbenchDocumentId) => void
+  setActiveDocument: (documentId: WorkbenchDocumentId | null) => void
   setActivePanel: (panelId: WorkbenchPanelId) => void
   setCommandPaletteOpen: (open: boolean) => void
   setPanelOpen: (open: boolean) => void
@@ -62,7 +61,7 @@ function normalizeDocuments(documents: WorkbenchDocument[]): WorkbenchDocument[]
   const seen = new Set<WorkbenchDocumentId>()
   const next: WorkbenchDocument[] = []
 
-  for (const document of [defaultWorkbenchDocument, ...documents]) {
+  for (const document of documents) {
     if (seen.has(document.id)) {
       continue
     }
@@ -77,25 +76,25 @@ function normalizeDocuments(documents: WorkbenchDocument[]): WorkbenchDocument[]
 function getFallbackDocumentId(
   documents: WorkbenchDocument[],
   closingDocumentId: WorkbenchDocumentId
-): WorkbenchDocumentId {
+): WorkbenchDocumentId | null {
   const closingIndex = documents.findIndex((document) => document.id === closingDocumentId)
   const remaining = documents.filter((document) => document.id !== closingDocumentId)
 
   if (remaining.length === 0) {
-    return defaultWorkbenchDocument.id
+    return null
   }
 
-  return remaining[Math.min(closingIndex, remaining.length - 1)]?.id ?? defaultWorkbenchDocument.id
+  return remaining[Math.min(closingIndex, remaining.length - 1)]?.id ?? null
 }
 
 function createInitialState(): WorkbenchStateData {
   return {
     activeActivityId: 'explorer',
-    activeDocumentId: defaultWorkbenchDocument.id,
+    activeDocumentId: null,
     activePanelId: 'output',
     collapsedSections: {},
     commandPaletteOpen: false,
-    openDocuments: [defaultWorkbenchDocument],
+    openDocuments: [],
     outputEntries: [],
     panelOpen: false,
     problems: [],
@@ -125,10 +124,6 @@ export const useWorkbenchStore = create<WorkbenchState>()(
       clearTransfers: () => set({ transferEntries: [] }),
       closeDocument: (documentId) =>
         set((state) => {
-          if (isPinnedDocument(documentId)) {
-            return state
-          }
-
           const currentDocuments = normalizeDocuments(state.openDocuments)
 
           if (!currentDocuments.some((document) => document.id === documentId)) {
@@ -145,8 +140,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
               : state.activeDocumentId
 
           const nextActiveDocument =
-            nextDocuments.find((document) => document.id === nextActiveDocumentId) ??
-            defaultWorkbenchDocument
+            nextDocuments.find((document) => document.id === nextActiveDocumentId) ?? null
 
           return {
             activeActivityId: getDocumentActivity(nextActiveDocument),
@@ -165,6 +159,28 @@ export const useWorkbenchStore = create<WorkbenchState>()(
             activeActivityId: getDocumentActivity(document),
             activeDocumentId: document.id,
             openDocuments
+          }
+        }),
+      moveDocument: (documentId, targetIndex) =>
+        set((state) => {
+          const currentDocuments = normalizeDocuments(state.openDocuments)
+          const currentIndex = currentDocuments.findIndex((document) => document.id === documentId)
+
+          if (currentIndex === -1) {
+            return state
+          }
+
+          const document = currentDocuments[currentIndex]
+          const remaining = currentDocuments.filter((currentDocument) => currentDocument.id !== documentId)
+          const normalizedIndex =
+            targetIndex > currentIndex
+              ? Math.max(0, Math.min(targetIndex - 1, remaining.length))
+              : Math.max(0, Math.min(targetIndex, remaining.length))
+
+          remaining.splice(normalizedIndex, 0, document)
+
+          return {
+            openDocuments: remaining
           }
         }),
       pushProblem: (problem) =>
@@ -209,6 +225,13 @@ export const useWorkbenchStore = create<WorkbenchState>()(
       setActiveActivity: (activityId) => set({ activeActivityId: activityId }),
       setActiveDocument: (documentId) =>
         set((state) => {
+          if (documentId === null) {
+            return {
+              activeActivityId: 'explorer',
+              activeDocumentId: null
+            }
+          }
+
           const activeDocument = state.openDocuments.find((document) => document.id === documentId)
 
           if (!activeDocument) {

@@ -1,80 +1,189 @@
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Command, PanelBottom, PanelLeft, Search } from 'lucide-react'
-import type { WorkbenchDocument } from '@/lib/workbench'
-import { getDocumentDescription, getDocumentFallbackTitle } from '@/lib/workbench'
-import { useSessionsStore } from '@/store/sessions-store'
+import { useTranslation } from 'react-i18next'
+import { actionIcons } from '@/lib/action-icons'
+import { cn } from '@/lib/utils'
 import { useWorkbenchStore } from '@/store/workbench-store'
-import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 
-export function WorkbenchTitlebar({ activeDocument }: { activeDocument: WorkbenchDocument }) {
-  const sessions = useSessionsStore((state) => state.tabs)
+function getPlatform() {
+  const platform =
+    (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ??
+    navigator.platform ??
+    navigator.userAgent
+  return platform.toLowerCase()
+}
+
+type AppRegionStyle = CSSProperties & {
+  WebkitAppRegion?: 'drag' | 'no-drag'
+}
+
+const noDragStyle = { WebkitAppRegion: 'no-drag' } as AppRegionStyle
+
+function TitlebarButton({
+  children,
+  className,
+  title,
+  ...props
+}: React.ComponentProps<typeof Button> & { title: string }) {
+  return (
+    <Button
+      variant="ghost"
+      {...props}
+      title={title}
+      className={cn(
+        'h-7 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2 text-[var(--workbench-muted)] hover:bg-[var(--workbench-hover)] hover:text-foreground',
+        className
+      )}
+      style={noDragStyle}
+    >
+      {children}
+    </Button>
+  )
+}
+
+function WindowControlButton({
+  children,
+  className,
+  title,
+  ...props
+}: React.ComponentProps<typeof Button> & { title: string }) {
+  return (
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      {...props}
+      title={title}
+      className={cn(
+        'h-9 w-11 rounded-none border-0 bg-transparent p-0 text-[var(--workbench-muted)] hover:bg-[var(--workbench-hover)] hover:text-foreground',
+        className
+      )}
+      style={noDragStyle}
+    >
+      {children}
+    </Button>
+  )
+}
+
+export function WorkbenchTitlebar() {
+  const { t } = useTranslation()
   const togglePanel = useWorkbenchStore((state) => state.togglePanel)
   const toggleSidebar = useWorkbenchStore((state) => state.toggleSidebar)
   const setCommandPaletteOpen = useWorkbenchStore((state) => state.setCommandPaletteOpen)
   const setQuickOpenOpen = useWorkbenchStore((state) => state.setQuickOpenOpen)
-
-  const serversQuery = useQuery({
-    queryKey: ['servers'],
-    queryFn: () => window.winsshApi.servers.list()
+  const [isMaximized, setIsMaximized] = useState(false)
+  const settingsQuery = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => window.winsshApi.settings.get()
   })
 
-  const resolvedTitle =
-    activeDocument.kind === 'session-editor'
-      ? sessions.find((session) => session.sessionId === activeDocument.sessionId)?.serverName ??
-        getDocumentFallbackTitle(activeDocument)
-      : activeDocument.kind === 'server-editor' && activeDocument.serverId
-        ? (serversQuery.data ?? []).find((server) => server.id === activeDocument.serverId)?.name ??
-          getDocumentFallbackTitle(activeDocument)
-        : getDocumentFallbackTitle(activeDocument)
+  const customTitleBar = settingsQuery.data?.windowTitleBarStyle === 'custom'
+  const platform = useMemo(() => getPlatform(), [])
+  const isMac = platform.includes('mac')
+  const QuickOpenIcon = actionIcons.quickOpen
+  const CommandPaletteIcon = actionIcons.commandPalette
+  const ToggleSidebarIcon = actionIcons.toggleSidebar
+  const TogglePanelIcon = actionIcons.togglePanel
+  const MinimizeWindowIcon = actionIcons.minimizeWindow
+  const MaximizeWindowIcon = isMaximized ? actionIcons.restoreWindow : actionIcons.maximizeWindow
+  const CloseWindowIcon = actionIcons.close
+
+  useEffect(() => {
+    if (!customTitleBar) {
+      setIsMaximized(false)
+      return
+    }
+
+    let cancelled = false
+
+    void window.winsshApi.system.window.isMaximized().then((value) => {
+      if (!cancelled) {
+        setIsMaximized(value)
+      }
+    })
+
+    const unsubscribe = window.winsshApi.system.window.onStateChange((state) => {
+      setIsMaximized(state.isMaximized)
+    })
+
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
+  }, [customTitleBar])
 
   return (
-    <header className="flex h-9 shrink-0 items-center justify-between border-b border-[var(--workbench-border)] bg-[var(--workbench-titlebar)] px-2 text-xs">
-      <div className="flex min-w-0 items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="h-7 w-7 rounded-sm text-[var(--workbench-muted)] hover:bg-[var(--workbench-hover)] hover:text-foreground"
-          onClick={toggleSidebar}
-        >
-          <PanelLeft className="size-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="h-7 w-7 rounded-sm text-[var(--workbench-muted)] hover:bg-[var(--workbench-hover)] hover:text-foreground"
-          onClick={togglePanel}
-        >
-          <PanelBottom className="size-4" />
-        </Button>
-        <Button
-          variant="ghost"
+    <header
+      className="relative flex h-9 shrink-0 items-center border-b border-[var(--workbench-border)] bg-[var(--workbench-titlebar)] px-2 text-xs"
+      style={
+        {
+          WebkitAppRegion: customTitleBar ? 'drag' : 'no-drag',
+          paddingLeft: customTitleBar && isMac ? '76px' : undefined,
+          userSelect: 'none'
+        } as AppRegionStyle
+      }
+    >
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <TitlebarButton
           size="sm"
-          className="ml-1 h-7 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2 text-[var(--workbench-muted)] hover:bg-[var(--workbench-hover)] hover:text-foreground"
+          title={t('workbench.titleBar.quickOpenTitle')}
           onClick={() => setQuickOpenOpen(true)}
         >
-          <Search className="size-3.5" />
-          Quick Open
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2 text-[var(--workbench-muted)] hover:bg-[var(--workbench-hover)] hover:text-foreground"
-          onClick={() => setCommandPaletteOpen(true)}
-        >
-          <Command className="size-3.5" />
-          Command Palette
-        </Button>
+          <QuickOpenIcon className="size-3.5" />
+          {t('common.actions.quickOpen')}
+        </TitlebarButton>
       </div>
 
-      <div className="flex min-w-0 items-center gap-2">
-        <div className="hidden min-w-0 text-right md:block">
-          <div className="truncate text-[11px] font-medium text-foreground">{resolvedTitle}</div>
-          <div className="truncate text-[10px] text-[var(--workbench-muted)]">
-            {getDocumentDescription(activeDocument)}
-          </div>
+      <div className="pointer-events-none absolute inset-x-0 flex justify-center">
+        <div className="pointer-events-auto w-full max-w-[440px] px-20 sm:px-24">
+          <TitlebarButton
+            size="sm"
+            title={t('workbench.titleBar.commandPaletteTitle')}
+            className="w-full justify-center"
+            onClick={() => setCommandPaletteOpen(true)}
+          >
+            <CommandPaletteIcon className="size-3.5" />
+            {t('common.actions.commandPalette')}
+          </TitlebarButton>
         </div>
-        <ThemeToggle />
+      </div>
+
+      <div className="ml-auto flex items-center gap-1">
+        <WindowControlButton
+          title={t('common.actions.toggleSidebar')}
+          onClick={toggleSidebar}
+        >
+          <ToggleSidebarIcon className="size-4" />
+        </WindowControlButton>
+        <WindowControlButton title={t('common.actions.togglePanel')} onClick={togglePanel}>
+          <TogglePanelIcon className="size-4" />
+        </WindowControlButton>
+
+        {customTitleBar && !isMac ? (
+          <>
+            <WindowControlButton
+              title={t('workbench.titleBar.minimizeWindow')}
+              onClick={() => void window.winsshApi.system.window.minimize()}
+            >
+              <MinimizeWindowIcon className="size-4" />
+            </WindowControlButton>
+            <WindowControlButton
+              title={t(
+                isMaximized ? 'workbench.titleBar.restoreWindow' : 'workbench.titleBar.maximizeWindow'
+              )}
+              onClick={() => void window.winsshApi.system.window.toggleMaximize()}
+            >
+              <MaximizeWindowIcon className="size-4" />
+            </WindowControlButton>
+            <WindowControlButton
+              title={t('workbench.titleBar.closeWindow')}
+              className="hover:bg-destructive hover:text-destructive-foreground"
+              onClick={() => void window.winsshApi.system.window.close()}
+            >
+              <CloseWindowIcon className="size-4" />
+            </WindowControlButton>
+          </>
+        ) : null}
       </div>
     </header>
   )

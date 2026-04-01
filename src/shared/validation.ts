@@ -4,25 +4,38 @@ import { COLOR_PRESETS } from './constants'
 const colorSchema = z.enum(COLOR_PRESETS)
 
 export const groupSchema = z.object({
-  name: z.string().trim().min(1, '请输入分组名称').max(40, '分组名称不能超过 40 个字符'),
+  name: z
+    .string()
+    .trim()
+    .min(1, 'validation.group.name.required')
+    .max(40, 'validation.group.name.max'),
   color: colorSchema
 })
 
 export const tagSchema = z.object({
-  name: z.string().trim().min(1, '请输入标签名称').max(32, '标签名称不能超过 32 个字符'),
+  name: z.string().trim().min(1, 'validation.tag.name.required').max(32, 'validation.tag.name.max'),
   color: colorSchema
 })
 
 export const serverSchema = z
   .object({
     id: z.string().optional(),
-    name: z.string().trim().min(1, '请输入服务器名称').max(60, '服务器名称不能超过 60 个字符'),
-    host: z.string().trim().min(1, '请输入主机地址').max(255, '主机地址过长'),
-    port: z.coerce.number().int().min(1, '端口最小为 1').max(65535, '端口最大为 65535'),
-    username: z.string().trim().min(1, '请输入用户名').max(64, '用户名不能超过 64 个字符'),
+    name: z.string().trim().min(1, 'validation.server.name.required').max(60, 'validation.server.name.max'),
+    host: z.string().trim().min(1, 'validation.server.host.required').max(255, 'validation.server.host.max'),
+    port: z
+      .coerce
+      .number()
+      .int()
+      .min(1, 'validation.server.port.min')
+      .max(65535, 'validation.server.port.max'),
+    username: z
+      .string()
+      .trim()
+      .min(1, 'validation.server.username.required')
+      .max(64, 'validation.server.username.max'),
     authType: z.enum(['password', 'privateKey']),
     privateKeyPath: z.string().trim().nullable().optional(),
-    note: z.string().trim().max(400, '备注不能超过 400 个字符').optional(),
+    note: z.string().trim().max(400, 'validation.server.note.max').optional(),
     groupId: z.string().trim().nullable().optional(),
     tagIds: z.array(z.string()).default([]),
     favorite: z.boolean().default(false),
@@ -36,13 +49,13 @@ export const serverSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['privateKeyPath'],
-        message: '私钥认证需要选择私钥文件'
+        message: 'validation.server.privateKeyPath.required'
       })
     }
   })
 
 export const connectionRequestSchema = z.object({
-  serverId: z.string().min(1, '缺少服务器 ID'),
+  serverId: z.string().min(1, 'validation.connectionRequest.serverId.required'),
   password: z.string().optional(),
   passphrase: z.string().optional(),
   rememberPassword: z.boolean().optional(),
@@ -50,12 +63,14 @@ export const connectionRequestSchema = z.object({
 })
 
 export const settingsSchema = z.object({
+  language: z.enum(['system', 'zh-CN', 'en-US']),
   theme: z.enum(['system', 'light', 'dark']),
   terminalFontSize: z.coerce.number().int().min(10).max(24),
   terminalFontFamily: z.string().trim().min(1).max(120),
   cursorStyle: z.enum(['block', 'underline', 'bar']),
   cursorBlink: z.boolean(),
-  copyOnSelect: z.boolean()
+  copyOnSelect: z.boolean(),
+  windowTitleBarStyle: z.enum(['native', 'custom'])
 })
 
 export type ServerFormValues = z.infer<typeof serverSchema>

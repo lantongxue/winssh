@@ -1,12 +1,14 @@
 import { useEffect } from 'react'
+import { Files } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { actionIcons } from '@/lib/action-icons'
 import {
   createSessionEditorDocument,
   createSettingsEditorDocument,
   createTerminalWelcomeDocument,
-  defaultWorkbenchDocument,
-  getDocumentActivity,
-  getLegacyPathForActivity
+  getLegacyPathForActivity,
+  getLegacyPathForDocument
 } from '@/lib/workbench'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
@@ -27,22 +29,30 @@ import { WorkbenchStatusBar } from '@/components/workbench/workbench-status-bar'
 import { WorkbenchTitlebar } from '@/components/workbench/workbench-titlebar'
 
 function WorkbenchTerminalWelcome() {
+  const { t } = useTranslation()
   const { openServerEditor, focusActivity } = useWorkbenchContext()
+  const NewConnectionIcon = actionIcons.newConnection
 
   return (
     <div className="flex h-full items-center justify-center bg-[var(--workbench-editor)] px-6">
       <div className="max-w-xl text-center">
         <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-          Terminal
+          {t('workbench.activity.terminal.title')}
         </div>
-        <div className="mt-2 text-2xl font-semibold text-foreground">还没有活动会话</div>
+        <div className="mt-2 text-2xl font-semibold text-foreground">
+          {t('workbench.shell.terminalWelcome.title')}
+        </div>
         <div className="mt-2 text-sm text-muted-foreground">
-          在 Explorer 中选择一台服务器，或直接创建一个新的连接配置并发起连接。
+          {t('workbench.shell.terminalWelcome.description')}
         </div>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-          <Button onClick={() => openServerEditor()}>新建连接</Button>
+          <Button onClick={() => openServerEditor()}>
+            <NewConnectionIcon className="size-4" />
+            {t('common.actions.newConnection')}
+          </Button>
           <Button variant="outline" onClick={() => focusActivity('explorer')}>
-            返回 Explorer
+            <Files className="size-4" />
+            {t('workbench.activity.explorer.title')}
           </Button>
         </div>
       </div>
@@ -54,41 +64,49 @@ function WorkbenchShellContent() {
   const location = useLocation()
   const navigate = useNavigate()
   const activeDocumentId = useWorkbenchStore((state) => state.activeDocumentId)
+  const activeActivityId = useWorkbenchStore((state) => state.activeActivityId)
   const openDocuments = useWorkbenchStore((state) => state.openDocuments)
   const panelOpen = useWorkbenchStore((state) => state.panelOpen)
   const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen)
   const openDocument = useWorkbenchStore((state) => state.openDocument)
+  const setActiveActivity = useWorkbenchStore((state) => state.setActiveActivity)
   const setCommandPaletteOpen = useWorkbenchStore((state) => state.setCommandPaletteOpen)
   const setQuickOpenOpen = useWorkbenchStore((state) => state.setQuickOpenOpen)
   const togglePanel = useWorkbenchStore((state) => state.togglePanel)
   const toggleSidebar = useWorkbenchStore((state) => state.toggleSidebar)
 
   const activeDocument =
-    openDocuments.find((document) => document.id === activeDocumentId) ?? defaultWorkbenchDocument
-  const activeActivityId = getDocumentActivity(activeDocument)
+    openDocuments.find((document) => document.id === activeDocumentId) ?? null
 
   useEffect(() => {
     const currentState = useWorkbenchStore.getState()
     const currentActiveDocument =
-      currentState.openDocuments.find((document) => document.id === currentState.activeDocumentId) ??
-      defaultWorkbenchDocument
-    const desiredActivity =
-      location.pathname === '/settings'
-        ? 'settings'
-        : location.pathname === '/sessions'
-          ? 'terminal'
-          : 'explorer'
+      currentState.openDocuments.find((document) => document.id === currentState.activeDocumentId) ?? null
 
-    if (desiredActivity === getDocumentActivity(currentActiveDocument)) {
+    if (location.pathname === '/servers') {
+      setActiveActivity('explorer')
       return
     }
 
-    if (desiredActivity === 'settings') {
+    if (location.pathname === '/settings') {
+      if (currentActiveDocument?.kind === 'settings-editor') {
+        setActiveActivity('settings')
+        return
+      }
+
       openDocument(createSettingsEditorDocument())
       return
     }
 
-    if (desiredActivity === 'terminal') {
+    if (
+      currentActiveDocument?.kind === 'session-editor' ||
+      currentActiveDocument?.kind === 'terminal-welcome'
+    ) {
+      setActiveActivity('terminal')
+      return
+    }
+
+    if (location.pathname === '/sessions') {
       const { activeSessionId: currentActiveSessionId, tabs: currentTabs } = useSessionsStore.getState()
       const preferredSessionId = currentActiveSessionId ?? currentTabs.at(-1)?.sessionId
       openDocument(
@@ -98,9 +116,7 @@ function WorkbenchShellContent() {
       )
       return
     }
-
-    openDocument(defaultWorkbenchDocument)
-  }, [location.pathname, openDocument])
+  }, [location.pathname, openDocument, setActiveActivity])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -141,26 +157,31 @@ function WorkbenchShellContent() {
   }, [setCommandPaletteOpen, setQuickOpenOpen, togglePanel, toggleSidebar])
 
   useEffect(() => {
-    const targetPath = getLegacyPathForActivity(activeActivityId)
+    const targetPath =
+      activeActivityId === 'explorer'
+        ? getLegacyPathForActivity('explorer')
+        : getLegacyPathForDocument(activeDocument)
 
     if (location.pathname !== targetPath) {
       navigate(targetPath, { replace: true })
     }
-  }, [activeActivityId, location.pathname, navigate])
+  }, [activeActivityId, activeDocument, location.pathname, navigate])
+
+  const hasActiveDocument = Boolean(activeDocument)
 
   const editorHost = (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <WorkbenchEditorTabs />
+      {hasActiveDocument ? <WorkbenchEditorTabs /> : null}
       {panelOpen ? (
         <ResizablePanelGroup orientation="vertical">
-          <ResizablePanel defaultSize="74%" minSize="38%">
+          <ResizablePanel defaultSize="74%" minSize="10%">
             <div className="relative h-full min-h-0 overflow-hidden bg-[var(--workbench-editor)]">
+              {!hasActiveDocument ? <WorkbenchExplorerHome /> : null}
               {openDocuments.map((document) => (
                 <div
                   key={document.id}
                   className={document.id === activeDocumentId ? 'h-full' : 'hidden h-full'}
                 >
-                  {document.kind === 'explorer-home' ? <WorkbenchExplorerHome /> : null}
                   {document.kind === 'terminal-welcome' ? <WorkbenchTerminalWelcome /> : null}
                   {document.kind === 'server-editor' ? (
                     <WorkbenchServerEditor document={document} />
@@ -174,18 +195,18 @@ function WorkbenchShellContent() {
             </div>
           </ResizablePanel>
           <ResizableHandle />
-          <ResizablePanel defaultSize="26%" minSize="14%" maxSize="45%">
+          <ResizablePanel defaultSize="26%" minSize="10%">
             <WorkbenchPanel />
           </ResizablePanel>
         </ResizablePanelGroup>
       ) : (
         <div className="relative min-h-0 flex-1 overflow-hidden bg-[var(--workbench-editor)]">
+          {!hasActiveDocument ? <WorkbenchExplorerHome /> : null}
           {openDocuments.map((document) => (
             <div
               key={document.id}
               className={document.id === activeDocumentId ? 'h-full' : 'hidden h-full'}
             >
-              {document.kind === 'explorer-home' ? <WorkbenchExplorerHome /> : null}
               {document.kind === 'terminal-welcome' ? <WorkbenchTerminalWelcome /> : null}
               {document.kind === 'server-editor' ? <WorkbenchServerEditor document={document} /> : null}
               {document.kind === 'session-editor' ? (
@@ -201,7 +222,7 @@ function WorkbenchShellContent() {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-[var(--workbench-bg)] text-foreground">
-      <WorkbenchTitlebar activeDocument={activeDocument} />
+      <WorkbenchTitlebar />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <WorkbenchActivityBar />

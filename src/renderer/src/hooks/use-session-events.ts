@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 
 export function useSessionEvents() {
+  const { t } = useTranslation()
   const updateSessionState = useSessionsStore((state) => state.updateSessionState)
   const appendOutput = useWorkbenchStore((state) => state.appendOutput)
   const pushProblem = useWorkbenchStore((state) => state.pushProblem)
@@ -15,7 +17,7 @@ export function useSessionEvents() {
       appendOutput({
         detail: event.sessionId,
         level: event.status === 'error' ? 'error' : 'info',
-        message: event.message ?? `Session state changed to ${event.status}`
+        message: event.message ?? t('workbench.output.sessionStateChanged', { status: event.status })
       })
 
       if (event.status === 'error' && event.message) {
@@ -48,9 +50,9 @@ export function useSessionEvents() {
 
     const unsubscribeExit = window.winsshApi.sessions.onExit((event) => {
       appendOutput({
-        detail: `${event.code ?? 'unknown'}${event.signal ? ` · ${event.signal}` : ''}`,
+        detail: `${event.code ?? t('workbench.panel.transfer.unknown')}${event.signal ? ` · ${event.signal}` : ''}`,
         level: 'warning',
-        message: `Session exited: ${event.sessionId}`
+        message: t('workbench.output.sessionExited', { sessionId: event.sessionId })
       })
     })
 
@@ -58,18 +60,19 @@ export function useSessionEvents() {
       upsertTransfer(event)
 
       if (event.status === 'completed') {
+        const message = t(`workbench.output.${event.direction}Completed`, {
+          fileName: event.fileName
+        })
         appendOutput({
           detail: event.remotePath,
           level: 'success',
-          message: `${event.direction === 'upload' ? '上传完成' : '下载完成'}: ${event.fileName}`
+          message
         })
-        toast.success(
-          `${event.direction === 'upload' ? '上传完成' : '下载完成'}: ${event.fileName}`
-        )
+        toast.success(message)
       }
 
       if (event.status === 'error') {
-        const message = event.error ?? `${event.fileName} 传输失败`
+        const message = event.error ?? `${event.fileName} ${t('workbench.panel.transfer.error')}`
         appendOutput({
           detail: event.remotePath,
           level: 'error',
@@ -92,5 +95,5 @@ export function useSessionEvents() {
       unsubscribeExit()
       unsubscribeTransfer()
     }
-  }, [appendOutput, pushProblem, updateSessionState, upsertTransfer])
+  }, [appendOutput, pushProblem, t, updateSessionState, upsertTransfer])
 }

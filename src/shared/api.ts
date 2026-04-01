@@ -16,7 +16,8 @@ import type {
   SftpListResult,
   Tag,
   TagInput,
-  TransferProgressEvent
+  TransferProgressEvent,
+  WindowState
 } from './types'
 
 export type Unsubscribe = () => void
@@ -72,5 +73,13 @@ export interface WinsshApi {
     pickPrivateKey: () => Promise<string | null>
     getKnownHosts: () => Promise<KnownHost[]>
     getCapabilities: () => Promise<RuntimeCapabilities>
+    relaunch: () => Promise<void>
+    window: {
+      minimize: () => Promise<void>
+      toggleMaximize: () => Promise<void>
+      close: () => Promise<void>
+      isMaximized: () => Promise<boolean>
+      onStateChange: (callback: (state: WindowState) => void) => Unsubscribe
+    }
   }
 }

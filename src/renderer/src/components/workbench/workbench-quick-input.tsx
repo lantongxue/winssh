@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LoaderCircle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { colorOptions, getColorStyle } from '@/lib/colors'
+import { actionIcons } from '@/lib/action-icons'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import { Button } from '@/components/ui/button'
 import {
@@ -17,6 +19,7 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 
 export function WorkbenchQuickInput() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { quickInput, closeQuickInput, connectServer, refreshWorkspaceData } = useWorkbenchContext()
   const [secret, setSecret] = useState('')
@@ -24,6 +27,9 @@ export function WorkbenchQuickInput() {
   const [name, setName] = useState('')
   const [color, setColor] = useState<string>(colorOptions[0] ?? 'slate')
   const [submitting, setSubmitting] = useState(false)
+  const CancelIcon = actionIcons.cancel
+  const ConnectIcon = actionIcons.connect
+  const SaveIcon = actionIcons.save
 
   useEffect(() => {
     if (!quickInput) {
@@ -55,17 +61,17 @@ export function WorkbenchQuickInput() {
       if (quickInput.entityType === 'group') {
         if (quickInput.mode === 'create') {
           await window.winsshApi.groups.create({ color, name: name.trim() })
-          toast.success('分组已创建')
+          toast.success(t('workbench.quickInput.toasts.groupCreated'))
         } else if (quickInput.entityId) {
           await window.winsshApi.groups.update(quickInput.entityId, { color, name: name.trim() })
-          toast.success('分组已更新')
+          toast.success(t('workbench.quickInput.toasts.groupUpdated'))
         }
       } else if (quickInput.mode === 'create') {
         await window.winsshApi.tags.create({ color, name: name.trim() })
-        toast.success('标签已创建')
+        toast.success(t('workbench.quickInput.toasts.tagCreated'))
       } else if (quickInput.entityId) {
         await window.winsshApi.tags.update(quickInput.entityId, { color, name: name.trim() })
-        toast.success('标签已更新')
+        toast.success(t('workbench.quickInput.toasts.tagUpdated'))
       }
 
       await Promise.all([
@@ -75,7 +81,7 @@ export function WorkbenchQuickInput() {
       await refreshWorkspaceData()
       closeQuickInput()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '保存失败')
+      toast.error(error instanceof Error ? error.message : t('workbench.quickInput.toasts.saveFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -92,43 +98,61 @@ export function WorkbenchQuickInput() {
         {quickInput.kind === 'credentials' ? (
           <>
             <DialogHeader className="border-b border-[var(--workbench-border)] px-4 py-4">
-              <DialogTitle>{isPassword ? '输入连接密码' : '输入私钥口令'}</DialogTitle>
+              <DialogTitle>
+                {t(
+                  isPassword
+                    ? 'workbench.quickInput.credentials.titles.password'
+                    : 'workbench.quickInput.credentials.titles.passphrase'
+                )}
+              </DialogTitle>
               <DialogDescription>
-                {isPassword
-                  ? `继续连接 ${quickInput.server.name} 需要输入密码。`
-                  : `如私钥存在口令，请输入后继续连接 ${quickInput.server.name}。`}
+                {t(
+                  isPassword
+                    ? 'workbench.quickInput.credentials.descriptions.password'
+                    : 'workbench.quickInput.credentials.descriptions.passphrase',
+                  { name: quickInput.server.name }
+                )}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 px-4 py-4">
               <div className="space-y-2">
                 <div className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  Secret
+                  {t('workbench.quickInput.credentials.secretLabel')}
                 </div>
                 <Input
                   autoFocus
                   type="password"
                   value={secret}
                   onChange={(event) => setSecret(event.target.value)}
-                  placeholder={isPassword ? '请输入服务器密码' : '可选，留空表示无口令'}
+                  placeholder={t(
+                    isPassword
+                      ? 'workbench.quickInput.credentials.placeholder.password'
+                      : 'workbench.quickInput.credentials.placeholder.passphrase'
+                  )}
                 />
               </div>
               <div className="flex items-center justify-between rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-3 py-3">
                 <div>
-                  <div className="text-sm font-medium">写入系统钥匙串</div>
-                  <div className="text-xs text-muted-foreground">后续连接可直接复用。</div>
+                  <div className="text-sm font-medium">
+                    {t('workbench.quickInput.credentials.keychainTitle')}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {t('workbench.quickInput.credentials.keychainDescription')}
+                  </div>
                 </div>
                 <Switch checked={remember} onCheckedChange={setRemember} />
               </div>
             </div>
             <DialogFooter className="border-t border-[var(--workbench-border)] px-4 py-3">
               <Button variant="ghost" disabled={submitting} onClick={closeQuickInput}>
-                取消
+                <CancelIcon className="size-4" />
+                {t('common.actions.cancel')}
               </Button>
               <Button
                 disabled={submitting}
                 onClick={async () => {
                   if (isPassword && !secret) {
-                    toast.error('密码不能为空')
+                    toast.error(t('workbench.quickInput.credentials.emptyPassword'))
                     return
                   }
 
@@ -146,8 +170,8 @@ export function WorkbenchQuickInput() {
                   }
                 }}
               >
-                {submitting ? <LoaderCircle className="size-4 animate-spin" /> : null}
-                连接
+                {submitting ? <LoaderCircle className="size-4 animate-spin" /> : <ConnectIcon className="size-4" />}
+                {t('common.actions.connect')}
               </Button>
             </DialogFooter>
           </>
@@ -155,29 +179,37 @@ export function WorkbenchQuickInput() {
           <>
             <DialogHeader className="border-b border-[var(--workbench-border)] px-4 py-4">
               <DialogTitle>
-                {quickInput.mode === 'create'
-                  ? `新建${quickInput.entityType === 'group' ? '分组' : '标签'}`
-                  : `重命名${quickInput.entityType === 'group' ? '分组' : '标签'}`}
+                {t(
+                  quickInput.mode === 'create'
+                    ? quickInput.entityType === 'group'
+                      ? 'workbench.quickInput.entity.titles.createGroup'
+                      : 'workbench.quickInput.entity.titles.createTag'
+                    : quickInput.entityType === 'group'
+                      ? 'workbench.quickInput.entity.titles.renameGroup'
+                      : 'workbench.quickInput.entity.titles.renameTag'
+                )}
               </DialogTitle>
-              <DialogDescription>
-                使用轻量输入流快速维护 Explorer 中的组织结构。
-              </DialogDescription>
+              <DialogDescription>{t('workbench.quickInput.entity.descriptions.create')}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 px-4 py-4">
               <div className="space-y-2">
                 <div className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  Name
+                  {t('common.labels.name')}
                 </div>
                 <Input
                   autoFocus
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  placeholder={quickInput.entityType === 'group' ? 'Production' : 'MySQL'}
+                  placeholder={t(
+                    quickInput.entityType === 'group'
+                      ? 'workbench.quickInput.entity.placeholders.group'
+                      : 'workbench.quickInput.entity.placeholders.tag'
+                  )}
                 />
               </div>
               <div className="space-y-2">
                 <div className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  Color
+                  {t('common.labels.color')}
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {colorOptions.map((option) => {
@@ -200,11 +232,12 @@ export function WorkbenchQuickInput() {
             </div>
             <DialogFooter className="border-t border-[var(--workbench-border)] px-4 py-3">
               <Button variant="ghost" disabled={submitting} onClick={closeQuickInput}>
-                取消
+                <CancelIcon className="size-4" />
+                {t('common.actions.cancel')}
               </Button>
               <Button disabled={submitting || !name.trim()} onClick={() => void handleEntitySubmit()}>
-                {submitting ? <LoaderCircle className="size-4 animate-spin" /> : null}
-                保存
+                {submitting ? <LoaderCircle className="size-4 animate-spin" /> : <SaveIcon className="size-4" />}
+                {t('common.actions.save')}
               </Button>
             </DialogFooter>
           </>

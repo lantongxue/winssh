@@ -1,0 +1,31 @@
+import { describe, expect, it } from 'vitest'
+import { createMainTranslator, resolveMainLanguage } from './localization'
+
+describe('main localization', () => {
+  it('resolves system and explicit languages', () => {
+    expect(resolveMainLanguage('system', 'zh-CN')).toBe('zh-CN')
+    expect(resolveMainLanguage('system', 'en-US')).toBe('en-US')
+    expect(resolveMainLanguage('zh-CN', 'en-US')).toBe('zh-CN')
+    expect(resolveMainLanguage('en-US', 'zh-CN')).toBe('en-US')
+  })
+
+  it('translates native dialog strings and interpolates variables', () => {
+    const zh = createMainTranslator(() => 'zh-CN')
+    const en = createMainTranslator(() => 'en-US')
+
+    expect(zh('dialogs.pickPrivateKey.title')).toBe('选择 SSH 私钥文件')
+    expect(en('dialogs.pickPrivateKey.title')).toBe('Choose SSH Private Key')
+    expect(
+      zh('dialogs.hostFirstSeen.detail', {
+        fingerprint: 'SHA256:demo',
+        host: '127.0.0.1',
+        port: 22
+      })
+    ).toContain('127.0.0.1:22')
+    expect(
+      en('dialogs.hostChanged.message', {
+        serverName: 'prod-bastion'
+      })
+    ).toContain('prod-bastion')
+  })
+})

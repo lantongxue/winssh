@@ -12,15 +12,24 @@ describe('workbench store', () => {
     useWorkbenchStore.getState().reset()
   })
 
-  it('keeps the explorer home document pinned', () => {
+  it('starts with no open documents and no active document', () => {
+    const state = useWorkbenchStore.getState()
+
+    expect(state.openDocuments).toEqual([])
+    expect(state.activeDocumentId).toBeNull()
+    expect(state.activeActivityId).toBe('explorer')
+  })
+
+  it('closing the last document returns to the tabless explorer fallback', () => {
     const store = useWorkbenchStore.getState()
 
     store.openDocument(createSettingsEditorDocument())
-    store.closeDocument('explorer-home')
+    store.closeDocument('settings-editor')
 
     const state = useWorkbenchStore.getState()
-    expect(state.openDocuments[0]?.id).toBe('explorer-home')
-    expect(state.openDocuments.map((document) => document.id)).toContain('settings-editor')
+    expect(state.openDocuments).toEqual([])
+    expect(state.activeDocumentId).toBeNull()
+    expect(state.activeActivityId).toBe('explorer')
   })
 
   it('opens documents and syncs active activity from the focused document', () => {
@@ -38,11 +47,27 @@ describe('workbench store', () => {
     store.replaceDocument('server-editor:new', createServerEditorDocument('server-1'))
 
     const state = useWorkbenchStore.getState()
-    expect(state.openDocuments.map((document) => document.id)).toEqual([
-      'explorer-home',
-      'server-editor:server-1'
-    ])
+    expect(state.openDocuments.map((document) => document.id)).toEqual(['server-editor:server-1'])
     expect(state.activeDocumentId).toBe('server-editor:server-1')
+  })
+
+  it('moveDocument reorders tabs and keeps the active document stable', () => {
+    const store = useWorkbenchStore.getState()
+
+    store.openDocument(createSettingsEditorDocument())
+    store.openDocument(createServerEditorDocument('server-1'))
+    store.openDocument(createSessionEditorDocument('session-1'))
+    store.setActiveDocument('session-editor:session-1')
+    store.moveDocument('settings-editor', 3)
+
+    const state = useWorkbenchStore.getState()
+    expect(state.openDocuments.map((document) => document.id)).toEqual([
+      'server-editor:server-1',
+      'session-editor:session-1',
+      'settings-editor'
+    ])
+    expect(state.activeDocumentId).toBe('session-editor:session-1')
+    expect(state.activeActivityId).toBe('terminal')
   })
 
   it('toggles command surfaces independently from panel visibility', () => {

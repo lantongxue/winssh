@@ -1,23 +1,20 @@
-import { PanelBottom } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
-import { getWorkbenchActivity, workbenchActivities } from '@/lib/workbench'
+import { workbenchActivities } from '@/lib/workbench'
 import { cn } from '@/lib/utils'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 
 export function WorkbenchActivityBar() {
+  const { t } = useTranslation()
   const { focusActivity } = useWorkbenchContext()
   const sessionCount = useSessionsStore((state) => state.tabs.length)
   const activeActivityId = useWorkbenchStore((state) => state.activeActivityId)
-  const activePanelId = useWorkbenchStore((state) => state.activePanelId)
-  const panelOpen = useWorkbenchStore((state) => state.panelOpen)
-  const setActivePanel = useWorkbenchStore((state) => state.setActivePanel)
-  const setPanelOpen = useWorkbenchStore((state) => state.setPanelOpen)
   const setSidebarOpen = useWorkbenchStore((state) => state.setSidebarOpen)
   const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen)
 
   return (
-    <aside className="flex w-12 shrink-0 flex-col items-center justify-between border-r border-[var(--workbench-border)] bg-[var(--workbench-activity-bar)] py-2">
+    <aside className="flex w-12 shrink-0 flex-col items-center border-r border-[var(--workbench-border)] bg-[var(--workbench-activity-bar)] py-2">
       <div className="flex flex-col items-center gap-1">
         {workbenchActivities.map((activity) => {
           const Icon = activity.icon
@@ -27,7 +24,7 @@ export function WorkbenchActivityBar() {
             <button
               key={activity.activityId}
               type="button"
-              title={getWorkbenchActivity(activity.activityId).title}
+              title={t(`workbench.activity.${activity.activityId}.title`)}
               className={cn(
                 'relative flex size-10 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground',
                 active && 'bg-[var(--workbench-hover)] text-foreground'
@@ -54,26 +51,6 @@ export function WorkbenchActivityBar() {
             </button>
           )
         })}
-      </div>
-
-      <div className="flex flex-col items-center gap-1">
-        <button
-          type="button"
-          title={activePanelId}
-          className={cn(
-            'relative flex size-10 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground',
-            panelOpen && 'bg-[var(--workbench-hover)] text-foreground'
-          )}
-          onClick={() => {
-            setActivePanel(activePanelId)
-            setPanelOpen(!panelOpen)
-          }}
-        >
-          {panelOpen ? (
-            <span className="absolute inset-y-1 left-0 w-0.5 rounded-r bg-[var(--workbench-active)]" />
-          ) : null}
-          <PanelBottom className="size-5" />
-        </button>
       </div>
     </aside>
   )

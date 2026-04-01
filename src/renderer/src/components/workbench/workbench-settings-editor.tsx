@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ShieldCheck, SlidersHorizontal, TerminalSquare } from 'lucide-react'
+import { Languages, ShieldCheck, SlidersHorizontal, TerminalSquare } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { settingsSchema, type SettingsFormValues } from '@shared/validation'
+import { formatDateTime } from '@/i18n/format'
+import { actionIcons } from '@/lib/action-icons'
 import { useWorkbenchStore } from '@/store/workbench-store'
 import { Button } from '@/components/ui/button'
 import {
@@ -34,16 +37,24 @@ import {
 } from '@/components/ui/table'
 
 const settingsSections = [
-  { id: 'appearance', label: 'Appearance' },
-  { id: 'terminal', label: 'Terminal' },
-  { id: 'security', label: 'Security' }
+  { id: 'appearance', labelKey: 'workbench.settings.sections.appearance' },
+  { id: 'terminal', labelKey: 'workbench.settings.sections.terminal' },
+  { id: 'security', labelKey: 'workbench.settings.sections.security' }
 ] as const
 
+const settingsSectionIcons = {
+  appearance: SlidersHorizontal,
+  security: ShieldCheck,
+  terminal: TerminalSquare
+} as const
+
 export function WorkbenchSettingsEditor() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const pushProblem = useWorkbenchStore((state) => state.pushProblem)
   const [selectedSection, setSelectedSection] =
     useState<(typeof settingsSections)[number]['id']>('appearance')
+  const SaveIcon = actionIcons.save
 
   const settingsQuery = useQuery({
     queryKey: ['settings'],
@@ -64,9 +75,11 @@ export function WorkbenchSettingsEditor() {
       copyOnSelect: true,
       cursorBlink: true,
       cursorStyle: 'block',
+      language: 'system',
       terminalFontFamily: 'JetBrains Mono, Consolas, monospace',
       terminalFontSize: 14,
-      theme: 'system'
+      theme: 'system',
+      windowTitleBarStyle: 'native'
     }
   })
 
@@ -78,9 +91,22 @@ export function WorkbenchSettingsEditor() {
 
   const updateSettings = useMutation({
     mutationFn: (values: SettingsFormValues) => window.winsshApi.settings.update(values),
-    onSuccess: async (settings) => {
+    onSuccess: async (settings, values) => {
+      const titleBarStyleChanged = settingsQuery.data?.windowTitleBarStyle !== values.windowTitleBarStyle
+
       queryClient.setQueryData(['settings'], settings)
-      toast.success('设置已保存')
+
+      if (titleBarStyleChanged) {
+        toast.success(t('workbench.settings.titleBar.restartTitle'), {
+          action: {
+            label: t('common.actions.restartNow'),
+            onClick: () => void window.winsshApi.system.relaunch()
+          },
+          description: t('workbench.settings.titleBar.restartDescription')
+        })
+      } else {
+        toast.success(t('workbench.settings.toasts.saved'))
+      }
     }
   })
 
@@ -88,34 +114,39 @@ export function WorkbenchSettingsEditor() {
     <div className="flex h-full min-h-0 bg-[var(--workbench-editor)]">
       <aside className="w-[220px] shrink-0 border-r border-[var(--workbench-border)] bg-[var(--workbench-sidebar)] px-3 py-3">
         <div className="px-2 pb-3 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-          Settings
+          {t('workbench.activity.settings.title')}
         </div>
         <div className="space-y-1">
-          {settingsSections.map((section) => (
-            <button
-              key={section.id}
-              type="button"
-              className={`flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm transition-colors ${
-                selectedSection === section.id
-                  ? 'bg-[var(--workbench-hover)] text-foreground'
-                  : 'text-muted-foreground hover:bg-[var(--workbench-hover)] hover:text-foreground'
-              }`}
-              onClick={() => setSelectedSection(section.id)}
-            >
-              {section.label}
-            </button>
-          ))}
+          {settingsSections.map((section) => {
+            const SectionIcon = settingsSectionIcons[section.id]
+
+            return (
+              <button
+                key={section.id}
+                type="button"
+                className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm transition-colors ${
+                  selectedSection === section.id
+                    ? 'bg-[var(--workbench-hover)] text-foreground'
+                    : 'text-muted-foreground hover:bg-[var(--workbench-hover)] hover:text-foreground'
+                }`}
+                onClick={() => setSelectedSection(section.id)}
+              >
+                <SectionIcon className="size-4 shrink-0" />
+                {t(section.labelKey)}
+              </button>
+            )
+          })}
         </div>
       </aside>
 
       <div className="min-h-0 flex-1 overflow-auto">
         <div className="border-b border-[var(--workbench-border)] px-6 py-5">
           <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-            {selectedSection}
+            {t(settingsSections.find((section) => section.id === selectedSection)?.labelKey ?? '')}
           </div>
-          <div className="mt-1 text-xl font-semibold">Settings Editor</div>
+          <div className="mt-1 text-xl font-semibold">{t('workbench.settings.title')}</div>
           <p className="mt-1 text-sm text-muted-foreground">
-            调整主题、终端参数和安全相关设置。
+            {t(`workbench.settings.descriptions.${selectedSection}`)}
           </p>
         </div>
 
@@ -127,10 +158,10 @@ export function WorkbenchSettingsEditor() {
               (errors) => {
                 const message = Object.values(errors)[0]?.message
                 pushProblem({
-                  detail: 'Settings Editor',
+                  detail: t('workbench.settings.title'),
                   id: `settings:${Date.now()}`,
                   severity: 'error',
-                  title: typeof message === 'string' ? message : '设置表单校验失败'
+                  title: typeof message === 'string' ? message : t('workbench.settings.validation.failed')
                 })
               }
             )}
@@ -139,30 +170,80 @@ export function WorkbenchSettingsEditor() {
               <section className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <SlidersHorizontal className="size-4 text-primary" />
-                  主题与界面
+                  {t('workbench.settings.sections.appearance')}
                 </div>
-                <FormField
-                  control={form.control}
-                  name="theme"
-                  render={({ field }) => (
-                    <FormItem className="max-w-sm">
-                      <FormLabel>主题模式</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="system">跟随系统</SelectItem>
-                          <SelectItem value="light">Light+</SelectItem>
-                          <SelectItem value="dark">Dark+</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="language"
+                    render={({ field }) => (
+                      <FormItem className="max-w-sm">
+                        <FormLabel>{t('workbench.settings.form.language')}</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="system">
+                              <div className="flex items-center gap-2">
+                                <Languages className="size-4" />
+                                {t('common.language.system')}
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="zh-CN">{t('common.language.zhCN')}</SelectItem>
+                            <SelectItem value="en-US">{t('common.language.enUS')}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="theme"
+                    render={({ field }) => (
+                      <FormItem className="max-w-sm">
+                        <FormLabel>{t('workbench.settings.form.theme')}</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="system">{t('common.theme.system')}</SelectItem>
+                            <SelectItem value="light">{t('common.theme.light')}</SelectItem>
+                            <SelectItem value="dark">{t('common.theme.dark')}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="windowTitleBarStyle"
+                    render={({ field }) => (
+                      <FormItem className="max-w-sm">
+                        <FormLabel>{t('workbench.settings.form.titleBarStyle')}</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="native">{t('common.titleBarStyle.native')}</SelectItem>
+                            <SelectItem value="custom">{t('common.titleBarStyle.custom')}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </section>
             ) : null}
 
@@ -170,7 +251,7 @@ export function WorkbenchSettingsEditor() {
               <section className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <TerminalSquare className="size-4 text-primary" />
-                  终端
+                  {t('workbench.settings.sections.terminal')}
                 </div>
                 <div className="grid gap-4 lg:grid-cols-2">
                   <FormField
@@ -178,7 +259,7 @@ export function WorkbenchSettingsEditor() {
                     name="terminalFontSize"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>终端字号</FormLabel>
+                        <FormLabel>{t('workbench.settings.form.terminalFontSize')}</FormLabel>
                         <FormControl>
                           <Input {...field} type="number" min={10} max={24} />
                         </FormControl>
@@ -191,7 +272,7 @@ export function WorkbenchSettingsEditor() {
                     name="terminalFontFamily"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>终端字体</FormLabel>
+                        <FormLabel>{t('workbench.settings.form.terminalFontFamily')}</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -204,7 +285,7 @@ export function WorkbenchSettingsEditor() {
                     name="cursorStyle"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>光标样式</FormLabel>
+                        <FormLabel>{t('workbench.settings.form.cursorStyle')}</FormLabel>
                         <Select value={field.value} onValueChange={field.onChange}>
                           <FormControl>
                             <SelectTrigger>
@@ -212,9 +293,13 @@ export function WorkbenchSettingsEditor() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="block">Block</SelectItem>
-                            <SelectItem value="underline">Underline</SelectItem>
-                            <SelectItem value="bar">Bar</SelectItem>
+                            <SelectItem value="block">
+                              {t('workbench.settings.cursorStyles.block')}
+                            </SelectItem>
+                            <SelectItem value="underline">
+                              {t('workbench.settings.cursorStyles.underline')}
+                            </SelectItem>
+                            <SelectItem value="bar">{t('workbench.settings.cursorStyles.bar')}</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -229,8 +314,10 @@ export function WorkbenchSettingsEditor() {
                     render={({ field }) => (
                       <FormItem className="flex items-center justify-between rounded-sm border border-[var(--workbench-border)] px-4 py-3">
                         <div>
-                          <div className="font-medium">光标闪烁</div>
-                          <div className="text-sm text-muted-foreground">更容易定位当前输入位置。</div>
+                          <div className="font-medium">{t('workbench.settings.form.cursorBlink.title')}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {t('workbench.settings.form.cursorBlink.description')}
+                          </div>
                         </div>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -244,8 +331,10 @@ export function WorkbenchSettingsEditor() {
                     render={({ field }) => (
                       <FormItem className="flex items-center justify-between rounded-sm border border-[var(--workbench-border)] px-4 py-3">
                         <div>
-                          <div className="font-medium">选中即复制</div>
-                          <div className="text-sm text-muted-foreground">更接近常见终端行为。</div>
+                          <div className="font-medium">{t('workbench.settings.form.copyOnSelect.title')}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {t('workbench.settings.form.copyOnSelect.description')}
+                          </div>
                         </div>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -261,27 +350,27 @@ export function WorkbenchSettingsEditor() {
               <section className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <ShieldCheck className="size-4 text-primary" />
-                  安全与信任
+                  {t('workbench.settings.sections.security')}
                 </div>
                 <div className="rounded-sm border border-[var(--workbench-border)] px-4 py-4">
-                  <div className="text-sm font-medium">凭据安全</div>
+                  <div className="text-sm font-medium">{t('workbench.settings.sections.security')}</div>
                   <div className="mt-1 text-sm text-muted-foreground">
                     {capabilitiesQuery.data?.credentialStorage
-                      ? '当前环境支持系统钥匙串，密码和私钥口令会优先写入系统安全存储。'
-                      : '当前环境未检测到系统钥匙串，应用不会持久化保存密码或私钥口令。'}
+                      ? t('workbench.settings.security.available')
+                      : t('workbench.settings.security.unavailable')}
                   </div>
                 </div>
                 <div className="rounded-sm border border-[var(--workbench-border)]">
                   <div className="border-b border-[var(--workbench-border)] px-4 py-3 text-sm font-medium">
-                    已信任主机
+                    {t('workbench.settings.knownHosts.title')}
                   </div>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Host</TableHead>
-                        <TableHead>Algorithm</TableHead>
-                        <TableHead>Fingerprint</TableHead>
-                        <TableHead>Verified</TableHead>
+                        <TableHead>{t('workbench.settings.knownHosts.host')}</TableHead>
+                        <TableHead>{t('workbench.settings.knownHosts.algorithm')}</TableHead>
+                        <TableHead>{t('workbench.settings.knownHosts.fingerprint')}</TableHead>
+                        <TableHead>{t('workbench.settings.knownHosts.verified')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -290,13 +379,13 @@ export function WorkbenchSettingsEditor() {
                           <TableCell>{host.host}:{host.port}</TableCell>
                           <TableCell>{host.algorithm}</TableCell>
                           <TableCell className="font-mono text-xs">{host.fingerprint}</TableCell>
-                          <TableCell>{new Date(host.verifiedAt).toLocaleString()}</TableCell>
+                          <TableCell>{formatDateTime(host.verifiedAt)}</TableCell>
                         </TableRow>
                       ))}
                       {(knownHostsQuery.data ?? []).length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
-                            当前没有已信任主机记录。
+                            {t('workbench.settings.knownHosts.empty')}
                           </TableCell>
                         </TableRow>
                       ) : null}
@@ -308,7 +397,8 @@ export function WorkbenchSettingsEditor() {
 
             <div className="flex justify-end">
               <Button type="submit" disabled={updateSettings.isPending}>
-                保存设置
+                <SaveIcon className="size-4" />
+                {t('common.actions.save')}
               </Button>
             </div>
           </form>

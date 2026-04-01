@@ -1,0 +1,385 @@
+const workbench = {
+  workbench: {
+    activity: {
+      explorer: {
+        description: 'Browse saved hosts, groups, tags, and recent connections.',
+        title: 'Explorer'
+      },
+      settings: {
+        description: 'Adjust appearance, terminal behavior, and trust settings.',
+        title: 'Settings'
+      },
+      terminal: {
+        description: 'Inspect active SSH sessions and remote file systems.',
+        title: 'Terminal'
+      }
+    },
+    commandCenter: {
+      commandPalette: {
+        description: 'Search WinSSH commands',
+        empty: 'No matching commands.',
+        groups: {
+          currentServer: 'Current Server',
+          currentSession: 'Current Session',
+          layout: 'Layout',
+          theme: 'Theme',
+          workbench: 'Workbench'
+        },
+        placeholder: 'Type a command',
+        title: 'Command Palette'
+      },
+      quickOpen: {
+        description: 'Open a connection, session, or settings editor',
+        empty: 'No matching items.',
+        groups: {
+          connections: 'Connections',
+          sessions: 'Sessions',
+          workbench: 'Workbench'
+        },
+        placeholder: 'Jump to a connection or session',
+        title: 'Quick Open'
+      }
+    },
+    documents: {
+      serverEditor: {
+        newConnection: 'Untitled Connection'
+      },
+      settings: 'Settings',
+      terminal: 'Terminal',
+      terminalWelcome: 'Terminal'
+    },
+    explorerHome: {
+      actions: {
+        clearRecent: 'Clear',
+        focusExplorer: 'Back to Explorer',
+        focusTerminal: 'Focus Terminal'
+      },
+      empty: {
+        favorites: 'No favorite connections yet.',
+        recent: 'No recent connections yet.'
+      },
+      overview: {
+        activeSessions: 'Active Sessions',
+        recentConnections: 'Recent Connections',
+        savedConnections: 'Saved Connections',
+        title: 'Workspace Overview'
+      },
+      quickLinks: {
+        title: 'Quick Links'
+      },
+      recent: {
+        title: 'Recent Connections'
+      },
+      subtitle: 'Manage all SSH workflows through Explorer, editor tabs, and the integrated terminal.',
+      title: 'WinSSH Workbench',
+      favorites: {
+        title: 'Favorite Connections'
+      },
+      toasts: {
+        recentCleared: 'Recent connections cleared.'
+      }
+    },
+    panel: {
+      clearProblems: 'Clear Problems',
+      clearTransfers: 'Clear Transfers',
+      empty: {
+        output: 'Connection logs and workbench output appear here.',
+        problems: 'No workbench-level issues right now.',
+        transfers: 'No transfers yet.'
+      },
+      labels: {
+        output: 'Output',
+        problems: 'Problems',
+        transfers: 'Transfers'
+      },
+      severities: {
+        error: 'Error',
+        warning: 'Warning'
+      },
+      transfer: {
+        completed: 'Completed',
+        download: 'Download',
+        error: 'Error',
+        running: 'Running',
+        unknown: 'Unknown',
+        upload: 'Upload'
+      }
+    },
+    primarySidebar: {
+      actions: {
+        addToFavorites: 'Add to Favorites',
+        connect: 'Connect',
+        createGroup: 'New Group',
+        createTag: 'New Tag',
+        edit: 'Edit',
+        removeFromFavorites: 'Remove from Favorites',
+        rename: 'Rename'
+      },
+      description: 'Single-click to open the editor, double-click to start an SSH session.',
+      sections: {
+        allServers: 'All Servers',
+        favorites: 'Favorites',
+        groups: 'Groups',
+        recent: 'Recent',
+        tags: 'Tags'
+      },
+      title: 'Explorer',
+      toasts: {
+        groupDeleted: 'Group deleted.',
+        tagDeleted: 'Tag deleted.'
+      }
+    },
+    quickInput: {
+      credentials: {
+        descriptions: {
+          passphrase: 'Enter the passphrase to continue connecting to {{name}}, if the private key uses one.',
+          password: 'Enter the password to continue connecting to {{name}}.'
+        },
+        emptyPassword: 'Password is required.',
+        keychainDescription: 'Reuse it automatically on future connections.',
+        keychainTitle: 'Store in system keychain',
+        placeholder: {
+          passphrase: 'Optional, leave empty if there is no passphrase',
+          password: 'Enter the server password'
+        },
+        secretLabel: 'Secret',
+        titles: {
+          passphrase: 'Enter Private Key Passphrase',
+          password: 'Enter Connection Password'
+        }
+      },
+      entity: {
+        descriptions: {
+          create: 'Use a lightweight input flow to maintain Explorer structure quickly.',
+          rename: 'Use a lightweight input flow to maintain Explorer structure quickly.'
+        },
+        placeholders: {
+          group: 'Production',
+          tag: 'MySQL'
+        },
+        titles: {
+          createGroup: 'New Group',
+          createTag: 'New Tag',
+          renameGroup: 'Rename Group',
+          renameTag: 'Rename Tag'
+        }
+      },
+      toasts: {
+        groupCreated: 'Group created.',
+        groupUpdated: 'Group updated.',
+        saveFailed: 'Save failed.',
+        tagCreated: 'Tag created.',
+        tagUpdated: 'Tag updated.'
+      }
+    },
+    serverEditor: {
+      auth: {
+        password: 'Password',
+        privateKey: 'Private Key'
+      },
+      descriptions: {
+        existing: '{{username}}@{{host}}:{{port}}',
+        new: 'New SSH connection'
+      },
+      empty: {
+        tags: 'No tags yet. Create one in Explorer.'
+      },
+      fields: {
+        authType: 'Authentication',
+        connectNote: 'Connection Notes',
+        credentials: 'Credentials',
+        favoriteDescription: 'Favorited servers are prioritized in Explorer.',
+        favoriteTitle: 'Favorite this server',
+        group: 'Group',
+        host: 'Host',
+        name: 'Name',
+        note: 'Notes',
+        password: 'Password',
+        passphrase: 'Passphrase',
+        port: 'Port',
+        privateKeyFile: 'Private Key File',
+        rememberPassphrase: 'Remember Passphrase',
+        rememberPassword: 'Remember Password',
+        tags: 'Tags',
+        username: 'Username'
+      },
+      placeholders: {
+        host: '192.168.1.10 or demo.example.com',
+        name: 'Production Bastion',
+        note: 'Record environment notes, jump-host topology, or maintenance details.',
+        privateKeyFile: 'Select a PEM / KEY / PPK file',
+        privateKeySecret: 'Leave empty if there is no passphrase',
+        savedPassword: 'Leave empty to keep the saved password',
+        ungrouped: 'Ungrouped',
+        username: 'root / ubuntu / admin'
+      },
+      sections: {
+        basic: 'Basic',
+        connection: 'Connection',
+        credentials: 'Credentials',
+        note: 'Notes',
+        privateKey: 'Private Key',
+        strategy: 'Connection Strategy',
+        tags: 'Tags'
+      },
+      systemKeychain: {
+        available: 'Stored in the system keychain for reuse on future connections.',
+        unavailable: 'No system keychain is available in the current environment.'
+      },
+      toasts: {
+        created: 'Server created.',
+        updated: 'Server updated.'
+      },
+      validation: {
+        failed: 'Server form validation failed.'
+      }
+    },
+    sessionEditor: {
+      closed: {
+        description: 'Reconnect to the server from Explorer to keep working.',
+        title: 'This session has already closed'
+      },
+      remoteFiles: 'Remote Files',
+      cancel: 'Cancel'
+    },
+    settings: {
+      cursorStyles: {
+        bar: 'Bar',
+        block: 'Block',
+        underline: 'Underline'
+      },
+      descriptions: {
+        appearance: 'Adjust language, theme, and window title bar mode.',
+        security: 'Review credential storage support and trusted hosts.',
+        terminal: 'Adjust terminal font, cursor, and copy behavior.'
+      },
+      form: {
+        copyOnSelect: {
+          description: 'Closer to typical terminal behavior.',
+          title: 'Copy on select'
+        },
+        cursorBlink: {
+          description: 'Makes it easier to find the current input position.',
+          title: 'Blinking cursor'
+        },
+        cursorStyle: 'Cursor style',
+        language: 'Display language',
+        terminalFontFamily: 'Terminal font',
+        terminalFontSize: 'Terminal font size',
+        theme: 'Theme mode',
+        titleBarStyle: 'Window title bar'
+      },
+      knownHosts: {
+        algorithm: 'Algorithm',
+        empty: 'There are no trusted hosts yet.',
+        fingerprint: 'Fingerprint',
+        host: 'Host',
+        title: 'Trusted Hosts',
+        verified: 'Verified'
+      },
+      sections: {
+        appearance: 'Appearance',
+        security: 'Security',
+        terminal: 'Terminal'
+      },
+      security: {
+        available: 'The current environment supports the system keychain, so passwords and passphrases are stored securely when possible.',
+        unavailable: 'No system keychain was detected, so the app does not persist passwords or passphrases.'
+      },
+      subtitle: 'Adjust language, theme, terminal settings, and security options.',
+      title: 'Settings Editor',
+      titleBar: {
+        restartDescription: 'Changing the window title bar mode requires restarting the app.',
+        restartTitle: 'Title bar mode saved'
+      },
+      toasts: {
+        saved: 'Settings saved.'
+      },
+      validation: {
+        failed: 'Settings form validation failed.'
+      }
+    },
+    shell: {
+      terminalWelcome: {
+        description: 'Select a server in Explorer or create a new connection and start from there.',
+        title: 'No active sessions yet'
+      }
+    },
+    sftp: {
+      actions: {
+        backToParent: 'Go to Parent Directory',
+        openDirectory: 'Open Directory'
+      },
+      dialogs: {
+        createFolder: 'New Folder',
+        rename: 'Rename'
+      },
+      empty: {
+        directory: 'This directory is empty.',
+        noSessionDescription: 'Start an SSH session first and the SFTP panel will follow the active tab automatically.',
+        noSessionTitle: 'No active session'
+      },
+      explorer: 'SFTP Explorer',
+      kinds: {
+        directory: 'Directory'
+      },
+      placeholders: {
+        directoryName: 'Enter a directory name',
+        rename: 'New name'
+      }
+    },
+    statusBar: {
+      panelOff: 'panel off',
+      panelOn: 'panel on',
+      sessions: '{{count}} sessions',
+      sidebarOff: 'sidebar off',
+      sidebarOn: 'sidebar on',
+      theme: 'theme {{value}}'
+    },
+    terminal: {
+      connecting: {
+        currentStage: 'Current Stage',
+        defaultMessage: 'The connection has started. Preparing the session tab and terminal environment.',
+        title: 'Connecting to {{name}}'
+      },
+      stages: {
+        attach: 'Attaching the shell and switching into the session',
+        handshake: 'Verifying the host and negotiating the SSH handshake',
+        prepare: 'Opening the terminal channel and preparing the remote environment',
+        validate: 'Validating credentials and connection parameters'
+      },
+      unavailable: {
+        defaultMessage: 'Try reconnecting this tab.',
+        title: 'This session is currently unavailable'
+      }
+    },
+    titleBar: {
+      commandPaletteTitle: 'Command Palette',
+      closeWindow: 'Close Window',
+      maximizeWindow: 'Maximize Window',
+      minimizeWindow: 'Minimize Window',
+      quickOpenTitle: 'Quick Open',
+      restoreWindow: 'Restore Window'
+    },
+    toasts: {
+      connectionFailed: 'Connection failed.',
+      reconnected: 'Reconnected to {{name}}.',
+      reconnectFailed: 'Reconnect failed.',
+      serverDeleted: 'Server deleted.',
+      serverConfigMissing: 'Could not find the saved server configuration.',
+      sessionConnected: 'Connected to {{name}}.'
+    },
+    output: {
+      connectedTo: 'Connected to {{name}}',
+      connectingTo: 'Connecting to {{name}}',
+      downloadCompleted: 'Download completed: {{fileName}}',
+      reconnecting: 'Reconnecting {{name}}',
+      sessionDisconnected: 'Session disconnected',
+      sessionExited: 'Session exited: {{sessionId}}',
+      sessionStateChanged: 'Session state changed to {{status}}',
+      uploadCompleted: 'Upload completed: {{fileName}}'
+    }
+  }
+}
+
+export default workbench

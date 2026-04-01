@@ -1,20 +1,15 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import {
-  Command,
-  FolderPlus,
-  LayoutPanelLeft,
+  Files,
   MonitorCog,
   MoonStar,
-  PanelBottom,
-  Plus,
-  Search,
   ServerCog,
-  Settings2,
   SunMedium,
-  TerminalSquare,
-  Unplug
+  TerminalSquare
 } from 'lucide-react'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
+import { actionIcons } from '@/lib/action-icons'
 import {
   createSessionEditorDocument,
   createSettingsEditorDocument,
@@ -34,10 +29,11 @@ import {
 } from '@/components/ui/command'
 
 interface WorkbenchCommandCenterProps {
-  activeDocument: WorkbenchDocument
+  activeDocument: WorkbenchDocument | null
 }
 
 export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCenterProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { focusActivity, openServerEditor, openSettingsEditor, disconnectSession, connectServer } =
     useWorkbenchContext()
@@ -49,6 +45,12 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
   const setQuickOpenOpen = useWorkbenchStore((state) => state.setQuickOpenOpen)
   const toggleSidebar = useWorkbenchStore((state) => state.toggleSidebar)
   const togglePanel = useWorkbenchStore((state) => state.togglePanel)
+  const NewConnectionIcon = actionIcons.newConnection
+  const OpenSettingsIcon = actionIcons.openSettings
+  const ToggleSidebarIcon = actionIcons.toggleSidebar
+  const TogglePanelIcon = actionIcons.togglePanel
+  const ConnectIcon = actionIcons.connect
+  const DisconnectIcon = actionIcons.disconnect
 
   const serversQuery = useQuery({
     queryKey: ['servers'],
@@ -62,11 +64,11 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
   }
 
   const currentServer =
-    activeDocument.kind === 'server-editor'
+    activeDocument?.kind === 'server-editor'
       ? (serversQuery.data ?? []).find((server) => server.id === activeDocument.serverId)
       : null
   const currentSession =
-    activeDocument.kind === 'session-editor'
+    activeDocument?.kind === 'session-editor'
       ? sessions.find((session) => session.sessionId === activeDocument.sessionId) ?? null
       : null
 
@@ -77,22 +79,22 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
         onOpenChange={setCommandPaletteOpen}
         className="max-w-2xl rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-0 shadow-2xl"
         showCloseButton={false}
-        title="Command Palette"
-        description="Search WinSSH commands"
+        title={t('workbench.commandCenter.commandPalette.title')}
+        description={t('workbench.commandCenter.commandPalette.description')}
       >
-        <CommandInput placeholder="Type a command" />
+        <CommandInput placeholder={t('workbench.commandCenter.commandPalette.placeholder')} />
         <CommandList>
-          <CommandEmpty>没有匹配的命令。</CommandEmpty>
+          <CommandEmpty>{t('workbench.commandCenter.commandPalette.empty')}</CommandEmpty>
 
-          <CommandGroup heading="Workbench">
+          <CommandGroup heading={t('workbench.commandCenter.commandPalette.groups.workbench')}>
             <CommandItem
               onSelect={() => {
                 setCommandPaletteOpen(false)
                 openServerEditor()
               }}
             >
-              <Plus className="size-4" />
-              新建连接
+              <NewConnectionIcon className="size-4" />
+              {t('common.actions.newConnection')}
               <CommandShortcut>Ctrl+N</CommandShortcut>
             </CommandItem>
             <CommandItem
@@ -102,7 +104,7 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
               }}
             >
               <ServerCog className="size-4" />
-              聚焦 Explorer
+              {t('workbench.activity.explorer.title')}
             </CommandItem>
             <CommandItem
               onSelect={() => {
@@ -111,7 +113,7 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
               }}
             >
               <TerminalSquare className="size-4" />
-              聚焦最近会话
+              {t('workbench.activity.terminal.title')}
             </CommandItem>
             <CommandItem
               onSelect={() => {
@@ -119,22 +121,22 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
                 openSettingsEditor()
               }}
             >
-              <Settings2 className="size-4" />
-              打开 Settings
+              <OpenSettingsIcon className="size-4" />
+              {t('common.actions.openSettings')}
             </CommandItem>
           </CommandGroup>
 
           <CommandSeparator />
 
-          <CommandGroup heading="Layout">
+          <CommandGroup heading={t('workbench.commandCenter.commandPalette.groups.layout')}>
             <CommandItem
               onSelect={() => {
                 setCommandPaletteOpen(false)
                 toggleSidebar()
               }}
             >
-              <LayoutPanelLeft className="size-4" />
-              切换侧栏
+              <ToggleSidebarIcon className="size-4" />
+              {t('common.actions.toggleSidebar')}
               <CommandShortcut>Ctrl+B</CommandShortcut>
             </CommandItem>
             <CommandItem
@@ -143,41 +145,41 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
                 togglePanel()
               }}
             >
-              <PanelBottom className="size-4" />
-              切换底部 Panel
+              <TogglePanelIcon className="size-4" />
+              {t('common.actions.togglePanel')}
               <CommandShortcut>Ctrl+J</CommandShortcut>
             </CommandItem>
           </CommandGroup>
 
           <CommandSeparator />
 
-          <CommandGroup heading="Theme">
+          <CommandGroup heading={t('workbench.commandCenter.commandPalette.groups.theme')}>
             <CommandItem onSelect={() => void handleThemeChange('system')}>
               <MonitorCog className="size-4" />
-              跟随系统
+              {t('common.theme.system')}
             </CommandItem>
             <CommandItem onSelect={() => void handleThemeChange('light')}>
               <SunMedium className="size-4" />
-              Light+
+              {t('common.theme.light')}
             </CommandItem>
             <CommandItem onSelect={() => void handleThemeChange('dark')}>
               <MoonStar className="size-4" />
-              Dark+
+              {t('common.theme.dark')}
             </CommandItem>
           </CommandGroup>
 
           {currentServer ? (
             <>
               <CommandSeparator />
-              <CommandGroup heading="Current Server">
+              <CommandGroup heading={t('workbench.commandCenter.commandPalette.groups.currentServer')}>
                 <CommandItem
                   onSelect={() => {
                     setCommandPaletteOpen(false)
                     void connectServer(currentServer)
                   }}
                 >
-                  <FolderPlus className="size-4" />
-                  连接当前服务器
+                  <ConnectIcon className="size-4" />
+                  {t('common.actions.connect')}
                 </CommandItem>
               </CommandGroup>
             </>
@@ -186,15 +188,15 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
           {currentSession ? (
             <>
               <CommandSeparator />
-              <CommandGroup heading="Current Session">
+              <CommandGroup heading={t('workbench.commandCenter.commandPalette.groups.currentSession')}>
                 <CommandItem
                   onSelect={() => {
                     setCommandPaletteOpen(false)
                     void disconnectSession(currentSession.sessionId)
                   }}
                 >
-                  <Unplug className="size-4" />
-                  断开当前会话
+                  <DisconnectIcon className="size-4" />
+                  {t('common.actions.disconnect')}
                 </CommandItem>
               </CommandGroup>
             </>
@@ -207,14 +209,14 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
         onOpenChange={setQuickOpenOpen}
         className="max-w-2xl rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-0 shadow-2xl"
         showCloseButton={false}
-        title="Quick Open"
-        description="Open a connection, session, or settings editor"
+        title={t('workbench.commandCenter.quickOpen.title')}
+        description={t('workbench.commandCenter.quickOpen.description')}
       >
-        <CommandInput placeholder="Jump to a connection or session" />
+        <CommandInput placeholder={t('workbench.commandCenter.quickOpen.placeholder')} />
         <CommandList>
-          <CommandEmpty>没有匹配的项目。</CommandEmpty>
+          <CommandEmpty>{t('workbench.commandCenter.quickOpen.empty')}</CommandEmpty>
 
-          <CommandGroup heading="Connections">
+          <CommandGroup heading={t('workbench.commandCenter.quickOpen.groups.connections')}>
             {(serversQuery.data ?? []).map((server) => (
               <CommandItem
                 key={server.id}
@@ -233,7 +235,7 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
 
           <CommandSeparator />
 
-          <CommandGroup heading="Sessions">
+          <CommandGroup heading={t('workbench.commandCenter.quickOpen.groups.sessions')}>
             {sessions.map((session) => (
               <CommandItem
                 key={session.sessionId}
@@ -252,15 +254,15 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
 
           <CommandSeparator />
 
-          <CommandGroup heading="Workbench">
+          <CommandGroup heading={t('workbench.commandCenter.quickOpen.groups.workbench')}>
             <CommandItem
               onSelect={() => {
                 setQuickOpenOpen(false)
                 openDocument(createSettingsEditorDocument())
               }}
             >
-              <Search className="size-4" />
-              Settings
+              <OpenSettingsIcon className="size-4" />
+              {t('common.actions.openSettings')}
             </CommandItem>
             <CommandItem
               onSelect={() => {
@@ -268,8 +270,8 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
                 focusActivity('explorer')
               }}
             >
-              <Command className="size-4" />
-              Explorer Home
+              <Files className="size-4" />
+              {t('workbench.activity.explorer.title')}
             </CommandItem>
           </CommandGroup>
         </CommandList>

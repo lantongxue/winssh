@@ -18,12 +18,20 @@ import {
   tagSchema
 } from '@shared/validation'
 import { DatabaseService } from './database'
+import { createMainTranslator, resolveMainLanguage } from './localization'
 import { SecureStoreService } from './secure-store'
 import { SessionManager } from './session-manager'
+import { getWindowChromeOptions } from './window-config'
 
 let mainWindow: BrowserWindow | null = null
 
-function createWindow(): BrowserWindow {
+function sendWindowState(window: BrowserWindow) {
+  window.webContents.send('system:windowState', {
+    isMaximized: window.isMaximized()
+  })
+}
+
+function createWindow(settings: AppSettings): BrowserWindow {
   const window = new BrowserWindow({
     width: 1600,
     height: 980,
@@ -32,9 +40,9 @@ function createWindow(): BrowserWindow {
     show: false,
     autoHideMenuBar: true,
     title: 'WinSSH',
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     backgroundColor: '#09090b',
     ...(process.platform === 'linux' ? { icon } : {}),
+    ...getWindowChromeOptions(settings, process.platform),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -44,6 +52,8 @@ function createWindow(): BrowserWindow {
   window.on('ready-to-show', () => {
     window.show()
   })
+  window.on('maximize', () => sendWindowState(window))
+  window.on('unmaximize', () => sendWindowState(window))
 
   window.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
@@ -55,6 +65,10 @@ function createWindow(): BrowserWindow {
   } else {
     window.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  window.webContents.on('did-finish-load', () => {
+    sendWindowState(window)
+  })
 
   return window
 }
@@ -68,13 +82,17 @@ async function bootstrap(): Promise<void> {
 
   const database = new DatabaseService(join(app.getPath('userData'), 'winssh.db'))
   const secureStore = new SecureStoreService()
+  const translate = createMainTranslator(() =>
+    resolveMainLanguage(database.getSettings().language, app.getLocale())
+  )
   const sessionManager = new SessionManager(
     database,
     secureStore,
     () => mainWindow,
     (channel, payload) => {
       mainWindow?.webContents.send(channel, payload)
-    }
+    },
+    translate
   )
 
   app.on('browser-window-created', (_, window) => {
@@ -217,11 +235,14 @@ async function bootstrap(): Promise<void> {
 
   ipcMain.handle('system:pickPrivateKey', async () => {
     const options: OpenDialogOptions = {
-      title: '选择 SSH 私钥文件',
+      title: translate('dialogs.pickPrivateKey.title'),
       properties: ['openFile'],
       filters: [
-        { name: '私钥文件', extensions: ['pem', 'ppk', 'key', 'pub'] },
-        { name: '所有文件', extensions: ['*'] }
+        {
+          name: translate('dialogs.pickPrivateKey.filters.privateKey'),
+          extensions: ['pem', 'ppk', 'key', 'pub']
+        },
+        { name: translate('dialogs.pickPrivateKey.filters.allFiles'), extensions: ['*'] }
       ]
     }
     const result = mainWindow
@@ -238,12 +259,35 @@ async function bootstrap(): Promise<void> {
   ipcMain.handle('system:getCapabilities', async () => ({
     credentialStorage: await secureStore.isAvailable()
   }))
+  ipcMain.handle('system:relaunch', () => {
+    app.relaunch()
+    app.exit(0)
+  })
+  ipcMain.handle('system:window:minimize', () => {
+    mainWindow?.minimize()
+  })
+  ipcMain.handle('system:window:toggleMaximize', () => {
+    if (!mainWindow) {
+      return
+    }
 
-  mainWindow = createWindow()
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize()
+      return
+    }
+
+    mainWindow.maximize()
+  })
+  ipcMain.handle('system:window:close', () => {
+    mainWindow?.close()
+  })
+  ipcMain.handle('system:window:isMaximized', () => mainWindow?.isMaximized() ?? false)
+
+  mainWindow = createWindow(database.getSettings())
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      mainWindow = createWindow()
+      mainWindow = createWindow(database.getSettings())
     }
   })
 

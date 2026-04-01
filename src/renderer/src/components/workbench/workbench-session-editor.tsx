@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { FolderTree, RefreshCcw, Unplug } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
+import { actionIcons } from '@/lib/action-icons'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import { SftpPanel } from '@/components/sftp-panel'
 import { TerminalPane } from '@/components/terminal-pane'
@@ -9,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { useSessionsStore } from '@/store/sessions-store'
 
 export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
+  const { t } = useTranslation()
   const [remoteVisible, setRemoteVisible] = useState(false)
   const { reconnectSession, disconnectSession } = useWorkbenchContext()
   const session = useSessionsStore((state) =>
@@ -19,14 +21,19 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
     queryFn: () => window.winsshApi.settings.get(),
     initialData: DEFAULT_APP_SETTINGS
   })
+  const RemoteFilesIcon = actionIcons.openRemoteFiles
+  const ReconnectIcon = actionIcons.reconnect
+  const DisconnectIcon = actionIcons.disconnect
 
   if (!session) {
     return (
       <div className="flex h-full items-center justify-center bg-[var(--workbench-editor)] px-6">
         <div className="max-w-md text-center">
-          <div className="text-lg font-semibold text-foreground">该会话已经关闭</div>
+          <div className="text-lg font-semibold text-foreground">
+            {t('workbench.sessionEditor.closed.title')}
+          </div>
           <div className="mt-2 text-sm text-muted-foreground">
-            如果需要继续工作，请在 Explorer 中重新连接对应服务器。
+            {t('workbench.sessionEditor.closed.description')}
           </div>
         </div>
       </div>
@@ -49,18 +56,18 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
             disabled={session.provisional || session.status !== 'ready'}
             onClick={() => setRemoteVisible((current) => !current)}
           >
-            <FolderTree className="size-4" />
-            Remote Files
+            <RemoteFilesIcon className="size-4" />
+            {t('workbench.sessionEditor.remoteFiles')}
           </Button>
           {session.status !== 'ready' && session.status !== 'connecting' ? (
             <Button variant="ghost" size="sm" onClick={() => void reconnectSession(sessionId)}>
-              <RefreshCcw className="size-4" />
-              Reconnect
+              <ReconnectIcon className="size-4" />
+              {t('common.actions.reconnect')}
             </Button>
           ) : null}
           <Button variant="ghost" size="sm" onClick={() => void disconnectSession(sessionId)}>
-            <Unplug className="size-4" />
-            {session.status === 'connecting' ? 'Cancel' : 'Disconnect'}
+            <DisconnectIcon className="size-4" />
+            {session.status === 'connecting' ? t('workbench.sessionEditor.cancel') : t('common.actions.disconnect')}
           </Button>
         </div>
       </div>

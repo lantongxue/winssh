@@ -25,10 +25,12 @@ export const COLOR_PRESETS = [
 ] as const
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
+  language: 'system',
   theme: 'system',
   terminalFontSize: 14,
   terminalFontFamily: 'JetBrains Mono, Consolas, monospace',
   cursorStyle: 'block',
   cursorBlink: true,
-  copyOnSelect: true
+  copyOnSelect: true,
+  windowTitleBarStyle: 'native'
 }

@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, LoaderCircle, RotateCcw } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import type { AppSettings } from '@shared/types'
+import { actionIcons } from '@/lib/action-icons'
 import type { SessionTab } from '@/store/sessions-store'
 import { useTerminal } from '@/hooks/use-terminal'
 import { Button } from '@/components/ui/button'
@@ -11,16 +13,26 @@ interface TerminalPaneProps {
   onReconnect: (sessionId: string) => Promise<void>
 }
 
-const connectionStages = [
-  '校验凭据与连接参数',
-  '验证主机并协商 SSH 握手',
-  '建立终端通道并准备远程环境',
-  '正在附加 Shell 并切换到会话'
-] as const
-
 export function TerminalPane({ session, settings, onReconnect }: TerminalPaneProps) {
+  const { t } = useTranslation()
   const [stageIndex, setStageIndex] = useState(0)
-  const terminalRef = useTerminal(session.provisional ? null : session.sessionId, settings, !session.provisional)
+  const terminalRef = useTerminal(
+    session.provisional ? null : session.sessionId,
+    settings,
+    !session.provisional
+  )
+  const ReconnectIcon = actionIcons.reconnect
+
+  const connectionStages = useMemo(
+    () =>
+      [
+        t('workbench.terminal.stages.validate'),
+        t('workbench.terminal.stages.handshake'),
+        t('workbench.terminal.stages.prepare'),
+        t('workbench.terminal.stages.attach')
+      ] as const,
+    [t]
+  )
 
   useEffect(() => {
     if (session.status !== 'connecting') {
@@ -33,7 +45,7 @@ export function TerminalPane({ session, settings, onReconnect }: TerminalPanePro
     }, 1100)
 
     return () => window.clearInterval(timer)
-  }, [session.sessionId, session.status])
+  }, [connectionStages.length, session.sessionId, session.status])
 
   const activeStage = connectionStages[stageIndex]
 
@@ -55,15 +67,15 @@ export function TerminalPane({ session, settings, onReconnect }: TerminalPanePro
                 <div className="min-w-0 flex-1 space-y-2">
                   <div className="space-y-1">
                     <div className="font-medium text-zinc-100">
-                      正在连接 {session.serverName}
+                      {t('workbench.terminal.connecting.title', { name: session.serverName })}
                     </div>
                     <div className="text-sm text-zinc-400">
-                      {session.lastMessage ?? '连接已发起，正在准备会话标签页与终端环境。'}
+                      {session.lastMessage ?? t('workbench.terminal.connecting.defaultMessage')}
                     </div>
                   </div>
                   <div className="rounded-md border border-white/8 bg-white/3 p-3">
                     <div className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">
-                      当前阶段
+                      {t('workbench.terminal.connecting.currentStage')}
                     </div>
                     <div className="mt-2 text-sm text-sky-200">{activeStage}</div>
                     <div className="mt-3 space-y-2">
@@ -76,11 +88,7 @@ export function TerminalPane({ session, settings, onReconnect }: TerminalPanePro
                           ) : (
                             <span className="size-3.5 rounded-full border border-zinc-700" />
                           )}
-                          <span
-                            className={
-                              index <= stageIndex ? 'text-zinc-200' : 'text-zinc-500'
-                            }
-                          >
+                          <span className={index <= stageIndex ? 'text-zinc-200' : 'text-zinc-500'}>
                             {stage}
                           </span>
                         </div>
@@ -98,15 +106,18 @@ export function TerminalPane({ session, settings, onReconnect }: TerminalPanePro
                   <RotateCcw className="size-5" />
                 </div>
                 <div className="space-y-2">
-                  <div className="font-medium text-zinc-100">会话当前不可用</div>
+                  <div className="font-medium text-zinc-100">{t('workbench.terminal.unavailable.title')}</div>
                   <div className="text-sm text-zinc-400">
-                    {session.lastMessage ?? '可以尝试重新连接该标签。'}
+                    {session.lastMessage ?? t('workbench.terminal.unavailable.defaultMessage')}
                   </div>
                 </div>
               </div>
             )}
             {session.status !== 'connecting' ? (
-              <Button onClick={() => void onReconnect(session.sessionId)}>重新连接</Button>
+              <Button onClick={() => void onReconnect(session.sessionId)}>
+                <ReconnectIcon className="size-4" />
+                {t('common.actions.reconnect')}
+              </Button>
             ) : null}
           </div>
         </div>

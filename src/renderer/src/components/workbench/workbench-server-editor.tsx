@@ -1,11 +1,13 @@
 import { useEffect } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
-import { FolderOpen, KeyRound, LockKeyhole, Save, Star, TerminalSquare, Undo2 } from 'lucide-react'
+import { KeyRound, LockKeyhole } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import type { Server, ServerUpsertInput } from '@shared/types'
 import { serverSchema, type ServerFormValues } from '@shared/validation'
+import { actionIcons } from '@/lib/action-icons'
 import { getColorStyle } from '@/lib/colors'
 import { cn } from '@/lib/utils'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
@@ -86,9 +88,15 @@ function toPayload(values: ServerFormValues, credentialStorageAvailable: boolean
 }
 
 export function WorkbenchServerEditor({ document }: { document: ServerEditorDocument }) {
+  const { t } = useTranslation()
   const { connectServer, refreshWorkspaceData } = useWorkbenchContext()
   const pushProblem = useWorkbenchStore((state) => state.pushProblem)
   const replaceDocument = useWorkbenchStore((state) => state.replaceDocument)
+  const SaveIcon = actionIcons.save
+  const ConnectIcon = actionIcons.connect
+  const DiscardIcon = actionIcons.discard
+  const BrowseIcon = actionIcons.browse
+  const FavoriteIcon = actionIcons.star
 
   const serversQuery = useQuery({
     queryKey: ['servers'],
@@ -122,17 +130,24 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   const authType = form.watch('authType')
   const selectedTagIds = form.watch('tagIds')
   const isPrivateKeyAuth = authType === 'privateKey'
-  const credentialLabel = isPrivateKeyAuth ? '私钥口令' : '密码'
-  const rememberLabel = isPrivateKeyAuth ? '记住口令' : '记住密码'
+  const credentialLabel = isPrivateKeyAuth
+    ? t('workbench.serverEditor.fields.passphrase')
+    : t('workbench.serverEditor.fields.password')
+  const rememberLabel = isPrivateKeyAuth
+    ? t('workbench.serverEditor.fields.rememberPassphrase')
+    : t('workbench.serverEditor.fields.rememberPassword')
 
   const reportValidationFailure = () => {
     const firstMessage = Object.values(form.formState.errors)[0]?.message
     pushProblem({
-      detail: document.serverId ? `Server ${document.serverId}` : 'New Connection',
+      detail: server?.name ?? t('workbench.documents.serverEditor.newConnection'),
       documentId: document.id,
       id: `server-editor:${document.id}:${Date.now()}`,
       severity: 'error',
-      title: typeof firstMessage === 'string' ? firstMessage : '服务器表单校验失败'
+      title:
+        typeof firstMessage === 'string'
+          ? firstMessage
+          : t('workbench.serverEditor.validation.failed')
     })
   }
 
@@ -149,7 +164,9 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     await refreshWorkspaceData()
 
     if (announce) {
-      toast.success(document.serverId ? '服务器已更新' : '服务器已创建')
+      toast.success(
+        t(document.serverId ? 'workbench.serverEditor.toasts.updated' : 'workbench.serverEditor.toasts.created')
+      )
     }
 
     return saved
@@ -160,10 +177,16 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
       <div className="flex h-10 shrink-0 items-center justify-between border-b border-[var(--workbench-border)] px-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-medium text-foreground">
-            {server?.name ?? 'Untitled Connection'}
+            {server?.name ?? t('workbench.documents.serverEditor.newConnection')}
           </div>
           <div className="truncate text-[11px] text-muted-foreground">
-            {server ? `${server.username}@${server.host}:${server.port}` : 'New SSH connection'}
+            {server
+              ? t('workbench.serverEditor.descriptions.existing', {
+                  host: server.host,
+                  port: server.port,
+                  username: server.username
+                })
+              : t('workbench.serverEditor.descriptions.new')}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -178,8 +201,8 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
               () => reportValidationFailure()
             )}
           >
-            <Save className="size-4" />
-            Save
+            <SaveIcon className="size-4" />
+            {t('common.actions.save')}
           </Button>
           <Button
             variant="ghost"
@@ -202,8 +225,8 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
               await connectServer(targetServer)
             }}
           >
-            <TerminalSquare className="size-4" />
-            Connect
+            <ConnectIcon className="size-4" />
+            {t('common.actions.connect')}
           </Button>
           <Button
             variant="ghost"
@@ -211,8 +234,8 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
             disabled={form.formState.isSubmitting}
             onClick={() => form.reset(toDefaultValues(server, credentialStorageAvailable))}
           >
-            <Undo2 className="size-4" />
-            Discard
+            <DiscardIcon className="size-4" />
+            {t('common.actions.discard')}
           </Button>
         </div>
       </div>
@@ -222,9 +245,11 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
           <section className="border-b border-[var(--workbench-border)] px-6 py-5">
             <div className="mb-4">
               <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                Basic
+                {t('workbench.serverEditor.sections.basic')}
               </div>
-              <div className="mt-1 text-base font-semibold">连接参数</div>
+              <div className="mt-1 text-base font-semibold">
+                {t('workbench.serverEditor.sections.connection')}
+              </div>
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
               <FormField
@@ -232,9 +257,9 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>名称</FormLabel>
+                    <FormLabel>{t('workbench.serverEditor.fields.name')}</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="Production Bastion" />
+                      <Input {...field} placeholder={t('workbench.serverEditor.placeholders.name')} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -245,9 +270,9 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                 name="host"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>主机地址</FormLabel>
+                    <FormLabel>{t('workbench.serverEditor.fields.host')}</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="192.168.1.10 或 demo.example.com" />
+                      <Input {...field} placeholder={t('workbench.serverEditor.placeholders.host')} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -258,7 +283,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                 name="port"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>端口</FormLabel>
+                    <FormLabel>{t('workbench.serverEditor.fields.port')}</FormLabel>
                     <FormControl>
                       <Input {...field} type="number" min={1} max={65535} />
                     </FormControl>
@@ -271,9 +296,12 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                 name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>用户名</FormLabel>
+                    <FormLabel>{t('workbench.serverEditor.fields.username')}</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="root / ubuntu / admin" />
+                      <Input
+                        {...field}
+                        placeholder={t('workbench.serverEditor.placeholders.username')}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -283,14 +311,16 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
           </section>
 
           <section className="border-b border-[var(--workbench-border)] px-6 py-5">
-            <div className="mb-4 text-base font-semibold">连接策略</div>
+            <div className="mb-4 text-base font-semibold">
+              {t('workbench.serverEditor.sections.strategy')}
+            </div>
             <div className="grid gap-4 lg:grid-cols-2">
               <FormField
                 control={form.control}
                 name="authType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>认证方式</FormLabel>
+                    <FormLabel>{t('workbench.serverEditor.fields.authType')}</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
@@ -298,8 +328,10 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="password">密码认证</SelectItem>
-                        <SelectItem value="privateKey">私钥认证</SelectItem>
+                        <SelectItem value="password">{t('workbench.serverEditor.auth.password')}</SelectItem>
+                        <SelectItem value="privateKey">
+                          {t('workbench.serverEditor.auth.privateKey')}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -311,18 +343,20 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                 name="groupId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>分组</FormLabel>
+                    <FormLabel>{t('workbench.serverEditor.fields.group')}</FormLabel>
                     <Select
                       value={field.value ?? '__none__'}
                       onValueChange={(value) => field.onChange(value === '__none__' ? null : value)}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="未分组" />
+                          <SelectValue placeholder={t('workbench.serverEditor.placeholders.ungrouped')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="__none__">未分组</SelectItem>
+                        <SelectItem value="__none__">
+                          {t('workbench.serverEditor.placeholders.ungrouped')}
+                        </SelectItem>
                         {(groupsQuery.data ?? []).map((group) => (
                           <SelectItem key={group.id} value={group.id}>
                             {group.name}
@@ -342,10 +376,12 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                 <FormItem className="mt-4 flex items-center justify-between rounded-sm border border-[var(--workbench-border)] px-4 py-3">
                   <div>
                     <div className="flex items-center gap-2 font-medium">
-                      <Star className="size-4 text-amber-400" />
-                      收藏该服务器
+                      <FavoriteIcon className="size-4 text-amber-400" />
+                      {t('workbench.serverEditor.fields.favoriteTitle')}
                     </div>
-                    <div className="text-sm text-muted-foreground">收藏后会在 Explorer 中优先展示。</div>
+                    <div className="text-sm text-muted-foreground">
+                      {t('workbench.serverEditor.fields.favoriteDescription')}
+                    </div>
                   </div>
                   <FormControl>
                     <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -357,19 +393,21 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
 
           {isPrivateKeyAuth ? (
             <section className="border-b border-[var(--workbench-border)] px-6 py-5">
-              <div className="mb-4 text-base font-semibold">私钥文件</div>
+              <div className="mb-4 text-base font-semibold">
+                {t('workbench.serverEditor.sections.privateKey')}
+              </div>
               <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
                 <FormField
                   control={form.control}
                   name="privateKeyPath"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>私钥文件</FormLabel>
+                      <FormLabel>{t('workbench.serverEditor.fields.privateKeyFile')}</FormLabel>
                       <FormControl>
                         <Input
                           {...field}
                           value={field.value ?? ''}
-                          placeholder="选择 PEM / KEY / PPK 文件"
+                          placeholder={t('workbench.serverEditor.placeholders.privateKeyFile')}
                         />
                       </FormControl>
                       <FormMessage />
@@ -387,8 +425,8 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                       }
                     }}
                   >
-                    <FolderOpen className="size-4" />
-                    浏览
+                    <BrowseIcon className="size-4" />
+                    {t('common.actions.browse')}
                   </Button>
                 </div>
               </div>
@@ -402,7 +440,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
               ) : (
                 <LockKeyhole className="size-4 text-primary" />
               )}
-              凭据策略
+              {t('workbench.serverEditor.fields.credentials')}
             </div>
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
               <FormField
@@ -415,7 +453,11 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                       <Input
                         {...field}
                         type="password"
-                        placeholder={isPrivateKeyAuth ? '留空表示无口令' : '留空则沿用已保存密码'}
+                        placeholder={t(
+                          isPrivateKeyAuth
+                            ? 'workbench.serverEditor.placeholders.privateKeySecret'
+                            : 'workbench.serverEditor.placeholders.savedPassword'
+                        )}
                       />
                     </FormControl>
                     <FormMessage />
@@ -431,8 +473,8 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                       <div className="font-medium">{rememberLabel}</div>
                       <div className="text-sm text-muted-foreground">
                         {credentialStorageAvailable
-                          ? '保存到系统钥匙串，后续连接可直接复用。'
-                          : '当前环境没有可用的系统钥匙串。'}
+                          ? t('workbench.serverEditor.systemKeychain.available')
+                          : t('workbench.serverEditor.systemKeychain.unavailable')}
                       </div>
                     </div>
                     <FormControl>
@@ -450,8 +492,10 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
 
           <section className="border-b border-[var(--workbench-border)] px-6 py-5">
             <div className="mb-4 flex items-center justify-between gap-3">
-              <div className="text-base font-semibold">标签</div>
-              <Badge variant="secondary">{selectedTagIds.length} 已选</Badge>
+              <div className="text-base font-semibold">{t('workbench.serverEditor.sections.tags')}</div>
+              <Badge variant="secondary">
+                {t('common.labels.selectedCount', { count: selectedTagIds.length })}
+              </Badge>
             </div>
             <FormField
               control={form.control}
@@ -487,7 +531,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                       })}
                       {(tagsQuery.data ?? []).length === 0 ? (
                         <div className="rounded-sm border border-dashed border-[var(--workbench-border)] px-3 py-4 text-sm text-muted-foreground">
-                          还没有标签，可在 Explorer 中创建。
+                          {t('workbench.serverEditor.empty.tags')}
                         </div>
                       ) : null}
                     </div>
@@ -499,15 +543,19 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
           </section>
 
           <section className="px-6 py-5">
-            <div className="mb-4 text-base font-semibold">备注</div>
+            <div className="mb-4 text-base font-semibold">{t('workbench.serverEditor.sections.note')}</div>
             <FormField
               control={form.control}
               name="note"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>连接说明</FormLabel>
+                  <FormLabel>{t('workbench.serverEditor.fields.connectNote')}</FormLabel>
                   <FormControl>
-                    <Textarea {...field} rows={5} placeholder="记录环境说明、跳板关系或维护信息。" />
+                    <Textarea
+                      {...field}
+                      rows={5}
+                      placeholder={t('workbench.serverEditor.placeholders.note')}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

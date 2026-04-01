@@ -62,7 +62,15 @@ const api: WinsshApi = {
   system: {
     pickPrivateKey: () => ipcRenderer.invoke('system:pickPrivateKey'),
     getKnownHosts: () => ipcRenderer.invoke('system:getKnownHosts'),
-    getCapabilities: () => ipcRenderer.invoke('system:getCapabilities')
+    getCapabilities: () => ipcRenderer.invoke('system:getCapabilities'),
+    relaunch: () => ipcRenderer.invoke('system:relaunch'),
+    window: {
+      minimize: () => ipcRenderer.invoke('system:window:minimize'),
+      toggleMaximize: () => ipcRenderer.invoke('system:window:toggleMaximize'),
+      close: () => ipcRenderer.invoke('system:window:close'),
+      isMaximized: () => ipcRenderer.invoke('system:window:isMaximized'),
+      onStateChange: (callback) => subscribe('system:windowState', callback)
+    }
   }
 }
 

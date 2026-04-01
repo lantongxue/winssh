@@ -23,16 +23,10 @@ export type WorkbenchExplorerNodeId =
   | `recent-server:${string}`
 
 export type WorkbenchDocumentId =
-  | 'explorer-home'
   | 'settings-editor'
   | 'terminal-welcome'
   | `server-editor:${string}`
   | `session-editor:${string}`
-
-export interface ExplorerHomeDocument {
-  id: 'explorer-home'
-  kind: 'explorer-home'
-}
 
 export interface SettingsEditorDocument {
   id: 'settings-editor'
@@ -57,7 +51,6 @@ export interface SessionEditorDocument {
 }
 
 export type WorkbenchDocument =
-  | ExplorerHomeDocument
   | SettingsEditorDocument
   | TerminalWelcomeDocument
   | ServerEditorDocument
@@ -65,14 +58,11 @@ export type WorkbenchDocument =
 
 export interface WorkbenchActivityMeta {
   activityId: WorkbenchActivityId
-  description: string
   icon: LucideIcon
-  title: string
 }
 
 export interface WorkbenchPanelMeta {
   id: WorkbenchPanelId
-  label: string
 }
 
 export interface WorkbenchOutputEntry {
@@ -100,34 +90,23 @@ export interface WorkbenchTransferEntry extends TransferProgressEvent {
 export const workbenchActivities: WorkbenchActivityMeta[] = [
   {
     activityId: 'explorer',
-    description: 'Browse saved hosts, groups, tags, and recent connections.',
-    icon: Files,
-    title: 'Explorer'
+    icon: Files
   },
   {
     activityId: 'terminal',
-    description: 'Inspect active SSH sessions and remote file systems.',
-    icon: TerminalSquare,
-    title: 'Terminal'
+    icon: TerminalSquare
   },
   {
     activityId: 'settings',
-    description: 'Adjust appearance, terminal behavior, and trust settings.',
-    icon: Settings2,
-    title: 'Settings'
+    icon: Settings2
   }
 ]
 
 export const workbenchPanels: WorkbenchPanelMeta[] = [
-  { id: 'output', label: 'OUTPUT' },
-  { id: 'transfers', label: 'TRANSFERS' },
-  { id: 'problems', label: 'PROBLEMS' }
+  { id: 'output' },
+  { id: 'transfers' },
+  { id: 'problems' }
 ]
-
-export const defaultWorkbenchDocument: ExplorerHomeDocument = {
-  id: 'explorer-home',
-  kind: 'explorer-home'
-}
 
 export function createSettingsEditorDocument(): SettingsEditorDocument {
   return { id: 'settings-editor', kind: 'settings-editor' }
@@ -153,10 +132,6 @@ export function createSessionEditorDocument(sessionId: string): SessionEditorDoc
   }
 }
 
-export function isPinnedDocument(documentId: WorkbenchDocumentId) {
-  return documentId === defaultWorkbenchDocument.id
-}
-
 export function getWorkbenchActivity(activityId: WorkbenchActivityId): WorkbenchActivityMeta {
   return (
     workbenchActivities.find((activity) => activity.activityId === activityId) ??
@@ -164,7 +139,11 @@ export function getWorkbenchActivity(activityId: WorkbenchActivityId): Workbench
   )
 }
 
-export function getDocumentActivity(document: WorkbenchDocument): WorkbenchActivityId {
+export function getDocumentActivity(document: WorkbenchDocument | null): WorkbenchActivityId {
+  if (!document) {
+    return 'explorer'
+  }
+
   if (document.kind === 'settings-editor') {
     return 'settings'
   }
@@ -188,10 +167,12 @@ export function getLegacyPathForActivity(activityId: WorkbenchActivityId): Workb
   return '/servers'
 }
 
+export function getLegacyPathForDocument(document: WorkbenchDocument | null): WorkbenchLegacyPath {
+  return getLegacyPathForActivity(getDocumentActivity(document))
+}
+
 export function getDocumentFallbackTitle(document: WorkbenchDocument): string {
   switch (document.kind) {
-    case 'explorer-home':
-      return 'Explorer'
     case 'settings-editor':
       return 'Settings'
     case 'terminal-welcome':
@@ -207,8 +188,6 @@ export function getDocumentFallbackTitle(document: WorkbenchDocument): string {
 
 export function getDocumentDescription(document: WorkbenchDocument): string {
   switch (document.kind) {
-    case 'explorer-home':
-      return 'Workspace overview and recent activity.'
     case 'settings-editor':
       return 'Application preferences.'
     case 'terminal-welcome':

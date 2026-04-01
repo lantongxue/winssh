@@ -20,6 +20,7 @@ import type {
   TransferProgressEvent
 } from '@shared/types'
 import type { DatabaseService } from './database'
+import type { MainTranslator } from './localization'
 import type { SecureStoreService } from './secure-store'
 
 type WindowProvider = () => BrowserWindow | null
@@ -191,13 +192,14 @@ export class SessionManager {
     private readonly emitToRenderer: <T extends keyof EventMap>(
       channel: T,
       payload: EventMap[T]
-    ) => void
+    ) => void,
+    private readonly t: MainTranslator
   ) {}
 
   async connect(request: ConnectionRequest): Promise<SessionSummary> {
     const server = this.database.getServerById(request.serverId)
     if (!server) {
-      throw new Error('目标服务器不存在')
+      throw new Error(this.t('errors.serverNotFound'))
     }
 
     const password =
@@ -206,13 +208,13 @@ export class SessionManager {
       request.passphrase ?? (await this.secureStore.getSecret(server.id, 'passphrase')) ?? undefined
 
     if (server.authType === 'password' && !password) {
-      throw new Error('该服务器未保存密码，请先输入密码后再连接')
+      throw new Error(this.t('errors.passwordRequired'))
     }
 
     let privateKey: string | undefined
     if (server.authType === 'privateKey') {
       if (!server.privateKeyPath) {
-        throw new Error('该服务器未配置私钥文件')
+        throw new Error(this.t('errors.privateKeyMissing'))
       }
 
       privateKey = await fs.readFile(server.privateKeyPath, 'utf8')
@@ -242,7 +244,7 @@ export class SessionManager {
     this.emitToRenderer('sessions:state', {
       sessionId,
       status: 'connecting',
-      message: '正在建立连接'
+      message: this.t('session.connecting')
     })
 
     const client = new Client()
@@ -267,7 +269,7 @@ export class SessionManager {
       let settled = false
 
       const rejectWith = (error: unknown) => {
-        const message = error instanceof Error ? error.message : '连接失败'
+        const message = error instanceof Error ? error.message : this.t('errors.connectionFailed')
         if (!settled) {
           settled = true
           this.emitToRenderer('sessions:error', { sessionId, message })
@@ -331,7 +333,11 @@ export class SessionManager {
 
           this.sessions.set(sessionId, runtime)
           this.database.recordRecentSession(server.id)
-          this.emitToRenderer('sessions:state', { sessionId, status: 'ready', message: '连接成功' })
+          this.emitToRenderer('sessions:state', {
+            sessionId,
+            status: 'ready',
+            message: this.t('session.connected')
+          })
 
           if (!settled) {
             settled = true
@@ -354,7 +360,7 @@ export class SessionManager {
   async reconnect(sessionId: string): Promise<SessionSummary> {
     const request = this.history.get(sessionId)
     if (!request) {
-      throw new Error('当前标签缺少可复用的连接参数')
+      throw new Error(this.t('errors.reconnectUnavailable'))
     }
 
     return this.connect(request)
@@ -372,7 +378,7 @@ export class SessionManager {
     this.emitToRenderer('sessions:state', {
       sessionId,
       status: 'disconnected',
-      message: '连接已关闭'
+      message: this.t('session.closed')
     })
   }
 
@@ -425,7 +431,7 @@ export class SessionManager {
     const runtime = this.requireSession(sessionId)
     const window = this.getWindow()
     const openOptions: OpenDialogOptions = {
-      title: '选择要上传的文件',
+      title: this.t('dialogs.uploadFiles.title'),
       properties: ['openFile', 'multiSelections']
     }
     const selection = window
@@ -497,7 +503,7 @@ export class SessionManager {
     const window = this.getWindow()
     const fileName = path.posix.basename(normalized)
     const saveOptions = {
-      title: '保存远程文件',
+      title: this.t('dialogs.downloadFile.title'),
       defaultPath: fileName
     }
     const saveResult = window
@@ -570,7 +576,7 @@ export class SessionManager {
   private requireSession(sessionId: string): SessionRuntime {
     const runtime = this.sessions.get(sessionId)
     if (!runtime) {
-      throw new Error('当前会话不存在或已经关闭')
+      throw new Error(this.t('errors.sessionUnavailable'))
     }
 
     return runtime
@@ -592,7 +598,7 @@ export class SessionManager {
     this.emitToRenderer('sessions:state', {
       sessionId,
       status: runtime.lastError ? 'error' : 'disconnected',
-      message: runtime.lastError ?? '连接已断开'
+      message: runtime.lastError ?? this.t('session.disconnected')
     })
   }
 
@@ -614,12 +620,18 @@ export class SessionManager {
     if (known && known.fingerprint !== fingerprint) {
       const warningOptions: MessageBoxOptions = {
         type: 'warning',
-        buttons: ['取消连接', '信任新指纹'],
+        buttons: [
+          this.t('dialogs.hostChanged.buttons.cancel'),
+          this.t('dialogs.hostChanged.buttons.trust')
+        ],
         cancelId: 0,
         defaultId: 0,
-        title: '主机指纹已变更',
-        message: `${serverName} 的主机指纹与上次记录不一致`,
-        detail: `旧指纹: ${known.fingerprint}\n新指纹: ${fingerprint}\n\n如果你无法确认变更来源，请取消连接。`
+        title: this.t('dialogs.hostChanged.title'),
+        message: this.t('dialogs.hostChanged.message', { serverName }),
+        detail: this.t('dialogs.hostChanged.detail', {
+          fingerprint,
+          knownFingerprint: known.fingerprint
+        })
       }
       const changed = window
         ? await dialog.showMessageBox(window, warningOptions)
@@ -631,12 +643,15 @@ export class SessionManager {
     } else {
       const trustOptions: MessageBoxOptions = {
         type: 'question',
-        buttons: ['拒绝', '信任并继续'],
+        buttons: [
+          this.t('dialogs.hostFirstSeen.buttons.reject'),
+          this.t('dialogs.hostFirstSeen.buttons.trust')
+        ],
         cancelId: 0,
         defaultId: 1,
-        title: '首次连接主机',
-        message: `是否信任 ${serverName} 的主机指纹？`,
-        detail: `地址: ${host}:${port}\n指纹: ${fingerprint}`
+        title: this.t('dialogs.hostFirstSeen.title'),
+        message: this.t('dialogs.hostFirstSeen.message', { serverName }),
+        detail: this.t('dialogs.hostFirstSeen.detail', { fingerprint, host, port })
       }
       const firstTrust = window
         ? await dialog.showMessageBox(window, trustOptions)

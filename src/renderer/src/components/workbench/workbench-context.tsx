@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { ConnectionRequest, Server } from '@shared/types'
 import type { WorkbenchActivityId } from '@/lib/workbench'
@@ -8,8 +9,7 @@ import {
   createServerEditorDocument,
   createSessionEditorDocument,
   createSettingsEditorDocument,
-  createTerminalWelcomeDocument,
-  defaultWorkbenchDocument
+  createTerminalWelcomeDocument
 } from '@/lib/workbench'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
@@ -73,6 +73,7 @@ function requiresSecretPrompt(server: Server) {
 }
 
 export function WorkbenchProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [quickInput, setQuickInput] = useState<WorkbenchQuickInputState | null>(null)
   const tabs = useSessionsStore((state) => state.tabs)
@@ -86,6 +87,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const openDocument = useWorkbenchStore((state) => state.openDocument)
   const pushProblem = useWorkbenchStore((state) => state.pushProblem)
   const replaceDocument = useWorkbenchStore((state) => state.replaceDocument)
+  const setActiveActivity = useWorkbenchStore((state) => state.setActiveActivity)
   const setSelectedExplorerNode = useWorkbenchStore((state) => state.setSelectedExplorerNode)
 
   const refreshWorkspaceData = async () => {
@@ -97,15 +99,18 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   }
 
   const focusExplorerHome = () => {
+    setActiveActivity('explorer')
     setSelectedExplorerNode('home')
-    openDocument(defaultWorkbenchDocument)
   }
 
   const openSettingsEditor = () => {
+    setActiveActivity('settings')
     openDocument(createSettingsEditorDocument())
   }
 
   const openServerEditor = (serverId?: string | null) => {
+    setActiveActivity('explorer')
+
     if (serverId) {
       setSelectedExplorerNode(`server:${serverId}`)
     }
@@ -114,6 +119,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   }
 
   const focusActivity = (activityId: WorkbenchActivityId) => {
+    setActiveActivity(activityId)
+
     if (activityId === 'settings') {
       openSettingsEditor()
       return
@@ -157,12 +164,13 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 
     addPendingSession({
       host: server.host,
-      lastMessage: '正在校验凭据与连接参数',
+      lastMessage: t('workbench.terminal.stages.validate'),
       port: server.port,
       serverId: server.id,
       serverName: server.name,
       sessionId: pendingSessionId
     })
+    setActiveActivity('terminal')
     openDocument(createSessionEditorDocument(pendingSessionId))
     closeDocument('terminal-welcome')
     setQuickInput(null)
@@ -170,7 +178,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     appendOutput({
       detail: `${server.username}@${server.host}:${server.port}`,
       level: 'info',
-      message: `Connecting to ${server.name}`
+      message: t('workbench.output.connectingTo', { name: server.name })
     })
 
     try {
@@ -180,15 +188,15 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         `session-editor:${pendingSessionId}`,
         createSessionEditorDocument(summary.sessionId)
       )
-      toast.success(`已连接到 ${server.name}`)
+      toast.success(t('workbench.toasts.sessionConnected', { name: server.name }))
       appendOutput({
         detail: `${server.username}@${server.host}:${server.port}`,
         level: 'success',
-        message: `Connected to ${server.name}`
+        message: t('workbench.output.connectedTo', { name: server.name })
       })
       await refreshWorkspaceData()
     } catch (error) {
-      const message = error instanceof Error ? error.message : '连接失败'
+      const message = error instanceof Error ? error.message : t('workbench.toasts.connectionFailed')
       setSessionState(pendingSessionId, 'error', message)
       appendOutput({
         detail: `${server.username}@${server.host}:${server.port}`,
@@ -228,7 +236,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     appendOutput({
       detail: session ? `${session.serverName} · ${session.host}:${session.port}` : sessionId,
       level: 'info',
-      message: 'Session disconnected'
+      message: t('workbench.output.sessionDisconnected')
     })
 
     await refreshWorkspaceData()
@@ -248,7 +256,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         (await window.winsshApi.servers.list()).find((item) => item.id === session.serverId)
 
       if (!server) {
-        toast.error('未找到对应的服务器配置')
+        toast.error(t('workbench.toasts.serverConfigMissing'))
         return
       }
 
@@ -259,7 +267,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     appendOutput({
       detail: `${session.serverName} · ${session.host}:${session.port}`,
       level: 'info',
-      message: `Reconnecting ${session.serverName}`
+      message: t('workbench.output.reconnecting', { name: session.serverName })
     })
 
     try {
@@ -269,15 +277,15 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         `session-editor:${sessionId}`,
         createSessionEditorDocument(nextSession.sessionId)
       )
-      toast.success(`已重新连接 ${nextSession.serverName}`)
+      toast.success(t('workbench.toasts.reconnected', { name: nextSession.serverName }))
       appendOutput({
         detail: `${nextSession.serverName} · ${nextSession.host}:${nextSession.port}`,
         level: 'success',
-        message: `Reconnected ${nextSession.serverName}`
+        message: t('workbench.toasts.reconnected', { name: nextSession.serverName })
       })
       await refreshWorkspaceData()
     } catch (error) {
-      const message = error instanceof Error ? error.message : '重新连接失败'
+      const message = error instanceof Error ? error.message : t('workbench.toasts.reconnectFailed')
       pushProblem({
         detail: `${session.serverName} · ${session.host}:${session.port}`,
         documentId: `session-editor:${sessionId}`,
@@ -298,7 +306,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     await window.winsshApi.servers.delete(serverId)
     closeDocument(`server-editor:${serverId}`)
     await refreshWorkspaceData()
-    toast.success('服务器已删除')
+    toast.success(t('workbench.toasts.serverDeleted'))
   }
 
   const openEntityQuickInput = (input: EntityQuickInputState) => {

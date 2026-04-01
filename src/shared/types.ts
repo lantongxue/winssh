@@ -1,9 +1,11 @@
 export type AuthType = 'password' | 'privateKey'
 export type ThemeMode = 'system' | 'light' | 'dark'
+export type AppLanguage = 'system' | 'zh-CN' | 'en-US'
 export type CursorStyle = 'block' | 'underline' | 'bar'
 export type SessionStatus = 'connecting' | 'ready' | 'error' | 'disconnected'
 export type RemoteEntryKind = 'file' | 'directory' | 'symlink'
 export type SecretKind = 'password' | 'passphrase'
+export type WindowTitleBarStyle = 'native' | 'custom'
 
 export interface ServerGroup {
   id: string
@@ -58,12 +60,14 @@ export interface KnownHost {
 }
 
 export interface AppSettings {
+  language: AppLanguage
   theme: ThemeMode
   terminalFontSize: number
   terminalFontFamily: string
   cursorStyle: CursorStyle
   cursorBlink: boolean
   copyOnSelect: boolean
+  windowTitleBarStyle: WindowTitleBarStyle
 }
 
 export interface GroupInput {
@@ -163,4 +167,8 @@ export interface TransferProgressEvent {
 
 export interface RuntimeCapabilities {
   credentialStorage: boolean
+}
+
+export interface WindowState {
+  isMaximized: boolean
 }

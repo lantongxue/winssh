@@ -1,8 +1,10 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, ChevronDown, ChevronRight, FolderTree, Heart, Plus, Tags } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { Server, ServerGroup, Tag } from '@shared/types'
+import { actionIcons } from '@/lib/action-icons'
 import { getColorStyle } from '@/lib/colors'
 import { cn } from '@/lib/utils'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
@@ -103,6 +105,12 @@ function ServerRow({
   onToggleFavorite: () => void
   server: Server
 }) {
+  const { t } = useTranslation()
+  const ConnectIcon = actionIcons.connect
+  const EditIcon = actionIcons.edit
+  const FavoriteIcon = actionIcons.star
+  const DeleteIcon = actionIcons.delete
+
   const handleConnect = () => {
     onSelect()
     onConnect()
@@ -127,7 +135,7 @@ function ServerRow({
               'opacity-0 pointer-events-none group-hover/tree-row:opacity-100 group-hover/tree-row:pointer-events-auto',
               'group-focus-within/tree-row:opacity-100 group-focus-within/tree-row:pointer-events-auto'
             )}
-            aria-label={`Connect to ${server.name}`}
+            aria-label={t('workbench.primarySidebar.actions.connect')}
             onMouseDown={(event) => {
               event.stopPropagation()
             }}
@@ -146,14 +154,24 @@ function ServerRow({
         </TreeRow>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem onClick={onConnect}>连接</ContextMenuItem>
-        <ContextMenuItem onClick={onEdit}>编辑</ContextMenuItem>
+        <ContextMenuItem onClick={onConnect}>
+          <ConnectIcon className="size-4" />
+          {t('workbench.primarySidebar.actions.connect')}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={onEdit}>
+          <EditIcon className="size-4" />
+          {t('workbench.primarySidebar.actions.edit')}
+        </ContextMenuItem>
         <ContextMenuItem onClick={onToggleFavorite}>
-          {server.favorite ? '取消收藏' : '加入收藏'}
+          <FavoriteIcon className="size-4" />
+          {server.favorite
+            ? t('workbench.primarySidebar.actions.removeFromFavorites')
+            : t('workbench.primarySidebar.actions.addToFavorites')}
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem variant="destructive" onClick={onDelete}>
-          删除
+          <DeleteIcon className="size-4" />
+          {t('common.actions.delete')}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
@@ -175,6 +193,10 @@ function EntityNode({
   onDelete: () => void
   onRename: () => void
 }) {
+  const { t } = useTranslation()
+  const RenameIcon = actionIcons.rename
+  const DeleteIcon = actionIcons.delete
+
   return (
     <ContextMenu>
       <ContextMenuTrigger>
@@ -183,9 +205,13 @@ function EntityNode({
         </TreeRow>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem onClick={onRename}>重命名</ContextMenuItem>
+        <ContextMenuItem onClick={onRename}>
+          <RenameIcon className="size-4" />
+          {t('workbench.primarySidebar.actions.rename')}
+        </ContextMenuItem>
         <ContextMenuItem variant="destructive" onClick={onDelete}>
-          删除
+          <DeleteIcon className="size-4" />
+          {t('common.actions.delete')}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
@@ -193,6 +219,7 @@ function EntityNode({
 }
 
 export function WorkbenchPrimarySidebar() {
+  const { t } = useTranslation()
   const {
     connectServer,
     deleteServer,
@@ -278,31 +305,31 @@ export function WorkbenchPrimarySidebar() {
   const handleDeleteGroup = async (group: ServerGroup) => {
     await window.winsshApi.groups.delete(group.id)
     await refreshWorkspaceData()
-    toast.success('分组已删除')
+    toast.success(t('workbench.primarySidebar.toasts.groupDeleted'))
   }
 
   const handleDeleteTag = async (tag: Tag) => {
     await window.winsshApi.tags.delete(tag.id)
     await refreshWorkspaceData()
-    toast.success('标签已删除')
+    toast.success(t('workbench.primarySidebar.toasts.tagDeleted'))
   }
 
   return (
     <aside className="flex h-full min-h-0 flex-col border-r border-[var(--workbench-border)] bg-[var(--workbench-sidebar)]">
       <div className="border-b border-[var(--workbench-border)] px-4 py-3">
         <div className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground">
-          EXPLORER
+          {t('workbench.primarySidebar.title').toUpperCase()}
         </div>
-        <div className="mt-2 text-sm font-medium text-foreground">Connections</div>
+        <div className="mt-2 text-sm font-medium text-foreground">{t('workbench.primarySidebar.title')}</div>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          单击打开编辑器，双击建立 SSH 会话。
+          {t('workbench.primarySidebar.description')}
         </p>
       </div>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-2 py-3">
         <section className="space-y-1">
           <SectionHeader
-            title="Favorites"
+            title={t('workbench.primarySidebar.sections.favorites')}
             collapsed={Boolean(collapsedSections.favorites)}
             onToggle={() => toggleSection('favorites')}
           />
@@ -313,7 +340,7 @@ export function WorkbenchPrimarySidebar() {
                 onClick={() => setSelectedExplorerNode('favorites')}
               >
                 <Heart className="size-4" />
-                <span className="flex-1 truncate">收藏连接</span>
+                <span className="flex-1 truncate">{t('workbench.primarySidebar.sections.favorites')}</span>
                 <span className="text-xs text-muted-foreground">
                   {servers.filter((server) => server.favorite).length}
                 </span>
@@ -339,7 +366,7 @@ export function WorkbenchPrimarySidebar() {
 
         <section className="space-y-1">
           <SectionHeader
-            title="Recent"
+            title={t('workbench.primarySidebar.sections.recent')}
             collapsed={Boolean(collapsedSections.recent)}
             onToggle={() => toggleSection('recent')}
           />
@@ -350,7 +377,7 @@ export function WorkbenchPrimarySidebar() {
                 onClick={() => setSelectedExplorerNode('recent')}
               >
                 <FolderTree className="size-4" />
-                <span className="flex-1 truncate">最近连接</span>
+                <span className="flex-1 truncate">{t('workbench.primarySidebar.sections.recent')}</span>
                 <span className="text-xs text-muted-foreground">{recents.length}</span>
               </TreeRow>
               {recents.map((recent) => {
@@ -379,7 +406,7 @@ export function WorkbenchPrimarySidebar() {
 
         <section className="space-y-1">
           <SectionHeader
-            title="Groups"
+            title={t('workbench.primarySidebar.sections.groups')}
             collapsed={Boolean(collapsedSections.groups)}
             onToggle={() => toggleSection('groups')}
             action={
@@ -387,6 +414,7 @@ export function WorkbenchPrimarySidebar() {
                 variant="ghost"
                 size="icon-xs"
                 className="text-muted-foreground"
+                title={t('workbench.primarySidebar.actions.createGroup')}
                 onClick={() => openEntityQuickInput({ entityType: 'group', mode: 'create' })}
               >
                 <Plus className="size-3.5" />
@@ -465,7 +493,7 @@ export function WorkbenchPrimarySidebar() {
 
         <section className="space-y-1">
           <SectionHeader
-            title="Tags"
+            title={t('workbench.primarySidebar.sections.tags')}
             collapsed={Boolean(collapsedSections.tags)}
             onToggle={() => toggleSection('tags')}
             action={
@@ -473,6 +501,7 @@ export function WorkbenchPrimarySidebar() {
                 variant="ghost"
                 size="icon-xs"
                 className="text-muted-foreground"
+                title={t('workbench.primarySidebar.actions.createTag')}
                 onClick={() => openEntityQuickInput({ entityType: 'tag', mode: 'create' })}
               >
                 <Plus className="size-3.5" />
@@ -553,7 +582,7 @@ export function WorkbenchPrimarySidebar() {
 
         <section className="space-y-1">
           <SectionHeader
-            title="All Servers"
+            title={t('workbench.primarySidebar.sections.allServers')}
             collapsed={Boolean(collapsedSections['all-servers'])}
             onToggle={() => toggleSection('all-servers')}
             action={
@@ -561,6 +590,7 @@ export function WorkbenchPrimarySidebar() {
                 variant="ghost"
                 size="icon-xs"
                 className="text-muted-foreground"
+                title={t('common.actions.newConnection')}
                 onClick={() => openServerEditor()}
               >
                 <Plus className="size-3.5" />
@@ -574,7 +604,7 @@ export function WorkbenchPrimarySidebar() {
                 onClick={() => setSelectedExplorerNode('all-servers')}
               >
                 <Tags className="size-4" />
-                <span className="flex-1 truncate">全部服务器</span>
+                <span className="flex-1 truncate">{t('workbench.primarySidebar.sections.allServers')}</span>
                 <span className="text-xs text-muted-foreground">{filteredServers.length}</span>
               </TreeRow>
               {filteredServers.map((server) => (
