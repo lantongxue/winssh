@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import { SYSTEM_THEME_ID } from '@shared/themes'
 import { Languages, ShieldCheck, SlidersHorizontal, TerminalSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -49,6 +50,8 @@ const settingsSectionIcons = {
   terminal: TerminalSquare
 } as const
 
+const DEFAULT_SETTINGS_FORM_VALUES: SettingsFormValues = DEFAULT_APP_SETTINGS
+
 export function WorkbenchSettingsEditor() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -76,16 +79,7 @@ export function WorkbenchSettingsEditor() {
 
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema as never),
-    defaultValues: {
-      copyOnSelect: true,
-      cursorBlink: true,
-      cursorStyle: 'block',
-      language: 'system',
-      terminalFontFamily: 'JetBrains Mono, Consolas, monospace',
-      terminalFontSize: 14,
-      theme: SYSTEM_THEME_ID,
-      windowTitleBarStyle: 'native'
-    }
+    defaultValues: settingsQuery.data ?? DEFAULT_SETTINGS_FORM_VALUES
   })
 
   useEffect(() => {
