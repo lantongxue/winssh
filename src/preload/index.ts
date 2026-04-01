@@ -67,6 +67,9 @@ const api: WinsshApi = {
     get: () => ipcRenderer.invoke('settings:get'),
     update: (input) => ipcRenderer.invoke('settings:update', input)
   },
+  themes: {
+    list: () => ipcRenderer.invoke('themes:list')
+  },
   system: {
     pickPrivateKey: () => ipcRenderer.invoke('system:pickPrivateKey'),
     getKnownHosts: () => ipcRenderer.invoke('system:getKnownHosts'),

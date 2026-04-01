@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { DEFAULT_PIXEL_THEME_ID } from '@shared/themes'
 import i18n from '@/i18n'
 import { WorkbenchCommandCenter } from '@/components/workbench/workbench-command-center'
 import { WorkbenchProvider } from '@/components/workbench/workbench-context'
@@ -98,7 +99,7 @@ describe('WorkbenchCommandCenter quick connect', () => {
       language: 'en-US',
       terminalFontFamily: 'Consolas',
       terminalFontSize: 14,
-      theme: 'pixel',
+      theme: DEFAULT_PIXEL_THEME_ID,
       windowTitleBarStyle: 'custom'
     })
 
@@ -114,7 +115,7 @@ describe('WorkbenchCommandCenter quick connect', () => {
     fireEvent.click(await screen.findByText('Pixel CRT'))
 
     await waitFor(() => {
-      expect(updateSettings).toHaveBeenCalledWith({ theme: 'pixel' })
+      expect(updateSettings).toHaveBeenCalledWith({ theme: DEFAULT_PIXEL_THEME_ID })
     })
   })
 })

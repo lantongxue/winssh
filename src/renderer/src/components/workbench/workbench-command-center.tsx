@@ -1,12 +1,18 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { THEME_OPTIONS } from '@shared/constants'
-import type { ThemeMode } from '@shared/types'
+import { DEFAULT_PIXEL_THEME_ID, SYSTEM_THEME_ID } from '@shared/themes'
 import { useTranslation } from 'react-i18next'
 import { formatQuickConnectTarget, parseQuickConnectInput } from '@shared/quick-connect'
-import { Files, MonitorCog, MoonStar, ServerCog, SunMedium, TerminalSquare } from 'lucide-react'
+import {
+  Files,
+  MonitorCog,
+  MoonStar,
+  Palette,
+  ServerCog,
+  SunMedium,
+  TerminalSquare
+} from 'lucide-react'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
-import { getThemeLabelKey } from '@/lib/theme'
 import { actionIcons } from '@/lib/action-icons'
 import {
   createSessionEditorDocument,
@@ -61,15 +67,17 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
     queryKey: ['servers'],
     queryFn: () => window.winsshApi.servers.list()
   })
+  const themesQuery = useQuery({
+    queryKey: ['themes'],
+    queryFn: () => window.winsshApi.themes.list()
+  })
 
   const themeIcons = {
-    dark: MoonStar,
-    light: SunMedium,
-    pixel: TerminalSquare,
     system: MonitorCog
   } as const
+  const SystemThemeIcon = themeIcons.system
 
-  const handleThemeChange = async (theme: ThemeMode) => {
+  const handleThemeChange = async (theme: string) => {
     const settings = await window.winsshApi.settings.update({ theme })
     queryClient.setQueryData(['settings'], settings)
     setCommandPaletteOpen(false)
@@ -167,13 +175,24 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
           <CommandSeparator />
 
           <CommandGroup heading={t('workbench.commandCenter.commandPalette.groups.theme')}>
-            {THEME_OPTIONS.map((theme) => {
-              const ThemeIcon = themeIcons[theme]
+            <CommandItem onSelect={() => void handleThemeChange(SYSTEM_THEME_ID)}>
+              <SystemThemeIcon className="size-4" />
+              {t('common.theme.system')}
+            </CommandItem>
+            {(themesQuery.data ?? []).map((theme) => {
+              const ThemeIcon =
+                theme.id === DEFAULT_PIXEL_THEME_ID
+                  ? TerminalSquare
+                  : theme.appearance === 'dark'
+                    ? MoonStar
+                    : theme.appearance === 'light'
+                      ? SunMedium
+                      : Palette
 
               return (
-                <CommandItem key={theme} onSelect={() => void handleThemeChange(theme)}>
+                <CommandItem key={theme.id} onSelect={() => void handleThemeChange(theme.id)}>
                   <ThemeIcon className="size-4" />
-                  {t(getThemeLabelKey(theme))}
+                  {theme.label}
                 </CommandItem>
               )
             })}

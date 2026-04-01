@@ -1,18 +1,24 @@
 import { useEffect, useRef } from 'react'
 import { FitAddon } from '@xterm/addon-fit'
 import { Terminal } from '@xterm/xterm'
+import type { ThemeDefinition } from '@shared/themes'
 import type { AppSettings } from '@shared/types'
 import { resolveTerminalAppearance } from '@/lib/theme'
 
-export function useTerminal(sessionId: string | null, settings: AppSettings, enabled = true) {
+export function useTerminal(
+  sessionId: string | null,
+  settings: AppSettings,
+  theme: ThemeDefinition | null,
+  enabled = true
+) {
   const containerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    if (!enabled || !sessionId || !containerRef.current) {
+    if (!enabled || !sessionId || !containerRef.current || !theme) {
       return
     }
 
-    const terminalAppearance = resolveTerminalAppearance(settings)
+    const terminalAppearance = resolveTerminalAppearance(settings, theme)
     const terminal = new Terminal({
       allowTransparency: true,
       convertEol: true,
@@ -65,7 +71,7 @@ export function useTerminal(sessionId: string | null, settings: AppSettings, ena
       writeDisposable.dispose()
       terminal.dispose()
     }
-  }, [enabled, sessionId, settings])
+  }, [enabled, sessionId, settings, theme])
 
   return containerRef
 }

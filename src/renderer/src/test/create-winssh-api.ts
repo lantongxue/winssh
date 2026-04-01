@@ -1,6 +1,69 @@
 import type { WinsshApi } from '@shared/api'
+import {
+  createThemeDefinition,
+  DEFAULT_DARK_THEME_ID,
+  DEFAULT_LIGHT_THEME_ID,
+  DEFAULT_PIXEL_THEME_ID
+} from '@shared/themes'
 
 const noopUnsubscribe = () => undefined
+
+const defaultThemes = [
+  createThemeDefinition({
+    appearance: 'light',
+    id: DEFAULT_LIGHT_THEME_ID,
+    label: 'Light+',
+    pluginDisplayName: 'WinSSH Default Themes',
+    pluginId: 'winssh.default-themes',
+    source: 'builtin',
+    version: '0.1.0'
+  }),
+  createThemeDefinition({
+    appearance: 'dark',
+    id: DEFAULT_DARK_THEME_ID,
+    label: 'Dark+',
+    pluginDisplayName: 'WinSSH Default Themes',
+    pluginId: 'winssh.default-themes',
+    source: 'builtin',
+    version: '0.1.0'
+  }),
+  createThemeDefinition({
+    appearance: 'dark',
+    id: DEFAULT_PIXEL_THEME_ID,
+    label: 'Pixel CRT',
+    pluginDisplayName: 'WinSSH Default Themes',
+    pluginId: 'winssh.default-themes',
+    source: 'builtin',
+    terminal: {
+      background: '#050b07',
+      brightBlack: '#4e6954',
+      brightBlue: '#8acaff',
+      brightCyan: '#8dffe5',
+      brightGreen: '#a8ffb9',
+      brightMagenta: '#efb0ff',
+      brightRed: '#ff9d91',
+      brightWhite: '#f2fff4',
+      brightYellow: '#e7ff9b',
+      black: '#050b07',
+      blue: '#69b7ff',
+      cursor: '#7dff9b',
+      cyan: '#63ffd5',
+      foreground: '#9ff6a8',
+      green: '#7dff9b',
+      magenta: '#e38bff',
+      red: '#ff7a6b',
+      selectionBackground: 'rgba(125,255,155,0.22)',
+      white: '#d8ffe1',
+      yellow: '#d8ff72'
+    },
+    terminalDefaults: {
+      fontFamily: 'Lucida Console, Cascadia Mono, Consolas, monospace',
+      fontSize: 13,
+      lineHeight: 1.08
+    },
+    version: '0.1.0'
+  })
+]
 
 type DeepPartial<T> = {
   [K in keyof T]?: T[K] extends (...args: never[]) => unknown
@@ -115,6 +178,10 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
         windowTitleBarStyle: 'custom'
       }),
       ...overrides.settings
+    },
+    themes: {
+      list: async () => defaultThemes,
+      ...overrides.themes
     },
     system: {
       ...systemOverrides,

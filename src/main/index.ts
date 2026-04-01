@@ -1,5 +1,13 @@
 import { join } from 'node:path'
-import { app, BrowserWindow, dialog, ipcMain, shell, type OpenDialogOptions } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  nativeTheme,
+  shell,
+  type OpenDialogOptions
+} from 'electron'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { APP_ID } from '@shared/constants'
@@ -24,6 +32,7 @@ import { createMainTranslator, resolveMainLanguage } from './localization'
 import { SecureStoreService } from './secure-store'
 import { SessionManager } from './session-manager'
 import { configureHardwareAcceleration } from './gpu-config'
+import { ThemeRegistry } from './theme-registry'
 import { getWindowChromeOptions } from './window-config'
 
 let mainWindow: BrowserWindow | null = null
@@ -34,7 +43,7 @@ function sendWindowState(window: BrowserWindow) {
   })
 }
 
-function createWindow(settings: AppSettings): BrowserWindow {
+function createWindow(settings: AppSettings, themeRegistry: ThemeRegistry): BrowserWindow {
   const window = new BrowserWindow({
     width: 1600,
     height: 980,
@@ -43,7 +52,10 @@ function createWindow(settings: AppSettings): BrowserWindow {
     show: false,
     autoHideMenuBar: true,
     title: 'WinSSH',
-    backgroundColor: '#09090b',
+    backgroundColor: themeRegistry.getWindowBackgroundColor(
+      settings.theme,
+      nativeTheme.shouldUseDarkColors
+    ),
     ...(process.platform === 'linux' ? { icon } : {}),
     ...getWindowChromeOptions(settings, process.platform),
     webPreferences: {
@@ -84,6 +96,10 @@ async function bootstrap(): Promise<void> {
   electronApp.setAppUserModelId(APP_ID)
 
   const database = new DatabaseService(join(app.getPath('userData'), 'winssh.db'))
+  const themeRegistry = new ThemeRegistry(
+    join(app.getAppPath(), 'themes', 'builtin'),
+    join(app.getPath('userData'), 'themes')
+  )
   const secureStore = new SecureStoreService()
   const translate = createMainTranslator(() =>
     resolveMainLanguage(database.getSettings().language, app.getLocale())
@@ -243,13 +259,19 @@ async function bootstrap(): Promise<void> {
     sessionManager.removePortForward(sessionId, ruleId)
   )
 
-  ipcMain.handle('settings:get', () => database.getSettings())
+  ipcMain.handle('themes:list', () => themeRegistry.listThemes())
+  ipcMain.handle('settings:get', () => themeRegistry.normalizeSettings(database.getSettings()))
   ipcMain.handle('settings:update', (_event, input: Partial<AppSettings>) => {
-    const merged = {
-      ...database.getSettings(),
+    const merged = parseInput(settingsSchema, {
+      ...themeRegistry.normalizeSettings(database.getSettings()),
       ...input
+    })
+
+    if (!themeRegistry.isValidSelection(merged.theme)) {
+      throw new Error(`unknown theme "${merged.theme}"`)
     }
-    return database.updateSettings(parseInput(settingsSchema, merged))
+
+    return themeRegistry.normalizeSettings(database.updateSettings(merged))
   })
 
   ipcMain.handle('system:pickPrivateKey', async () => {
@@ -302,11 +324,11 @@ async function bootstrap(): Promise<void> {
   })
   ipcMain.handle('system:window:isMaximized', () => mainWindow?.isMaximized() ?? false)
 
-  mainWindow = createWindow(database.getSettings())
+  mainWindow = createWindow(themeRegistry.normalizeSettings(database.getSettings()), themeRegistry)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      mainWindow = createWindow(database.getSettings())
+      mainWindow = createWindow(themeRegistry.normalizeSettings(database.getSettings()), themeRegistry)
     }
   })
 

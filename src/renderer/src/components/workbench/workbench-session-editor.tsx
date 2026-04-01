@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import { actionIcons } from '@/lib/action-icons'
+import { resolveThemeDefinition } from '@/lib/theme'
 import { PortForwardPanel } from '@/components/port-forward-panel'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import { SftpPanel } from '@/components/sftp-panel'
@@ -20,6 +21,10 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
     queryKey: ['settings'],
     queryFn: () => window.winsshApi.settings.get(),
     initialData: DEFAULT_APP_SETTINGS
+  })
+  const themesQuery = useQuery({
+    queryKey: ['themes'],
+    queryFn: () => window.winsshApi.themes.list()
   })
   const RemoteFilesIcon = actionIcons.openRemoteFiles
   const PortForwardIcon = actionIcons.openPortForwards
@@ -42,6 +47,11 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
   }
 
   const auxView = session.auxView ?? null
+  const resolvedTheme = resolveThemeDefinition(
+    settingsQuery.data.theme,
+    themesQuery.data ?? [],
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  )
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
@@ -93,6 +103,7 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
           <TerminalPane
             session={session}
             settings={settingsQuery.data}
+            theme={resolvedTheme}
             onReconnect={reconnectSession}
           />
         </div>

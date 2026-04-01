@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { DEFAULT_PIXEL_THEME_ID } from '@shared/themes'
 import i18n from '@/i18n'
 import { WorkbenchSettingsEditor } from '@/components/workbench/workbench-settings-editor'
 import { createWinsshApiMock } from '@/test/create-winssh-api'
@@ -36,7 +37,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
       language: 'en-US',
       terminalFontFamily: 'Consolas',
       terminalFontSize: 14,
-      theme: 'pixel',
+      theme: DEFAULT_PIXEL_THEME_ID,
       windowTitleBarStyle: 'custom'
     })
 
@@ -67,7 +68,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     await waitFor(() => {
       expect(updateSettings).toHaveBeenCalledWith(
         expect.objectContaining({
-          theme: 'pixel'
+          theme: DEFAULT_PIXEL_THEME_ID
         })
       )
     })

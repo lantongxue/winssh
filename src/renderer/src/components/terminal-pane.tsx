@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, LoaderCircle, RotateCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import type { ThemeDefinition } from '@shared/themes'
 import type { AppSettings } from '@shared/types'
 import { actionIcons } from '@/lib/action-icons'
 import type { SessionTab } from '@/store/sessions-store'
@@ -10,6 +11,7 @@ import { Button } from '@/components/ui/button'
 interface TerminalPaneProps {
   session: SessionTab
   settings: AppSettings
+  theme: ThemeDefinition | null
   onReconnect: (sessionId: string) => Promise<void>
 }
 
@@ -90,11 +92,12 @@ function ConnectingOverlay({
   )
 }
 
-export function TerminalPane({ session, settings, onReconnect }: TerminalPaneProps) {
+export function TerminalPane({ session, settings, theme, onReconnect }: TerminalPaneProps) {
   const { t } = useTranslation()
   const terminalRef = useTerminal(
     session.provisional ? null : session.sessionId,
     settings,
+    theme,
     !session.provisional
   )
   const ReconnectIcon = actionIcons.reconnect

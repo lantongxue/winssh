@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { getThemeLabelKey } from '@/lib/theme'
+import { getThemeSelectionLabel } from '@/lib/theme'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 
@@ -16,7 +16,15 @@ export function WorkbenchStatusBar() {
     queryKey: ['settings'],
     queryFn: () => window.winsshApi.settings.get()
   })
-  const themeLabel = t(getThemeLabelKey(settingsQuery.data?.theme ?? 'system'))
+  const themesQuery = useQuery({
+    queryKey: ['themes'],
+    queryFn: () => window.winsshApi.themes.list()
+  })
+  const themeLabel = getThemeSelectionLabel(
+    settingsQuery.data?.theme ?? 'system',
+    themesQuery.data ?? [],
+    t('common.theme.system')
+  )
 
   return (
     <footer className="flex h-6 shrink-0 items-center justify-between bg-[var(--workbench-statusbar)] px-3 text-[11px] text-[var(--workbench-statusbar-foreground)]">

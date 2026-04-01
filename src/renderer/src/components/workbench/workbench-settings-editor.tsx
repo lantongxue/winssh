@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { THEME_OPTIONS } from '@shared/constants'
+import { SYSTEM_THEME_ID } from '@shared/themes'
 import { Languages, ShieldCheck, SlidersHorizontal, TerminalSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
@@ -9,7 +9,6 @@ import { toast } from 'sonner'
 import { settingsSchema, type SettingsFormValues } from '@shared/validation'
 import { formatDateTime } from '@/i18n/format'
 import { actionIcons } from '@/lib/action-icons'
-import { getThemeLabelKey } from '@/lib/theme'
 import { useWorkbenchStore } from '@/store/workbench-store'
 import { Button } from '@/components/ui/button'
 import {
@@ -70,6 +69,10 @@ export function WorkbenchSettingsEditor() {
     queryKey: ['capabilities'],
     queryFn: () => window.winsshApi.system.getCapabilities()
   })
+  const themesQuery = useQuery({
+    queryKey: ['themes'],
+    queryFn: () => window.winsshApi.themes.list()
+  })
 
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema as never),
@@ -80,7 +83,7 @@ export function WorkbenchSettingsEditor() {
       language: 'system',
       terminalFontFamily: 'JetBrains Mono, Consolas, monospace',
       terminalFontSize: 14,
-      theme: 'system',
+      theme: SYSTEM_THEME_ID,
       windowTitleBarStyle: 'native'
     }
   })
@@ -215,9 +218,12 @@ export function WorkbenchSettingsEditor() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {THEME_OPTIONS.map((theme) => (
-                              <SelectItem key={theme} value={theme}>
-                                {t(getThemeLabelKey(theme))}
+                            <SelectItem value={SYSTEM_THEME_ID}>
+                              {t('common.theme.system')}
+                            </SelectItem>
+                            {(themesQuery.data ?? []).map((theme) => (
+                              <SelectItem key={theme.id} value={theme.id}>
+                                {theme.label}
                               </SelectItem>
                             ))}
                           </SelectContent>

@@ -23,6 +23,7 @@ import type {
   TransferProgressEvent,
   WindowState
 } from './types'
+import type { ThemeDefinition } from './themes'
 
 export type Unsubscribe = () => void
 
@@ -80,6 +81,9 @@ export interface WinsshApi {
   settings: {
     get: () => Promise<AppSettings>
     update: (input: Partial<AppSettings>) => Promise<AppSettings>
+  }
+  themes: {
+    list: () => Promise<ThemeDefinition[]>
   }
   system: {
     pickPrivateKey: () => Promise<string | null>
