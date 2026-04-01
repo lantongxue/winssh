@@ -101,7 +101,7 @@ function ServerRow({
   onConnect: () => void
   onDelete: () => void
   onEdit: () => void
-  onSelect: () => void
+  onSelect?: () => void
   onToggleFavorite: () => void
   server: Server
 }) {
@@ -112,7 +112,7 @@ function ServerRow({
   const DeleteIcon = actionIcons.delete
 
   const handleConnect = () => {
-    onSelect()
+    onSelect?.()
     onConnect()
   }
 
@@ -389,10 +389,9 @@ export function WorkbenchPrimarySidebar() {
                 return (
                   <ServerRow
                     key={recent.id}
-                    active={selectedExplorerNode === `recent-server:${recent.serverId}`}
+                    active={false}
                     depth={1}
                     server={server}
-                    onSelect={() => setSelectedExplorerNode(`recent-server:${recent.serverId}`)}
                     onConnect={() => void connectServer(server)}
                     onDelete={() => void deleteServer(server.id)}
                     onEdit={() => openServerEditor(server.id)}

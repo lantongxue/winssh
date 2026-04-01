@@ -138,7 +138,6 @@ export function WorkbenchExplorerHome() {
                       title={recent.serverName}
                       metadata={`${recent.host} · ${formatDateTime(recent.connectedAt)}`}
                       icon={<ArrowUpRight className="size-4 shrink-0 text-muted-foreground" />}
-                      onOpen={() => (server ? openServerEditor(server.id) : undefined)}
                       onConnect={() => (server ? void connectServer(server) : undefined)}
                     />
                   )

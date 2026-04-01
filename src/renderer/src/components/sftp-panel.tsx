@@ -4,6 +4,7 @@ import { EllipsisVertical, File, Folder } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { getParentRemotePath } from '@shared/sftp'
 import type { RemoteEntry } from '@shared/types'
+import { formatFileSize } from '@/i18n/format'
 import { actionIcons } from '@/lib/action-icons'
 import type { SessionTab } from '@/store/sessions-store'
 import { cn } from '@/lib/utils'
@@ -160,18 +161,18 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
           <div className="divide-y">
             {listingQuery.isLoading ? (
               <div className="space-y-2 p-3">
-                <Skeleton className="h-12 rounded-md" />
-                <Skeleton className="h-12 rounded-md" />
-                <Skeleton className="h-12 rounded-md" />
+                <Skeleton className="h-9 rounded-md" />
+                <Skeleton className="h-9 rounded-md" />
+                <Skeleton className="h-9 rounded-md" />
               </div>
             ) : null}
 
             {listingQuery.data?.entries.map((entry) => (
-              <div key={entry.path} className="group flex items-center justify-between px-2">
+              <div key={entry.path} className="group flex items-center justify-between px-1.5">
                 <Button
                   type="button"
                   variant="ghost"
-                  className="h-auto min-w-0 flex-1 justify-start rounded-none px-2 py-3"
+                  className="h-auto min-h-0 flex-1 justify-start rounded-none px-1.5 py-1.5"
                   onDoubleClick={() => {
                     if (entry.kind === 'directory') {
                       setCurrentPath(session.sessionId, entry.path)
@@ -183,27 +184,32 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                     }
                   }}
                 >
-                  <div className="flex size-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                  <div className="flex size-6 items-center justify-center rounded-sm bg-muted text-muted-foreground">
                     {entry.kind === 'directory' ? (
-                      <Folder className="size-4" />
+                      <Folder className="size-3.5" />
                     ) : (
-                      <File className="size-4" />
+                      <File className="size-3.5" />
                     )}
                   </div>
                   <div className="min-w-0 flex-1 text-left">
-                    <div className="truncate text-sm font-medium">{entry.name}</div>
-                    <div className="truncate text-xs text-muted-foreground">
+                    <div className="truncate text-[13px] leading-5 font-medium">{entry.name}</div>
+                    <div className="truncate text-[11px] leading-4 text-muted-foreground">
                       {entry.kind === 'directory'
                         ? t('workbench.sftp.kinds.directory')
-                        : t('workbench.sftp.kinds.bytes', { count: Math.max(entry.size, 0) })}
+                        : formatFileSize(Math.max(entry.size, 0))}
                     </div>
                   </div>
                 </Button>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-sm" title={t('common.actions.open')}>
-                      <EllipsisVertical className="size-4" />
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      className="size-7"
+                      title={t('common.actions.open')}
+                    >
+                      <EllipsisVertical className="size-3.5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">

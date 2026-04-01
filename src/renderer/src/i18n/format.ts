@@ -37,3 +37,25 @@ export function formatTime(
     ...options
   }).format(new Date(value))
 }
+
+const FILE_SIZE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'] as const
+
+export function formatFileSize(value: number): string {
+  const safeValue = Number.isFinite(value) && value > 0 ? value : 0
+
+  if (safeValue === 0) {
+    return '0 B'
+  }
+
+  let size = safeValue
+  let unitIndex = 0
+
+  while (size >= 1024 && unitIndex < FILE_SIZE_UNITS.length - 1) {
+    size /= 1024
+    unitIndex += 1
+  }
+
+  return `${new Intl.NumberFormat(getResolvedLocale(), {
+    maximumFractionDigits: size >= 10 ? 0 : 1
+  }).format(size)} ${FILE_SIZE_UNITS[unitIndex]}`
+}
