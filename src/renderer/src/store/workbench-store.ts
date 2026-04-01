@@ -11,10 +11,7 @@ import type {
   WorkbenchProblemEntry,
   WorkbenchTransferEntry
 } from '@/lib/workbench'
-import {
-  createTransferEntryId,
-  getDocumentActivity
-} from '@/lib/workbench'
+import { createTransferEntryId, getDocumentActivity } from '@/lib/workbench'
 
 interface WorkbenchStateData {
   activeActivityId: WorkbenchActivityId
@@ -22,6 +19,7 @@ interface WorkbenchStateData {
   activePanelId: WorkbenchPanelId
   collapsedSections: Partial<Record<WorkbenchExplorerSectionId, boolean>>
   commandPaletteOpen: boolean
+  documentTitleOverrides: Partial<Record<WorkbenchDocumentId, string>>
   openDocuments: WorkbenchDocument[]
   outputEntries: WorkbenchOutputEntry[]
   panelOpen: boolean
@@ -35,6 +33,7 @@ interface WorkbenchStateData {
 interface WorkbenchState extends WorkbenchStateData {
   appendOutput: (entry: Omit<WorkbenchOutputEntry, 'id' | 'createdAt'>) => void
   clearProblems: () => void
+  clearDocumentTitleOverride: (documentId: WorkbenchDocumentId) => void
   clearTransfers: () => void
   closeDocument: (documentId: WorkbenchDocumentId) => void
   dismissProblem: (problemId: string) => void
@@ -47,6 +46,7 @@ interface WorkbenchState extends WorkbenchStateData {
   setActiveDocument: (documentId: WorkbenchDocumentId | null) => void
   setActivePanel: (panelId: WorkbenchPanelId) => void
   setCommandPaletteOpen: (open: boolean) => void
+  setDocumentTitleOverride: (documentId: WorkbenchDocumentId, title: string) => void
   setPanelOpen: (open: boolean) => void
   setQuickOpenOpen: (open: boolean) => void
   setSelectedExplorerNode: (nodeId: WorkbenchExplorerNodeId) => void
@@ -94,6 +94,7 @@ function createInitialState(): WorkbenchStateData {
     activePanelId: 'output',
     collapsedSections: {},
     commandPaletteOpen: false,
+    documentTitleOverrides: {},
     openDocuments: [],
     outputEntries: [],
     panelOpen: false,
@@ -120,6 +121,19 @@ export const useWorkbenchStore = create<WorkbenchState>()(
             ...state.outputEntries
           ].slice(0, 120)
         })),
+      clearDocumentTitleOverride: (documentId) =>
+        set((state) => {
+          if (!state.documentTitleOverrides[documentId]) {
+            return state
+          }
+
+          const nextOverrides = { ...state.documentTitleOverrides }
+          delete nextOverrides[documentId]
+
+          return {
+            documentTitleOverrides: nextOverrides
+          }
+        }),
       clearProblems: () => set({ problems: [] }),
       clearTransfers: () => set({ transferEntries: [] }),
       closeDocument: (documentId) =>
@@ -141,10 +155,13 @@ export const useWorkbenchStore = create<WorkbenchState>()(
 
           const nextActiveDocument =
             nextDocuments.find((document) => document.id === nextActiveDocumentId) ?? null
+          const nextTitleOverrides = { ...state.documentTitleOverrides }
+          delete nextTitleOverrides[documentId]
 
           return {
             activeActivityId: getDocumentActivity(nextActiveDocument),
             activeDocumentId: nextActiveDocumentId,
+            documentTitleOverrides: nextTitleOverrides,
             openDocuments: nextDocuments
           }
         }),
@@ -171,7 +188,9 @@ export const useWorkbenchStore = create<WorkbenchState>()(
           }
 
           const document = currentDocuments[currentIndex]
-          const remaining = currentDocuments.filter((currentDocument) => currentDocument.id !== documentId)
+          const remaining = currentDocuments.filter(
+            (currentDocument) => currentDocument.id !== documentId
+          )
           const normalizedIndex =
             targetIndex > currentIndex
               ? Math.max(0, Math.min(targetIndex - 1, remaining.length))
@@ -213,11 +232,22 @@ export const useWorkbenchStore = create<WorkbenchState>()(
               index === replaceIndex ? document : currentDocument
             )
           )
+          const currentOverride = state.documentTitleOverrides[currentDocumentId]
+          const nextTitleOverrides = { ...state.documentTitleOverrides }
+
+          if (document.id !== currentDocumentId) {
+            delete nextTitleOverrides[currentDocumentId]
+
+            if (currentOverride) {
+              nextTitleOverrides[document.id] = currentOverride
+            }
+          }
 
           return {
             activeActivityId: getDocumentActivity(document),
             activeDocumentId:
               state.activeDocumentId === currentDocumentId ? document.id : state.activeDocumentId,
+            documentTitleOverrides: nextTitleOverrides,
             openDocuments: nextDocuments
           }
         }),
@@ -245,6 +275,13 @@ export const useWorkbenchStore = create<WorkbenchState>()(
         }),
       setActivePanel: (panelId) => set({ activePanelId: panelId }),
       setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
+      setDocumentTitleOverride: (documentId, title) =>
+        set((state) => ({
+          documentTitleOverrides: {
+            ...state.documentTitleOverrides,
+            [documentId]: title
+          }
+        })),
       setPanelOpen: (open) => set({ panelOpen: open }),
       setQuickOpenOpen: (open) => set({ quickOpenOpen: open }),
       setSelectedExplorerNode: (nodeId) => set({ selectedExplorerNode: nodeId }),

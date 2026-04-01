@@ -33,6 +33,7 @@ export const actionIcons = {
   browse: FolderOpen,
   cancel: X,
   clear: Trash2,
+  clone: Copy,
   close: X,
   commandPalette: Command,
   connect: Link2,

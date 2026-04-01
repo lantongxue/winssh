@@ -52,6 +52,20 @@ const workbench = {
       terminal: '终端',
       terminalWelcome: '终端'
     },
+    editorTabs: {
+      actions: {
+        cloneSession: '会话克隆',
+        closeTab: '关闭标签',
+        renameTab: '重命名标签'
+      },
+      dialogs: {
+        renameSession: {
+          description: '为“{{name}}”设置一个临时标签名，仅当前标签生效，不会持久化保存。',
+          placeholder: '请输入标签名称',
+          title: '重命名标签'
+        }
+      }
+    },
     explorerHome: {
       actions: {
         clearRecent: '清除',

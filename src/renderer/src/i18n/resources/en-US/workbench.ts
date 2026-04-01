@@ -52,6 +52,21 @@ const workbench = {
       terminal: 'Terminal',
       terminalWelcome: 'Terminal'
     },
+    editorTabs: {
+      actions: {
+        cloneSession: 'Clone Session',
+        closeTab: 'Close Tab',
+        renameTab: 'Rename Tab'
+      },
+      dialogs: {
+        renameSession: {
+          description:
+            'Set a temporary title for "{{name}}". It only applies to the current tab and is not saved.',
+          placeholder: 'Enter a tab name',
+          title: 'Rename Tab'
+        }
+      }
+    },
     explorerHome: {
       actions: {
         clearRecent: 'Clear',

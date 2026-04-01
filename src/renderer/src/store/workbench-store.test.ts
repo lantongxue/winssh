@@ -51,6 +51,32 @@ describe('workbench store', () => {
     expect(state.activeDocumentId).toBe('server-editor:server-1')
   })
 
+  it('clears ephemeral title overrides when a document closes', () => {
+    const store = useWorkbenchStore.getState()
+
+    store.openDocument(createSessionEditorDocument('session-1'))
+    store.setDocumentTitleOverride('session-editor:session-1', 'Prod Shell')
+    store.closeDocument('session-editor:session-1')
+
+    const state = useWorkbenchStore.getState()
+    expect(state.documentTitleOverrides['session-editor:session-1']).toBeUndefined()
+  })
+
+  it('moves ephemeral title overrides with replaced document ids', () => {
+    const store = useWorkbenchStore.getState()
+
+    store.openDocument(createSessionEditorDocument('pending-session'))
+    store.setDocumentTitleOverride('session-editor:pending-session', 'Prod Shell')
+    store.replaceDocument(
+      'session-editor:pending-session',
+      createSessionEditorDocument('session-1')
+    )
+
+    const state = useWorkbenchStore.getState()
+    expect(state.documentTitleOverrides['session-editor:pending-session']).toBeUndefined()
+    expect(state.documentTitleOverrides['session-editor:session-1']).toBe('Prod Shell')
+  })
+
   it('moveDocument reorders tabs and keeps the active document stable', () => {
     const store = useWorkbenchStore.getState()
 
