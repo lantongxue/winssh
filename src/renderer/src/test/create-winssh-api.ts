@@ -76,6 +76,28 @@ type DeepPartial<T> = {
 export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): WinsshApi {
   const systemOverrides = overrides.system
   const windowOverrides = systemOverrides?.window
+  const defaultWindowApi: WinsshApi['system']['window'] = {
+    close: async () => undefined,
+    isMaximized: async () => false,
+    minimize: async () => undefined,
+    onStateChange: () => noopUnsubscribe,
+    toggleMaximize: async () => undefined
+  }
+  const resolvedWindowApi: WinsshApi['system']['window'] = {
+    close: windowOverrides?.close ?? defaultWindowApi.close,
+    isMaximized: windowOverrides?.isMaximized ?? defaultWindowApi.isMaximized,
+    minimize: windowOverrides?.minimize ?? defaultWindowApi.minimize,
+    onStateChange: windowOverrides?.onStateChange ?? defaultWindowApi.onStateChange,
+    toggleMaximize: windowOverrides?.toggleMaximize ?? defaultWindowApi.toggleMaximize
+  }
+  const resolvedSystemApi: WinsshApi['system'] = {
+    getCapabilities: systemOverrides?.getCapabilities ?? (async () => ({ credentialStorage: true })),
+    getKnownHosts: systemOverrides?.getKnownHosts ?? (async () => []),
+    removeKnownHost: systemOverrides?.removeKnownHost ?? (async () => undefined),
+    pickPrivateKey: systemOverrides?.pickPrivateKey ?? (async () => null),
+    relaunch: systemOverrides?.relaunch ?? (async () => undefined),
+    window: resolvedWindowApi
+  }
 
   return {
     groups: {
@@ -183,20 +205,6 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       list: async () => defaultThemes,
       ...overrides.themes
     },
-    system: {
-      ...systemOverrides,
-      getCapabilities: async () => ({ credentialStorage: true }),
-      getKnownHosts: async () => [],
-      pickPrivateKey: async () => null,
-      relaunch: async () => undefined,
-      window: {
-        close: async () => undefined,
-        isMaximized: async () => false,
-        minimize: async () => undefined,
-        onStateChange: () => noopUnsubscribe,
-        toggleMaximize: async () => undefined,
-        ...windowOverrides
-      }
-    }
+    system: resolvedSystemApi
   }
 }

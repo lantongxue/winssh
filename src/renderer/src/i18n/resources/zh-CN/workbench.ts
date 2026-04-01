@@ -338,6 +338,7 @@ const workbench = {
         titleBarStyle: '窗口标题栏'
       },
       knownHosts: {
+        actions: '操作',
         algorithm: '算法',
         empty: '当前没有已信任主机记录。',
         fingerprint: '指纹',
@@ -361,6 +362,8 @@ const workbench = {
         restartTitle: '标题栏模式已保存'
       },
       toasts: {
+        knownHostDeleted: '已删除已信任主机 {{host}}。',
+        knownHostDeleteFailed: '删除已信任主机失败。',
         saved: '设置已保存。'
       },
       validation: {

@@ -297,6 +297,9 @@ async function bootstrap(): Promise<void> {
     return result.filePaths[0] ?? null
   })
   ipcMain.handle('system:getKnownHosts', () => database.listKnownHosts())
+  ipcMain.handle('system:removeKnownHost', (_event, host: string, port: number) => {
+    database.deleteKnownHost(host, port)
+  })
   ipcMain.handle('system:getCapabilities', async () => ({
     credentialStorage: await secureStore.isAvailable()
   }))
@@ -328,7 +331,10 @@ async function bootstrap(): Promise<void> {
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      mainWindow = createWindow(themeRegistry.normalizeSettings(database.getSettings()), themeRegistry)
+      mainWindow = createWindow(
+        themeRegistry.normalizeSettings(database.getSettings()),
+        themeRegistry
+      )
     }
   })
 

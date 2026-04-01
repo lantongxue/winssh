@@ -58,6 +58,7 @@ export function WorkbenchSettingsEditor() {
   const pushProblem = useWorkbenchStore((state) => state.pushProblem)
   const [selectedSection, setSelectedSection] =
     useState<(typeof settingsSections)[number]['id']>('appearance')
+  const DeleteIcon = actionIcons.delete
   const SaveIcon = actionIcons.save
 
   const settingsQuery = useQuery({
@@ -91,7 +92,8 @@ export function WorkbenchSettingsEditor() {
   const updateSettings = useMutation({
     mutationFn: (values: SettingsFormValues) => window.winsshApi.settings.update(values),
     onSuccess: async (settings, values) => {
-      const titleBarStyleChanged = settingsQuery.data?.windowTitleBarStyle !== values.windowTitleBarStyle
+      const titleBarStyleChanged =
+        settingsQuery.data?.windowTitleBarStyle !== values.windowTitleBarStyle
 
       queryClient.setQueryData(['settings'], settings)
 
@@ -106,6 +108,30 @@ export function WorkbenchSettingsEditor() {
       } else {
         toast.success(t('workbench.settings.toasts.saved'))
       }
+    }
+  })
+  const removeKnownHost = useMutation({
+    mutationFn: ({ host, port }: { host: string; port: number }) =>
+      window.winsshApi.system.removeKnownHost(host, port),
+    onError: (error) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t('workbench.settings.toasts.knownHostDeleteFailed')
+      )
+    },
+    onSuccess: async (_data, variables) => {
+      queryClient.setQueryData(['known-hosts'], (current: typeof knownHostsQuery.data) =>
+        (current ?? []).filter(
+          (item) => !(item.host === variables.host && item.port === variables.port)
+        )
+      )
+      await queryClient.invalidateQueries({ queryKey: ['known-hosts'] })
+      toast.success(
+        t('workbench.settings.toasts.knownHostDeleted', {
+          host: `${variables.host}:${variables.port}`
+        })
+      )
     }
   })
 
@@ -160,7 +186,10 @@ export function WorkbenchSettingsEditor() {
                   detail: t('workbench.settings.title'),
                   id: 'settings:validation',
                   severity: 'error',
-                  title: typeof message === 'string' ? message : t('workbench.settings.validation.failed')
+                  title:
+                    typeof message === 'string'
+                      ? message
+                      : t('workbench.settings.validation.failed')
                 })
               }
             )}
@@ -239,8 +268,12 @@ export function WorkbenchSettingsEditor() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="native">{t('common.titleBarStyle.native')}</SelectItem>
-                            <SelectItem value="custom">{t('common.titleBarStyle.custom')}</SelectItem>
+                            <SelectItem value="native">
+                              {t('common.titleBarStyle.native')}
+                            </SelectItem>
+                            <SelectItem value="custom">
+                              {t('common.titleBarStyle.custom')}
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -303,7 +336,9 @@ export function WorkbenchSettingsEditor() {
                             <SelectItem value="underline">
                               {t('workbench.settings.cursorStyles.underline')}
                             </SelectItem>
-                            <SelectItem value="bar">{t('workbench.settings.cursorStyles.bar')}</SelectItem>
+                            <SelectItem value="bar">
+                              {t('workbench.settings.cursorStyles.bar')}
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -318,7 +353,9 @@ export function WorkbenchSettingsEditor() {
                     render={({ field }) => (
                       <FormItem className="flex items-center justify-between rounded-sm border border-[var(--workbench-border)] px-4 py-3">
                         <div>
-                          <div className="font-medium">{t('workbench.settings.form.cursorBlink.title')}</div>
+                          <div className="font-medium">
+                            {t('workbench.settings.form.cursorBlink.title')}
+                          </div>
                           <div className="text-sm text-muted-foreground">
                             {t('workbench.settings.form.cursorBlink.description')}
                           </div>
@@ -335,7 +372,9 @@ export function WorkbenchSettingsEditor() {
                     render={({ field }) => (
                       <FormItem className="flex items-center justify-between rounded-sm border border-[var(--workbench-border)] px-4 py-3">
                         <div>
-                          <div className="font-medium">{t('workbench.settings.form.copyOnSelect.title')}</div>
+                          <div className="font-medium">
+                            {t('workbench.settings.form.copyOnSelect.title')}
+                          </div>
                           <div className="text-sm text-muted-foreground">
                             {t('workbench.settings.form.copyOnSelect.description')}
                           </div>
@@ -357,7 +396,9 @@ export function WorkbenchSettingsEditor() {
                   {t('workbench.settings.sections.security')}
                 </div>
                 <div className="rounded-sm border border-[var(--workbench-border)] px-4 py-4">
-                  <div className="text-sm font-medium">{t('workbench.settings.sections.security')}</div>
+                  <div className="text-sm font-medium">
+                    {t('workbench.settings.sections.security')}
+                  </div>
                   <div className="mt-1 text-sm text-muted-foreground">
                     {capabilitiesQuery.data?.credentialStorage
                       ? t('workbench.settings.security.available')
@@ -375,20 +416,49 @@ export function WorkbenchSettingsEditor() {
                         <TableHead>{t('workbench.settings.knownHosts.algorithm')}</TableHead>
                         <TableHead>{t('workbench.settings.knownHosts.fingerprint')}</TableHead>
                         <TableHead>{t('workbench.settings.knownHosts.verified')}</TableHead>
+                        <TableHead className="w-[88px] text-right">
+                          {t('workbench.settings.knownHosts.actions')}
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {(knownHostsQuery.data ?? []).map((host) => (
                         <TableRow key={`${host.host}:${host.port}:${host.fingerprint}`}>
-                          <TableCell>{host.host}:{host.port}</TableCell>
+                          <TableCell>
+                            {host.host}:{host.port}
+                          </TableCell>
                           <TableCell>{host.algorithm}</TableCell>
                           <TableCell className="font-mono text-xs">{host.fingerprint}</TableCell>
                           <TableCell>{formatDateTime(host.verifiedAt)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={
+                                removeKnownHost.isPending &&
+                                removeKnownHost.variables?.host === host.host &&
+                                removeKnownHost.variables?.port === host.port
+                              }
+                              title={t('common.actions.delete')}
+                              onClick={() =>
+                                removeKnownHost.mutate({
+                                  host: host.host,
+                                  port: host.port
+                                })
+                              }
+                            >
+                              <DeleteIcon className="size-4" />
+                              {t('common.actions.delete')}
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       ))}
                       {(knownHostsQuery.data ?? []).length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
+                          <TableCell
+                            colSpan={5}
+                            className="py-8 text-center text-sm text-muted-foreground"
+                          >
                             {t('workbench.settings.knownHosts.empty')}
                           </TableCell>
                         </TableRow>

@@ -8,6 +8,13 @@ import { WorkbenchSettingsEditor } from '@/components/workbench/workbench-settin
 import { createWinsshApiMock } from '@/test/create-winssh-api'
 import { useWorkbenchStore } from '@/store/workbench-store'
 
+vi.mock('sonner', () => ({
+  toast: {
+    error: vi.fn(),
+    success: vi.fn()
+  }
+}))
+
 function createTestQueryClient() {
   return new QueryClient({
     defaultOptions: {
@@ -158,6 +165,43 @@ describe('WorkbenchSettingsEditor theme selection', () => {
           theme: DEFAULT_PIXEL_THEME_ID
         })
       )
+    })
+  })
+
+  it('deletes a trusted host from the security section', async () => {
+    const getKnownHosts = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          algorithm: 'ssh-ed25519',
+          fingerprint: 'SHA256:example',
+          host: 'alpha.example.com',
+          port: 22,
+          verifiedAt: '2026-04-02T01:23:45.000Z'
+        }
+      ])
+      .mockResolvedValueOnce([])
+    const removeKnownHost = vi.fn().mockResolvedValue(undefined)
+
+    window.winsshApi = createWinsshApiMock({
+      system: {
+        getKnownHosts,
+        removeKnownHost
+      }
+    })
+
+    renderSettingsEditor()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Security' }))
+    expect(await screen.findByText('alpha.example.com:22')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+
+    await waitFor(() => {
+      expect(removeKnownHost).toHaveBeenCalledWith('alpha.example.com', 22)
+    })
+    await waitFor(() => {
+      expect(screen.queryByText('alpha.example.com:22')).not.toBeInTheDocument()
     })
   })
 })

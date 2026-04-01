@@ -344,6 +344,7 @@ const workbench = {
         titleBarStyle: 'Window title bar'
       },
       knownHosts: {
+        actions: 'Actions',
         algorithm: 'Algorithm',
         empty: 'There are no trusted hosts yet.',
         fingerprint: 'Fingerprint',
@@ -369,6 +370,8 @@ const workbench = {
         restartTitle: 'Title bar mode saved'
       },
       toasts: {
+        knownHostDeleted: 'Trusted host {{host}} deleted.',
+        knownHostDeleteFailed: 'Failed to delete the trusted host.',
         saved: 'Settings saved.'
       },
       validation: {

@@ -519,6 +519,10 @@ export class DatabaseService {
     return row ? mapKnownHost(row) : null
   }
 
+  deleteKnownHost(host: string, port: number): void {
+    this.db.prepare('DELETE FROM known_hosts WHERE host = ? AND port = ?').run(host, port)
+  }
+
   upsertKnownHost(input: KnownHost): KnownHost {
     this.db
       .prepare(
