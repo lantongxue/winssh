@@ -55,6 +55,14 @@ const api: WinsshApi = {
     refresh: (sessionId, remotePath) => ipcRenderer.invoke('sftp:refresh', sessionId, remotePath),
     onTransferProgress: (callback) => subscribe('sftp:transfer', callback)
   },
+  portForwards: {
+    list: (sessionId) => ipcRenderer.invoke('portForwards:list', sessionId),
+    create: (sessionId, input) => ipcRenderer.invoke('portForwards:create', sessionId, input),
+    start: (sessionId, ruleId) => ipcRenderer.invoke('portForwards:start', sessionId, ruleId),
+    stop: (sessionId, ruleId) => ipcRenderer.invoke('portForwards:stop', sessionId, ruleId),
+    remove: (sessionId, ruleId) => ipcRenderer.invoke('portForwards:remove', sessionId, ruleId),
+    onStateChange: (callback) => subscribe('portForwards:state', callback)
+  },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
     update: (input) => ipcRenderer.invoke('settings:update', input)

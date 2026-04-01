@@ -24,6 +24,7 @@ export type MainTranslationKey =
   | 'errors.connectionFailed'
   | 'errors.reconnectUnavailable'
   | 'errors.sessionUnavailable'
+  | 'errors.portForwardNotFound'
   | 'session.connecting'
   | 'session.connected'
   | 'session.closed'
@@ -80,7 +81,8 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
       privateKeyMissing: 'This server does not have a private key file configured.',
       connectionFailed: 'Connection failed.',
       reconnectUnavailable: 'This tab does not have reusable connection parameters.',
-      sessionUnavailable: 'This session does not exist or has already closed.'
+      sessionUnavailable: 'This session does not exist or has already closed.',
+      portForwardNotFound: 'The selected port forwarding rule could not be found.'
     },
     session: {
       connecting: 'Establishing connection',
@@ -130,7 +132,8 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
       privateKeyMissing: '该服务器未配置私钥文件',
       connectionFailed: '连接失败',
       reconnectUnavailable: '当前标签缺少可复用的连接参数',
-      sessionUnavailable: '当前会话不存在或已经关闭'
+      sessionUnavailable: '当前会话不存在或已经关闭',
+      portForwardNotFound: '目标端口转发规则不存在'
     },
     session: {
       connecting: '正在建立连接',
@@ -155,10 +158,7 @@ function lookupMessage(tree: MessageTree, key: MainTranslationKey): string | nul
   return typeof current === 'string' ? current : null
 }
 
-function interpolate(
-  template: string,
-  variables?: Record<string, string | number>
-): string {
+function interpolate(template: string, variables?: Record<string, string | number>): string {
   if (!variables) {
     return template
   }
@@ -184,9 +184,7 @@ export function createMainTranslator(getLanguage: () => ResolvedMainLanguage): M
   return (key, variables) => {
     const language = getLanguage()
     const template =
-      lookupMessage(messages[language], key) ??
-      lookupMessage(messages['en-US'], key) ??
-      key
+      lookupMessage(messages[language], key) ?? lookupMessage(messages['en-US'], key) ?? key
 
     return interpolate(template, variables)
   }

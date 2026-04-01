@@ -70,7 +70,8 @@ const workbench = {
       recent: {
         title: 'Recent Connections'
       },
-      subtitle: 'Manage all SSH workflows through Explorer, editor tabs, and the integrated terminal.',
+      subtitle:
+        'Manage all SSH workflows through Explorer, editor tabs, and the integrated terminal.',
       title: 'WinSSH Workbench',
       favorites: {
         title: 'Favorite Connections'
@@ -132,7 +133,8 @@ const workbench = {
     quickInput: {
       credentials: {
         descriptions: {
-          passphrase: 'Enter the passphrase to continue connecting to {{name}}, if the private key uses one.',
+          passphrase:
+            'Enter the passphrase to continue connecting to {{name}}, if the private key uses one.',
           password: 'Enter the password to continue connecting to {{name}}.'
         },
         emptyPassword: 'Password is required.',
@@ -239,8 +241,51 @@ const workbench = {
         description: 'Reconnect to the server from Explorer to keep working.',
         title: 'This session has already closed'
       },
+      portForwards: 'Port Forwards',
       remoteFiles: 'Remote Files',
       cancel: 'Cancel'
+    },
+    portForward: {
+      actions: {
+        newRule: 'New Rule'
+      },
+      dialog: {
+        create: 'New Port Forward Rule',
+        description:
+          'Rules belong only to the current session tab and start immediately after saving.'
+      },
+      directions: {
+        local: 'Listen locally and forward traffic to the remote target.',
+        remote: 'Listen remotely and forward traffic to the local target.'
+      },
+      empty: {
+        rules: 'There are no port forwarding rules for this session yet.'
+      },
+      fields: {
+        bindHost: 'Bind Host',
+        bindPort: 'Bind Port',
+        kind: 'Forwarding Type',
+        targetHost: 'Target Host',
+        targetPort: 'Target Port'
+      },
+      kinds: {
+        local: 'Local Forward',
+        remote: 'Remote Forward'
+      },
+      statuses: {
+        active: 'Active',
+        error: 'Error',
+        starting: 'Starting',
+        stopped: 'Stopped'
+      },
+      subtitle: 'Temporary port forwarding rules that follow the current session tab.',
+      title: 'Port Forwards',
+      unavailableHint:
+        'This session is unavailable. Reconnect it before creating, starting, stopping, or deleting rules.',
+      warnings: {
+        publicBind:
+          'Binding to {{host}} exposes the listener beyond loopback. Confirm that this is intended.'
+      }
     },
     settings: {
       cursorStyles: {
@@ -283,8 +328,10 @@ const workbench = {
         terminal: 'Terminal'
       },
       security: {
-        available: 'The current environment supports the system keychain, so passwords and passphrases are stored securely when possible.',
-        unavailable: 'No system keychain was detected, so the app does not persist passwords or passphrases.'
+        available:
+          'The current environment supports the system keychain, so passwords and passphrases are stored securely when possible.',
+        unavailable:
+          'No system keychain was detected, so the app does not persist passwords or passphrases.'
       },
       subtitle: 'Adjust language, theme, terminal settings, and security options.',
       title: 'Settings Editor',
@@ -316,7 +363,8 @@ const workbench = {
       },
       empty: {
         directory: 'This directory is empty.',
-        noSessionDescription: 'Start an SSH session first and the SFTP panel will follow the active tab automatically.',
+        noSessionDescription:
+          'Start an SSH session first and the SFTP panel will follow the active tab automatically.',
         noSessionTitle: 'No active session'
       },
       explorer: 'SFTP Explorer',
@@ -339,7 +387,8 @@ const workbench = {
     terminal: {
       connecting: {
         currentStage: 'Current Stage',
-        defaultMessage: 'The connection has started. Preparing the session tab and terminal environment.',
+        defaultMessage:
+          'The connection has started. Preparing the session tab and terminal environment.',
         title: 'Connecting to {{name}}'
       },
       stages: {
@@ -373,6 +422,8 @@ const workbench = {
       connectedTo: 'Connected to {{name}}',
       connectingTo: 'Connecting to {{name}}',
       downloadCompleted: 'Download completed: {{fileName}}',
+      portForwardActive: 'Port forward active',
+      portForwardStopped: 'Port forward stopped',
       reconnecting: 'Reconnecting {{name}}',
       sessionDisconnected: 'Session disconnected',
       sessionExited: 'Session exited: {{sessionId}}',

@@ -6,6 +6,8 @@ export type SessionStatus = 'connecting' | 'ready' | 'error' | 'disconnected'
 export type RemoteEntryKind = 'file' | 'directory' | 'symlink'
 export type SecretKind = 'password' | 'passphrase'
 export type WindowTitleBarStyle = 'native' | 'custom'
+export type PortForwardKind = 'local' | 'remote'
+export type PortForwardStatus = 'starting' | 'active' | 'stopped' | 'error'
 
 export interface ServerGroup {
   id: string
@@ -163,6 +165,29 @@ export interface TransferProgressEvent {
   total: number
   status: 'running' | 'completed' | 'error'
   error?: string
+}
+
+export interface PortForwardInput {
+  kind: PortForwardKind
+  bindHost: string
+  bindPort: number
+  targetHost: string
+  targetPort: number
+}
+
+export interface PortForwardRule extends PortForwardInput {
+  id: string
+  sessionId: string
+  enabled: boolean
+  status: PortForwardStatus
+  createdAt: string
+  updatedAt: string
+  lastError?: string
+}
+
+export interface PortForwardStateEvent {
+  sessionId: string
+  rule: PortForwardRule
 }
 
 export interface RuntimeCapabilities {

@@ -239,8 +239,48 @@ const workbench = {
         description: '如果需要继续工作，请在资源管理器中重新连接对应服务器。',
         title: '该会话已经关闭'
       },
+      portForwards: '端口转发',
       remoteFiles: '远程文件',
       cancel: '取消连接'
+    },
+    portForward: {
+      actions: {
+        newRule: '新建规则'
+      },
+      dialog: {
+        create: '新建端口转发规则',
+        description: '规则只属于当前会话标签，保存后会立即启动。'
+      },
+      directions: {
+        local: '本地监听，流量转发到远端目标。',
+        remote: '远端监听，流量转发到本地目标。'
+      },
+      empty: {
+        rules: '当前会话还没有端口转发规则。'
+      },
+      fields: {
+        bindHost: '监听地址',
+        bindPort: '监听端口',
+        kind: '转发类型',
+        targetHost: '目标地址',
+        targetPort: '目标端口'
+      },
+      kinds: {
+        local: '本地转发',
+        remote: '远程转发'
+      },
+      statuses: {
+        active: '活动中',
+        error: '错误',
+        starting: '启动中',
+        stopped: '已停止'
+      },
+      subtitle: '跟随当前会话标签的临时端口转发规则。',
+      title: '端口转发',
+      unavailableHint: '当前会话不可用。重新连接后才能创建、启动、停止或删除规则。',
+      warnings: {
+        publicBind: '监听地址 {{host}} 会暴露给回环地址之外的网络接口，请确认这是你想要的行为。'
+      }
     },
     settings: {
       cursorStyles: {
@@ -373,6 +413,8 @@ const workbench = {
       connectedTo: '已连接到 {{name}}',
       connectingTo: '正在连接 {{name}}',
       downloadCompleted: '下载完成：{{fileName}}',
+      portForwardActive: '端口转发已启动',
+      portForwardStopped: '端口转发已停止',
       reconnecting: '正在重新连接 {{name}}',
       sessionDisconnected: '会话已断开',
       sessionExited: '会话已退出：{{sessionId}}',

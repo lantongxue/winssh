@@ -24,6 +24,8 @@ const common = {
     rename: 'Rename',
     restartNow: 'Restart Now',
     save: 'Save',
+    start: 'Start',
+    stop: 'Stop',
     togglePanel: 'Toggle Panel',
     toggleSidebar: 'Toggle Sidebar',
     upload: 'Upload'

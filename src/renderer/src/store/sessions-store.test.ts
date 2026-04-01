@@ -52,6 +52,36 @@ describe('sessions store', () => {
     expect(state.activeSessionId).toBe('2')
   })
 
+  it('preserves the auxiliary panel selection when reconnecting', () => {
+    const store = useSessionsStore.getState()
+    store.addSession({
+      sessionId: '1',
+      serverId: 'server-1',
+      serverName: 'alpha',
+      host: '127.0.0.1',
+      port: 22,
+      status: 'error',
+      connectedAt: new Date().toISOString(),
+      currentPath: '/home'
+    })
+    store.setAuxView('1', 'port-forward')
+
+    store.replaceSession('1', {
+      sessionId: '2',
+      serverId: 'server-1',
+      serverName: 'alpha',
+      host: '127.0.0.1',
+      port: 22,
+      status: 'ready',
+      connectedAt: new Date().toISOString(),
+      currentPath: '/srv'
+    })
+
+    const state = useSessionsStore.getState()
+    expect(state.tabs[0]?.sessionId).toBe('2')
+    expect(state.tabs[0]?.auxView).toBe('port-forward')
+  })
+
   it('creates a provisional session and swaps it with the real session summary', () => {
     const store = useSessionsStore.getState()
 

@@ -1,7 +1,15 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { promises as fs } from 'node:fs'
+import net, { type Server as NetServer, type Socket } from 'node:net'
 import path, { basename, posix } from 'node:path'
-import { Client, type ClientChannel, type ConnectConfig, type SFTPWrapper, type Stats } from 'ssh2'
+import {
+  Client,
+  type ClientChannel,
+  type ConnectConfig,
+  type SFTPWrapper,
+  type Stats,
+  type TcpConnectionDetails
+} from 'ssh2'
 import {
   dialog,
   type BrowserWindow,
@@ -11,6 +19,9 @@ import {
 import { normalizeRemotePath, sortRemoteEntries } from '@shared/sftp'
 import type {
   ConnectionRequest,
+  PortForwardInput,
+  PortForwardRule,
+  PortForwardStateEvent,
   RemoteEntry,
   SessionDataEvent,
   SessionErrorEvent,
@@ -24,6 +35,8 @@ import type { MainTranslator } from './localization'
 import type { SecureStoreService } from './secure-store'
 
 type WindowProvider = () => BrowserWindow | null
+type AcceptTcpConnection = () => ClientChannel
+type RejectConnection = () => void
 
 type EventMap = {
   'sessions:data': SessionDataEvent
@@ -31,7 +44,25 @@ type EventMap = {
   'sessions:exit': SessionExitEvent
   'sessions:state': SessionStateEvent
   'sftp:transfer': TransferProgressEvent
+  'portForwards:state': PortForwardStateEvent
 }
+
+interface BasePortForwardRuntime {
+  ruleId: string
+  sockets: Set<Socket>
+  channels: Set<ClientChannel>
+}
+
+interface LocalPortForwardRuntime extends BasePortForwardRuntime {
+  kind: 'local'
+  server: NetServer
+}
+
+interface RemotePortForwardRuntime extends BasePortForwardRuntime {
+  kind: 'remote'
+}
+
+type ActivePortForward = LocalPortForwardRuntime | RemotePortForwardRuntime
 
 interface SessionRuntime {
   sessionId: string
@@ -39,10 +70,14 @@ interface SessionRuntime {
   shell: ClientChannel
   sftp: SFTPWrapper
   summary: SessionSummary
-  connectRequest: ConnectionRequest
+  portForwards: Map<string, ActivePortForward>
   lastError?: string
   lastExit?: SessionExitEvent
   finalizing?: boolean
+}
+
+function now() {
+  return new Date().toISOString()
 }
 
 function toFingerprint(key: Buffer): string {
@@ -181,9 +216,91 @@ function openSftp(client: Client): Promise<SFTPWrapper> {
   })
 }
 
+function connectForwardOut(
+  client: Client,
+  srcIP: string,
+  srcPort: number,
+  dstIP: string,
+  dstPort: number
+): Promise<ClientChannel> {
+  return new Promise((resolve, reject) => {
+    client.forwardOut(srcIP, srcPort, dstIP, dstPort, (error, stream) => {
+      if (error) {
+        reject(error)
+        return
+      }
+
+      resolve(stream)
+    })
+  })
+}
+
+function startForwardIn(client: Client, bindHost: string, bindPort: number): Promise<number> {
+  return new Promise((resolve, reject) => {
+    client.forwardIn(bindHost, bindPort, (error, assignedPort) => {
+      if (error) {
+        reject(error)
+        return
+      }
+
+      resolve(assignedPort ?? bindPort)
+    })
+  })
+}
+
+function stopForwardIn(client: Client, bindHost: string, bindPort: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    client.unforwardIn(bindHost, bindPort, (error) => {
+      if (error) {
+        reject(error)
+        return
+      }
+
+      resolve()
+    })
+  })
+}
+
+function listenOnServer(server: NetServer, host: string, port: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const handleError = (error: Error) => {
+      server.off('listening', handleListening)
+      reject(error)
+    }
+    const handleListening = () => {
+      server.off('error', handleError)
+      resolve()
+    }
+
+    server.once('error', handleError)
+    server.once('listening', handleListening)
+    server.listen({ host, port })
+  })
+}
+
+function closeServer(server: NetServer): Promise<void> {
+  return new Promise((resolve) => {
+    if (!server.listening) {
+      resolve()
+      return
+    }
+
+    server.close(() => resolve())
+  })
+}
+
+function clonePortForwardRule(rule: PortForwardRule): PortForwardRule {
+  return { ...rule }
+}
+
+function isWildcardBindHost(host: string): boolean {
+  return host === '0.0.0.0' || host === '::'
+}
+
 export class SessionManager {
   private readonly sessions = new Map<string, SessionRuntime>()
   private readonly history = new Map<string, ConnectionRequest>()
+  private readonly portForwardSnapshots = new Map<string, PortForwardRule[]>()
 
   constructor(
     private readonly database: DatabaseService,
@@ -228,7 +345,7 @@ export class SessionManager {
     }
 
     const sessionId = randomUUID()
-    const connectedAt = new Date().toISOString()
+    const connectedAt = now()
     const baseSummary: SessionSummary = {
       sessionId,
       serverId: server.id,
@@ -298,7 +415,7 @@ export class SessionManager {
             shell,
             sftp,
             summary,
-            connectRequest: request
+            portForwards: new Map()
           }
 
           shell.on('data', (chunk: Buffer | string) => {
@@ -318,6 +435,9 @@ export class SessionManager {
             client.end()
           })
 
+          client.on('tcp connection', (details, accept, rejectConnection) => {
+            this.handleRemoteTcpConnection(sessionId, details, accept, rejectConnection)
+          })
           client.on('error', (error) => {
             runtime.lastError = error.message
             this.emitToRenderer('sessions:error', { sessionId, message: error.message })
@@ -328,7 +448,7 @@ export class SessionManager {
             })
           })
           client.on('close', () => {
-            this.finalizeSession(sessionId)
+            void this.finalizeSession(sessionId)
           })
 
           this.sessions.set(sessionId, runtime)
@@ -363,18 +483,26 @@ export class SessionManager {
       throw new Error(this.t('errors.reconnectUnavailable'))
     }
 
-    return this.connect(request)
+    const summary = await this.connect(request)
+    this.history.delete(sessionId)
+    this.migratePortForwardSnapshots(sessionId, summary.sessionId)
+    await this.restoreEnabledPortForwards(summary.sessionId)
+    return summary
   }
 
   async disconnect(sessionId: string): Promise<void> {
     const runtime = this.sessions.get(sessionId)
-    if (!runtime) {
-      return
+
+    if (runtime) {
+      runtime.finalizing = true
+      await this.releaseSessionPortForwards(sessionId)
+      runtime.client.end()
+      this.sessions.delete(sessionId)
     }
 
-    runtime.finalizing = true
-    runtime.client.end()
-    this.sessions.delete(sessionId)
+    this.history.delete(sessionId)
+    this.portForwardSnapshots.delete(sessionId)
+
     this.emitToRenderer('sessions:state', {
       sessionId,
       status: 'disconnected',
@@ -565,12 +693,121 @@ export class SessionManager {
     })
   }
 
+  async createPortForward(sessionId: string, input: PortForwardInput): Promise<PortForwardRule> {
+    this.requireSession(sessionId)
+
+    const createdAt = now()
+    const rule: PortForwardRule = {
+      id: randomUUID(),
+      sessionId,
+      enabled: true,
+      status: 'starting',
+      createdAt,
+      updatedAt: createdAt,
+      ...input
+    }
+
+    this.portForwardSnapshots.set(sessionId, [...this.getPortForwardRules(sessionId), rule])
+    this.emitPortForwardState(rule)
+
+    return this.startPortForward(sessionId, rule.id)
+  }
+
+  async startPortForward(sessionId: string, ruleId: string): Promise<PortForwardRule> {
+    const runtime = this.requireSession(sessionId)
+    const existingActive = runtime.portForwards.get(ruleId)
+
+    if (existingActive) {
+      await this.releasePortForwardRuntime(sessionId, runtime, existingActive)
+    }
+
+    let rule = this.updatePortForwardRule(sessionId, ruleId, (current) => ({
+      ...current,
+      enabled: true,
+      status: 'starting',
+      lastError: undefined,
+      updatedAt: now()
+    }))
+
+    try {
+      await this.startPortForwardRuntime(sessionId, runtime, rule)
+      rule = this.updatePortForwardRule(sessionId, ruleId, (current) => ({
+        ...current,
+        enabled: true,
+        status: 'active',
+        lastError: undefined,
+        updatedAt: now()
+      }))
+    } catch (error) {
+      const active = runtime.portForwards.get(ruleId)
+      if (active) {
+        await this.releasePortForwardRuntime(sessionId, runtime, active)
+      }
+
+      const message = error instanceof Error ? error.message : this.t('errors.connectionFailed')
+      rule = this.updatePortForwardRule(sessionId, ruleId, (current) => ({
+        ...current,
+        enabled: true,
+        status: 'error',
+        lastError: message,
+        updatedAt: now()
+      }))
+    }
+
+    return rule
+  }
+
+  async stopPortForward(sessionId: string, ruleId: string): Promise<PortForwardRule> {
+    const runtime = this.sessions.get(sessionId)
+    const active = runtime?.portForwards.get(ruleId)
+
+    if (runtime && active) {
+      await this.releasePortForwardRuntime(sessionId, runtime, active)
+    }
+
+    return this.updatePortForwardRule(sessionId, ruleId, (current) => ({
+      ...current,
+      enabled: false,
+      status: 'stopped',
+      lastError: undefined,
+      updatedAt: now()
+    }))
+  }
+
+  async removePortForward(sessionId: string, ruleId: string): Promise<void> {
+    const runtime = this.sessions.get(sessionId)
+    const active = runtime?.portForwards.get(ruleId)
+
+    if (runtime && active) {
+      await this.releasePortForwardRuntime(sessionId, runtime, active)
+    }
+
+    const rules = this.getPortForwardRules(sessionId)
+    const remaining = rules.filter((rule) => rule.id !== ruleId)
+
+    if (remaining.length === rules.length) {
+      return
+    }
+
+    this.setPortForwardRules(sessionId, remaining)
+  }
+
+  listPortForwards(sessionId: string): PortForwardRule[] {
+    return this.getPortForwardRules(sessionId).map((rule) => clonePortForwardRule(rule))
+  }
+
   dispose(): void {
     for (const runtime of this.sessions.values()) {
+      runtime.finalizing = true
+      for (const active of [...runtime.portForwards.values()]) {
+        void this.releasePortForwardRuntime(runtime.sessionId, runtime, active)
+      }
       runtime.client.end()
     }
 
     this.sessions.clear()
+    this.history.clear()
+    this.portForwardSnapshots.clear()
   }
 
   private requireSession(sessionId: string): SessionRuntime {
@@ -582,14 +819,356 @@ export class SessionManager {
     return runtime
   }
 
-  private finalizeSession(sessionId: string): void {
+  private getPortForwardRules(sessionId: string): PortForwardRule[] {
+    return this.portForwardSnapshots.get(sessionId) ?? []
+  }
+
+  private setPortForwardRules(sessionId: string, rules: PortForwardRule[]): void {
+    if (rules.length === 0) {
+      this.portForwardSnapshots.delete(sessionId)
+      return
+    }
+
+    this.portForwardSnapshots.set(sessionId, rules)
+  }
+
+  private findPortForwardRule(sessionId: string, ruleId: string): PortForwardRule | null {
+    return this.getPortForwardRules(sessionId).find((rule) => rule.id === ruleId) ?? null
+  }
+
+  private updatePortForwardRule(
+    sessionId: string,
+    ruleId: string,
+    updater: (rule: PortForwardRule) => PortForwardRule
+  ): PortForwardRule {
+    let updatedRule: PortForwardRule | null = null
+    const rules: PortForwardRule[] = this.getPortForwardRules(sessionId).map((rule) => {
+      if (rule.id !== ruleId) {
+        return rule
+      }
+
+      updatedRule = updater(rule)
+      return updatedRule as PortForwardRule
+    })
+
+    if (!updatedRule) {
+      throw new Error(this.t('errors.portForwardNotFound'))
+    }
+
+    this.setPortForwardRules(sessionId, rules)
+    this.emitPortForwardState(updatedRule)
+    return updatedRule
+  }
+
+  private emitPortForwardState(rule: PortForwardRule): void {
+    this.emitToRenderer('portForwards:state', {
+      sessionId: rule.sessionId,
+      rule: clonePortForwardRule(rule)
+    })
+  }
+
+  private async startPortForwardRuntime(
+    sessionId: string,
+    runtime: SessionRuntime,
+    rule: PortForwardRule
+  ): Promise<void> {
+    if (rule.kind === 'local') {
+      await this.startLocalPortForward(sessionId, runtime, rule)
+      return
+    }
+
+    await this.startRemotePortForward(runtime, rule)
+  }
+
+  private async startLocalPortForward(
+    sessionId: string,
+    runtime: SessionRuntime,
+    rule: PortForwardRule
+  ): Promise<void> {
+    const server = net.createServer()
+    const active: LocalPortForwardRuntime = {
+      ruleId: rule.id,
+      kind: 'local',
+      server,
+      sockets: new Set(),
+      channels: new Set()
+    }
+
+    runtime.portForwards.set(rule.id, active)
+
+    server.on('connection', (socket) => {
+      if (!runtime.portForwards.has(rule.id)) {
+        socket.destroy()
+        return
+      }
+
+      void connectForwardOut(
+        runtime.client,
+        socket.remoteAddress ?? '127.0.0.1',
+        socket.remotePort ?? 0,
+        rule.targetHost,
+        rule.targetPort
+      )
+        .then((channel) => {
+          if (!runtime.portForwards.has(rule.id)) {
+            channel.destroy()
+            socket.destroy()
+            return
+          }
+
+          this.attachPortForwardConnection(sessionId, rule.id, active, socket, channel)
+        })
+        .catch((error) => {
+          socket.destroy()
+          void this.recordPortForwardConnectionError(sessionId, rule.id, error)
+        })
+    })
+
+    await listenOnServer(server, rule.bindHost, rule.bindPort)
+
+    server.on('error', (error) => {
+      void this.handlePortForwardRuntimeFailure(sessionId, rule.id, error)
+    })
+  }
+
+  private async startRemotePortForward(
+    runtime: SessionRuntime,
+    rule: PortForwardRule
+  ): Promise<void> {
+    const active: RemotePortForwardRuntime = {
+      ruleId: rule.id,
+      kind: 'remote',
+      sockets: new Set(),
+      channels: new Set()
+    }
+
+    runtime.portForwards.set(rule.id, active)
+    await startForwardIn(runtime.client, rule.bindHost, rule.bindPort)
+  }
+
+  private attachPortForwardConnection(
+    sessionId: string,
+    ruleId: string,
+    active: ActivePortForward,
+    socket: Socket,
+    channel: ClientChannel
+  ): void {
+    active.sockets.add(socket)
+    active.channels.add(channel)
+
+    const cleanup = () => {
+      active.sockets.delete(socket)
+      active.channels.delete(channel)
+    }
+
+    socket.on('close', cleanup)
+    channel.on('close', cleanup)
+
+    socket.on('error', (error) => {
+      channel.destroy()
+      void this.recordPortForwardConnectionError(sessionId, ruleId, error)
+    })
+    channel.on('error', (error) => {
+      socket.destroy()
+      void this.recordPortForwardConnectionError(sessionId, ruleId, error)
+    })
+
+    socket.pipe(channel)
+    channel.pipe(socket)
+  }
+
+  private async releasePortForwardRuntime(
+    sessionId: string,
+    runtime: SessionRuntime,
+    active: ActivePortForward
+  ): Promise<void> {
+    runtime.portForwards.delete(active.ruleId)
+
+    for (const socket of active.sockets) {
+      socket.destroy()
+    }
+    for (const channel of active.channels) {
+      channel.destroy()
+    }
+
+    if (active.kind === 'local') {
+      await closeServer(active.server)
+      return
+    }
+
+    const rule = this.findPortForwardRule(sessionId, active.ruleId)
+    if (!rule) {
+      return
+    }
+
+    await stopForwardIn(runtime.client, rule.bindHost, rule.bindPort).catch(() => undefined)
+  }
+
+  private async releaseSessionPortForwards(sessionId: string): Promise<void> {
+    const runtime = this.sessions.get(sessionId)
+    if (!runtime) {
+      return
+    }
+
+    for (const active of [...runtime.portForwards.values()]) {
+      await this.releasePortForwardRuntime(sessionId, runtime, active)
+    }
+  }
+
+  private async handlePortForwardRuntimeFailure(
+    sessionId: string,
+    ruleId: string,
+    error: unknown
+  ): Promise<void> {
+    const runtime = this.sessions.get(sessionId)
+    const active = runtime?.portForwards.get(ruleId)
+    if (runtime && active) {
+      await this.releasePortForwardRuntime(sessionId, runtime, active)
+    }
+
+    const rule = this.findPortForwardRule(sessionId, ruleId)
+    if (!rule?.enabled) {
+      return
+    }
+
+    const message = error instanceof Error ? error.message : this.t('errors.connectionFailed')
+    this.updatePortForwardRule(sessionId, ruleId, (current) => ({
+      ...current,
+      status: 'error',
+      lastError: message,
+      updatedAt: now()
+    }))
+  }
+
+  private async recordPortForwardConnectionError(
+    sessionId: string,
+    ruleId: string,
+    error: unknown
+  ): Promise<void> {
+    const runtime = this.sessions.get(sessionId)
+    const rule = this.findPortForwardRule(sessionId, ruleId)
+
+    if (!runtime?.portForwards.has(ruleId) || !rule?.enabled) {
+      return
+    }
+
+    const message = error instanceof Error ? error.message : this.t('errors.connectionFailed')
+    this.updatePortForwardRule(sessionId, ruleId, (current) => ({
+      ...current,
+      lastError: message,
+      updatedAt: now()
+    }))
+  }
+
+  private handleRemoteTcpConnection(
+    sessionId: string,
+    details: TcpConnectionDetails,
+    accept: AcceptTcpConnection,
+    rejectConnection: RejectConnection
+  ): void {
+    const runtime = this.sessions.get(sessionId)
+    if (!runtime) {
+      rejectConnection()
+      return
+    }
+
+    const rule = this.getPortForwardRules(sessionId).find((current) => {
+      if (current.kind !== 'remote' || !current.enabled || current.bindPort !== details.destPort) {
+        return false
+      }
+
+      if (current.bindHost === details.destIP) {
+        return true
+      }
+
+      return isWildcardBindHost(current.bindHost)
+    })
+
+    if (!rule) {
+      rejectConnection()
+      return
+    }
+
+    const active = runtime.portForwards.get(rule.id)
+    if (!active || active.kind !== 'remote') {
+      rejectConnection()
+      return
+    }
+
+    let channel: ClientChannel
+    try {
+      channel = accept()
+    } catch {
+      rejectConnection()
+      return
+    }
+
+    const socket = net.createConnection({
+      host: rule.targetHost,
+      port: rule.targetPort
+    })
+
+    socket.once('connect', () => {
+      this.attachPortForwardConnection(sessionId, rule.id, active, socket, channel)
+    })
+    socket.once('error', (error) => {
+      channel.destroy()
+      void this.recordPortForwardConnectionError(sessionId, rule.id, error)
+    })
+  }
+
+  private migratePortForwardSnapshots(fromSessionId: string, toSessionId: string): void {
+    if (fromSessionId === toSessionId) {
+      return
+    }
+
+    const rules = this.getPortForwardRules(fromSessionId)
+    this.portForwardSnapshots.delete(fromSessionId)
+
+    if (rules.length === 0) {
+      return
+    }
+
+    this.portForwardSnapshots.set(
+      toSessionId,
+      rules.map((rule) => ({
+        ...rule,
+        sessionId: toSessionId,
+        updatedAt: now()
+      }))
+    )
+  }
+
+  private async restoreEnabledPortForwards(sessionId: string): Promise<void> {
+    const restorableRules = this.getPortForwardRules(sessionId).filter((rule) => rule.enabled)
+
+    for (const rule of restorableRules) {
+      await this.startPortForward(sessionId, rule.id)
+    }
+  }
+
+  private async finalizeSession(sessionId: string): Promise<void> {
     const runtime = this.sessions.get(sessionId)
     if (!runtime || runtime.finalizing) {
       return
     }
 
     runtime.finalizing = true
+    await this.releaseSessionPortForwards(sessionId)
     this.sessions.delete(sessionId)
+
+    for (const rule of this.getPortForwardRules(sessionId)) {
+      if (!rule.enabled) {
+        continue
+      }
+
+      this.updatePortForwardRule(sessionId, rule.id, (current) => ({
+        ...current,
+        status: 'error',
+        lastError: runtime.lastError ?? this.t('session.disconnected'),
+        updatedAt: now()
+      }))
+    }
 
     if (runtime.lastExit) {
       this.emitToRenderer('sessions:exit', runtime.lastExit)
@@ -667,7 +1246,7 @@ export class SessionManager {
       port,
       algorithm: 'sha256',
       fingerprint,
-      verifiedAt: new Date().toISOString()
+      verifiedAt: now()
     })
 
     return true

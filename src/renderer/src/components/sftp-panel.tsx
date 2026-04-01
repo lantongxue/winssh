@@ -53,7 +53,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
   const listingQuery = useQuery({
     queryKey: ['sftp', session?.sessionId, session?.currentPath],
     queryFn: () => window.winsshApi.sftp.list(session!.sessionId, session!.currentPath),
-    enabled: Boolean(session)
+    enabled: Boolean(session && session.status === 'ready')
   })
 
   useEffect(() => {
@@ -76,7 +76,24 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
     return (
       <div className="flex h-full items-center justify-center bg-muted/20">
         <div className="max-w-xs text-center">
-          <div className="mb-2 text-base font-medium">{t('workbench.sftp.empty.noSessionTitle')}</div>
+          <div className="mb-2 text-base font-medium">
+            {t('workbench.sftp.empty.noSessionTitle')}
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {t('workbench.sftp.empty.noSessionDescription')}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (session.status !== 'ready') {
+    return (
+      <div className="flex h-full items-center justify-center bg-muted/20">
+        <div className="max-w-xs text-center">
+          <div className="mb-2 text-base font-medium">
+            {t('workbench.sftp.empty.noSessionTitle')}
+          </div>
           <div className="text-sm text-muted-foreground">
             {t('workbench.sftp.empty.noSessionDescription')}
           </div>
@@ -101,7 +118,12 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
               <div className="truncate text-xs text-muted-foreground">{session.serverName}</div>
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="outline" size="icon-sm" title={t('common.actions.refresh')} onClick={() => void refresh()}>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                title={t('common.actions.refresh')}
+                onClick={() => void refresh()}
+              >
                 <RefreshIcon className="size-4" />
               </Button>
               <Button
@@ -109,7 +131,9 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                 size="icon-sm"
                 title={t('common.actions.upload')}
                 onClick={() =>
-                  void window.winsshApi.sftp.uploadFiles(session.sessionId, currentPath).then(refresh)
+                  void window.winsshApi.sftp
+                    .uploadFiles(session.sessionId, currentPath)
+                    .then(refresh)
                 }
               >
                 <UploadIcon className="size-4" />
@@ -139,7 +163,9 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                     className="max-w-36 justify-start"
                     onClick={() => setCurrentPath(session.sessionId, target)}
                   >
-                    <span className="truncate">{segment === '/' ? t('common.labels.root') : segment}</span>
+                    <span className="truncate">
+                      {segment === '/' ? t('common.labels.root') : segment}
+                    </span>
                   </Button>
                 )
               })}
@@ -214,7 +240,9 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {entry.kind === 'directory' ? (
-                      <DropdownMenuItem onClick={() => setCurrentPath(session.sessionId, entry.path)}>
+                      <DropdownMenuItem
+                        onClick={() => setCurrentPath(session.sessionId, entry.path)}
+                      >
                         <Folder className="size-4" />
                         {t('workbench.sftp.actions.openDirectory')}
                       </DropdownMenuItem>
@@ -240,7 +268,9 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
                       onClick={() =>
-                        void window.winsshApi.sftp.remove(session.sessionId, entry.path).then(refresh)
+                        void window.winsshApi.sftp
+                          .remove(session.sessionId, entry.path)
+                          .then(refresh)
                       }
                     >
                       <DeleteIcon className="size-4" />
@@ -311,7 +341,11 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                   return
                 }
 
-                await window.winsshApi.sftp.rename(session.sessionId, renameTarget.path, renameValue)
+                await window.winsshApi.sftp.rename(
+                  session.sessionId,
+                  renameTarget.path,
+                  renameValue
+                )
                 setRenameTarget(null)
                 await refresh()
               }}

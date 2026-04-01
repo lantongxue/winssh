@@ -1,4 +1,5 @@
 import {
+  Play,
   Command,
   Copy,
   Download,
@@ -15,12 +16,14 @@ import {
   Save,
   Search,
   Settings2,
+  SquareStop,
   Square,
   Star,
   TerminalSquare,
   Trash2,
   Undo2,
   Unplug,
+  Route,
   Upload,
   X
 } from 'lucide-react'
@@ -51,8 +54,11 @@ export const actionIcons = {
   restart: RefreshCcw,
   restoreWindow: Copy,
   save: Save,
+  start: Play,
   star: Star,
+  stop: SquareStop,
   togglePanel: PanelBottom,
   toggleSidebar: PanelLeft,
+  openPortForwards: Route,
   upload: Upload
 } as const

@@ -20,10 +20,17 @@ export const tagSchema = z.object({
 export const serverSchema = z
   .object({
     id: z.string().optional(),
-    name: z.string().trim().min(1, 'validation.server.name.required').max(60, 'validation.server.name.max'),
-    host: z.string().trim().min(1, 'validation.server.host.required').max(255, 'validation.server.host.max'),
-    port: z
-      .coerce
+    name: z
+      .string()
+      .trim()
+      .min(1, 'validation.server.name.required')
+      .max(60, 'validation.server.name.max'),
+    host: z
+      .string()
+      .trim()
+      .min(1, 'validation.server.host.required')
+      .max(255, 'validation.server.host.max'),
+    port: z.coerce
       .number()
       .int()
       .min(1, 'validation.server.port.min')
@@ -62,6 +69,26 @@ export const connectionRequestSchema = z.object({
   rememberPassphrase: z.boolean().optional()
 })
 
+const portForwardHostSchema = z
+  .string()
+  .trim()
+  .min(1, 'validation.portForward.host.required')
+  .max(255, 'validation.portForward.host.max')
+
+const portForwardPortSchema = z.coerce
+  .number()
+  .int()
+  .min(1, 'validation.portForward.port.min')
+  .max(65535, 'validation.portForward.port.max')
+
+export const portForwardSchema = z.object({
+  kind: z.enum(['local', 'remote']),
+  bindHost: portForwardHostSchema,
+  bindPort: portForwardPortSchema,
+  targetHost: portForwardHostSchema,
+  targetPort: portForwardPortSchema
+})
+
 export const settingsSchema = z.object({
   language: z.enum(['system', 'zh-CN', 'en-US']),
   theme: z.enum(['system', 'light', 'dark']),
@@ -76,4 +103,5 @@ export const settingsSchema = z.object({
 export type ServerFormValues = z.infer<typeof serverSchema>
 export type GroupFormValues = z.infer<typeof groupSchema>
 export type TagFormValues = z.infer<typeof tagSchema>
+export type PortForwardFormValues = z.infer<typeof portForwardSchema>
 export type SettingsFormValues = z.infer<typeof settingsSchema>

@@ -3,6 +3,9 @@ import type {
   ConnectionRequest,
   GroupInput,
   KnownHost,
+  PortForwardInput,
+  PortForwardRule,
+  PortForwardStateEvent,
   RecentSession,
   RuntimeCapabilities,
   Server,
@@ -64,6 +67,14 @@ export interface WinsshApi {
     downloadFile: (sessionId: string, remotePath: string) => Promise<void>
     refresh: (sessionId: string, path: string) => Promise<SftpListResult>
     onTransferProgress: (callback: (event: TransferProgressEvent) => void) => Unsubscribe
+  }
+  portForwards: {
+    list: (sessionId: string) => Promise<PortForwardRule[]>
+    create: (sessionId: string, input: PortForwardInput) => Promise<PortForwardRule>
+    start: (sessionId: string, ruleId: string) => Promise<PortForwardRule>
+    stop: (sessionId: string, ruleId: string) => Promise<PortForwardRule>
+    remove: (sessionId: string, ruleId: string) => Promise<void>
+    onStateChange: (callback: (event: PortForwardStateEvent) => void) => Unsubscribe
   }
   settings: {
     get: () => Promise<AppSettings>

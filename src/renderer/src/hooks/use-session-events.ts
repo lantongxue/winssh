@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useSessionsStore } from '@/store/sessions-store'
@@ -6,6 +7,7 @@ import { useWorkbenchStore } from '@/store/workbench-store'
 
 export function useSessionEvents() {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const updateSessionState = useSessionsStore((state) => state.updateSessionState)
   const appendOutput = useWorkbenchStore((state) => state.appendOutput)
   const pushProblem = useWorkbenchStore((state) => state.pushProblem)
@@ -17,7 +19,8 @@ export function useSessionEvents() {
       appendOutput({
         detail: event.sessionId,
         level: event.status === 'error' ? 'error' : 'info',
-        message: event.message ?? t('workbench.output.sessionStateChanged', { status: event.status })
+        message:
+          event.message ?? t('workbench.output.sessionStateChanged', { status: event.status })
       })
 
       if (event.status === 'error' && event.message) {
@@ -89,11 +92,61 @@ export function useSessionEvents() {
       }
     })
 
+    const unsubscribePortForward = window.winsshApi.portForwards.onStateChange((event) => {
+      const detail = `${event.rule.bindHost}:${event.rule.bindPort} -> ${event.rule.targetHost}:${event.rule.targetPort}`
+
+      void queryClient.invalidateQueries({ queryKey: ['port-forwards', event.sessionId] })
+
+      if (event.rule.status === 'error' && event.rule.lastError) {
+        appendOutput({
+          detail,
+          level: 'error',
+          message: event.rule.lastError
+        })
+        pushProblem({
+          detail,
+          documentId: `session-editor:${event.sessionId}`,
+          id: `port-forward:${event.sessionId}:${event.rule.id}:${Date.now()}`,
+          severity: 'error',
+          title: event.rule.lastError
+        })
+        toast.error(event.rule.lastError)
+        return
+      }
+
+      if (event.rule.status === 'active' && event.rule.lastError) {
+        appendOutput({
+          detail,
+          level: 'warning',
+          message: event.rule.lastError
+        })
+        return
+      }
+
+      if (event.rule.status === 'active') {
+        appendOutput({
+          detail,
+          level: 'success',
+          message: t('workbench.output.portForwardActive')
+        })
+        return
+      }
+
+      if (event.rule.status === 'stopped') {
+        appendOutput({
+          detail,
+          level: 'info',
+          message: t('workbench.output.portForwardStopped')
+        })
+      }
+    })
+
     return () => {
       unsubscribeState()
       unsubscribeError()
       unsubscribeExit()
       unsubscribeTransfer()
+      unsubscribePortForward()
     }
-  }, [appendOutput, pushProblem, t, updateSessionState, upsertTransfer])
+  }, [appendOutput, pushProblem, queryClient, t, updateSessionState, upsertTransfer])
 }

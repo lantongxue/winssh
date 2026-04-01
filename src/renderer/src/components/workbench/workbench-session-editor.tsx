@@ -1,8 +1,8 @@
-import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import { actionIcons } from '@/lib/action-icons'
+import { PortForwardPanel } from '@/components/port-forward-panel'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import { SftpPanel } from '@/components/sftp-panel'
 import { TerminalPane } from '@/components/terminal-pane'
@@ -11,17 +11,18 @@ import { useSessionsStore } from '@/store/sessions-store'
 
 export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
   const { t } = useTranslation()
-  const [remoteVisible, setRemoteVisible] = useState(false)
   const { reconnectSession, disconnectSession } = useWorkbenchContext()
-  const session = useSessionsStore((state) =>
-    state.tabs.find((tab) => tab.sessionId === sessionId) ?? null
+  const session = useSessionsStore(
+    (state) => state.tabs.find((tab) => tab.sessionId === sessionId) ?? null
   )
+  const setAuxView = useSessionsStore((state) => state.setAuxView)
   const settingsQuery = useQuery({
     queryKey: ['settings'],
     queryFn: () => window.winsshApi.settings.get(),
     initialData: DEFAULT_APP_SETTINGS
   })
   const RemoteFilesIcon = actionIcons.openRemoteFiles
+  const PortForwardIcon = actionIcons.openPortForwards
   const ReconnectIcon = actionIcons.reconnect
   const DisconnectIcon = actionIcons.disconnect
 
@@ -40,6 +41,8 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
     )
   }
 
+  const auxView = session.auxView ?? null
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
       <div className="flex h-10 shrink-0 items-center justify-between border-b border-[var(--workbench-border)] px-3">
@@ -51,13 +54,24 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
         </div>
         <div className="flex items-center gap-2">
           <Button
-            variant={remoteVisible ? 'secondary' : 'ghost'}
+            variant={auxView === 'sftp' ? 'secondary' : 'ghost'}
             size="sm"
             disabled={session.provisional || session.status !== 'ready'}
-            onClick={() => setRemoteVisible((current) => !current)}
+            onClick={() => setAuxView(session.sessionId, auxView === 'sftp' ? null : 'sftp')}
           >
             <RemoteFilesIcon className="size-4" />
             {t('workbench.sessionEditor.remoteFiles')}
+          </Button>
+          <Button
+            variant={auxView === 'port-forward' ? 'secondary' : 'ghost'}
+            size="sm"
+            disabled={session.provisional}
+            onClick={() =>
+              setAuxView(session.sessionId, auxView === 'port-forward' ? null : 'port-forward')
+            }
+          >
+            <PortForwardIcon className="size-4" />
+            {t('workbench.sessionEditor.portForwards')}
           </Button>
           {session.status !== 'ready' && session.status !== 'connecting' ? (
             <Button variant="ghost" size="sm" onClick={() => void reconnectSession(sessionId)}>
@@ -67,7 +81,9 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
           ) : null}
           <Button variant="ghost" size="sm" onClick={() => void disconnectSession(sessionId)}>
             <DisconnectIcon className="size-4" />
-            {session.status === 'connecting' ? t('workbench.sessionEditor.cancel') : t('common.actions.disconnect')}
+            {session.status === 'connecting'
+              ? t('workbench.sessionEditor.cancel')
+              : t('common.actions.disconnect')}
           </Button>
         </div>
       </div>
@@ -80,9 +96,17 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
             onReconnect={reconnectSession}
           />
         </div>
-        {remoteVisible && !session.provisional && session.status === 'ready' ? (
+        {auxView && !session.provisional ? (
           <div className="w-[360px] shrink-0 border-l border-[var(--workbench-border)] bg-[var(--workbench-sidebar)]">
-            <SftpPanel session={session} className="h-full bg-[var(--workbench-sidebar)]" />
+            {auxView === 'sftp' ? (
+              <SftpPanel session={session} className="h-full bg-[var(--workbench-sidebar)]" />
+            ) : null}
+            {auxView === 'port-forward' ? (
+              <PortForwardPanel
+                session={session}
+                className="h-full bg-[var(--workbench-sidebar)]"
+              />
+            ) : null}
           </div>
         ) : null}
       </div>

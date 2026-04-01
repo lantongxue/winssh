@@ -7,12 +7,14 @@ import type {
   AppSettings,
   ConnectionRequest,
   GroupInput,
+  PortForwardInput,
   ServerUpsertInput,
   TagInput
 } from '@shared/types'
 import {
   connectionRequestSchema,
   groupSchema,
+  portForwardSchema,
   serverSchema,
   settingsSchema,
   tagSchema
@@ -223,6 +225,22 @@ async function bootstrap(): Promise<void> {
   )
   ipcMain.handle('sftp:downloadFile', (_event, sessionId: string, remotePath: string) =>
     sessionManager.downloadFile(sessionId, remotePath)
+  )
+
+  ipcMain.handle('portForwards:list', (_event, sessionId: string) =>
+    sessionManager.listPortForwards(sessionId)
+  )
+  ipcMain.handle('portForwards:create', (_event, sessionId: string, input: PortForwardInput) =>
+    sessionManager.createPortForward(sessionId, parseInput(portForwardSchema, input))
+  )
+  ipcMain.handle('portForwards:start', (_event, sessionId: string, ruleId: string) =>
+    sessionManager.startPortForward(sessionId, ruleId)
+  )
+  ipcMain.handle('portForwards:stop', (_event, sessionId: string, ruleId: string) =>
+    sessionManager.stopPortForward(sessionId, ruleId)
+  )
+  ipcMain.handle('portForwards:remove', (_event, sessionId: string, ruleId: string) =>
+    sessionManager.removePortForward(sessionId, ruleId)
   )
 
   ipcMain.handle('settings:get', () => database.getSettings())

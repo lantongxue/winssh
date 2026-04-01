@@ -5,6 +5,16 @@ const validation = {
         required: 'Missing server ID.'
       }
     },
+    portForward: {
+      host: {
+        max: 'Host is too long.',
+        required: 'Enter a host.'
+      },
+      port: {
+        max: 'Port must be 65535 or lower.',
+        min: 'Port must be at least 1.'
+      }
+    },
     group: {
       name: {
         max: 'Group name must be 40 characters or fewer.',

@@ -1,7 +1,10 @@
 import { create } from 'zustand'
 import type { SessionStateEvent, SessionStatus, SessionSummary } from '@shared/types'
 
+export type SessionAuxView = 'sftp' | 'port-forward'
+
 export interface SessionTab extends SessionSummary {
+  auxView?: SessionAuxView | null
   connectionStartedAt?: string
   lastMessage?: string
   provisional?: boolean
@@ -24,6 +27,7 @@ interface SessionsState {
   replaceSession: (oldSessionId: string, summary: SessionSummary) => void
   removeSession: (sessionId: string) => void
   setActiveSession: (sessionId: string | null) => void
+  setAuxView: (sessionId: string, auxView: SessionAuxView | null) => void
   setSessionState: (sessionId: string, status: SessionStatus, lastMessage?: string) => void
   updateSessionState: (event: SessionStateEvent) => void
   setCurrentPath: (sessionId: string, path: string) => void
@@ -86,6 +90,8 @@ export const useSessionsStore = create<SessionsState>((set) => ({
       tabs: state.tabs.map((tab) =>
         tab.sessionId === oldSessionId
           ? {
+              auxView: tab.auxView ?? null,
+              connectionStartedAt: tab.connectionStartedAt,
               ...summary,
               lastMessage: summary.status === 'ready' ? undefined : tab.lastMessage
             }
@@ -104,6 +110,10 @@ export const useSessionsStore = create<SessionsState>((set) => ({
       return { tabs, activeSessionId }
     }),
   setActiveSession: (sessionId) => set({ activeSessionId: sessionId }),
+  setAuxView: (sessionId, auxView) =>
+    set((state) => ({
+      tabs: state.tabs.map((tab) => (tab.sessionId === sessionId ? { ...tab, auxView } : tab))
+    })),
   setSessionState: (sessionId, status, lastMessage) =>
     set((state) => ({
       tabs: state.tabs.map((tab) =>

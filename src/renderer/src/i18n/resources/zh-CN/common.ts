@@ -24,6 +24,8 @@ const common = {
     rename: '重命名',
     restartNow: '立即重启',
     save: '保存',
+    start: '启动',
+    stop: '停止',
     togglePanel: '切换底部面板',
     toggleSidebar: '切换侧栏',
     upload: '上传'
