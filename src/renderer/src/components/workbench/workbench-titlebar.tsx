@@ -21,6 +21,26 @@ type AppRegionStyle = CSSProperties & {
 
 const noDragStyle = { WebkitAppRegion: 'no-drag' } as AppRegionStyle
 
+function WinsshLogo(props: React.ComponentProps<'svg'>) {
+  return (
+    <svg viewBox="0 0 658.62 494.25" fill="none" {...props}>
+      <path
+        fill="currentColor"
+        d="M536.94 494.25H121.69C54.6 494.25.17 441.43 0 376.18V118.07C.17 52.81 54.6 0 121.69 0h415.25c67.08 0 121.51 52.81 121.69 118.07v258.11c-.17 65.25-54.6 118.07-121.69 118.07Zm-415.25-463.74c-49.76 0-90.15 39.15-90.32 87.56v258.11c.17 48.4 40.56 87.56 90.32 87.56h415.25c49.76 0 90.15-39.15 90.33-87.56V118.07c-.17-48.41-40.56-87.56-90.33-87.56H121.69Z"
+      />
+      <path
+        fill="currentColor"
+        d="M177.44 272.44c-4.88-.07-9.55-1.15-13.15-3.05-3.56-2.05-5.56-4.84-5.56-7.75s2-5.7 5.56-7.75l88.31-49.54-95.07-54.34c-3.56-2.05-5.56-4.84-5.56-7.75s2-5.7 5.56-7.75c7.31-4.16 19-4.16 26.31 0l106.34 61.98c3.56 2.05 5.56 4.84 5.56 7.75s-2 5.7-5.56 7.75l-98.08 57.39c-3.99 2.11-9.27 3.21-14.65 3.05Z"
+      />
+      <path
+        fill="currentColor"
+        d="M316.63 367.16c-66.69.62-125.43-20.91-158.74-53.79 39.55 18.54 109.02 21.59 182.07 12.04 78.36-10.24 139.05-32.72 160.78-62.13-11.58 57.78-89.39 103-184.11 103.88Z"
+      />
+      <ellipse cx="441.4" cy="201.93" fill="currentColor" rx="29.25" ry="58.6" />
+    </svg>
+  )
+}
+
 function TitlebarButton({
   children,
   className,
@@ -133,6 +153,14 @@ export function WorkbenchTitlebar() {
       }
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="flex shrink-0 items-center justify-center rounded-sm">
+          <WinsshLogo
+            role="img"
+            aria-label="WinSSH"
+            className="size-6"
+            style={{ color: 'var(--workbench-logo)' }}
+          />
+        </div>
         <TitlebarButton
           size="sm"
           tooltip={t('workbench.titleBar.quickOpenTitle')}

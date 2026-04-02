@@ -38,6 +38,7 @@
     "workbench-border": "#2a3038",
     "workbench-hover": "rgba(255, 255, 255, 0.07)",
     "workbench-active": "#3794ff",
+    "workbench-logo": "#3794ff",
     "workbench-statusbar": "#007acc",
     "workbench-statusbar-foreground": "#ffffff",
     "workbench-muted": "#97a3b6",

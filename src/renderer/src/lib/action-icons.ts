@@ -20,14 +20,14 @@ import {
   SquareStop,
   Square,
   Star,
-  TerminalSquare,
   Trash2,
   Undo2,
   Unplug,
   Route,
   Upload,
   X,
-  Link2
+  Link2,
+  Terminal
 } from 'lucide-react'
 
 export const actionIcons = {
@@ -50,7 +50,7 @@ export const actionIcons = {
   newFolder: FolderPlus,
   openRemoteFiles: FolderTree,
   openSettings: Settings2,
-  openTerminal: TerminalSquare,
+  openTerminal: Terminal,
   quickOpen: Search,
   reconnect: RefreshCcw,
   refresh: RefreshCw,

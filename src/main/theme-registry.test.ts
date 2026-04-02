@@ -69,7 +69,8 @@ describe('ThemeRegistry', () => {
     writeJson(join(root, 'user', 'nebula', 'themes', 'nebula.json'), {
       colors: {
         'workbench-bg': '#101522',
-        'workbench-active': '#73c2fb'
+        'workbench-active': '#73c2fb',
+        'workbench-logo': '#8ed7ff'
       },
       terminal: {
         cursor: '#73c2fb'
@@ -85,6 +86,7 @@ describe('ThemeRegistry', () => {
       'acme.nebula'
     ])
     expect(themes[2]?.colors['workbench-bg']).toBe('#101522')
+    expect(themes[2]?.colors['workbench-logo']).toBe('#8ed7ff')
     expect(themes[2]?.terminal.cursor).toBe('#73c2fb')
     expect(themes[2]?.terminal.background).toBe('#09090b')
   })
