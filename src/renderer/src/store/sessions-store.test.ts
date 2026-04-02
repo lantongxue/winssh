@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSessionsStore } from './sessions-store'
 
 describe('sessions store', () => {
   beforeEach(() => {
+    vi.useRealTimers()
     useSessionsStore.getState().clear()
   })
 
@@ -111,7 +112,7 @@ describe('sessions store', () => {
 
     const state = useSessionsStore.getState()
     expect(state.tabs[0]?.sessionId).toBe('session-1')
-    expect(state.tabs[0]?.connectionPhase).toBeUndefined()
+    expect(state.tabs[0]?.connectionPhase).toBe('validate')
     expect(state.tabs[0]?.provisional).toBeUndefined()
     expect(state.activeSessionId).toBe('session-1')
   })
@@ -142,6 +143,31 @@ describe('sessions store', () => {
       status: 'ready'
     })
 
-    expect(useSessionsStore.getState().tabs[0]?.connectionPhase).toBeUndefined()
+    expect(useSessionsStore.getState().tabs[0]?.connectionPhase).toBe('handshake')
+  })
+
+  it('starts a fresh connection cycle when an existing tab reconnects', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-02T12:00:00.000Z'))
+
+    const store = useSessionsStore.getState()
+    store.addSession({
+      sessionId: 'session-1',
+      serverId: 'server-1',
+      serverName: 'alpha',
+      host: '127.0.0.1',
+      port: 22,
+      status: 'error',
+      connectedAt: new Date().toISOString(),
+      currentPath: '/home'
+    })
+
+    vi.setSystemTime(new Date('2026-04-02T12:00:01.000Z'))
+    store.setSessionState('session-1', 'connecting', undefined, 'validate')
+
+    const session = useSessionsStore.getState().tabs[0]
+    expect(session?.status).toBe('connecting')
+    expect(session?.connectionPhase).toBe('validate')
+    expect(session?.connectionStartedAt).toBe('2026-04-02T12:00:01.000Z')
   })
 })

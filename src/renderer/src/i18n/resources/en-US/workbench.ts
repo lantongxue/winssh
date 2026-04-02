@@ -431,6 +431,10 @@ const workbench = {
       theme: 'theme {{value}}'
     },
     terminal: {
+      connected: {
+        defaultMessage: 'The SSH session is ready. Switching focus to the terminal.',
+        title: 'Connected to {{name}}'
+      },
       connecting: {
         currentStage: 'Current Stage',
         defaultMessage:

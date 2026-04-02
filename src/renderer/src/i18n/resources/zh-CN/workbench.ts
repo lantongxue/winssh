@@ -422,6 +422,10 @@ const workbench = {
       theme: '主题 {{value}}'
     },
     terminal: {
+      connected: {
+        defaultMessage: 'SSH 会话已准备就绪，正在把焦点切换到终端。',
+        title: '已连接到 {{name}}'
+      },
       connecting: {
         currentStage: '当前阶段',
         defaultMessage: '连接已发起，正在准备会话标签页与终端环境。',

@@ -52,9 +52,15 @@ function setStatus(
   lastMessage?: string,
   connectionPhase?: SessionConnectionPhase
 ): SessionTab {
+  const nextConnectionStartedAt =
+    status === 'connecting' && tab.status !== 'connecting'
+      ? new Date().toISOString()
+      : tab.connectionStartedAt
+
   return {
     ...tab,
-    connectionPhase: status === 'connecting' ? connectionPhase : undefined,
+    connectionPhase: connectionPhase ?? tab.connectionPhase,
+    connectionStartedAt: nextConnectionStartedAt,
     status,
     lastMessage
   }
@@ -111,7 +117,7 @@ export const useSessionsStore = create<SessionsState>((set) => ({
           ? {
               auxView: tab.auxView ?? null,
               connectionStartedAt: tab.connectionStartedAt,
-              connectionPhase: summary.status === 'connecting' ? tab.connectionPhase : undefined,
+              connectionPhase: tab.connectionPhase,
               ...summary,
               lastMessage: summary.status === 'ready' ? undefined : tab.lastMessage
             }

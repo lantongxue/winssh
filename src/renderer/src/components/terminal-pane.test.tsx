@@ -53,7 +53,7 @@ describe('TerminalPane', () => {
     vi.useRealTimers()
   })
 
-  it('maps the waiting progress to the reported connection phase instead of advancing on a timer', () => {
+  it('only advances the visible phase after the reported connection phase moves forward', () => {
     vi.useFakeTimers()
 
     const { rerender } = render(
@@ -82,6 +82,72 @@ describe('TerminalPane', () => {
       />
     )
 
+    expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('50')
+
+    act(() => {
+      vi.advanceTimersByTime(220)
+    })
+
+    expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('75')
+
+    act(() => {
+      vi.advanceTimersByTime(220)
+    })
+
     expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('100')
+  })
+
+  it('replays skipped phases before showing the completed state when a connection finishes too fast', () => {
+    vi.useFakeTimers()
+    const fastSession: SessionTab = {
+      ...session,
+      connectionPhase: 'validate'
+    }
+
+    const { rerender } = render(
+      <TerminalPane
+        session={fastSession}
+        settings={settings}
+        theme={theme}
+        onReconnect={async () => undefined}
+      />
+    )
+
+    rerender(
+      <TerminalPane
+        session={{ ...fastSession, connectionPhase: 'attach', status: 'ready' }}
+        settings={settings}
+        theme={theme}
+        onReconnect={async () => undefined}
+      />
+    )
+
+    expect(screen.getByText('Connecting to alpha')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('25')
+
+    act(() => {
+      vi.advanceTimersByTime(220)
+    })
+
+    expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('50')
+
+    act(() => {
+      vi.advanceTimersByTime(220)
+    })
+
+    expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('75')
+
+    act(() => {
+      vi.advanceTimersByTime(220)
+    })
+
+    expect(screen.getByText('Connected to alpha')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('100')
+
+    act(() => {
+      vi.advanceTimersByTime(320)
+    })
+
+    expect(screen.queryByText('Connected to alpha')).not.toBeInTheDocument()
   })
 })
