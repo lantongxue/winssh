@@ -122,7 +122,7 @@ export function TerminalPane({ session, settings, theme, onReconnect }: Terminal
       className="relative h-full terminal-surface"
       style={theme ? { backgroundColor: theme.terminal.background } : undefined}
     >
-      <div ref={terminalRef} className="h-full w-full overflow-hidden" />
+      <div ref={terminalRef} className="h-full w-full overflow-hidden p-2" />
 
       {session.status !== 'ready' ? (
         <div className="absolute inset-0 flex items-center justify-center bg-[var(--terminal-overlay-backdrop)]">
