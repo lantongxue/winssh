@@ -227,6 +227,9 @@ async function bootstrap(): Promise<void> {
   ipcMain.handle('sftp:refresh', (_event, sessionId: string, remotePath: string) =>
     sessionManager.listDirectory(sessionId, remotePath)
   )
+  ipcMain.handle('sftp:createFile', (_event, sessionId: string, remotePath: string, name: string) =>
+    sessionManager.createFile(sessionId, remotePath, name)
+  )
   ipcMain.handle('sftp:mkdir', (_event, sessionId: string, remotePath: string, name: string) =>
     sessionManager.makeDirectory(sessionId, remotePath, name)
   )

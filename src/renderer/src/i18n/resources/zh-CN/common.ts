@@ -14,6 +14,7 @@ const common = {
     download: '下载',
     edit: '编辑',
     newConnection: '新建连接',
+    newFile: '新建文件',
     newFolder: '新建文件夹',
     open: '打开',
     openSettings: '打开设置',

@@ -383,6 +383,7 @@ const workbench = {
         openDirectory: '打开目录'
       },
       dialogs: {
+        createFile: '新建文件',
         createFolder: '新建文件夹',
         rename: '重命名'
       },
@@ -400,6 +401,7 @@ const workbench = {
         currentPath: '当前路径'
       },
       placeholders: {
+        fileName: '请输入文件名称',
         directoryName: '请输入目录名称',
         rename: '新名称'
       },

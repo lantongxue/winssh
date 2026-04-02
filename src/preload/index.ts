@@ -43,6 +43,8 @@ const api: WinsshApi = {
   },
   sftp: {
     list: (sessionId, remotePath) => ipcRenderer.invoke('sftp:list', sessionId, remotePath),
+    createFile: (sessionId, remotePath, name) =>
+      ipcRenderer.invoke('sftp:createFile', sessionId, remotePath, name),
     mkdir: (sessionId, remotePath, name) =>
       ipcRenderer.invoke('sftp:mkdir', sessionId, remotePath, name),
     rename: (sessionId, remotePath, newName) =>

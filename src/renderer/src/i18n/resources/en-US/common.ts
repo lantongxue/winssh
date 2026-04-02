@@ -14,6 +14,7 @@ const common = {
     download: 'Download',
     edit: 'Edit',
     newConnection: 'New Connection',
+    newFile: 'New File',
     newFolder: 'New Folder',
     open: 'Open',
     openSettings: 'Open Settings',

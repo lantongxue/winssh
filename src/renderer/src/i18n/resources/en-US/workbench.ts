@@ -391,6 +391,7 @@ const workbench = {
         openDirectory: 'Open Directory'
       },
       dialogs: {
+        createFile: 'New File',
         createFolder: 'New Folder',
         rename: 'Rename'
       },
@@ -409,6 +410,7 @@ const workbench = {
         currentPath: 'Current Path'
       },
       placeholders: {
+        fileName: 'Enter a file name',
         directoryName: 'Enter a directory name',
         rename: 'New name'
       },

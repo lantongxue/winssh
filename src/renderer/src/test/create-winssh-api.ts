@@ -135,7 +135,8 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
     toggleMaximize: windowOverrides?.toggleMaximize ?? defaultWindowApi.toggleMaximize
   }
   const resolvedSystemApi: WinsshApi['system'] = {
-    getCapabilities: systemOverrides?.getCapabilities ?? (async () => ({ credentialStorage: true })),
+    getCapabilities:
+      systemOverrides?.getCapabilities ?? (async () => ({ credentialStorage: true })),
     getKnownHosts: systemOverrides?.getKnownHosts ?? (async () => []),
     removeKnownHost: systemOverrides?.removeKnownHost ?? (async () => undefined),
     pickPrivateKey: systemOverrides?.pickPrivateKey ?? (async () => null),
@@ -197,6 +198,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       ...overrides.sessions
     },
     sftp: {
+      createFile: async () => undefined,
       downloadFile: async () => undefined,
       list: async () => ({ entries: [], path: '/' }),
       mkdir: async () => undefined,

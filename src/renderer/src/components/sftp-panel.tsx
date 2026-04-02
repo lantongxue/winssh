@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { File, Folder } from 'lucide-react'
+import { File, Folder, FolderUp } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { getParentRemotePath } from '@shared/sftp'
@@ -40,18 +40,24 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
   const setCurrentPath = useSessionsStore((state) => state.setCurrentPath)
   const [selectedEntryPaths, setSelectedEntryPaths] = useState<string[]>([])
   const [selectionAnchorPath, setSelectionAnchorPath] = useState<string | null>(null)
+  const [newFileOpen, setNewFileOpen] = useState(false)
+  const [newFileName, setNewFileName] = useState('')
+  const [newFileTargetPath, setNewFileTargetPath] = useState<string | null>(null)
   const [newFolderOpen, setNewFolderOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
+  const [newFolderTargetPath, setNewFolderTargetPath] = useState<string | null>(null)
   const [renameTarget, setRenameTarget] = useState<RemoteEntry | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const RefreshIcon = actionIcons.refresh
   const UploadIcon = actionIcons.upload
+  const NewFileIcon = actionIcons.newFile
   const NewFolderIcon = actionIcons.newFolder
   const DownloadIcon = actionIcons.download
   const RenameIcon = actionIcons.rename
   const DeleteIcon = actionIcons.delete
   const CancelIcon = actionIcons.cancel
-  const CreateIcon = actionIcons.newFolder
+  const CreateFileIcon = actionIcons.newFile
+  const CreateFolderIcon = actionIcons.newFolder
   const SaveIcon = actionIcons.save
   const CopyIcon = actionIcons.clone
 
@@ -140,6 +146,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
   }
 
   const openDirectory = (path: string) => {
+    clearSelection()
     setCurrentPath(session.sessionId, path)
   }
 
@@ -213,6 +220,18 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
     await copyPath(entriesToCopy.map((entry) => entry.path).join('\n'))
   }
 
+  const openCreateFileDialog = (targetPath: string) => {
+    setNewFileName('')
+    setNewFileTargetPath(targetPath)
+    setNewFileOpen(true)
+  }
+
+  const openCreateFolderDialog = (targetPath: string) => {
+    setNewFolderName('')
+    setNewFolderTargetPath(targetPath)
+    setNewFolderOpen(true)
+  }
+
   const removeEntries = async (entriesToRemove: RemoteEntry[]) => {
     for (const entry of entriesToRemove) {
       await window.winsshApi.sftp.remove(session.sessionId, entry.path)
@@ -268,13 +287,6 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
               >
                 <UploadIcon className="size-4" />
               </Button>
-              <Button
-                size="icon-sm"
-                title={t('common.actions.newFolder')}
-                onClick={() => setNewFolderOpen(true)}
-              >
-                <NewFolderIcon className="size-4" />
-              </Button>
             </div>
           </div>
 
@@ -323,180 +335,307 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
             </div>
           </ScrollArea>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mt-2 justify-start px-2"
-            onClick={() => {
-              clearSelection()
-              setCurrentPath(session.sessionId, getParentRemotePath(currentPath))
-            }}
-          >
-            <Folder className="size-4" />
-            {t('workbench.sftp.actions.backToParent')}
-          </Button>
+          <div className="mt-2 flex items-center gap-1 border-t pt-2">
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              title={t('common.actions.refresh')}
+              onClick={() => void refresh()}
+            >
+              <RefreshIcon className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              title={t('workbench.sftp.actions.backToParent')}
+              onClick={() => {
+                clearSelection()
+                setCurrentPath(session.sessionId, getParentRemotePath(currentPath))
+              }}
+            >
+              <FolderUp className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              title={t('common.actions.newFile')}
+              onClick={() => openCreateFileDialog(currentPath)}
+            >
+              <NewFileIcon className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              title={t('common.actions.newFolder')}
+              onClick={() => openCreateFolderDialog(currentPath)}
+            >
+              <NewFolderIcon className="size-4" />
+            </Button>
+          </div>
         </div>
 
-        <ScrollArea className="min-h-0 flex-1">
-          <div
-            className="divide-y"
-            onClick={(event) => event.target === event.currentTarget && clearSelection()}
-          >
-            {listingQuery.isLoading ? (
-              <div className="space-y-2 p-3">
-                <Skeleton className="h-9 rounded-md" />
-                <Skeleton className="h-9 rounded-md" />
-                <Skeleton className="h-9 rounded-md" />
-              </div>
-            ) : null}
-
-            {entries.map((entry) => {
-              const contextMenuTargets = resolveContextMenuTargets(entry)
-              const isSelected = selectedEntrySet.has(entry.path)
-              const hasSingleContextTarget = contextMenuTargets.length === 1
-              const singleContextTarget = hasSingleContextTarget ? contextMenuTargets[0] : null
-
-              return (
-                <ContextMenu key={entry.path}>
-                  <ContextMenuTrigger asChild>
-                    <button
-                      type="button"
-                      className={cn(
-                        'flex w-full items-start gap-3 border-l-2 px-3 py-2 text-left transition-colors',
-                        isSelected
-                          ? 'border-l-[var(--workbench-active)] bg-[var(--workbench-hover)] text-foreground'
-                          : 'border-l-transparent hover:border-l-[var(--workbench-border)] hover:bg-[var(--workbench-hover)] hover:text-foreground'
-                      )}
-                      onClick={(event) =>
-                        handleEntrySelection(entry.path, {
-                          additive: event.metaKey || event.ctrlKey,
-                          range: event.shiftKey
-                        })
-                      }
-                      onContextMenu={() => {
-                        if (!selectedEntrySet.has(entry.path)) {
-                          selectSingleEntry(entry.path)
-                        }
-                      }}
-                      onDoubleClick={(event) => {
-                        handleEntrySelection(entry.path, {
-                          additive: event.metaKey || event.ctrlKey,
-                          range: event.shiftKey
-                        })
-                        if (entry.kind === 'directory') {
-                          openDirectory(entry.path)
-                        }
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === ' ') {
-                          event.preventDefault()
-                          handleEntrySelection(entry.path, {
-                            additive: event.metaKey || event.ctrlKey,
-                            range: event.shiftKey
-                          })
-                          return
-                        }
-
-                        if (event.key === 'Escape') {
-                          event.preventDefault()
-                          clearSelection()
-                          return
-                        }
-
-                        if (event.key === 'Enter' && entry.kind === 'directory') {
-                          event.preventDefault()
-                          selectSingleEntry(entry.path)
-                          openDirectory(entry.path)
-                        }
-                      }}
-                    >
-                      <div
-                        className={cn(
-                          'mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-sm transition-colors',
-                          isSelected
-                            ? 'bg-[var(--workbench-hover)] text-foreground'
-                            : 'bg-muted text-muted-foreground'
-                        )}
-                      >
-                        {entry.kind === 'directory' ? (
-                          <Folder className="size-3.5" />
-                        ) : (
-                          <File className="size-3.5" />
-                        )}
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <div className="min-h-0 flex-1">
+              <ScrollArea className="h-full">
+                <div
+                  className="min-h-full"
+                  onClick={(event) => event.target === event.currentTarget && clearSelection()}
+                >
+                  <div className="divide-y">
+                    {listingQuery.isLoading ? (
+                      <div className="space-y-2 p-3">
+                        <Skeleton className="h-9 rounded-md" />
+                        <Skeleton className="h-9 rounded-md" />
+                        <Skeleton className="h-9 rounded-md" />
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-[13px] leading-5 font-medium text-foreground">
-                          {entry.name}
-                        </div>
-                        <div className="truncate font-mono text-[11px] leading-4 text-muted-foreground">
-                          {getEntryMeta(entry)}
-                        </div>
+                    ) : null}
+
+                    {entries.map((entry) => {
+                      const contextMenuTargets = resolveContextMenuTargets(entry)
+                      const isSelected = selectedEntrySet.has(entry.path)
+                      const hasSingleContextTarget = contextMenuTargets.length === 1
+                      const singleContextTarget = hasSingleContextTarget
+                        ? contextMenuTargets[0]
+                        : null
+                      const createTargetPath =
+                        singleContextTarget?.kind === 'directory'
+                          ? singleContextTarget.path
+                          : currentPath
+
+                      return (
+                        <ContextMenu key={entry.path}>
+                          <ContextMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className={cn(
+                                'flex w-full items-start gap-3 px-3 py-2 text-left transition-colors',
+                                isSelected
+                                  ? 'bg-[var(--workbench-hover)] text-foreground'
+                                  : 'hover:bg-[var(--workbench-hover)] hover:text-foreground'
+                              )}
+                              onClick={(event) =>
+                                handleEntrySelection(entry.path, {
+                                  additive: event.metaKey || event.ctrlKey,
+                                  range: event.shiftKey
+                                })
+                              }
+                              onContextMenu={() => {
+                                if (!selectedEntrySet.has(entry.path)) {
+                                  selectSingleEntry(entry.path)
+                                }
+                              }}
+                              onDoubleClick={(event) => {
+                                handleEntrySelection(entry.path, {
+                                  additive: event.metaKey || event.ctrlKey,
+                                  range: event.shiftKey
+                                })
+                                if (entry.kind === 'directory') {
+                                  openDirectory(entry.path)
+                                }
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === ' ') {
+                                  event.preventDefault()
+                                  handleEntrySelection(entry.path, {
+                                    additive: event.metaKey || event.ctrlKey,
+                                    range: event.shiftKey
+                                  })
+                                  return
+                                }
+
+                                if (event.key === 'Escape') {
+                                  event.preventDefault()
+                                  clearSelection()
+                                  return
+                                }
+
+                                if (event.key === 'Enter' && entry.kind === 'directory') {
+                                  event.preventDefault()
+                                  selectSingleEntry(entry.path)
+                                  openDirectory(entry.path)
+                                }
+                              }}
+                            >
+                              <div
+                                className={cn(
+                                  'mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-sm transition-colors',
+                                  isSelected
+                                    ? 'bg-[var(--workbench-hover)] text-foreground'
+                                    : 'bg-muted text-muted-foreground'
+                                )}
+                              >
+                                {entry.kind === 'directory' ? (
+                                  <Folder className="size-3.5" />
+                                ) : (
+                                  <File className="size-3.5" />
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate text-[13px] leading-5 font-medium text-foreground">
+                                  {entry.name}
+                                </div>
+                                <div className="truncate font-mono text-[11px] leading-4 text-muted-foreground">
+                                  {getEntryMeta(entry)}
+                                </div>
+                              </div>
+                            </button>
+                          </ContextMenuTrigger>
+                          <ContextMenuContent>
+                            {singleContextTarget?.kind === 'directory' ? (
+                              <ContextMenuItem
+                                onClick={() => openDirectory(singleContextTarget.path)}
+                              >
+                                <Folder className="size-4" />
+                                {t('workbench.sftp.actions.openDirectory')}
+                              </ContextMenuItem>
+                            ) : null}
+
+                            {singleContextTarget && singleContextTarget.kind !== 'directory' ? (
+                              <ContextMenuItem
+                                onClick={() =>
+                                  void window.winsshApi.sftp.downloadFile(
+                                    session.sessionId,
+                                    singleContextTarget.path
+                                  )
+                                }
+                              >
+                                <DownloadIcon className="size-4" />
+                                {t('common.actions.download')}
+                              </ContextMenuItem>
+                            ) : null}
+
+                            <ContextMenuItem
+                              onClick={() => void copyEntryPaths(contextMenuTargets)}
+                            >
+                              <CopyIcon className="size-4" />
+                              {t('workbench.sftp.actions.copyPath')}
+                            </ContextMenuItem>
+
+                            <ContextMenuItem onClick={() => void refresh()}>
+                              <RefreshIcon className="size-4" />
+                              {t('common.actions.refresh')}
+                            </ContextMenuItem>
+
+                            <ContextMenuItem onClick={() => openCreateFileDialog(createTargetPath)}>
+                              <NewFileIcon className="size-4" />
+                              {t('common.actions.newFile')}
+                            </ContextMenuItem>
+
+                            <ContextMenuItem
+                              onClick={() => openCreateFolderDialog(createTargetPath)}
+                            >
+                              <NewFolderIcon className="size-4" />
+                              {t('common.actions.newFolder')}
+                            </ContextMenuItem>
+
+                            {hasSingleContextTarget ? <ContextMenuSeparator /> : null}
+
+                            {singleContextTarget ? (
+                              <ContextMenuItem
+                                onClick={() => {
+                                  setRenameTarget(singleContextTarget)
+                                  setRenameValue(singleContextTarget.name)
+                                }}
+                              >
+                                <RenameIcon className="size-4" />
+                                {t('common.actions.rename')}
+                              </ContextMenuItem>
+                            ) : null}
+
+                            <ContextMenuItem
+                              variant="destructive"
+                              onClick={() => void removeEntries(contextMenuTargets)}
+                            >
+                              <DeleteIcon className="size-4" />
+                              {t('common.actions.delete')}
+                            </ContextMenuItem>
+                          </ContextMenuContent>
+                        </ContextMenu>
+                      )
+                    })}
+
+                    {!listingQuery.isLoading && entries.length === 0 ? (
+                      <div className="m-3 rounded-md border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+                        {t('workbench.sftp.empty.directory')}
                       </div>
-                    </button>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent>
-                    {singleContextTarget?.kind === 'directory' ? (
-                      <ContextMenuItem onClick={() => openDirectory(singleContextTarget.path)}>
-                        <Folder className="size-4" />
-                        {t('workbench.sftp.actions.openDirectory')}
-                      </ContextMenuItem>
                     ) : null}
-
-                    {singleContextTarget && singleContextTarget.kind !== 'directory' ? (
-                      <ContextMenuItem
-                        onClick={() =>
-                          void window.winsshApi.sftp.downloadFile(
-                            session.sessionId,
-                            singleContextTarget.path
-                          )
-                        }
-                      >
-                        <DownloadIcon className="size-4" />
-                        {t('common.actions.download')}
-                      </ContextMenuItem>
-                    ) : null}
-
-                    <ContextMenuItem onClick={() => void copyEntryPaths(contextMenuTargets)}>
-                      <CopyIcon className="size-4" />
-                      {t('workbench.sftp.actions.copyPath')}
-                    </ContextMenuItem>
-
-                    {hasSingleContextTarget ? <ContextMenuSeparator /> : null}
-
-                    {singleContextTarget ? (
-                      <ContextMenuItem
-                        onClick={() => {
-                          setRenameTarget(singleContextTarget)
-                          setRenameValue(singleContextTarget.name)
-                        }}
-                      >
-                        <RenameIcon className="size-4" />
-                        {t('common.actions.rename')}
-                      </ContextMenuItem>
-                    ) : null}
-
-                    <ContextMenuItem
-                      variant="destructive"
-                      onClick={() => void removeEntries(contextMenuTargets)}
-                    >
-                      <DeleteIcon className="size-4" />
-                      {t('common.actions.delete')}
-                    </ContextMenuItem>
-                  </ContextMenuContent>
-                </ContextMenu>
-              )
-            })}
-
-            {!listingQuery.isLoading && entries.length === 0 ? (
-              <div className="m-3 rounded-md border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
-                {t('workbench.sftp.empty.directory')}
-              </div>
-            ) : null}
-          </div>
-        </ScrollArea>
+                  </div>
+                </div>
+              </ScrollArea>
+            </div>
+          </ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem onClick={() => void refresh()}>
+              <RefreshIcon className="size-4" />
+              {t('common.actions.refresh')}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => openCreateFileDialog(currentPath)}>
+              <NewFileIcon className="size-4" />
+              {t('common.actions.newFile')}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => openCreateFolderDialog(currentPath)}>
+              <NewFolderIcon className="size-4" />
+              {t('common.actions.newFolder')}
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
       </div>
 
-      <Dialog open={newFolderOpen} onOpenChange={setNewFolderOpen}>
+      <Dialog
+        open={newFileOpen}
+        onOpenChange={(open) => {
+          setNewFileOpen(open)
+          if (!open) {
+            setNewFileName('')
+            setNewFileTargetPath(null)
+          }
+        }}
+      >
+        <DialogContent className="max-w-sm rounded-xl">
+          <DialogHeader>
+            <DialogTitle>{t('workbench.sftp.dialogs.createFile')}</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={newFileName}
+            onChange={(event) => setNewFileName(event.target.value)}
+            placeholder={t('workbench.sftp.placeholders.fileName')}
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setNewFileOpen(false)}>
+              <CancelIcon className="size-4" />
+              {t('common.actions.cancel')}
+            </Button>
+            <Button
+              onClick={async () => {
+                await window.winsshApi.sftp.createFile(
+                  session.sessionId,
+                  newFileTargetPath ?? currentPath,
+                  newFileName
+                )
+                setNewFileName('')
+                setNewFileTargetPath(null)
+                setNewFileOpen(false)
+                await refresh()
+              }}
+            >
+              <CreateFileIcon className="size-4" />
+              {t('common.actions.create')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={newFolderOpen}
+        onOpenChange={(open) => {
+          setNewFolderOpen(open)
+          if (!open) {
+            setNewFolderName('')
+            setNewFolderTargetPath(null)
+          }
+        }}
+      >
         <DialogContent className="max-w-sm rounded-xl">
           <DialogHeader>
             <DialogTitle>{t('workbench.sftp.dialogs.createFolder')}</DialogTitle>
@@ -513,13 +652,18 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
             </Button>
             <Button
               onClick={async () => {
-                await window.winsshApi.sftp.mkdir(session.sessionId, currentPath, newFolderName)
+                await window.winsshApi.sftp.mkdir(
+                  session.sessionId,
+                  newFolderTargetPath ?? currentPath,
+                  newFolderName
+                )
                 setNewFolderName('')
+                setNewFolderTargetPath(null)
                 setNewFolderOpen(false)
                 await refresh()
               }}
             >
-              <CreateIcon className="size-4" />
+              <CreateFolderIcon className="size-4" />
               {t('common.actions.create')}
             </Button>
           </DialogFooter>

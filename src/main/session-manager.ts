@@ -190,6 +190,26 @@ function sftpMkdir(sftp: SFTPWrapper, remotePath: string): Promise<void> {
   })
 }
 
+function sftpCreateFile(sftp: SFTPWrapper, remotePath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    sftp.open(remotePath, 'w', (error, handle) => {
+      if (error) {
+        reject(error)
+        return
+      }
+
+      sftp.close(handle, (closeError) => {
+        if (closeError) {
+          reject(closeError)
+          return
+        }
+
+        resolve()
+      })
+    })
+  })
+}
+
 function sftpRename(sftp: SFTPWrapper, fromPath: string, toPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     sftp.rename(fromPath, toPath, (error) => {
@@ -604,6 +624,11 @@ export class SessionManager {
       path: normalized,
       entries
     }
+  }
+
+  async createFile(sessionId: string, currentPath: string, name: string): Promise<void> {
+    const runtime = this.requireSession(sessionId)
+    await sftpCreateFile(runtime.sftp, posix.join(normalizeRemotePath(currentPath), name.trim()))
   }
 
   async makeDirectory(sessionId: string, currentPath: string, name: string): Promise<void> {
