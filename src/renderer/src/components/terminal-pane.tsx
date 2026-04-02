@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { CheckCircle2, LoaderCircle, RotateCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { ThemeDefinition } from '@shared/themes'
-import type { AppSettings } from '@shared/types'
+import { SESSION_CONNECTION_PHASES, type AppSettings } from '@shared/types'
 import { actionIcons } from '@/lib/action-icons'
 import type { SessionTab } from '@/store/sessions-store'
 import { useTerminal } from '@/hooks/use-terminal'
@@ -16,24 +16,27 @@ interface TerminalPaneProps {
 }
 
 interface ConnectingOverlayProps {
-  connectionStages: readonly string[]
+  connectionPhase: SessionTab['connectionPhase']
+  connectionStages: ReadonlyArray<{
+    key: (typeof SESSION_CONNECTION_PHASES)[number]
+    label: string
+  }>
   message: string
   serverName: string
 }
 
-function ConnectingOverlay({ connectionStages, message, serverName }: ConnectingOverlayProps) {
+function ConnectingOverlay({
+  connectionPhase,
+  connectionStages,
+  message,
+  serverName
+}: ConnectingOverlayProps) {
   const { t } = useTranslation()
-  const [stageIndex, setStageIndex] = useState(0)
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setStageIndex((current) => (current + 1) % connectionStages.length)
-    }, 1100)
-
-    return () => window.clearInterval(timer)
-  }, [connectionStages.length])
-
-  const activeStage = connectionStages[stageIndex]
+  const stageIndex = connectionStages.findIndex((stage) => stage.key === connectionPhase)
+  const resolvedStageIndex = stageIndex >= 0 ? stageIndex : 0
+  const activeStage = connectionStages[resolvedStageIndex]
+  const progressValue = Math.round(((resolvedStageIndex + 1) / connectionStages.length) * 100)
+  const progressWidth = `${progressValue}%`
 
   return (
     <div className="flex items-start gap-4">
@@ -54,31 +57,40 @@ function ConnectingOverlay({ connectionStages, message, serverName }: Connecting
           <div className="text-xs font-medium uppercase tracking-[0.14em] text-[var(--terminal-overlay-label)]">
             {t('workbench.terminal.connecting.currentStage')}
           </div>
-          <div className="mt-2 text-sm text-[var(--terminal-overlay-accent)]">{activeStage}</div>
+          <div className="mt-2 text-sm text-[var(--terminal-overlay-accent)]">{activeStage.label}</div>
           <div className="mt-3 space-y-2">
             {connectionStages.map((stage, index) => (
-              <div key={stage} className="flex items-center gap-2 text-xs">
-                {index < stageIndex ? (
+              <div key={stage.key} className="flex items-center gap-2 text-xs">
+                {index < resolvedStageIndex ? (
                   <CheckCircle2 className="size-3.5 text-[var(--terminal-overlay-accent)]" />
-                ) : index === stageIndex ? (
+                ) : index === resolvedStageIndex ? (
                   <LoaderCircle className="size-3.5 animate-spin text-[var(--terminal-overlay-accent)]" />
                 ) : (
                   <span className="size-3.5 rounded-full border border-[var(--terminal-overlay-step-border)]" />
                 )}
                 <span
                   className={
-                    index <= stageIndex
+                    index <= resolvedStageIndex
                       ? 'text-[var(--terminal-overlay-text)]'
                       : 'text-[var(--terminal-overlay-label)]'
                   }
                 >
-                  {stage}
+                  {stage.label}
                 </span>
               </div>
             ))}
           </div>
-          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--terminal-overlay-accent-soft)_55%,transparent)]">
-            <div className="connection-progress-bar h-full rounded-full bg-[var(--terminal-overlay-progress)]" />
+          <div
+            aria-valuemax={100}
+            aria-valuemin={0}
+            aria-valuenow={progressValue}
+            className="mt-4 h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--terminal-overlay-accent-soft)_55%,transparent)]"
+            role="progressbar"
+          >
+            <div
+              className="h-full rounded-full bg-[var(--terminal-overlay-progress)] transition-[width] duration-300 ease-out"
+              style={{ width: progressWidth }}
+            />
           </div>
         </div>
       </div>
@@ -98,12 +110,10 @@ export function TerminalPane({ session, settings, theme, onReconnect }: Terminal
 
   const connectionStages = useMemo(
     () =>
-      [
-        t('workbench.terminal.stages.validate'),
-        t('workbench.terminal.stages.handshake'),
-        t('workbench.terminal.stages.prepare'),
-        t('workbench.terminal.stages.attach')
-      ] as const,
+      SESSION_CONNECTION_PHASES.map((phase) => ({
+        key: phase,
+        label: t(`workbench.terminal.stages.${phase}`)
+      })),
     [t]
   )
 
@@ -120,6 +130,7 @@ export function TerminalPane({ session, settings, theme, onReconnect }: Terminal
             {session.status === 'connecting' ? (
               <ConnectingOverlay
                 key={session.connectionStartedAt ?? session.sessionId}
+                connectionPhase={session.connectionPhase}
                 connectionStages={connectionStages}
                 message={session.lastMessage ?? t('workbench.terminal.connecting.defaultMessage')}
                 serverName={session.serverName}

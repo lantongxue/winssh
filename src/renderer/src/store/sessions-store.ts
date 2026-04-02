@@ -1,16 +1,23 @@
 import { create } from 'zustand'
-import type { SessionStateEvent, SessionStatus, SessionSummary } from '@shared/types'
+import type {
+  SessionConnectionPhase,
+  SessionStateEvent,
+  SessionStatus,
+  SessionSummary
+} from '@shared/types'
 
 export type SessionAuxView = 'sftp' | 'port-forward'
 
 export interface SessionTab extends SessionSummary {
   auxView?: SessionAuxView | null
+  connectionPhase?: SessionConnectionPhase
   connectionStartedAt?: string
   lastMessage?: string
   provisional?: boolean
 }
 
 export interface PendingSessionInput {
+  connectionPhase?: SessionConnectionPhase
   host: string
   lastMessage?: string
   port: number
@@ -28,15 +35,26 @@ interface SessionsState {
   removeSession: (sessionId: string) => void
   setActiveSession: (sessionId: string | null) => void
   setAuxView: (sessionId: string, auxView: SessionAuxView | null) => void
-  setSessionState: (sessionId: string, status: SessionStatus, lastMessage?: string) => void
+  setSessionState: (
+    sessionId: string,
+    status: SessionStatus,
+    lastMessage?: string,
+    connectionPhase?: SessionConnectionPhase
+  ) => void
   updateSessionState: (event: SessionStateEvent) => void
   setCurrentPath: (sessionId: string, path: string) => void
   clear: () => void
 }
 
-function setStatus(tab: SessionTab, status: SessionStatus, lastMessage?: string): SessionTab {
+function setStatus(
+  tab: SessionTab,
+  status: SessionStatus,
+  lastMessage?: string,
+  connectionPhase?: SessionConnectionPhase
+): SessionTab {
   return {
     ...tab,
+    connectionPhase: status === 'connecting' ? connectionPhase : undefined,
     status,
     lastMessage
   }
@@ -63,6 +81,7 @@ export const useSessionsStore = create<SessionsState>((set) => ({
     set((state) => {
       const nextSession: SessionTab = {
         connectedAt: new Date().toISOString(),
+        connectionPhase: session.connectionPhase,
         connectionStartedAt: new Date().toISOString(),
         currentPath: '/',
         host: session.host,
@@ -92,6 +111,7 @@ export const useSessionsStore = create<SessionsState>((set) => ({
           ? {
               auxView: tab.auxView ?? null,
               connectionStartedAt: tab.connectionStartedAt,
+              connectionPhase: summary.status === 'connecting' ? tab.connectionPhase : undefined,
               ...summary,
               lastMessage: summary.status === 'ready' ? undefined : tab.lastMessage
             }
@@ -114,16 +134,18 @@ export const useSessionsStore = create<SessionsState>((set) => ({
     set((state) => ({
       tabs: state.tabs.map((tab) => (tab.sessionId === sessionId ? { ...tab, auxView } : tab))
     })),
-  setSessionState: (sessionId, status, lastMessage) =>
+  setSessionState: (sessionId, status, lastMessage, connectionPhase) =>
     set((state) => ({
       tabs: state.tabs.map((tab) =>
-        tab.sessionId === sessionId ? setStatus(tab, status, lastMessage) : tab
+        tab.sessionId === sessionId ? setStatus(tab, status, lastMessage, connectionPhase) : tab
       )
     })),
   updateSessionState: (event) =>
     set((state) => ({
       tabs: state.tabs.map((tab) =>
-        tab.sessionId === event.sessionId ? setStatus(tab, event.status, event.message) : tab
+        tab.sessionId === event.sessionId
+          ? setStatus(tab, event.status, event.message, event.phase)
+          : tab
       )
     })),
   setCurrentPath: (sessionId, path) =>

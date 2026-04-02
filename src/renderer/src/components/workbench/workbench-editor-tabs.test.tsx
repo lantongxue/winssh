@@ -109,7 +109,12 @@ describe('WorkbenchEditorTabs session context menu', () => {
     fireEvent.click(await screen.findByText('Clone Session'))
 
     await waitFor(() => {
-      expect(sessionsConnect).toHaveBeenCalledWith({ serverId: 'server-1' })
+      expect(sessionsConnect).toHaveBeenCalledWith(
+        expect.objectContaining({
+          serverId: 'server-1',
+          sessionId: expect.any(String)
+        })
+      )
     })
     expect(useSessionsStore.getState().tabs.map((session) => session.sessionId)).toContain(
       'session-2'

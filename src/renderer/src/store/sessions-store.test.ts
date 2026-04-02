@@ -86,6 +86,7 @@ describe('sessions store', () => {
     const store = useSessionsStore.getState()
 
     store.addPendingSession({
+      connectionPhase: 'validate',
       host: '10.0.0.1',
       port: 22,
       serverId: 'server-1',
@@ -94,6 +95,7 @@ describe('sessions store', () => {
     })
 
     expect(useSessionsStore.getState().tabs[0]?.provisional).toBe(true)
+    expect(useSessionsStore.getState().tabs[0]?.connectionPhase).toBe('validate')
     expect(useSessionsStore.getState().activeSessionId).toBe('pending:server-1')
 
     store.replaceSession('pending:server-1', {
@@ -109,7 +111,37 @@ describe('sessions store', () => {
 
     const state = useSessionsStore.getState()
     expect(state.tabs[0]?.sessionId).toBe('session-1')
+    expect(state.tabs[0]?.connectionPhase).toBeUndefined()
     expect(state.tabs[0]?.provisional).toBeUndefined()
     expect(state.activeSessionId).toBe('session-1')
+  })
+
+  it('tracks real connection phase updates from session events', () => {
+    const store = useSessionsStore.getState()
+
+    store.addPendingSession({
+      connectionPhase: 'validate',
+      host: '10.0.0.1',
+      port: 22,
+      serverId: 'server-1',
+      serverName: 'alpha',
+      sessionId: 'pending:server-1'
+    })
+
+    store.updateSessionState({
+      phase: 'handshake',
+      sessionId: 'pending:server-1',
+      status: 'connecting'
+    })
+
+    expect(useSessionsStore.getState().tabs[0]?.connectionPhase).toBe('handshake')
+
+    store.updateSessionState({
+      message: 'Connected',
+      sessionId: 'pending:server-1',
+      status: 'ready'
+    })
+
+    expect(useSessionsStore.getState().tabs[0]?.connectionPhase).toBeUndefined()
   })
 })

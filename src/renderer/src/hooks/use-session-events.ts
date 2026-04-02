@@ -16,6 +16,11 @@ export function useSessionEvents() {
   useEffect(() => {
     const unsubscribeState = window.winsshApi.sessions.onStateChange((event) => {
       updateSessionState(event)
+
+      if (event.status === 'connecting') {
+        return
+      }
+
       appendOutput({
         detail: event.sessionId,
         level: event.status === 'error' ? 'error' : 'info',

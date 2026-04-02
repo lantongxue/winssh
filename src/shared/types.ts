@@ -5,6 +5,8 @@ export type ThemeMode = ThemeSelection
 export type AppLanguage = 'system' | 'zh-CN' | 'en-US'
 export type CursorStyle = 'block' | 'underline' | 'bar'
 export type SessionStatus = 'connecting' | 'ready' | 'error' | 'disconnected'
+export const SESSION_CONNECTION_PHASES = ['validate', 'handshake', 'prepare', 'attach'] as const
+export type SessionConnectionPhase = (typeof SESSION_CONNECTION_PHASES)[number]
 export type RemoteEntryKind = 'file' | 'directory' | 'symlink'
 export type SecretKind = 'password' | 'passphrase'
 export type WindowTitleBarStyle = 'native' | 'custom'
@@ -105,6 +107,7 @@ export interface ServerUpsertInput {
 
 export interface ConnectionRequest {
   serverId: string
+  sessionId?: string
   password?: string
   passphrase?: string
   rememberPassword?: boolean
@@ -136,6 +139,7 @@ export interface SessionSummary {
 export interface SessionStateEvent {
   sessionId: string
   status: SessionStatus
+  phase?: SessionConnectionPhase
   message?: string
 }
 

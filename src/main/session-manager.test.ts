@@ -141,6 +141,30 @@ afterEach(() => {
 })
 
 describe('SessionManager port forwarding', () => {
+  it('reuses the existing session id while reconnecting so state events stay bound to the same tab', async () => {
+    const manager = createManager()
+    getHistoryMap(manager).set('session-old', { serverId: 'server-1' })
+
+    const connectSpy = vi.spyOn(manager, 'connect').mockResolvedValue({
+      ok: true,
+      summary: {
+        sessionId: 'session-old',
+        serverId: 'server-1',
+        serverName: 'alpha',
+        host: '127.0.0.1',
+        port: 22,
+        status: 'ready',
+        connectedAt: new Date().toISOString(),
+        currentPath: '/'
+      }
+    })
+
+    const summary = await manager.reconnect('session-old')
+
+    expect(connectSpy).toHaveBeenCalledWith({ serverId: 'server-1', sessionId: 'session-old' })
+    expect(summary.sessionId).toBe('session-old')
+  })
+
   it('starts a local forward and releases the listener on stop', async () => {
     const manager = createManager()
     const client = new MockClient()

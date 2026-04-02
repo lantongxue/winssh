@@ -17,7 +17,7 @@ import {
   type OpenDialogOptions
 } from 'electron'
 import { normalizeRemotePath, sortRemoteEntries } from '@shared/sftp'
-import type {
+import {
   ConnectionRequest,
   PortForwardInput,
   PortForwardRule,
@@ -25,9 +25,11 @@ import type {
   RemoteEntry,
   SessionConnectFailureCode,
   SessionConnectResult,
+  type SessionConnectionPhase,
   SessionDataEvent,
   SessionErrorEvent,
   SessionExitEvent,
+  SESSION_CONNECTION_PHASES,
   SessionStateEvent,
   SessionSummary,
   TransferProgressEvent
@@ -358,13 +360,16 @@ export class SessionManager {
       throw new Error(this.t('errors.reconnectUnavailable'))
     }
 
-    const result = await this.connect(request)
+    const result = await this.connect({ ...request, sessionId })
     if (!result.ok) {
       throw new Error(result.message)
     }
 
-    this.history.delete(sessionId)
-    this.migratePortForwardSnapshots(sessionId, result.summary.sessionId)
+    if (result.summary.sessionId !== sessionId) {
+      this.history.delete(sessionId)
+      this.migratePortForwardSnapshots(sessionId, result.summary.sessionId)
+    }
+
     await this.restoreEnabledPortForwards(result.summary.sessionId)
     return result.summary
   }
@@ -393,7 +398,7 @@ export class SessionManager {
       privateKey = await fs.readFile(server.privateKeyPath, 'utf8')
     }
 
-    const sessionId = randomUUID()
+    const sessionId = request.sessionId ?? randomUUID()
     const connectedAt = now()
     const baseSummary: SessionSummary = {
       sessionId,
@@ -405,6 +410,8 @@ export class SessionManager {
       connectedAt,
       currentPath: '/'
     }
+
+    this.emitConnectionPhase(sessionId, 'validate')
 
     const client = new Client()
     const connectConfig: ConnectConfig = {
@@ -440,6 +447,7 @@ export class SessionManager {
 
       client.once('ready', async () => {
         try {
+          this.emitConnectionPhase(sessionId, 'prepare')
           const [shell, sftp] = await Promise.all([openShell(client), openSftp(client)])
           const currentPath = normalizeRemotePath(await sftpRealpath(sftp, '.').catch(() => '/'))
           const summary: SessionSummary = {
@@ -447,6 +455,8 @@ export class SessionManager {
             status: 'ready',
             currentPath
           }
+
+          this.emitConnectionPhase(sessionId, 'attach')
 
           const runtime: SessionRuntime = {
             sessionId,
@@ -480,11 +490,7 @@ export class SessionManager {
           client.on('error', (error) => {
             runtime.lastError = error.message
             this.emitToRenderer('sessions:error', { sessionId, message: error.message })
-            this.emitToRenderer('sessions:state', {
-              sessionId,
-              status: 'error',
-              message: error.message
-            })
+            this.emitSessionState(sessionId, 'error', undefined, error.message)
           })
           client.on('close', () => {
             void this.finalizeSession(sessionId)
@@ -494,11 +500,7 @@ export class SessionManager {
           this.history.set(sessionId, request)
           this.database.recordRecentSession(server.id)
           await this.persistConnectionSecrets(server.id, server.authType, request)
-          this.emitToRenderer('sessions:state', {
-            sessionId,
-            status: 'ready',
-            message: this.t('session.connected')
-          })
+          this.emitSessionState(sessionId, 'ready', undefined, this.t('session.connected'))
 
           if (!settled) {
             settled = true
@@ -511,6 +513,7 @@ export class SessionManager {
       })
 
       try {
+        this.emitConnectionPhase(sessionId, 'handshake')
         client.connect(connectConfig)
       } catch (error) {
         rejectWith(error)
@@ -531,11 +534,7 @@ export class SessionManager {
     this.history.delete(sessionId)
     this.portForwardSnapshots.delete(sessionId)
 
-    this.emitToRenderer('sessions:state', {
-      sessionId,
-      status: 'disconnected',
-      message: this.t('session.closed')
-    })
+    this.emitSessionState(sessionId, 'disconnected', undefined, this.t('session.closed'))
   }
 
   async write(sessionId: string, data: string): Promise<void> {
@@ -1237,11 +1236,12 @@ export class SessionManager {
       this.emitToRenderer('sessions:exit', runtime.lastExit)
     }
 
-    this.emitToRenderer('sessions:state', {
+    this.emitSessionState(
       sessionId,
-      status: runtime.lastError ? 'error' : 'disconnected',
-      message: runtime.lastError ?? this.t('session.disconnected')
-    })
+      runtime.lastError ? 'error' : 'disconnected',
+      undefined,
+      runtime.lastError ?? this.t('session.disconnected')
+    )
   }
 
   private async verifyHost(
@@ -1313,5 +1313,27 @@ export class SessionManager {
     })
 
     return true
+  }
+
+  private emitConnectionPhase(sessionId: string, phase: SessionConnectionPhase): void {
+    if (!SESSION_CONNECTION_PHASES.includes(phase)) {
+      return
+    }
+
+    this.emitSessionState(sessionId, 'connecting', phase)
+  }
+
+  private emitSessionState(
+    sessionId: string,
+    status: SessionStateEvent['status'],
+    phase?: SessionConnectionPhase,
+    message?: string
+  ): void {
+    this.emitToRenderer('sessions:state', {
+      sessionId,
+      status,
+      phase,
+      message
+    })
   }
 }

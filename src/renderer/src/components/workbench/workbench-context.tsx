@@ -123,6 +123,10 @@ function buildQuickConnectServerName(target: QuickConnectTarget) {
   return formatQuickConnectTarget(target)
 }
 
+function createClientSessionId(serverId: string) {
+  return globalThis.crypto?.randomUUID?.() ?? `session:${serverId}:${Date.now().toString(36)}`
+}
+
 export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -295,12 +299,11 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    const pendingSessionId =
-      options.pendingSessionId ?? `pending:${server.id}:${Date.now().toString(36)}`
+    const pendingSessionId = options.pendingSessionId ?? createClientSessionId(server.id)
 
     addPendingSession({
+      connectionPhase: 'validate',
       host: server.host,
-      lastMessage: t('workbench.terminal.stages.validate'),
       port: server.port,
       serverId: server.id,
       serverName: server.name,
@@ -317,7 +320,10 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       message: t('workbench.output.connectingTo', { name: server.name })
     })
 
-    const result = await window.winsshApi.sessions.connect(request ?? { serverId: server.id })
+    const result = await window.winsshApi.sessions.connect({
+      ...(request ?? { serverId: server.id }),
+      sessionId: pendingSessionId
+    })
     if (result.ok) {
       replaceSession(pendingSessionId, result.summary)
       replaceDocument(
@@ -455,6 +461,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     })
 
     try {
+      setSessionState(sessionId, 'connecting', undefined, 'validate')
       const nextSession = await window.winsshApi.sessions.reconnect(sessionId)
       replaceSession(sessionId, nextSession)
       replaceDocument(
@@ -470,6 +477,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       await refreshWorkspaceData()
     } catch (error) {
       const message = error instanceof Error ? error.message : t('workbench.toasts.reconnectFailed')
+      setSessionState(sessionId, 'error', message)
       pushProblem({
         detail: `${session.serverName} · ${session.host}:${session.port}`,
         documentId: `session-editor:${sessionId}`,

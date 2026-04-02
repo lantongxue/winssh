@@ -149,14 +149,18 @@ describe('WorkbenchQuickInput quick connect flow', () => {
       expect(serversCreate).toHaveBeenCalledTimes(1)
     })
     expect(await screen.findByText('Wrong password')).toBeInTheDocument()
-    expect(sessionsConnect).toHaveBeenNthCalledWith(1, {
-      password: 'wrong-password',
-      rememberPassword: true,
-      serverId: 'server-1'
-    })
+    expect(sessionsConnect).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        password: 'wrong-password',
+        rememberPassword: true,
+        serverId: 'server-1',
+        sessionId: expect.any(String)
+      })
+    )
 
     const pendingSessionId = useSessionsStore.getState().tabs[0]?.sessionId
-    expect(pendingSessionId).toMatch(/^pending:server-1:/)
+    expect(pendingSessionId).toEqual(expect.any(String))
 
     fireEvent.change(screen.getByPlaceholderText('Enter the server password'), {
       target: { value: 'correct-password' }
@@ -185,10 +189,14 @@ describe('WorkbenchQuickInput quick connect flow', () => {
     })
 
     expect(serversCreate).toHaveBeenCalledTimes(1)
-    expect(sessionsConnect).toHaveBeenNthCalledWith(2, {
-      password: 'correct-password',
-      rememberPassword: true,
-      serverId: 'server-1'
-    })
+    expect(sessionsConnect).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        password: 'correct-password',
+        rememberPassword: true,
+        serverId: 'server-1',
+        sessionId: pendingSessionId
+      })
+    )
   })
 })
