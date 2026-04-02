@@ -387,6 +387,7 @@ const workbench = {
     sftp: {
       actions: {
         backToParent: 'Go to Parent Directory',
+        copyPath: 'Copy Path',
         openDirectory: 'Open Directory'
       },
       dialogs: {
@@ -401,11 +402,19 @@ const workbench = {
       },
       explorer: 'SFTP Explorer',
       kinds: {
-        directory: 'Directory'
+        directory: 'Directory',
+        symlink: 'Symlink'
+      },
+      labels: {
+        currentPath: 'Current Path'
       },
       placeholders: {
         directoryName: 'Enter a directory name',
         rename: 'New name'
+      },
+      toasts: {
+        pathCopied: 'Path copied.',
+        pathCopyFailed: 'Failed to copy the path.'
       }
     },
     statusBar: {

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { EllipsisVertical, File, Folder } from 'lucide-react'
+import { File, Folder } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { getParentRemotePath } from '@shared/sftp'
 import type { RemoteEntry } from '@shared/types'
 import { formatFileSize } from '@/i18n/format'
@@ -18,11 +19,12 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger
+} from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -36,6 +38,8 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const setCurrentPath = useSessionsStore((state) => state.setCurrentPath)
+  const [selectedEntryPaths, setSelectedEntryPaths] = useState<string[]>([])
+  const [selectionAnchorPath, setSelectionAnchorPath] = useState<string | null>(null)
   const [newFolderOpen, setNewFolderOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
   const [renameTarget, setRenameTarget] = useState<RemoteEntry | null>(null)
@@ -49,6 +53,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
   const CancelIcon = actionIcons.cancel
   const CreateIcon = actionIcons.newFolder
   const SaveIcon = actionIcons.save
+  const CopyIcon = actionIcons.clone
 
   const listingQuery = useQuery({
     queryKey: ['sftp', session?.sessionId, session?.currentPath],
@@ -61,6 +66,17 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
       setCurrentPath(session.sessionId, listingQuery.data.path)
     }
   }, [listingQuery.data?.path, session, setCurrentPath])
+
+  useEffect(() => {
+    if (!listingQuery.data?.entries) {
+      return
+    }
+
+    const availablePaths = new Set(listingQuery.data.entries.map((entry) => entry.path))
+
+    setSelectedEntryPaths((current) => current.filter((path) => availablePaths.has(path)))
+    setSelectionAnchorPath((current) => (current && availablePaths.has(current) ? current : null))
+  }, [listingQuery.data?.entries])
 
   const segments = useMemo(() => {
     const currentPath = listingQuery.data?.path ?? session?.currentPath ?? '/'
@@ -107,6 +123,120 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
   }
 
   const currentPath = listingQuery.data?.path ?? session.currentPath
+  const entries = listingQuery.data?.entries ?? []
+  const selectedEntrySet = useMemo(() => new Set(selectedEntryPaths), [selectedEntryPaths])
+  const selectedEntries = useMemo(
+    () => entries.filter((entry) => selectedEntrySet.has(entry.path)),
+    [entries, selectedEntrySet]
+  )
+
+  const copyPath = async (path: string) => {
+    try {
+      await navigator.clipboard.writeText(path)
+      toast.success(t('workbench.sftp.toasts.pathCopied'))
+    } catch {
+      toast.error(t('workbench.sftp.toasts.pathCopyFailed'))
+    }
+  }
+
+  const openDirectory = (path: string) => {
+    setCurrentPath(session.sessionId, path)
+  }
+
+  const clearSelection = () => {
+    setSelectedEntryPaths([])
+    setSelectionAnchorPath(null)
+  }
+
+  const selectSingleEntry = (path: string) => {
+    setSelectedEntryPaths([path])
+    setSelectionAnchorPath(path)
+  }
+
+  const toggleEntrySelection = (path: string) => {
+    setSelectedEntryPaths((current) => {
+      if (current.includes(path)) {
+        return current.filter((currentPath) => currentPath !== path)
+      }
+
+      return [...current, path]
+    })
+    setSelectionAnchorPath(path)
+  }
+
+  const selectEntryRange = (path: string) => {
+    const anchorPath = selectionAnchorPath ?? selectedEntryPaths.at(-1) ?? path
+    const anchorIndex = entries.findIndex((entry) => entry.path === anchorPath)
+    const targetIndex = entries.findIndex((entry) => entry.path === path)
+
+    if (anchorIndex === -1 || targetIndex === -1) {
+      selectSingleEntry(path)
+      return
+    }
+
+    const [start, end] =
+      anchorIndex <= targetIndex ? [anchorIndex, targetIndex] : [targetIndex, anchorIndex]
+
+    setSelectedEntryPaths(entries.slice(start, end + 1).map((entry) => entry.path))
+    setSelectionAnchorPath(anchorPath)
+  }
+
+  const handleEntrySelection = (
+    entryPath: string,
+    options: {
+      additive: boolean
+      range: boolean
+    }
+  ) => {
+    if (options.range) {
+      selectEntryRange(entryPath)
+      return
+    }
+
+    if (options.additive) {
+      toggleEntrySelection(entryPath)
+      return
+    }
+
+    selectSingleEntry(entryPath)
+  }
+
+  const resolveContextMenuTargets = (entry: RemoteEntry) => {
+    if (selectedEntrySet.has(entry.path) && selectedEntries.length > 0) {
+      return selectedEntries
+    }
+
+    return [entry]
+  }
+
+  const copyEntryPaths = async (entriesToCopy: RemoteEntry[]) => {
+    await copyPath(entriesToCopy.map((entry) => entry.path).join('\n'))
+  }
+
+  const removeEntries = async (entriesToRemove: RemoteEntry[]) => {
+    for (const entry of entriesToRemove) {
+      await window.winsshApi.sftp.remove(session.sessionId, entry.path)
+    }
+
+    clearSelection()
+    await refresh()
+  }
+
+  const getEntryMeta = (entry: RemoteEntry) => {
+    const permissionText = entry.permissions
+      ? `${entry.permissions.octal} / ${entry.permissions.symbolic}`
+      : t('common.labels.none')
+
+    if (entry.kind === 'directory') {
+      return `${permissionText} · ${t('workbench.sftp.kinds.directory')}`
+    }
+
+    if (entry.kind === 'symlink') {
+      return `${permissionText} · ${t('workbench.sftp.kinds.symlink')}`
+    }
+
+    return `${permissionText} · ${formatFileSize(Math.max(entry.size, 0))}`
+  }
 
   return (
     <>
@@ -148,6 +278,27 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
             </div>
           </div>
 
+          <div className="mt-3 rounded-md border bg-muted/20 p-2.5">
+            <div className="flex items-start gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+                  {t('workbench.sftp.labels.currentPath')}
+                </div>
+                <div className="mt-1 break-all font-mono text-[11px] leading-4 text-foreground">
+                  {currentPath}
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="icon-xs"
+                title={t('workbench.sftp.actions.copyPath')}
+                onClick={() => void copyPath(currentPath)}
+              >
+                <CopyIcon className="size-3.5" />
+              </Button>
+            </div>
+          </div>
+
           <ScrollArea className="mt-3 w-full">
             <div className="flex w-max items-center gap-1 pr-3">
               {segments.map((segment, index) => {
@@ -176,7 +327,10 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
             variant="ghost"
             size="sm"
             className="mt-2 justify-start px-2"
-            onClick={() => setCurrentPath(session.sessionId, getParentRemotePath(currentPath))}
+            onClick={() => {
+              clearSelection()
+              setCurrentPath(session.sessionId, getParentRemotePath(currentPath))
+            }}
           >
             <Folder className="size-4" />
             {t('workbench.sftp.actions.backToParent')}
@@ -184,7 +338,10 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
         </div>
 
         <ScrollArea className="min-h-0 flex-1">
-          <div className="divide-y">
+          <div
+            className="divide-y"
+            onClick={(event) => event.target === event.currentTarget && clearSelection()}
+          >
             {listingQuery.isLoading ? (
               <div className="space-y-2 p-3">
                 <Skeleton className="h-9 rounded-md" />
@@ -193,95 +350,144 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
               </div>
             ) : null}
 
-            {listingQuery.data?.entries.map((entry) => (
-              <div key={entry.path} className="group flex items-center justify-between px-1.5">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-auto min-h-0 flex-1 justify-start rounded-none px-1.5 py-1.5"
-                  onDoubleClick={() => {
-                    if (entry.kind === 'directory') {
-                      setCurrentPath(session.sessionId, entry.path)
-                    }
-                  }}
-                  onClick={() => {
-                    if (entry.kind === 'directory') {
-                      setCurrentPath(session.sessionId, entry.path)
-                    }
-                  }}
-                >
-                  <div className="flex size-6 items-center justify-center rounded-sm bg-muted text-muted-foreground">
-                    {entry.kind === 'directory' ? (
-                      <Folder className="size-3.5" />
-                    ) : (
-                      <File className="size-3.5" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1 text-left">
-                    <div className="truncate text-[13px] leading-5 font-medium">{entry.name}</div>
-                    <div className="truncate text-[11px] leading-4 text-muted-foreground">
-                      {entry.kind === 'directory'
-                        ? t('workbench.sftp.kinds.directory')
-                        : formatFileSize(Math.max(entry.size, 0))}
-                    </div>
-                  </div>
-                </Button>
+            {entries.map((entry) => {
+              const contextMenuTargets = resolveContextMenuTargets(entry)
+              const isSelected = selectedEntrySet.has(entry.path)
+              const hasSingleContextTarget = contextMenuTargets.length === 1
+              const singleContextTarget = hasSingleContextTarget ? contextMenuTargets[0] : null
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      className="size-7"
-                      title={t('common.actions.open')}
+              return (
+                <ContextMenu key={entry.path}>
+                  <ContextMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        'flex w-full items-start gap-3 border-l-2 px-3 py-2 text-left transition-colors',
+                        isSelected
+                          ? 'border-l-[var(--workbench-active)] bg-[var(--workbench-hover)] text-foreground'
+                          : 'border-l-transparent hover:border-l-[var(--workbench-border)] hover:bg-[var(--workbench-hover)] hover:text-foreground'
+                      )}
+                      onClick={(event) =>
+                        handleEntrySelection(entry.path, {
+                          additive: event.metaKey || event.ctrlKey,
+                          range: event.shiftKey
+                        })
+                      }
+                      onContextMenu={() => {
+                        if (!selectedEntrySet.has(entry.path)) {
+                          selectSingleEntry(entry.path)
+                        }
+                      }}
+                      onDoubleClick={(event) => {
+                        handleEntrySelection(entry.path, {
+                          additive: event.metaKey || event.ctrlKey,
+                          range: event.shiftKey
+                        })
+                        if (entry.kind === 'directory') {
+                          openDirectory(entry.path)
+                        }
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === ' ') {
+                          event.preventDefault()
+                          handleEntrySelection(entry.path, {
+                            additive: event.metaKey || event.ctrlKey,
+                            range: event.shiftKey
+                          })
+                          return
+                        }
+
+                        if (event.key === 'Escape') {
+                          event.preventDefault()
+                          clearSelection()
+                          return
+                        }
+
+                        if (event.key === 'Enter' && entry.kind === 'directory') {
+                          event.preventDefault()
+                          selectSingleEntry(entry.path)
+                          openDirectory(entry.path)
+                        }
+                      }}
                     >
-                      <EllipsisVertical className="size-3.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {entry.kind === 'directory' ? (
-                      <DropdownMenuItem
-                        onClick={() => setCurrentPath(session.sessionId, entry.path)}
+                      <div
+                        className={cn(
+                          'mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-sm transition-colors',
+                          isSelected
+                            ? 'bg-[var(--workbench-hover)] text-foreground'
+                            : 'bg-muted text-muted-foreground'
+                        )}
                       >
+                        {entry.kind === 'directory' ? (
+                          <Folder className="size-3.5" />
+                        ) : (
+                          <File className="size-3.5" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[13px] leading-5 font-medium text-foreground">
+                          {entry.name}
+                        </div>
+                        <div className="truncate font-mono text-[11px] leading-4 text-muted-foreground">
+                          {getEntryMeta(entry)}
+                        </div>
+                      </div>
+                    </button>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent>
+                    {singleContextTarget?.kind === 'directory' ? (
+                      <ContextMenuItem onClick={() => openDirectory(singleContextTarget.path)}>
                         <Folder className="size-4" />
                         {t('workbench.sftp.actions.openDirectory')}
-                      </DropdownMenuItem>
-                    ) : (
-                      <DropdownMenuItem
+                      </ContextMenuItem>
+                    ) : null}
+
+                    {singleContextTarget && singleContextTarget.kind !== 'directory' ? (
+                      <ContextMenuItem
                         onClick={() =>
-                          void window.winsshApi.sftp.downloadFile(session.sessionId, entry.path)
+                          void window.winsshApi.sftp.downloadFile(
+                            session.sessionId,
+                            singleContextTarget.path
+                          )
                         }
                       >
                         <DownloadIcon className="size-4" />
                         {t('common.actions.download')}
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setRenameTarget(entry)
-                        setRenameValue(entry.name)
-                      }}
-                    >
-                      <RenameIcon className="size-4" />
-                      {t('common.actions.rename')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="text-destructive focus:text-destructive"
-                      onClick={() =>
-                        void window.winsshApi.sftp
-                          .remove(session.sessionId, entry.path)
-                          .then(refresh)
-                      }
+                      </ContextMenuItem>
+                    ) : null}
+
+                    <ContextMenuItem onClick={() => void copyEntryPaths(contextMenuTargets)}>
+                      <CopyIcon className="size-4" />
+                      {t('workbench.sftp.actions.copyPath')}
+                    </ContextMenuItem>
+
+                    {hasSingleContextTarget ? <ContextMenuSeparator /> : null}
+
+                    {singleContextTarget ? (
+                      <ContextMenuItem
+                        onClick={() => {
+                          setRenameTarget(singleContextTarget)
+                          setRenameValue(singleContextTarget.name)
+                        }}
+                      >
+                        <RenameIcon className="size-4" />
+                        {t('common.actions.rename')}
+                      </ContextMenuItem>
+                    ) : null}
+
+                    <ContextMenuItem
+                      variant="destructive"
+                      onClick={() => void removeEntries(contextMenuTargets)}
                     >
                       <DeleteIcon className="size-4" />
                       {t('common.actions.delete')}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            ))}
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
+              )
+            })}
 
-            {!listingQuery.isLoading && listingQuery.data?.entries.length === 0 ? (
+            {!listingQuery.isLoading && entries.length === 0 ? (
               <div className="m-3 rounded-md border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
                 {t('workbench.sftp.empty.directory')}
               </div>

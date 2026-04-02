@@ -11,7 +11,7 @@ vi.mock('electron', () => ({
   }
 }))
 
-import { SessionManager } from './session-manager'
+import { formatRemoteEntryPermissions, SessionManager } from './session-manager'
 
 class MockClient extends EventEmitter {
   end = vi.fn()
@@ -141,6 +141,18 @@ afterEach(() => {
 })
 
 describe('SessionManager port forwarding', () => {
+  it('formats SFTP permissions as octal and symbolic text', () => {
+    expect(formatRemoteEntryPermissions(0o040755, 'directory')).toEqual({
+      octal: '0755',
+      symbolic: 'drwxr-xr-x'
+    })
+
+    expect(formatRemoteEntryPermissions(0o100644, 'file')).toEqual({
+      octal: '0644',
+      symbolic: '-rw-r--r--'
+    })
+  })
+
   it('reuses the existing session id while reconnecting so state events stay bound to the same tab', async () => {
     const manager = createManager()
     getHistoryMap(manager).set('session-old', { serverId: 'server-1' })

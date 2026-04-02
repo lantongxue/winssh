@@ -23,6 +23,7 @@ import {
   PortForwardRule,
   PortForwardStateEvent,
   RemoteEntry,
+  type RemoteEntryKind,
   SessionConnectFailureCode,
   SessionConnectResult,
   type SessionConnectionPhase,
@@ -88,6 +89,52 @@ function toFingerprint(key: Buffer): string {
   return `SHA256:${createHash('sha256').update(key).digest('base64')}`
 }
 
+function getPermissionTypePrefix(kind: RemoteEntryKind): string {
+  if (kind === 'directory') {
+    return 'd'
+  }
+
+  if (kind === 'symlink') {
+    return 'l'
+  }
+
+  return '-'
+}
+
+function formatPermissionTriad(
+  mode: number,
+  readBit: number,
+  writeBit: number,
+  executeBit: number,
+  specialBit: number,
+  specialEnabled: string,
+  specialDisabled: string
+): string {
+  const readable = mode & readBit ? 'r' : '-'
+  const writable = mode & writeBit ? 'w' : '-'
+  const executable = mode & executeBit ? 'x' : '-'
+
+  if (!(mode & specialBit)) {
+    return `${readable}${writable}${executable}`
+  }
+
+  return `${readable}${writable}${mode & executeBit ? specialEnabled : specialDisabled}`
+}
+
+export function formatRemoteEntryPermissions(mode: number, kind: RemoteEntryKind) {
+  const octal = (mode & 0o7777).toString(8).padStart(4, '0')
+  const symbolic =
+    getPermissionTypePrefix(kind) +
+    formatPermissionTriad(mode, 0o400, 0o200, 0o100, 0o4000, 's', 'S') +
+    formatPermissionTriad(mode, 0o040, 0o020, 0o010, 0o2000, 's', 'S') +
+    formatPermissionTriad(mode, 0o004, 0o002, 0o001, 0o1000, 't', 'T')
+
+  return {
+    octal,
+    symbolic
+  }
+}
+
 function sftpRealpath(sftp: SFTPWrapper, remotePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     sftp.realpath(remotePath, (error, absolutePath) => {
@@ -120,7 +167,8 @@ function sftpReadDir(sftp: SFTPWrapper, remotePath: string): Promise<RemoteEntry
           kind,
           size: attrs.size ?? 0,
           modifiedAt: attrs.mtime ? new Date(attrs.mtime * 1000).toISOString() : null,
-          permissions: typeof attrs.mode === 'number' ? (attrs.mode & 0o777).toString(8) : null
+          permissions:
+            typeof attrs.mode === 'number' ? formatRemoteEntryPermissions(attrs.mode, kind) : null
         } as RemoteEntry
       })
 

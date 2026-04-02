@@ -379,6 +379,7 @@ const workbench = {
     sftp: {
       actions: {
         backToParent: '返回上级目录',
+        copyPath: '复制路径',
         openDirectory: '打开目录'
       },
       dialogs: {
@@ -392,11 +393,19 @@ const workbench = {
       },
       explorer: 'SFTP 资源管理器',
       kinds: {
-        directory: '目录'
+        directory: '目录',
+        symlink: '符号链接'
+      },
+      labels: {
+        currentPath: '当前路径'
       },
       placeholders: {
         directoryName: '请输入目录名称',
         rename: '新名称'
+      },
+      toasts: {
+        pathCopied: '路径已复制。',
+        pathCopyFailed: '复制路径失败。'
       }
     },
     statusBar: {

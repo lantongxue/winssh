@@ -159,13 +159,18 @@ export interface SessionErrorEvent {
   message: string
 }
 
+export interface RemoteEntryPermissions {
+  octal: string
+  symbolic: string
+}
+
 export interface RemoteEntry {
   path: string
   name: string
   kind: RemoteEntryKind
   size: number
   modifiedAt: string | null
-  permissions: string | null
+  permissions: RemoteEntryPermissions | null
 }
 
 export interface SftpListResult {
