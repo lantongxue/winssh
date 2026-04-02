@@ -33,6 +33,7 @@ type ServerRow = {
   username: string
   auth_type: 'password' | 'privateKey'
   private_key_path: string | null
+  private_key: string | null
   note: string | null
   group_id: string | null
   favorite: number
@@ -73,6 +74,10 @@ type KnownHostRow = {
 type SettingsRow = {
   key: string
   value: string
+}
+
+type TableColumnRow = {
+  name: string
 }
 
 function nowIso(): string {
@@ -176,6 +181,7 @@ export class DatabaseService {
         username TEXT NOT NULL,
         auth_type TEXT NOT NULL CHECK (auth_type IN ('password', 'privateKey')),
         private_key_path TEXT,
+        private_key TEXT,
         note TEXT,
         group_id TEXT REFERENCES server_groups(id) ON DELETE SET NULL,
         favorite INTEGER NOT NULL DEFAULT 0,
@@ -210,6 +216,11 @@ export class DatabaseService {
         value TEXT NOT NULL
       );
     `)
+
+    const serverColumns = this.db.prepare('PRAGMA table_info(servers)').all() as TableColumnRow[]
+    if (!serverColumns.some((column) => column.name === 'private_key')) {
+      this.db.exec('ALTER TABLE servers ADD COLUMN private_key TEXT')
+    }
   }
 
   listGroups(): ServerGroup[] {
@@ -342,6 +353,14 @@ export class DatabaseService {
     return this.listServers().find((server) => server.id === id) ?? null
   }
 
+  getServerPrivateKey(id: string): string | null {
+    const row = this.db.prepare('SELECT private_key FROM servers WHERE id = ?').get(id) as
+      | Pick<ServerRow, 'private_key'>
+      | undefined
+
+    return row?.private_key ?? null
+  }
+
   createServer(input: ServerUpsertInput): Server {
     const id = randomUUID()
     this.saveServer({ ...input, id })
@@ -369,6 +388,7 @@ export class DatabaseService {
                 port = ?,
                 username = ?,
                 auth_type = ?,
+                private_key = ?,
                 private_key_path = ?,
                 note = ?,
                 group_id = ?,
@@ -383,7 +403,8 @@ export class DatabaseService {
             payload.port,
             payload.username.trim(),
             payload.authType,
-            payload.privateKeyPath?.trim() || null,
+            payload.privateKey?.trim() ? payload.privateKey : null,
+            null,
             payload.note?.trim() || null,
             payload.groupId || null,
             payload.favorite ? 1 : 0,
@@ -395,9 +416,9 @@ export class DatabaseService {
           .prepare(
             `
               INSERT INTO servers (
-                id, name, host, port, username, auth_type, private_key_path, note,
+                id, name, host, port, username, auth_type, private_key, private_key_path, note,
                 group_id, favorite, created_at, updated_at, last_connected_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `
           )
           .run(
@@ -407,7 +428,8 @@ export class DatabaseService {
             payload.port,
             payload.username.trim(),
             payload.authType,
-            payload.privateKeyPath?.trim() || null,
+            payload.privateKey?.trim() ? payload.privateKey : null,
+            null,
             payload.note?.trim() || null,
             payload.groupId || null,
             payload.favorite ? 1 : 0,

@@ -37,8 +37,8 @@ const validation = {
         max: '端口最大为 65535。',
         min: '端口最小为 1。'
       },
-      privateKeyPath: {
-        required: '私钥认证需要选择私钥文件。'
+      privateKey: {
+        required: '私钥认证需要填写或导入私钥内容。'
       },
       username: {
         max: '用户名不能超过 64 个字符。',

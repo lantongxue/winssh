@@ -50,6 +50,12 @@ export interface Server {
   hasPassphrase: boolean
 }
 
+export interface ServerSecrets {
+  password: string | null
+  passphrase: string | null
+  privateKey: string | null
+}
+
 export interface RecentSession {
   id: string
   serverId: string
@@ -94,7 +100,7 @@ export interface ServerUpsertInput {
   port: number
   username: string
   authType: AuthType
-  privateKeyPath?: string | null
+  privateKey?: string | null
   note?: string
   groupId?: string | null
   tagIds: string[]

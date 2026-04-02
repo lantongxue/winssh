@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
   app,
@@ -153,6 +154,28 @@ async function bootstrap(): Promise<void> {
     }
   }
 
+  const resolveStoredPrivateKey = async (id: string) => {
+    const server = database.getServerById(id)
+    if (!server) {
+      return null
+    }
+
+    const storedPrivateKey = database.getServerPrivateKey(id)
+    if (storedPrivateKey?.trim()) {
+      return storedPrivateKey
+    }
+
+    if (!server.privateKeyPath) {
+      return null
+    }
+
+    try {
+      return await readFile(server.privateKeyPath, 'utf8')
+    } catch {
+      return null
+    }
+  }
+
   ipcMain.handle('groups:list', () => database.listGroups())
   ipcMain.handle('groups:create', (_event, input: GroupInput) =>
     database.createGroup(parseInput(groupSchema, input))
@@ -176,6 +199,27 @@ async function bootstrap(): Promise<void> {
   })
 
   ipcMain.handle('servers:list', async () => withServerSecrets())
+  ipcMain.handle('servers:getSecrets', async (_event, id: string) => {
+    if (!database.getServerById(id)) {
+      return {
+        password: null,
+        passphrase: null,
+        privateKey: null
+      }
+    }
+
+    const [password, passphrase, privateKey] = await Promise.all([
+      secureStore.getSecret(id, 'password'),
+      secureStore.getSecret(id, 'passphrase'),
+      resolveStoredPrivateKey(id)
+    ])
+
+    return {
+      password,
+      passphrase,
+      privateKey
+    }
+  })
   ipcMain.handle('servers:create', async (_event, input: ServerUpsertInput) => {
     const payload = parseInput(serverSchema, input)
     const server = database.createServer(payload)
@@ -297,7 +341,12 @@ async function bootstrap(): Promise<void> {
       return null
     }
 
-    return result.filePaths[0] ?? null
+    const filePath = result.filePaths[0]
+    if (!filePath) {
+      return null
+    }
+
+    return readFile(filePath, 'utf8')
   })
   ipcMain.handle('system:getKnownHosts', () => database.listKnownHosts())
   ipcMain.handle('system:removeKnownHost', (_event, host: string, port: number) => {

@@ -204,6 +204,10 @@ const workbench = {
       }
     },
     serverEditor: {
+      actions: {
+        hideSecret: 'Hide secret',
+        showSecret: 'Show secret'
+      },
       auth: {
         password: 'Password',
         privateKey: 'Private Key'
@@ -228,7 +232,7 @@ const workbench = {
         password: 'Password',
         passphrase: 'Passphrase',
         port: 'Port',
-        privateKeyFile: 'Private Key File',
+        privateKeyFile: 'Private Key',
         rememberPassphrase: 'Remember Passphrase',
         rememberPassword: 'Remember Password',
         tags: 'Tags',
@@ -238,7 +242,7 @@ const workbench = {
         host: '192.168.1.10 or demo.example.com',
         name: 'Production Bastion',
         note: 'Record environment notes, jump-host topology, or maintenance details.',
-        privateKeyFile: 'Select a PEM / KEY / PPK file',
+        privateKeyFile: 'Paste the private key content, or import it from a PEM / KEY / PPK file',
         privateKeySecret: 'Leave empty if there is no passphrase',
         savedPassword: 'Leave empty to keep the saved password',
         ungrouped: 'Ungrouped',

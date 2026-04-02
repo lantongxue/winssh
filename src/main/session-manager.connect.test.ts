@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events'
 import { PassThrough } from 'node:stream'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Server } from '@shared/types'
 
 vi.mock('electron', () => ({
   dialog: {
@@ -15,14 +16,15 @@ type MockClientBehavior =
   | { type: 'error'; error: Error }
   | { type: 'ready' }
 
-const { clientBehaviors } = vi.hoisted(() => ({
-  clientBehaviors: [] as MockClientBehavior[]
+const { clientBehaviors, connectConfigs } = vi.hoisted(() => ({
+  clientBehaviors: [] as MockClientBehavior[],
+  connectConfigs: [] as unknown[]
 }))
 
 vi.mock('ssh2', () => ({
   Client: class MockSshClient extends EventEmitter {
     connect = vi.fn((config: unknown) => {
-      void config
+      connectConfigs.push(config)
       const behavior = clientBehaviors.shift() ?? { type: 'ready' }
 
       queueMicrotask(() => {
@@ -74,7 +76,7 @@ vi.mock('ssh2', () => ({
 
 import { SessionManager } from './session-manager'
 
-function createPasswordServer() {
+function createPasswordServer(): Server {
   return {
     id: 'server-1',
     name: 'alpha',
@@ -96,10 +98,18 @@ function createPasswordServer() {
   }
 }
 
+function createPrivateKeyServer(): Server {
+  return {
+    ...createPasswordServer(),
+    authType: 'privateKey' as const
+  }
+}
+
 function createManager() {
   const database = {
     getKnownHost: vi.fn(),
-    getServerById: vi.fn(() => createPasswordServer()),
+    getServerPrivateKey: vi.fn((): string | null => null),
+    getServerById: vi.fn((): Server => createPasswordServer()),
     recordRecentSession: vi.fn(),
     upsertKnownHost: vi.fn()
   }
@@ -126,6 +136,7 @@ function createManager() {
 
 beforeEach(() => {
   clientBehaviors.length = 0
+  connectConfigs.length = 0
 })
 
 describe('SessionManager connect', () => {
@@ -190,5 +201,26 @@ describe('SessionManager connect', () => {
     expect(result.ok).toBe(true)
     expect(database.recordRecentSession).toHaveBeenCalledWith('server-1')
     expect(secureStore.setSecret).toHaveBeenCalledWith('server-1', 'password', 'correct-password')
+  })
+
+  it('uses the stored private key content for key-based authentication', async () => {
+    const { database, manager } = createManager()
+    database.getServerById.mockReturnValue(createPrivateKeyServer())
+    database.getServerPrivateKey.mockReturnValue('-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----')
+    clientBehaviors.push({ type: 'ready' })
+
+    const result = await manager.connect({
+      passphrase: 'secret',
+      serverId: 'server-1'
+    })
+
+    expect(result.ok).toBe(true)
+    expect(connectConfigs).toHaveLength(1)
+    expect(connectConfigs[0]).toEqual(
+      expect.objectContaining({
+        passphrase: 'secret',
+        privateKey: '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----'
+      })
+    )
   })
 })

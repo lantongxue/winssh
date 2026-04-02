@@ -9,6 +9,7 @@ import type {
   RecentSession,
   RuntimeCapabilities,
   Server,
+  ServerSecrets,
   ServerGroup,
   ServerUpsertInput,
   SessionConnectResult,
@@ -42,6 +43,7 @@ export interface WinsshApi {
   }
   servers: {
     list: () => Promise<Server[]>
+    getSecrets: (id: string) => Promise<ServerSecrets>
     create: (input: ServerUpsertInput) => Promise<Server>
     update: (id: string, input: ServerUpsertInput) => Promise<Server>
     delete: (id: string) => Promise<void>

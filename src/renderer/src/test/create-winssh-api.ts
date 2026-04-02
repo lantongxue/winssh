@@ -173,6 +173,11 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
         throw new Error('not implemented')
       },
       delete: async () => undefined,
+      getSecrets: async () => ({
+        password: null,
+        passphrase: null,
+        privateKey: null
+      }),
       list: async () => [],
       listRecent: async () => [],
       toggleFavorite: async () => {

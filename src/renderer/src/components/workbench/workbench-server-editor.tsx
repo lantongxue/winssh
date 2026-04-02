@@ -1,11 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useQuery } from '@tanstack/react-query'
-import { KeyRound, LockKeyhole } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Eye, EyeOff, KeyRound, LockKeyhole } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
-import type { Server, ServerUpsertInput } from '@shared/types'
+import type { Server, ServerSecrets, ServerUpsertInput } from '@shared/types'
 import { serverSchema, type ServerFormValues } from '@shared/validation'
 import { actionIcons } from '@/lib/action-icons'
 import { getColorStyle } from '@/lib/colors'
@@ -36,7 +36,8 @@ import { Textarea } from '@/components/ui/textarea'
 
 function toDefaultValues(
   server: Server | null,
-  credentialStorageAvailable: boolean
+  credentialStorageAvailable: boolean,
+  secrets?: ServerSecrets
 ): ServerFormValues {
   if (!server) {
     return {
@@ -46,10 +47,10 @@ function toDefaultValues(
       host: '',
       name: '',
       note: '',
-      passphrase: '',
-      password: '',
+      passphrase: secrets?.passphrase ?? '',
+      password: secrets?.password ?? '',
       port: 22,
-      privateKeyPath: '',
+      privateKey: secrets?.privateKey ?? '',
       rememberPassphrase: credentialStorageAvailable,
       rememberPassword: credentialStorageAvailable,
       tagIds: [],
@@ -65,10 +66,10 @@ function toDefaultValues(
     id: server.id,
     name: server.name,
     note: server.note ?? '',
-    passphrase: '',
-    password: '',
+    passphrase: secrets?.passphrase ?? '',
+    password: secrets?.password ?? '',
     port: server.port,
-    privateKeyPath: server.privateKeyPath ?? '',
+    privateKey: secrets?.privateKey ?? '',
     rememberPassphrase: credentialStorageAvailable ? server.hasPassphrase : false,
     rememberPassword: credentialStorageAvailable ? server.hasPassword : false,
     tagIds: server.tags.map((tag) => tag.id),
@@ -89,7 +90,7 @@ function toPayload(
     note: values.note || '',
     password: includeSecrets ? values.password : undefined,
     passphrase: includeSecrets ? values.passphrase : undefined,
-    privateKeyPath: values.privateKeyPath || null,
+    privateKey: values.privateKey?.trim() ? values.privateKey : null,
     rememberPassphrase: credentialStorageAvailable ? values.rememberPassphrase : false,
     rememberPassword: credentialStorageAvailable ? values.rememberPassword : false
   } as ServerUpsertInput
@@ -122,6 +123,7 @@ function buildConnectionRequest(
 export function WorkbenchServerEditor({ document }: { document: ServerEditorDocument }) {
   const { t } = useTranslation()
   const { connectServer, refreshWorkspaceData } = useWorkbenchContext()
+  const queryClient = useQueryClient()
   const pushProblem = useWorkbenchStore((state) => state.pushProblem)
   const replaceDocument = useWorkbenchStore((state) => state.replaceDocument)
   const SaveIcon = actionIcons.save
@@ -149,15 +151,50 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
 
   const server = (serversQuery.data ?? []).find((item) => item.id === document.serverId) ?? null
   const credentialStorageAvailable = capabilitiesQuery.data?.credentialStorage ?? false
+  const serverSecretsQuery = useQuery({
+    queryKey: ['server-secrets', document.serverId],
+    queryFn: () => window.winsshApi.servers.getSecrets(document.serverId as string),
+    enabled: Boolean(document.serverId)
+  })
+  const [secretVisible, setSecretVisible] = useState(false)
 
   const form = useForm<ServerFormValues>({
     resolver: zodResolver(serverSchema as never),
-    defaultValues: toDefaultValues(server, credentialStorageAvailable)
+    defaultValues: toDefaultValues(server, credentialStorageAvailable, serverSecretsQuery.data)
   })
 
   useEffect(() => {
     form.reset(toDefaultValues(server, credentialStorageAvailable))
   }, [credentialStorageAvailable, document.id, form, server])
+
+  useEffect(() => {
+    if (!document.serverId) {
+      return
+    }
+
+    const secrets: ServerSecrets | undefined = serverSecretsQuery.data
+    if (!secrets) {
+      return
+    }
+
+    if (!form.getFieldState('password').isDirty) {
+      form.setValue('password', secrets.password ?? '', { shouldDirty: false })
+    }
+
+    if (!form.getFieldState('passphrase').isDirty) {
+      form.setValue('passphrase', secrets.passphrase ?? '', { shouldDirty: false })
+    }
+
+    if (!form.getFieldState('privateKey').isDirty) {
+      form.setValue('privateKey', secrets.privateKey ?? '', { shouldDirty: false })
+    }
+  }, [
+    document.serverId,
+    form,
+    serverSecretsQuery.data?.passphrase,
+    serverSecretsQuery.data?.password,
+    serverSecretsQuery.data?.privateKey
+  ])
 
   const authType = form.watch('authType')
   const selectedTagIds = form.watch('tagIds')
@@ -168,6 +205,14 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   const rememberLabel = isPrivateKeyAuth
     ? t('workbench.serverEditor.fields.rememberPassphrase')
     : t('workbench.serverEditor.fields.rememberPassword')
+  const toggleSecretLabel = secretVisible
+    ? t('workbench.serverEditor.actions.hideSecret')
+    : t('workbench.serverEditor.actions.showSecret')
+  const SecretToggleIcon = secretVisible ? EyeOff : Eye
+
+  useEffect(() => {
+    setSecretVisible(false)
+  }, [authType, document.id])
 
   const reportValidationFailure = () => {
     const firstMessage = Object.values(form.formState.errors)[0]?.message
@@ -197,7 +242,10 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
       replaceDocument(document.id, createServerEditorDocument(saved.id))
     }
 
-    await refreshWorkspaceData()
+    await Promise.all([
+      refreshWorkspaceData(),
+      queryClient.invalidateQueries({ queryKey: ['server-secrets', saved.id] })
+    ])
 
     if (announce) {
       toast.success(
@@ -275,7 +323,11 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
             variant="ghost"
             size="sm"
             disabled={form.formState.isSubmitting}
-            onClick={() => form.reset(toDefaultValues(server, credentialStorageAvailable))}
+            onClick={() =>
+              form.reset(
+                toDefaultValues(server, credentialStorageAvailable, serverSecretsQuery.data)
+              )
+            }
           >
             <DiscardIcon className="size-4" />
             {t('common.actions.discard')}
@@ -452,14 +504,16 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
               <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
                 <FormField
                   control={form.control}
-                  name="privateKeyPath"
+                  name="privateKey"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('workbench.serverEditor.fields.privateKeyFile')}</FormLabel>
                       <FormControl>
-                        <Input
+                        <Textarea
                           {...field}
                           value={field.value ?? ''}
+                          rows={10}
+                          className="font-mono text-xs leading-5"
                           placeholder={t('workbench.serverEditor.placeholders.privateKeyFile')}
                         />
                       </FormControl>
@@ -467,14 +521,17 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                     </FormItem>
                   )}
                 />
-                <div className="flex items-end">
+                <div className="flex items-start">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={async () => {
-                      const file = await window.winsshApi.system.pickPrivateKey()
-                      if (file) {
-                        form.setValue('privateKeyPath', file, { shouldValidate: true })
+                      const privateKey = await window.winsshApi.system.pickPrivateKey()
+                      if (privateKey) {
+                        form.setValue('privateKey', privateKey, {
+                          shouldDirty: true,
+                          shouldValidate: true
+                        })
                       }
                     }}
                   >
@@ -502,17 +559,32 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{credentialLabel}</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="password"
-                        placeholder={t(
-                          isPrivateKeyAuth
-                            ? 'workbench.serverEditor.placeholders.privateKeySecret'
-                            : 'workbench.serverEditor.placeholders.savedPassword'
-                        )}
-                      />
-                    </FormControl>
+                    <div className="relative">
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type={secretVisible ? 'text' : 'password'}
+                          className="pr-11"
+                          placeholder={t(
+                            isPrivateKeyAuth
+                              ? 'workbench.serverEditor.placeholders.privateKeySecret'
+                              : 'workbench.serverEditor.placeholders.savedPassword'
+                          )}
+                        />
+                      </FormControl>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground"
+                        aria-label={toggleSecretLabel}
+                        aria-pressed={secretVisible}
+                        title={toggleSecretLabel}
+                        onClick={() => setSecretVisible((visible) => !visible)}
+                      >
+                        <SecretToggleIcon className="size-4" />
+                      </Button>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -201,6 +201,10 @@ const workbench = {
       }
     },
     serverEditor: {
+      actions: {
+        hideSecret: '隐藏凭据',
+        showSecret: '显示凭据'
+      },
       auth: {
         password: '密码认证',
         privateKey: '私钥认证'
@@ -225,7 +229,7 @@ const workbench = {
         password: '密码',
         passphrase: '私钥口令',
         port: '端口',
-        privateKeyFile: '私钥文件',
+        privateKeyFile: '私钥内容',
         rememberPassphrase: '记住口令',
         rememberPassword: '记住密码',
         tags: '标签',
@@ -235,7 +239,7 @@ const workbench = {
         host: '192.168.1.10 或 demo.example.com',
         name: 'Production Bastion',
         note: '记录环境说明、跳板关系或维护信息。',
-        privateKeyFile: '选择 PEM / KEY / PPK 文件',
+        privateKeyFile: '粘贴私钥内容，或从 PEM / KEY / PPK 文件导入',
         privateKeySecret: '留空表示无口令',
         savedPassword: '留空则沿用已保存密码',
         ungrouped: '未分组',

@@ -278,7 +278,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       name: buildQuickConnectServerName(target),
       note: '',
       port: target.port,
-      privateKeyPath: null,
+      privateKey: null,
       rememberPassphrase: false,
       rememberPassword: false,
       tagIds: [],

@@ -37,8 +37,8 @@ const validation = {
         max: 'Port must be 65535 or lower.',
         min: 'Port must be at least 1.'
       },
-      privateKeyPath: {
-        required: 'A private key file is required for key-based authentication.'
+      privateKey: {
+        required: 'Private key content is required for key-based authentication.'
       },
       username: {
         max: 'Username must be 64 characters or fewer.',

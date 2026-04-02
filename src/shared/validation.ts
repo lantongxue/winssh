@@ -41,7 +41,7 @@ export const serverSchema = z
       .min(1, 'validation.server.username.required')
       .max(64, 'validation.server.username.max'),
     authType: z.enum(['password', 'privateKey']),
-    privateKeyPath: z.string().trim().nullable().optional(),
+    privateKey: z.string().optional(),
     note: z.string().trim().max(400, 'validation.server.note.max').optional(),
     groupId: z.string().trim().nullable().optional(),
     tagIds: z.array(z.string()).default([]),
@@ -52,11 +52,11 @@ export const serverSchema = z
     rememberPassphrase: z.boolean().default(false)
   })
   .superRefine((value, ctx) => {
-    if (value.authType === 'privateKey' && !value.privateKeyPath?.trim()) {
+    if (value.authType === 'privateKey' && !value.privateKey?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['privateKeyPath'],
-        message: 'validation.server.privateKeyPath.required'
+        path: ['privateKey'],
+        message: 'validation.server.privateKey.required'
       })
     }
   })

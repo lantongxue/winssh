@@ -459,11 +459,16 @@ export class SessionManager {
 
     let privateKey: string | undefined
     if (server.authType === 'privateKey') {
-      if (!server.privateKeyPath) {
-        throw new ConnectionFailure('connection_failed', this.t('errors.privateKeyMissing'))
+      const storedPrivateKey = this.database.getServerPrivateKey(server.id)
+      if (storedPrivateKey?.trim()) {
+        privateKey = storedPrivateKey
+      } else if (server.privateKeyPath) {
+        privateKey = await fs.readFile(server.privateKeyPath, 'utf8')
       }
 
-      privateKey = await fs.readFile(server.privateKeyPath, 'utf8')
+      if (!privateKey) {
+        throw new ConnectionFailure('connection_failed', this.t('errors.privateKeyMissing'))
+      }
     }
 
     const sessionId = request.sessionId ?? randomUUID()
