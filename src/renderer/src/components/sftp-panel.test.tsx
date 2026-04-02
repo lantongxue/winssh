@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { RemoteEntry } from '@shared/types'
 import i18n from '@/i18n'
 import { SftpPanel } from '@/components/sftp-panel'
+import type { SessionTab } from '@/store/sessions-store'
 import { createWinsshApiMock } from '@/test/create-winssh-api'
 import { useSessionsStore } from '@/store/sessions-store'
 
@@ -24,23 +25,17 @@ function createTestQueryClient() {
   })
 }
 
-function renderSftpPanel(session: {
-  connectedAt: string
-  currentPath: string
-  host: string
-  port: number
-  serverId: string
-  serverName: string
-  sessionId: string
-  status: 'ready'
-}) {
+function renderSftpPanel(session: SessionTab | null) {
   const queryClient = createTestQueryClient()
 
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <SftpPanel session={session} />
-    </QueryClientProvider>
-  )
+  return {
+    queryClient,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <SftpPanel session={session} />
+      </QueryClientProvider>
+    )
+  }
 }
 
 describe('SftpPanel', () => {
@@ -94,5 +89,33 @@ describe('SftpPanel', () => {
     await waitFor(() => {
       expect(sessionsWrite).toHaveBeenCalledWith('session-1', '/var/www/config.json')
     })
+  })
+
+  it('keeps rendering when a loaded session becomes disconnected', async () => {
+    window.winsshApi = createWinsshApiMock({
+      sftp: {
+        list: vi.fn().mockResolvedValue({
+          entries,
+          path: '/var/www'
+        })
+      }
+    })
+
+    const { queryClient, rerender } = renderSftpPanel(session)
+
+    await screen.findByText('config.json')
+
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <SftpPanel session={{ ...session, status: 'disconnected' }} />
+      </QueryClientProvider>
+    )
+
+    expect(screen.getByText('No active session')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Start an SSH session first and the SFTP panel will follow the active tab automatically.'
+      )
+    ).toBeInTheDocument()
   })
 })

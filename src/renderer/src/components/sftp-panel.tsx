@@ -94,6 +94,13 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
     const parts = currentPath.split('/').filter(Boolean)
     return ['/', ...parts]
   }, [listingQuery.data?.path, session?.currentPath])
+  const currentPath = listingQuery.data?.path ?? session?.currentPath ?? '/'
+  const entries = listingQuery.data?.entries ?? []
+  const selectedEntrySet = useMemo(() => new Set(selectedEntryPaths), [selectedEntryPaths])
+  const selectedEntries = useMemo(
+    () => entries.filter((entry) => selectedEntrySet.has(entry.path)),
+    [entries, selectedEntrySet]
+  )
 
   if (!session) {
     return (
@@ -128,14 +135,6 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ['sftp', session.sessionId] })
   }
-
-  const currentPath = listingQuery.data?.path ?? session.currentPath
-  const entries = listingQuery.data?.entries ?? []
-  const selectedEntrySet = useMemo(() => new Set(selectedEntryPaths), [selectedEntryPaths])
-  const selectedEntries = useMemo(
-    () => entries.filter((entry) => selectedEntrySet.has(entry.path)),
-    [entries, selectedEntrySet]
-  )
 
   const copyPath = async (path: string) => {
     try {
