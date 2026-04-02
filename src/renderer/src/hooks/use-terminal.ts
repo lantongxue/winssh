@@ -41,6 +41,7 @@ export function useTerminal(
       return
     }
 
+    const container = containerRef.current
     const terminal = new Terminal({
       allowTransparency: true,
       convertEol: true,
@@ -52,8 +53,42 @@ export function useTerminal(
     terminalRef.current = terminal
     fitAddonRef.current = fitAddon
     terminal.loadAddon(fitAddon)
-    terminal.open(containerRef.current)
+    terminal.open(container)
     fitAddon.fit()
+
+    const handleContextMenu = (event: MouseEvent) => {
+      event.preventDefault()
+      event.stopPropagation()
+
+      void (async () => {
+        const selection = terminal.getSelection()
+
+        if (selection) {
+          try {
+            await navigator.clipboard.writeText(selection)
+            terminal.clearSelection()
+          } catch {
+            // Ignore clipboard permission/runtime failures and keep terminal input usable.
+          } finally {
+            terminal.focus()
+          }
+          return
+        }
+
+        try {
+          const clipboardText = await navigator.clipboard.readText()
+          if (clipboardText) {
+            terminal.paste(clipboardText)
+          }
+        } catch {
+          // Ignore clipboard permission/runtime failures and keep terminal input usable.
+        } finally {
+          terminal.focus()
+        }
+      })()
+    }
+
+    container.addEventListener('contextmenu', handleContextMenu, true)
 
     const resize = () => {
       fitAddon.fit()
@@ -71,11 +106,12 @@ export function useTerminal(
     })
 
     const resizeObserver = new ResizeObserver(() => resize())
-    resizeObserver.observe(containerRef.current)
+    resizeObserver.observe(container)
     queueMicrotask(resize)
 
     return () => {
       resizeObserver.disconnect()
+      container.removeEventListener('contextmenu', handleContextMenu, true)
       unsubscribeData()
       selectionDisposableRef.current?.dispose()
       selectionDisposableRef.current = null

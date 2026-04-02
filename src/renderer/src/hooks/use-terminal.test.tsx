@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from '@testing-library/react'
+import { fireEvent, render, waitFor } from '@testing-library/react'
 import { createThemeDefinition } from '@shared/themes'
 import type { AppSettings } from '@shared/types'
 import { createWinsshApiMock } from '@/test/create-winssh-api'
 
 const terminalInstances: MockTerminal[] = []
 const fitAddonInstances: MockFitAddon[] = []
+const clipboard = {
+  readText: vi.fn<() => Promise<string>>(),
+  writeText: vi.fn<(text: string) => Promise<void>>()
+}
 
 class MockTerminal {
   cols = 80
@@ -17,11 +21,14 @@ class MockTerminal {
   }
 
   dispose = vi.fn()
+  clearSelection = vi.fn()
+  focus = vi.fn()
   getSelection = vi.fn(() => '')
   loadAddon = vi.fn()
   onData = vi.fn(() => ({ dispose: vi.fn() }))
   onSelectionChange = vi.fn(() => ({ dispose: vi.fn() }))
   open = vi.fn()
+  paste = vi.fn()
   write = vi.fn()
 }
 
@@ -96,6 +103,14 @@ describe('useTerminal', () => {
   beforeEach(() => {
     terminalInstances.length = 0
     fitAddonInstances.length = 0
+    clipboard.readText.mockReset()
+    clipboard.writeText.mockReset()
+    clipboard.readText.mockResolvedValue('')
+    clipboard.writeText.mockResolvedValue()
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: clipboard
+    })
     window.winsshApi = createWinsshApiMock()
   })
 
@@ -114,5 +129,50 @@ describe('useTerminal', () => {
       background: pixelTheme.terminal.background
     })
     expect(fitAddonInstances[0]?.fit).toHaveBeenCalled()
+  })
+
+  it('copies the current selection on right click and clears the selection afterwards', async () => {
+    const { container } = render(<TestTerminal settings={settings} theme={darkTheme} />)
+    const terminal = terminalInstances[0]
+
+    terminal?.getSelection.mockReturnValue('ssh user@host')
+
+    const canceled = !fireEvent(
+      container.firstChild as HTMLElement,
+      new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    )
+
+    expect(canceled).toBe(true)
+
+    await waitFor(() => {
+      expect(clipboard.writeText).toHaveBeenCalledWith('ssh user@host')
+    })
+
+    expect(terminal?.clearSelection).toHaveBeenCalledOnce()
+    expect(terminal?.paste).not.toHaveBeenCalled()
+    expect(clipboard.readText).not.toHaveBeenCalled()
+    expect(terminal?.focus).toHaveBeenCalled()
+  })
+
+  it('pastes plain text from the clipboard on right click when nothing is selected', async () => {
+    const { container } = render(<TestTerminal settings={settings} theme={darkTheme} />)
+    const terminal = terminalInstances[0]
+
+    terminal?.getSelection.mockReturnValue('')
+    clipboard.readText.mockResolvedValue('line 1\nline 2')
+
+    fireEvent(
+      container.firstChild as HTMLElement,
+      new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    )
+
+    await waitFor(() => {
+      expect(clipboard.readText).toHaveBeenCalledOnce()
+    })
+
+    expect(terminal?.paste).toHaveBeenCalledWith('line 1\nline 2')
+    expect(clipboard.writeText).not.toHaveBeenCalled()
+    expect(terminal?.clearSelection).not.toHaveBeenCalled()
+    expect(terminal?.focus).toHaveBeenCalled()
   })
 })

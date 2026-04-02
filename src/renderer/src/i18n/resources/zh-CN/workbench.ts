@@ -380,6 +380,7 @@ const workbench = {
       actions: {
         backToParent: '返回上级目录',
         copyPath: '复制路径',
+        copyPathToTerminal: '复制路径到终端',
         openDirectory: '打开目录'
       },
       dialogs: {
@@ -407,7 +408,9 @@ const workbench = {
       },
       toasts: {
         pathCopied: '路径已复制。',
-        pathCopyFailed: '复制路径失败。'
+        pathCopyFailed: '复制路径失败。',
+        pathSendToTerminalFailed: '复制路径到终端失败。',
+        pathSentToTerminal: '路径已发送到终端。'
       }
     },
     statusBar: {

@@ -388,6 +388,7 @@ const workbench = {
       actions: {
         backToParent: 'Go to Parent Directory',
         copyPath: 'Copy Path',
+        copyPathToTerminal: 'Send Path to Terminal',
         openDirectory: 'Open Directory'
       },
       dialogs: {
@@ -416,7 +417,9 @@ const workbench = {
       },
       toasts: {
         pathCopied: 'Path copied.',
-        pathCopyFailed: 'Failed to copy the path.'
+        pathCopyFailed: 'Failed to copy the path.',
+        pathSendToTerminalFailed: 'Failed to send the path to the terminal.',
+        pathSentToTerminal: 'Path sent to the terminal.'
       }
     },
     statusBar: {

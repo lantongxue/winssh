@@ -60,6 +60,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
   const CreateFolderIcon = actionIcons.newFolder
   const SaveIcon = actionIcons.save
   const CopyIcon = actionIcons.clone
+  const SendToTerminalIcon = actionIcons.openTerminal
 
   const listingQuery = useQuery({
     queryKey: ['sftp', session?.sessionId, session?.currentPath],
@@ -142,6 +143,15 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
       toast.success(t('workbench.sftp.toasts.pathCopied'))
     } catch {
       toast.error(t('workbench.sftp.toasts.pathCopyFailed'))
+    }
+  }
+
+  const sendPathToTerminal = async (path: string) => {
+    try {
+      await window.winsshApi.sessions.write(session.sessionId, path)
+      toast.success(t('workbench.sftp.toasts.pathSentToTerminal'))
+    } catch {
+      toast.error(t('workbench.sftp.toasts.pathSendToTerminalFailed'))
     }
   }
 
@@ -512,6 +522,15 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                               {t('workbench.sftp.actions.copyPath')}
                             </ContextMenuItem>
 
+                            {singleContextTarget ? (
+                              <ContextMenuItem
+                                onClick={() => void sendPathToTerminal(singleContextTarget.path)}
+                              >
+                                <SendToTerminalIcon className="size-4" />
+                                {t('workbench.sftp.actions.copyPathToTerminal')}
+                              </ContextMenuItem>
+                            ) : null}
+
                             <ContextMenuItem onClick={() => void refresh()}>
                               <RefreshIcon className="size-4" />
                               {t('common.actions.refresh')}
@@ -569,6 +588,10 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
             <ContextMenuItem onClick={() => void refresh()}>
               <RefreshIcon className="size-4" />
               {t('common.actions.refresh')}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => void sendPathToTerminal(currentPath)}>
+              <SendToTerminalIcon className="size-4" />
+              {t('workbench.sftp.actions.copyPathToTerminal')}
             </ContextMenuItem>
             <ContextMenuItem onClick={() => openCreateFileDialog(currentPath)}>
               <NewFileIcon className="size-4" />
