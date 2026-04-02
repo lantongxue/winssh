@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactElement, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowRight,
@@ -35,6 +35,24 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+
+function TooltipAction({
+  children,
+  content,
+  side = 'top'
+}: {
+  children: ReactElement
+  content: string
+  side?: React.ComponentProps<typeof TooltipContent>['side']
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side={side}>{content}</TooltipContent>
+    </Tooltip>
+  )
+}
 
 function SectionHeader({
   action,
@@ -132,6 +150,7 @@ function ServerRow({
     onSelect?.()
     onConnect()
   }
+  const connectLabel = t('workbench.primarySidebar.actions.connect')
 
   return (
     <ContextMenu>
@@ -145,29 +164,31 @@ function ServerRow({
           />
           <span className="min-w-0 flex-1 truncate">{server.name}</span>
           {server.favorite ? <Heart className="size-3.5 fill-amber-400 text-amber-400" /> : null}
-          <button
-            type="button"
-            className={cn(
-              'flex size-5 shrink-0 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-all hover:bg-[var(--workbench-hover)] hover:text-foreground',
-              'opacity-0 pointer-events-none group-hover/tree-row:opacity-100 group-hover/tree-row:pointer-events-auto',
-              'group-focus-within/tree-row:opacity-100 group-focus-within/tree-row:pointer-events-auto'
-            )}
-            aria-label={t('workbench.primarySidebar.actions.connect')}
-            onMouseDown={(event) => {
-              event.stopPropagation()
-            }}
-            onDoubleClick={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-            }}
-            onClick={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              handleConnect()
-            }}
-          >
-            <ArrowRight className="size-3.5" />
-          </button>
+          <TooltipAction content={connectLabel} side="right">
+            <button
+              type="button"
+              className={cn(
+                'flex size-5 shrink-0 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-all hover:bg-[var(--workbench-hover)] hover:text-foreground',
+                'opacity-0 pointer-events-none group-hover/tree-row:opacity-100 group-hover/tree-row:pointer-events-auto',
+                'group-focus-within/tree-row:opacity-100 group-focus-within/tree-row:pointer-events-auto'
+              )}
+              aria-label={connectLabel}
+              onMouseDown={(event) => {
+                event.stopPropagation()
+              }}
+              onDoubleClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+              }}
+              onClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                handleConnect()
+              }}
+            >
+              <ArrowRight className="size-3.5" />
+            </button>
+          </TooltipAction>
         </TreeRow>
       </ContextMenuTrigger>
       <ContextMenuContent>
@@ -443,27 +464,31 @@ export function WorkbenchPrimarySidebar() {
                   <span className="flex-1 truncate">
                     {t('workbench.primarySidebar.sections.recent')}
                   </span>
-                  <button
-                    type="button"
-                    className="flex size-5 shrink-0 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--workbench-muted)]"
-                    title={t('workbench.primarySidebar.actions.clearRecent')}
-                    aria-label={t('workbench.primarySidebar.actions.clearRecent')}
-                    disabled={recents.length === 0}
-                    onMouseDown={(event) => {
-                      event.stopPropagation()
-                    }}
-                    onDoubleClick={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                    }}
-                    onClick={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      void handleClearRecent()
-                    }}
+                  <TooltipAction
+                    content={t('workbench.primarySidebar.actions.clearRecent')}
+                    side="right"
                   >
-                    <ClearIcon className="size-3.5" />
-                  </button>
+                    <button
+                      type="button"
+                      className="flex size-5 shrink-0 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--workbench-muted)]"
+                      aria-label={t('workbench.primarySidebar.actions.clearRecent')}
+                      disabled={recents.length === 0}
+                      onMouseDown={(event) => {
+                        event.stopPropagation()
+                      }}
+                      onDoubleClick={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                      }}
+                      onClick={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        void handleClearRecent()
+                      }}
+                    >
+                      <ClearIcon className="size-3.5" />
+                    </button>
+                  </TooltipAction>
                   <span className="text-xs text-muted-foreground">{recents.length}</span>
                 </TreeRow>
                 {recents.map((recent) => {
@@ -495,15 +520,17 @@ export function WorkbenchPrimarySidebar() {
               collapsed={Boolean(collapsedSections.groups)}
               onToggle={() => toggleSection('groups')}
               action={
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  className="text-muted-foreground"
-                  title={t('workbench.primarySidebar.actions.createGroup')}
-                  onClick={() => openEntityQuickInput({ entityType: 'group', mode: 'create' })}
-                >
-                  <Plus className="size-3.5" />
-                </Button>
+                <TooltipAction content={t('workbench.primarySidebar.actions.createGroup')}>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="text-muted-foreground"
+                    aria-label={t('workbench.primarySidebar.actions.createGroup')}
+                    onClick={() => openEntityQuickInput({ entityType: 'group', mode: 'create' })}
+                  >
+                    <Plus className="size-3.5" />
+                  </Button>
+                </TooltipAction>
               }
             />
             {!collapsedSections.groups ? (
@@ -582,15 +609,17 @@ export function WorkbenchPrimarySidebar() {
               collapsed={Boolean(collapsedSections.tags)}
               onToggle={() => toggleSection('tags')}
               action={
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  className="text-muted-foreground"
-                  title={t('workbench.primarySidebar.actions.createTag')}
-                  onClick={() => openEntityQuickInput({ entityType: 'tag', mode: 'create' })}
-                >
-                  <Plus className="size-3.5" />
-                </Button>
+                <TooltipAction content={t('workbench.primarySidebar.actions.createTag')}>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="text-muted-foreground"
+                    aria-label={t('workbench.primarySidebar.actions.createTag')}
+                    onClick={() => openEntityQuickInput({ entityType: 'tag', mode: 'create' })}
+                  >
+                    <Plus className="size-3.5" />
+                  </Button>
+                </TooltipAction>
               }
             />
             {!collapsedSections.tags ? (
@@ -671,15 +700,17 @@ export function WorkbenchPrimarySidebar() {
               collapsed={Boolean(collapsedSections['all-servers'])}
               onToggle={() => toggleSection('all-servers')}
               action={
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  className="text-muted-foreground"
-                  title={t('common.actions.newConnection')}
-                  onClick={() => openServerEditor()}
-                >
-                  <Plus className="size-3.5" />
-                </Button>
+                <TooltipAction content={t('common.actions.newConnection')}>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="text-muted-foreground"
+                    aria-label={t('common.actions.newConnection')}
+                    onClick={() => openServerEditor()}
+                  >
+                    <Plus className="size-3.5" />
+                  </Button>
+                </TooltipAction>
               }
             />
             {!collapsedSections['all-servers'] ? (

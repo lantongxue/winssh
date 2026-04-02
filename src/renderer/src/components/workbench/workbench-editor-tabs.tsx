@@ -21,6 +21,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { WorkbenchDocument, WorkbenchDocumentId } from '@/lib/workbench'
 import { cn } from '@/lib/utils'
 import { useSessionsStore } from '@/store/sessions-store'
@@ -90,6 +91,7 @@ export function WorkbenchEditorTabs() {
   const CloneIcon = actionIcons.clone
   const CloseIcon = actionIcons.close
   const RenameIcon = actionIcons.rename
+  const closeLabel = t('common.actions.close')
 
   const sessionNameMap = useMemo(
     () => new Map(sessions.map((session) => [session.sessionId, session.serverName])),
@@ -224,31 +226,36 @@ export function WorkbenchEditorTabs() {
                 }}
               >
                 <span className="truncate">{title}</span>
-                <span
-                  role="button"
-                  tabIndex={0}
-                  title={t('common.actions.close')}
-                  className={cn(
-                    'ml-auto flex size-4 shrink-0 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-black/10 hover:text-foreground dark:hover:bg-white/10',
-                    !active && 'opacity-0 group-hover:opacity-100'
-                  )}
-                  onClick={(event) => {
-                    event.preventDefault()
-                    event.stopPropagation()
-                    void handleCloseDocument(document)
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key !== 'Enter' && event.key !== ' ') {
-                      return
-                    }
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      aria-label={closeLabel}
+                      className={cn(
+                        'ml-auto flex size-4 shrink-0 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-black/10 hover:text-foreground dark:hover:bg-white/10',
+                        !active && 'opacity-0 group-hover:opacity-100'
+                      )}
+                      onClick={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        void handleCloseDocument(document)
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key !== 'Enter' && event.key !== ' ') {
+                          return
+                        }
 
-                    event.preventDefault()
-                    event.stopPropagation()
-                    void handleCloseDocument(document)
-                  }}
-                >
-                  <CloseIcon className="size-3" />
-                </span>
+                        event.preventDefault()
+                        event.stopPropagation()
+                        void handleCloseDocument(document)
+                      }}
+                    >
+                      <CloseIcon className="size-3" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{closeLabel}</TooltipContent>
+                </Tooltip>
               </button>
             )
 

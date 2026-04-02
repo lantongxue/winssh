@@ -28,10 +28,30 @@ import {
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface SftpPanelProps {
   session: SessionTab | null
   className?: string
+}
+
+function TooltipIconButton({
+  children,
+  label,
+  ...props
+}: React.ComponentProps<typeof Button> & {
+  label: string
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button aria-label={label} {...props}>
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
 }
 
 export function SftpPanel({ session, className }: SftpPanelProps) {
@@ -276,18 +296,18 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
               <div className="truncate text-xs text-muted-foreground">{session.serverName}</div>
             </div>
             <div className="flex items-center gap-1">
-              <Button
+              <TooltipIconButton
                 variant="outline"
                 size="icon-sm"
-                title={t('common.actions.refresh')}
+                label={t('common.actions.refresh')}
                 onClick={() => void refresh()}
               >
                 <RefreshIcon className="size-4" />
-              </Button>
-              <Button
+              </TooltipIconButton>
+              <TooltipIconButton
                 variant="outline"
                 size="icon-sm"
-                title={t('common.actions.upload')}
+                label={t('common.actions.upload')}
                 onClick={() =>
                   void window.winsshApi.sftp
                     .uploadFiles(session.sessionId, currentPath)
@@ -295,7 +315,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                 }
               >
                 <UploadIcon className="size-4" />
-              </Button>
+              </TooltipIconButton>
             </div>
           </div>
 
@@ -309,14 +329,14 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                   {currentPath}
                 </div>
               </div>
-              <Button
+              <TooltipIconButton
                 variant="outline"
                 size="icon-xs"
-                title={t('workbench.sftp.actions.copyPath')}
+                label={t('workbench.sftp.actions.copyPath')}
                 onClick={() => void copyPath(currentPath)}
               >
                 <CopyIcon className="size-3.5" />
-              </Button>
+              </TooltipIconButton>
             </div>
           </div>
 
@@ -345,41 +365,41 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
           </ScrollArea>
 
           <div className="mt-2 flex items-center gap-1 border-t pt-2">
-            <Button
+            <TooltipIconButton
               variant="ghost"
               size="icon-xs"
-              title={t('common.actions.refresh')}
+              label={t('common.actions.refresh')}
               onClick={() => void refresh()}
             >
               <RefreshIcon className="size-4" />
-            </Button>
-            <Button
+            </TooltipIconButton>
+            <TooltipIconButton
               variant="ghost"
               size="icon-xs"
-              title={t('workbench.sftp.actions.backToParent')}
+              label={t('workbench.sftp.actions.backToParent')}
               onClick={() => {
                 clearSelection()
                 setCurrentPath(session.sessionId, getParentRemotePath(currentPath))
               }}
             >
               <FolderUp className="size-4" />
-            </Button>
-            <Button
+            </TooltipIconButton>
+            <TooltipIconButton
               variant="ghost"
               size="icon-xs"
-              title={t('common.actions.newFile')}
+              label={t('common.actions.newFile')}
               onClick={() => openCreateFileDialog(currentPath)}
             >
               <NewFileIcon className="size-4" />
-            </Button>
-            <Button
+            </TooltipIconButton>
+            <TooltipIconButton
               variant="ghost"
               size="icon-xs"
-              title={t('common.actions.newFolder')}
+              label={t('common.actions.newFolder')}
               onClick={() => openCreateFolderDialog(currentPath)}
             >
               <NewFolderIcon className="size-4" />
-            </Button>
+            </TooltipIconButton>
           </div>
         </div>
 

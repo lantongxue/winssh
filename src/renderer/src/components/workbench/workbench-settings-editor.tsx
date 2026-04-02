@@ -37,6 +37,7 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 const settingsSections = [
   { id: 'appearance', labelKey: 'workbench.settings.sections.appearance' },
@@ -431,25 +432,29 @@ export function WorkbenchSettingsEditor() {
                           <TableCell className="font-mono text-xs">{host.fingerprint}</TableCell>
                           <TableCell>{formatDateTime(host.verifiedAt)}</TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={
-                                removeKnownHost.isPending &&
-                                removeKnownHost.variables?.host === host.host &&
-                                removeKnownHost.variables?.port === host.port
-                              }
-                              title={t('common.actions.delete')}
-                              onClick={() =>
-                                removeKnownHost.mutate({
-                                  host: host.host,
-                                  port: host.port
-                                })
-                              }
-                            >
-                              <DeleteIcon className="size-4" />
-                              {t('common.actions.delete')}
-                            </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={
+                                    removeKnownHost.isPending &&
+                                    removeKnownHost.variables?.host === host.host &&
+                                    removeKnownHost.variables?.port === host.port
+                                  }
+                                  onClick={() =>
+                                    removeKnownHost.mutate({
+                                      host: host.host,
+                                      port: host.port
+                                    })
+                                  }
+                                >
+                                  <DeleteIcon className="size-4" />
+                                  {t('common.actions.delete')}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{t('common.actions.delete')}</TooltipContent>
+                            </Tooltip>
                           </TableCell>
                         </TableRow>
                       ))}

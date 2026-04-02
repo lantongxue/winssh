@@ -5,6 +5,7 @@ import { actionIcons } from '@/lib/action-icons'
 import { cn } from '@/lib/utils'
 import { useWorkbenchStore } from '@/store/workbench-store'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 function getPlatform() {
   const platform =
@@ -23,45 +24,54 @@ const noDragStyle = { WebkitAppRegion: 'no-drag' } as AppRegionStyle
 function TitlebarButton({
   children,
   className,
-  title,
+  tooltip,
   ...props
-}: React.ComponentProps<typeof Button> & { title: string }) {
+}: React.ComponentProps<typeof Button> & { tooltip: string }) {
   return (
-    <Button
-      variant="ghost"
-      {...props}
-      title={title}
-      className={cn(
-        'h-7 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2 text-[var(--workbench-muted)] hover:bg-[var(--workbench-hover)] hover:text-foreground',
-        className
-      )}
-      style={noDragStyle}
-    >
-      {children}
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          {...props}
+          className={cn(
+            'h-7 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2 text-[var(--workbench-muted)] hover:bg-[var(--workbench-hover)] hover:text-foreground',
+            className
+          )}
+          style={noDragStyle}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{tooltip}</TooltipContent>
+    </Tooltip>
   )
 }
 
 function WindowControlButton({
   children,
   className,
-  title,
+  tooltip,
   ...props
-}: React.ComponentProps<typeof Button> & { title: string }) {
+}: React.ComponentProps<typeof Button> & { tooltip: string }) {
   return (
-    <Button
-      variant="ghost"
-      size="icon-sm"
-      {...props}
-      title={title}
-      className={cn(
-        'h-9 w-11 rounded-none border-0 bg-transparent p-0 text-[var(--workbench-muted)] hover:bg-[var(--workbench-hover)] hover:text-foreground',
-        className
-      )}
-      style={noDragStyle}
-    >
-      {children}
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={tooltip}
+          {...props}
+          className={cn(
+            'h-9 w-11 rounded-none border-0 bg-transparent p-0 text-[var(--workbench-muted)] hover:bg-[var(--workbench-hover)] hover:text-foreground',
+            className
+          )}
+          style={noDragStyle}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{tooltip}</TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -125,7 +135,7 @@ export function WorkbenchTitlebar() {
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <TitlebarButton
           size="sm"
-          title={t('workbench.titleBar.quickOpenTitle')}
+          tooltip={t('workbench.titleBar.quickOpenTitle')}
           onClick={() => setQuickOpenOpen(true)}
         >
           <QuickOpenIcon className="size-3.5" />
@@ -137,7 +147,7 @@ export function WorkbenchTitlebar() {
         <div className="pointer-events-auto w-full max-w-[440px] px-20 sm:px-24">
           <TitlebarButton
             size="sm"
-            title={t('workbench.titleBar.commandPaletteTitle')}
+            tooltip={t('workbench.titleBar.commandPaletteTitle')}
             className="w-full justify-center"
             onClick={() => setCommandPaletteOpen(true)}
           >
@@ -149,25 +159,25 @@ export function WorkbenchTitlebar() {
 
       <div className="ml-auto flex items-center gap-1">
         <WindowControlButton
-          title={t('common.actions.toggleSidebar')}
+          tooltip={t('common.actions.toggleSidebar')}
           onClick={toggleSidebar}
         >
           <ToggleSidebarIcon className="size-4" />
         </WindowControlButton>
-        <WindowControlButton title={t('common.actions.togglePanel')} onClick={togglePanel}>
+        <WindowControlButton tooltip={t('common.actions.togglePanel')} onClick={togglePanel}>
           <TogglePanelIcon className="size-4" />
         </WindowControlButton>
 
         {customTitleBar && !isMac ? (
           <>
             <WindowControlButton
-              title={t('workbench.titleBar.minimizeWindow')}
+              tooltip={t('workbench.titleBar.minimizeWindow')}
               onClick={() => void window.winsshApi.system.window.minimize()}
             >
               <MinimizeWindowIcon className="size-4" />
             </WindowControlButton>
             <WindowControlButton
-              title={t(
+              tooltip={t(
                 isMaximized ? 'workbench.titleBar.restoreWindow' : 'workbench.titleBar.maximizeWindow'
               )}
               onClick={() => void window.winsshApi.system.window.toggleMaximize()}
@@ -175,7 +185,7 @@ export function WorkbenchTitlebar() {
               <MaximizeWindowIcon className="size-4" />
             </WindowControlButton>
             <WindowControlButton
-              title={t('workbench.titleBar.closeWindow')}
+              tooltip={t('workbench.titleBar.closeWindow')}
               className="hover:bg-destructive hover:text-destructive-foreground"
               onClick={() => void window.winsshApi.system.window.close()}
             >

@@ -4,6 +4,7 @@ import type { ThemeDefinition } from '@shared/themes'
 import type { ThemeMode } from '@shared/types'
 import { Toaster } from 'sonner'
 import { WorkbenchShell } from '@/components/workbench/workbench-shell'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { usePrefersDark } from '@/hooks/use-prefers-dark'
 import { useSessionEvents } from '@/hooks/use-session-events'
 import i18n from '@/i18n'
@@ -64,7 +65,9 @@ export default function App() {
 
   return (
     <>
-      <WorkbenchShell />
+      <TooltipProvider>
+        <WorkbenchShell />
+      </TooltipProvider>
       <Toaster
         position="bottom-right"
         offset={16}

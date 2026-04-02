@@ -5,6 +5,7 @@ import { workbenchPanels } from '@/lib/workbench'
 import { cn } from '@/lib/utils'
 import { useWorkbenchStore } from '@/store/workbench-store'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export function WorkbenchPanel() {
   const { t } = useTranslation()
@@ -51,14 +52,20 @@ export function WorkbenchPanel() {
               {t('workbench.panel.clearTransfers')}
             </Button>
           ) : null}
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            className="rounded-sm text-[var(--workbench-muted)] hover:bg-[var(--workbench-hover)] hover:text-foreground"
-            onClick={() => setPanelOpen(false)}
-          >
-            <CloseIcon className="size-3.5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label={t('common.actions.close')}
+                className="rounded-sm text-[var(--workbench-muted)] hover:bg-[var(--workbench-hover)] hover:text-foreground"
+                onClick={() => setPanelOpen(false)}
+              >
+                <CloseIcon className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('common.actions.close')}</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
