@@ -23,6 +23,7 @@ win:
     - zip
   artifactName: ${productName}-Windows-${version}-${arch}.${ext}
 nsis:
+  include: build/installer.nsh
   artifactName: ${productName}-Windows-${version}-${arch}-Setup.${ext}
   oneClick: false
   perMachine: false
