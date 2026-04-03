@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, EyeOff, KeyRound, LockKeyhole } from 'lucide-react'
+import { Eye, EyeOff, KeyRound, LockKeyhole, ShieldCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
-import type { Server, ServerSecrets, ServerUpsertInput } from '@shared/types'
+import type { Credential, Server, ServerSecrets, ServerUpsertInput } from '@shared/types'
 import { serverSchema, type ServerFormValues } from '@shared/validation'
 import { actionIcons } from '@/lib/action-icons'
 import { getColorStyle } from '@/lib/colors'
@@ -54,7 +54,8 @@ function toDefaultValues(
       rememberPassphrase: credentialStorageAvailable,
       rememberPassword: credentialStorageAvailable,
       tagIds: [],
-      username: ''
+      username: '',
+      credentialId: null
     }
   }
 
@@ -73,7 +74,8 @@ function toDefaultValues(
     rememberPassphrase: credentialStorageAvailable ? server.hasPassphrase : false,
     rememberPassword: credentialStorageAvailable ? server.hasPassword : false,
     tagIds: server.tags.map((tag) => tag.id),
-    username: server.username
+    username: server.username,
+    credentialId: server.credentialId ?? null
   }
 }
 
@@ -92,7 +94,8 @@ function toPayload(
     passphrase: includeSecrets ? values.passphrase : undefined,
     privateKey: values.privateKey?.trim() ? values.privateKey : null,
     rememberPassphrase: credentialStorageAvailable ? values.rememberPassphrase : false,
-    rememberPassword: credentialStorageAvailable ? values.rememberPassword : false
+    rememberPassword: credentialStorageAvailable ? values.rememberPassword : false,
+    credentialId: values.credentialId || null
   } as ServerUpsertInput
 }
 
@@ -148,6 +151,10 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     queryKey: ['capabilities'],
     queryFn: () => window.winsshApi.system.getCapabilities()
   })
+  const credentialsQuery = useQuery({
+    queryKey: ['credentials'],
+    queryFn: () => window.winsshApi.credentials.list()
+  })
 
   const server = (serversQuery.data ?? []).find((item) => item.id === document.serverId) ?? null
   const credentialStorageAvailable = capabilitiesQuery.data?.credentialStorage ?? false
@@ -197,8 +204,31 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   ])
 
   const authType = form.watch('authType')
+  const credentialId = form.watch('credentialId')
   const selectedTagIds = form.watch('tagIds')
   const isPrivateKeyAuth = authType === 'privateKey'
+
+  // Derive selected credential object
+  const credentials = credentialsQuery.data ?? []
+  const selectedCredential = credentialId
+    ? (credentials.find((c: Credential) => c.id === credentialId) ?? null)
+    : null
+
+  // When a credential is selected, auto-fill relevant fields as visual preview
+  useEffect(() => {
+    if (!selectedCredential) return
+    // Request the secret content and prefill
+    void window.winsshApi.credentials.getSecret(selectedCredential.id).then((secret) => {
+      if (selectedCredential.kind === 'password') {
+        form.setValue('password', secret.password ?? '', { shouldDirty: false })
+        form.setValue('authType', 'password', { shouldDirty: false })
+      } else {
+        form.setValue('privateKey', secret.privateKey ?? '', { shouldDirty: false })
+        form.setValue('passphrase', secret.passphrase ?? '', { shouldDirty: false })
+        form.setValue('authType', 'privateKey', { shouldDirty: false })
+      }
+    })
+  }, [form, selectedCredential])
   const credentialLabel = isPrivateKeyAuth
     ? t('workbench.serverEditor.fields.passphrase')
     : t('workbench.serverEditor.fields.password')
@@ -552,6 +582,60 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
               )}
               {t('workbench.serverEditor.fields.credentials')}
             </div>
+
+            {/* Credential vault selector */}
+            <div className="mb-4">
+              <FormField
+                control={form.control}
+                name="credentialId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-1.5">
+                      <ShieldCheck className="size-3.5 text-muted-foreground" />
+                      {t('workbench.serverEditor.fields.credential')}
+                    </FormLabel>
+                    <Select
+                      value={field.value ?? '__none__'}
+                      onValueChange={(value) => {
+                        field.onChange(value === '__none__' ? null : value)
+                      }}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder={t('workbench.serverEditor.placeholders.credential')}
+                          />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="__none__">
+                          {t('workbench.serverEditor.placeholders.credential')}
+                        </SelectItem>
+                        {credentials.map((credential: Credential) => (
+                          <SelectItem key={credential.id} value={credential.id}>
+                            <div className="flex items-center gap-2">
+                              {credential.kind === 'password' ? (
+                                <LockKeyhole className="size-3.5 text-blue-500" />
+                              ) : (
+                                <KeyRound className="size-3.5 text-amber-500" />
+                              )}
+                              <span>{credential.name}</span>
+                              {credential.username ? (
+                                <span className="text-muted-foreground text-xs">
+                                  ({credential.username})
+                                </span>
+                              ) : null}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
               <FormField
                 control={form.control}

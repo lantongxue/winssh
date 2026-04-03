@@ -5,6 +5,24 @@ const validation = {
         required: '缺少服务器 ID。'
       }
     },
+    credential: {
+      name: {
+        max: '凭据名称不能超过 80 个字符。',
+        required: '请输入凭据名称。'
+      },
+      note: {
+        max: '备注不能超过 400 个字符。'
+      },
+      password: {
+        required: '账号密码类型需要填写密码。'
+      },
+      privateKey: {
+        required: '私钥类型需要填写私钥内容。'
+      },
+      username: {
+        max: '用户名不能超过 64 个字符。'
+      }
+    },
     portForward: {
       host: {
         max: '主机地址过长。',
@@ -38,7 +56,7 @@ const validation = {
         min: '端口最小为 1。'
       },
       privateKey: {
-        required: '私钥认证需要填写或导入私钥内容。'
+        required: '私钥认证需要填写或导入私钥内容，或选择已有私钥凭据。'
       },
       username: {
         max: '用户名不能超过 64 个字符。',

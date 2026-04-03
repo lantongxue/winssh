@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import { SYSTEM_THEME_ID } from '@shared/themes'
-import { Languages, ShieldCheck, SlidersHorizontal, TerminalSquare } from 'lucide-react'
+import { KeyRound, Languages, ShieldCheck, SlidersHorizontal, TerminalSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -38,15 +38,18 @@ import {
   TableRow
 } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { CredentialVault } from '@/components/credential-vault'
 
 const settingsSections = [
   { id: 'appearance', labelKey: 'workbench.settings.sections.appearance' },
   { id: 'terminal', labelKey: 'workbench.settings.sections.terminal' },
-  { id: 'security', labelKey: 'workbench.settings.sections.security' }
+  { id: 'security', labelKey: 'workbench.settings.sections.security' },
+  { id: 'credentialVault', labelKey: 'workbench.settings.sections.credentialVault' }
 ] as const
 
 const settingsSectionIcons = {
   appearance: SlidersHorizontal,
+  credentialVault: KeyRound,
   security: ShieldCheck,
   terminal: TerminalSquare
 } as const
@@ -67,6 +70,7 @@ export function WorkbenchSettingsEditor() {
     useState<(typeof settingsSections)[number]['id']>('appearance')
   const DeleteIcon = actionIcons.delete
   const SaveIcon = actionIcons.save
+  const showSaveAction = selectedSection !== 'credentialVault'
 
   const settingsQuery = useQuery({
     queryKey: ['settings'],
@@ -499,12 +503,24 @@ export function WorkbenchSettingsEditor() {
               </section>
             ) : null}
 
-            <div className="flex justify-end">
-              <Button type="submit" disabled={updateSettings.isPending}>
-                <SaveIcon className="size-4" />
-                {t('common.actions.save')}
-              </Button>
-            </div>
+            {selectedSection === 'credentialVault' ? (
+              <section className="space-y-4">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <KeyRound className="size-4 text-primary" />
+                  {t('workbench.credentialVault.title')}
+                </div>
+                <CredentialVault />
+              </section>
+            ) : null}
+
+            {showSaveAction ? (
+              <div className="flex justify-end">
+                <Button type="submit" disabled={updateSettings.isPending}>
+                  <SaveIcon className="size-4" />
+                  {t('common.actions.save')}
+                </Button>
+              </div>
+            ) : null}
           </form>
         </Form>
       </div>

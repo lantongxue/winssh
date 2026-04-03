@@ -15,6 +15,7 @@ import { APP_ID } from '@shared/constants'
 import type {
   AppSettings,
   ConnectionRequest,
+  CredentialUpsertInput,
   GroupInput,
   PortForwardInput,
   ServerUpsertInput,
@@ -22,6 +23,7 @@ import type {
 } from '@shared/types'
 import {
   connectionRequestSchema,
+  credentialSchema,
   groupSchema,
   portForwardSchema,
   serverSchema,
@@ -162,6 +164,14 @@ async function bootstrap(): Promise<void> {
       return null
     }
 
+    // Priority 1: credential vault reference
+    if (server.credentialId) {
+      const secret = database.getCredentialSecret(server.credentialId)
+      if (secret?.privateKey?.trim()) {
+        return secret.privateKey
+      }
+    }
+
     const storedPrivateKey = database.getServerPrivateKey(id)
     if (storedPrivateKey?.trim()) {
       return storedPrivateKey
@@ -177,6 +187,23 @@ async function bootstrap(): Promise<void> {
       return null
     }
   }
+
+  ipcMain.handle('credentials:list', () => database.listCredentials())
+  ipcMain.handle('credentials:getSecret', (_event, id: string) => {
+    const secret = database.getCredentialSecret(id)
+    return secret ?? { password: null, privateKey: null, passphrase: null }
+  })
+  ipcMain.handle('credentials:create', (_event, input: CredentialUpsertInput) => {
+    const payload = parseInput(credentialSchema, input)
+    return database.createCredential(payload as CredentialUpsertInput)
+  })
+  ipcMain.handle('credentials:update', (_event, id: string, input: CredentialUpsertInput) => {
+    const payload = parseInput(credentialSchema, input)
+    return database.updateCredential(id, payload as CredentialUpsertInput)
+  })
+  ipcMain.handle('credentials:delete', (_event, id: string) => {
+    database.deleteCredential(id)
+  })
 
   ipcMain.handle('groups:list', () => database.listGroups())
   ipcMain.handle('groups:create', (_event, input: GroupInput) =>
@@ -202,11 +229,24 @@ async function bootstrap(): Promise<void> {
 
   ipcMain.handle('servers:list', async () => withServerSecrets())
   ipcMain.handle('servers:getSecrets', async (_event, id: string) => {
-    if (!database.getServerById(id)) {
+    const server = database.getServerById(id)
+    if (!server) {
       return {
         password: null,
         passphrase: null,
         privateKey: null
+      }
+    }
+
+    // If server references a credential vault entry, return that credential's secrets
+    if (server.credentialId) {
+      const credSecret = database.getCredentialSecret(server.credentialId)
+      if (credSecret) {
+        return {
+          password: credSecret.password,
+          passphrase: credSecret.passphrase,
+          privateKey: credSecret.privateKey
+        }
       }
     }
 

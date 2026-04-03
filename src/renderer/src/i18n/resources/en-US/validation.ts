@@ -5,6 +5,24 @@ const validation = {
         required: 'Missing server ID.'
       }
     },
+    credential: {
+      name: {
+        max: 'Credential name must be 80 characters or fewer.',
+        required: 'Enter a credential name.'
+      },
+      note: {
+        max: 'Notes must be 400 characters or fewer.'
+      },
+      password: {
+        required: 'A password is required for password-type credentials.'
+      },
+      privateKey: {
+        required: 'Private key content is required for private key credentials.'
+      },
+      username: {
+        max: 'Username must be 64 characters or fewer.'
+      }
+    },
     portForward: {
       host: {
         max: 'Host is too long.',
@@ -38,7 +56,8 @@ const validation = {
         min: 'Port must be at least 1.'
       },
       privateKey: {
-        required: 'Private key content is required for key-based authentication.'
+        required:
+          'Private key content is required for key-based authentication, or select an existing credential.'
       },
       username: {
         max: 'Username must be 64 characters or fewer.',

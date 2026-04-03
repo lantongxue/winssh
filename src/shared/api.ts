@@ -1,6 +1,9 @@
 import type {
   AppSettings,
   ConnectionRequest,
+  Credential,
+  CredentialSecret,
+  CredentialUpsertInput,
   GroupInput,
   KnownHost,
   PortForwardInput,
@@ -39,6 +42,13 @@ export interface WinsshApi {
     list: () => Promise<Tag[]>
     create: (input: TagInput) => Promise<Tag>
     update: (id: string, input: TagInput) => Promise<Tag>
+    delete: (id: string) => Promise<void>
+  }
+  credentials: {
+    list: () => Promise<Credential[]>
+    getSecret: (id: string) => Promise<CredentialSecret>
+    create: (input: CredentialUpsertInput) => Promise<Credential>
+    update: (id: string, input: CredentialUpsertInput) => Promise<Credential>
     delete: (id: string) => Promise<void>
   }
   servers: {

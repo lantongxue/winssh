@@ -222,6 +222,7 @@ const workbench = {
       fields: {
         authType: 'Authentication',
         connectNote: 'Connection Notes',
+        credential: 'Use Credential',
         credentials: 'Credentials',
         favoriteDescription: 'Favorited servers are prioritized in Explorer.',
         favoriteTitle: 'Favorite this server',
@@ -239,6 +240,7 @@ const workbench = {
         username: 'Username'
       },
       placeholders: {
+        credential: 'Select an existing credential (optional)',
         host: '192.168.1.10 or demo.example.com',
         name: 'Production Bastion',
         note: 'Record environment notes, jump-host topology, or maintenance details.',
@@ -328,6 +330,7 @@ const workbench = {
       },
       descriptions: {
         appearance: 'Adjust language, theme, and window title bar mode.',
+        credentialVault: 'Manage reusable passwords, private keys, and passphrases.',
         security: 'Review credential storage support and trusted hosts.',
         terminal: 'Adjust terminal font, cursor, and copy behavior.'
       },
@@ -358,6 +361,7 @@ const workbench = {
       },
       sections: {
         appearance: 'Appearance',
+        credentialVault: 'Credential Vault',
         security: 'Security',
         terminal: 'Terminal'
       },
@@ -483,6 +487,47 @@ const workbench = {
       sessionExited: 'Session exited: {{sessionId}}',
       sessionStateChanged: 'Session state changed to {{status}}',
       uploadCompleted: 'Upload completed: {{fileName}}'
+    },
+    credentialVault: {
+      title: 'Credential Vault',
+      actions: {
+        new: 'New Credential'
+      },
+      dialog: {
+        createTitle: 'New Credential',
+        editTitle: 'Edit Credential',
+        deleteTitle: 'Delete Credential',
+        deleteDescription:
+          'This permanently deletes the credential "{{name}}". Servers referencing it will fall back to their inline credentials. This action cannot be undone.'
+      },
+      empty: 'No credentials saved yet. Click "New Credential" to add one.',
+      fields: {
+        kind: 'Type',
+        name: 'Name',
+        note: 'Notes',
+        passphrase: 'Passphrase',
+        password: 'Password',
+        privateKey: 'Private Key',
+        username: 'Username'
+      },
+      kinds: {
+        password: 'Password',
+        privateKey: 'Private Key'
+      },
+      placeholders: {
+        name: 'e.g. Production Key, Bastion Account',
+        note: 'Optional notes',
+        passphrase: 'Leave empty if there is no passphrase',
+        password: 'Enter the password',
+        privateKey: 'Paste the private key content, or import from a file',
+        username: 'e.g. root, ubuntu'
+      },
+      privateKeyAuth: 'Private key authentication',
+      toasts: {
+        created: 'Credential created.',
+        deleted: 'Credential deleted.',
+        updated: 'Credential updated.'
+      }
     }
   }
 }

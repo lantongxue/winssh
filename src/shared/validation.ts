@@ -17,6 +17,37 @@ export const tagSchema = z.object({
   color: colorSchema
 })
 
+export const credentialSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, 'validation.credential.name.required')
+      .max(80, 'validation.credential.name.max'),
+    kind: z.enum(['password', 'privateKey']),
+    username: z.string().trim().max(64, 'validation.credential.username.max').nullable().optional(),
+    password: z.string().optional().nullable(),
+    privateKey: z.string().optional().nullable(),
+    passphrase: z.string().optional().nullable(),
+    note: z.string().trim().max(400, 'validation.credential.note.max').optional().nullable()
+  })
+  .superRefine((value, ctx) => {
+    if (value.kind === 'password' && !value.password?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['password'],
+        message: 'validation.credential.password.required'
+      })
+    }
+    if (value.kind === 'privateKey' && !value.privateKey?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['privateKey'],
+        message: 'validation.credential.privateKey.required'
+      })
+    }
+  })
+
 export const serverSchema = z
   .object({
     id: z.string().optional(),
@@ -49,10 +80,11 @@ export const serverSchema = z
     password: z.string().optional(),
     passphrase: z.string().optional(),
     rememberPassword: z.boolean().default(true),
-    rememberPassphrase: z.boolean().default(false)
+    rememberPassphrase: z.boolean().default(false),
+    credentialId: z.string().trim().nullable().optional()
   })
   .superRefine((value, ctx) => {
-    if (value.authType === 'privateKey' && !value.privateKey?.trim()) {
+    if (value.authType === 'privateKey' && !value.credentialId && !value.privateKey?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['privateKey'],
@@ -105,3 +137,4 @@ export type GroupFormValues = z.infer<typeof groupSchema>
 export type TagFormValues = z.infer<typeof tagSchema>
 export type PortForwardFormValues = z.infer<typeof portForwardSchema>
 export type SettingsFormValues = z.infer<typeof settingsSchema>
+export type CredentialFormValues = z.infer<typeof credentialSchema>

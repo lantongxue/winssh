@@ -219,6 +219,7 @@ const workbench = {
       fields: {
         authType: '认证方式',
         connectNote: '连接说明',
+        credential: '引用凭据',
         credentials: '凭据策略',
         favoriteDescription: '收藏后会在资源管理器中优先展示。',
         favoriteTitle: '收藏该服务器',
@@ -236,6 +237,7 @@ const workbench = {
         username: '用户名'
       },
       placeholders: {
+        credential: '选择已有凭据（可选）',
         host: '192.168.1.10 或 demo.example.com',
         name: 'Production Bastion',
         note: '记录环境说明、跳板关系或维护信息。',
@@ -322,6 +324,7 @@ const workbench = {
       },
       descriptions: {
         appearance: '调整语言、主题和窗口标题栏模式。',
+        credentialVault: '集中管理可复用的密码、私钥与口令记录。',
         security: '查看凭据存储能力与已信任主机列表。',
         terminal: '调整终端字体、光标和复制行为。'
       },
@@ -352,6 +355,7 @@ const workbench = {
       },
       sections: {
         appearance: '界面',
+        credentialVault: '保险柜',
         security: '安全',
         terminal: '终端'
       },
@@ -473,6 +477,46 @@ const workbench = {
       sessionExited: '会话已退出：{{sessionId}}',
       sessionStateChanged: '会话状态已变更为 {{status}}',
       uploadCompleted: '上传完成：{{fileName}}'
+    },
+    credentialVault: {
+      title: '凭据保险柜',
+      actions: {
+        new: '新建凭据'
+      },
+      dialog: {
+        createTitle: '新建凭据',
+        editTitle: '编辑凭据',
+        deleteTitle: '删除凭据',
+        deleteDescription: '将永久删除凭据"{{name}}"，已引用此凭据的服务器将回退到内联凭据。此操作无法撤销。'
+      },
+      empty: '还没有保存的凭据。点击「新建凭据」添加第一条记录。',
+      fields: {
+        kind: '凭据类型',
+        name: '凭据名称',
+        note: '备注',
+        passphrase: '私钥口令',
+        password: '密码',
+        privateKey: '私钥内容',
+        username: '用户名'
+      },
+      kinds: {
+        password: '账号密码',
+        privateKey: '私钥'
+      },
+      placeholders: {
+        name: '如：生产环境密钥、跳板机账号',
+        note: '可选说明',
+        passphrase: '留空表示无口令',
+        password: '请输入密码',
+        privateKey: '粘贴私钥内容，或点击浏览按钮从文件导入',
+        username: '如：root、ubuntu'
+      },
+      privateKeyAuth: '私钥认证',
+      toasts: {
+        created: '凭据已创建。',
+        deleted: '凭据已删除。',
+        updated: '凭据已更新。'
+      }
     }
   }
 }

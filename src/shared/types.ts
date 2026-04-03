@@ -1,6 +1,7 @@
 import type { ThemeSelection } from './themes'
 
 export type AuthType = 'password' | 'privateKey'
+export type CredentialKind = 'password' | 'privateKey'
 export type ThemeMode = ThemeSelection
 export type AppLanguage = 'system' | 'zh-CN' | 'en-US'
 export type CursorStyle = 'block' | 'underline' | 'bar'
@@ -40,6 +41,7 @@ export interface Server {
   privateKeyPath: string | null
   note: string | null
   groupId: string | null
+  credentialId: string | null
   favorite: boolean
   createdAt: string
   updatedAt: string
@@ -93,6 +95,32 @@ export interface TagInput {
   color: string
 }
 
+export interface Credential {
+  id: string
+  name: string
+  kind: CredentialKind
+  username: string | null
+  note: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CredentialSecret {
+  password: string | null
+  privateKey: string | null
+  passphrase: string | null
+}
+
+export interface CredentialUpsertInput {
+  name: string
+  kind: CredentialKind
+  username?: string | null
+  password?: string | null
+  privateKey?: string | null
+  passphrase?: string | null
+  note?: string | null
+}
+
 export interface ServerUpsertInput {
   id?: string
   name: string
@@ -109,6 +137,7 @@ export interface ServerUpsertInput {
   passphrase?: string
   rememberPassword: boolean
   rememberPassphrase: boolean
+  credentialId?: string | null
 }
 
 export interface ConnectionRequest {

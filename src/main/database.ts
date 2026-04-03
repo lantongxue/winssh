@@ -5,6 +5,9 @@ import { dirname } from 'node:path'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import type {
   AppSettings,
+  Credential,
+  CredentialSecret,
+  CredentialUpsertInput,
   GroupInput,
   KnownHost,
   RecentSession,
@@ -25,6 +28,22 @@ type GroupRow = {
 
 type TagRow = GroupRow
 
+type CredentialRow = {
+  id: string
+  name: string
+  kind: 'password' | 'privateKey'
+  username: string | null
+  note: string | null
+  created_at: string
+  updated_at: string
+}
+
+type CredentialSecretRow = {
+  password: string | null
+  private_key: string | null
+  passphrase: string | null
+}
+
 type ServerRow = {
   id: string
   name: string
@@ -36,6 +55,7 @@ type ServerRow = {
   private_key: string | null
   note: string | null
   group_id: string | null
+  credential_id: string | null
   favorite: number
   created_at: string
   updated_at: string
@@ -115,6 +135,7 @@ function mapServer(row: ServerRow, tags: Tag[]): Server {
     privateKeyPath: row.private_key_path,
     note: row.note,
     groupId: row.group_id,
+    credentialId: row.credential_id,
     favorite: Boolean(row.favorite),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -173,6 +194,19 @@ export class DatabaseService {
         updated_at TEXT NOT NULL
       );
 
+      CREATE TABLE IF NOT EXISTS credentials (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('password', 'privateKey')),
+        username TEXT,
+        password TEXT,
+        private_key TEXT,
+        passphrase TEXT,
+        note TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
       CREATE TABLE IF NOT EXISTS servers (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -220,6 +254,11 @@ export class DatabaseService {
     const serverColumns = this.db.prepare('PRAGMA table_info(servers)').all() as TableColumnRow[]
     if (!serverColumns.some((column) => column.name === 'private_key')) {
       this.db.exec('ALTER TABLE servers ADD COLUMN private_key TEXT')
+    }
+    if (!serverColumns.some((column) => column.name === 'credential_id')) {
+      this.db.exec(
+        'ALTER TABLE servers ADD COLUMN credential_id TEXT REFERENCES credentials(id) ON DELETE SET NULL'
+      )
     }
   }
 
@@ -393,6 +432,7 @@ export class DatabaseService {
                 note = ?,
                 group_id = ?,
                 favorite = ?,
+                credential_id = ?,
                 updated_at = ?
               WHERE id = ?
             `
@@ -408,6 +448,7 @@ export class DatabaseService {
             payload.note?.trim() || null,
             payload.groupId || null,
             payload.favorite ? 1 : 0,
+            payload.credentialId || null,
             now,
             payload.id
           )
@@ -417,8 +458,8 @@ export class DatabaseService {
             `
               INSERT INTO servers (
                 id, name, host, port, username, auth_type, private_key, private_key_path, note,
-                group_id, favorite, created_at, updated_at, last_connected_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                group_id, favorite, credential_id, created_at, updated_at, last_connected_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `
           )
           .run(
@@ -433,6 +474,7 @@ export class DatabaseService {
             payload.note?.trim() || null,
             payload.groupId || null,
             payload.favorite ? 1 : 0,
+            payload.credentialId || null,
             now,
             now,
             null
@@ -600,5 +642,99 @@ export class DatabaseService {
 
   close(): void {
     this.db.close()
+  }
+
+  // ── Credentials ───────────────────────────────────────────────────────────
+
+  private mapCredential(row: CredentialRow): Credential {
+    return {
+      id: row.id,
+      name: row.name,
+      kind: row.kind,
+      username: row.username,
+      note: row.note,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }
+  }
+
+  listCredentials(): Credential[] {
+    const rows = this.db
+      .prepare(
+        'SELECT id, name, kind, username, note, created_at, updated_at FROM credentials ORDER BY name COLLATE NOCASE ASC'
+      )
+      .all() as CredentialRow[]
+    return rows.map((row) => this.mapCredential(row))
+  }
+
+  getCredentialById(id: string): Credential | null {
+    const row = this.db
+      .prepare(
+        'SELECT id, name, kind, username, note, created_at, updated_at FROM credentials WHERE id = ?'
+      )
+      .get(id) as CredentialRow | undefined
+    return row ? this.mapCredential(row) : null
+  }
+
+  getCredentialSecret(id: string): CredentialSecret | null {
+    const row = this.db
+      .prepare('SELECT password, private_key, passphrase FROM credentials WHERE id = ?')
+      .get(id) as CredentialSecretRow | undefined
+    if (!row) return null
+    return {
+      password: row.password,
+      privateKey: row.private_key,
+      passphrase: row.passphrase
+    }
+  }
+
+  createCredential(input: CredentialUpsertInput): Credential {
+    const id = randomUUID()
+    const now = nowIso()
+    this.db
+      .prepare(
+        `INSERT INTO credentials (id, name, kind, username, password, private_key, passphrase, note, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        id,
+        input.name.trim(),
+        input.kind,
+        input.username?.trim() || null,
+        input.password?.trim() || null,
+        input.privateKey?.trim() || null,
+        input.passphrase?.trim() || null,
+        input.note?.trim() || null,
+        now,
+        now
+      )
+    return this.getCredentialById(id) as Credential
+  }
+
+  updateCredential(id: string, input: CredentialUpsertInput): Credential {
+    const now = nowIso()
+    this.db
+      .prepare(
+        `UPDATE credentials
+         SET name = ?, kind = ?, username = ?, password = ?, private_key = ?, passphrase = ?, note = ?, updated_at = ?
+         WHERE id = ?`
+      )
+      .run(
+        input.name.trim(),
+        input.kind,
+        input.username?.trim() || null,
+        input.password?.trim() || null,
+        input.privateKey?.trim() || null,
+        input.passphrase?.trim() || null,
+        input.note?.trim() || null,
+        now,
+        id
+      )
+    return this.getCredentialById(id) as Credential
+  }
+
+  deleteCredential(id: string): void {
+    // servers.credential_id has ON DELETE SET NULL so refs are cleared automatically
+    this.db.prepare('DELETE FROM credentials WHERE id = ?').run(id)
   }
 }
