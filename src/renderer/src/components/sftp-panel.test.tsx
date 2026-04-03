@@ -7,6 +7,7 @@ import { SftpPanel } from '@/components/sftp-panel'
 import type { SessionTab } from '@/store/sessions-store'
 import { createWinsshApiMock } from '@/test/create-winssh-api'
 import { useSessionsStore } from '@/store/sessions-store'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 vi.mock('sonner', () => ({
   toast: {
@@ -32,7 +33,31 @@ function renderSftpPanel(session: SessionTab | null) {
     queryClient,
     ...render(
       <QueryClientProvider client={queryClient}>
-        <SftpPanel session={session} />
+        <TooltipProvider>
+          <SftpPanel session={session} />
+        </TooltipProvider>
+      </QueryClientProvider>
+    )
+  }
+}
+
+function ConnectedSftpPanel({ sessionId }: { sessionId: string }) {
+  const session =
+    useSessionsStore((state) => state.tabs.find((tab) => tab.sessionId === sessionId)) ?? null
+
+  return <SftpPanel session={session} />
+}
+
+function renderConnectedSftpPanel(sessionId: string) {
+  const queryClient = createTestQueryClient()
+
+  return {
+    queryClient,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <ConnectedSftpPanel sessionId={sessionId} />
+        </TooltipProvider>
       </QueryClientProvider>
     )
   }
@@ -107,7 +132,9 @@ describe('SftpPanel', () => {
 
     rerender(
       <QueryClientProvider client={queryClient}>
-        <SftpPanel session={{ ...session, status: 'disconnected' }} />
+        <TooltipProvider>
+          <SftpPanel session={{ ...session, status: 'disconnected' }} />
+        </TooltipProvider>
       </QueryClientProvider>
     )
 
@@ -117,5 +144,53 @@ describe('SftpPanel', () => {
         'Start an SSH session first and the SFTP panel will follow the active tab automatically.'
       )
     ).toBeInTheDocument()
+  })
+
+  it('closes the aux panel from the header close button', async () => {
+    useSessionsStore.getState().addSession(session)
+    useSessionsStore.getState().setAuxView('session-1', 'sftp')
+
+    window.winsshApi = createWinsshApiMock({
+      sftp: {
+        list: vi.fn().mockResolvedValue({
+          entries,
+          path: '/var/www'
+        })
+      }
+    })
+
+    renderSftpPanel(session)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+
+    expect(useSessionsStore.getState().tabs[0]?.auxView).toBeNull()
+  })
+
+  it('jumps to an edited path when pressing enter in the current path field', async () => {
+    const list = vi.fn().mockImplementation(async (_sessionId: string, path: string) => ({
+      entries,
+      path
+    }))
+
+    useSessionsStore.getState().addSession(session)
+    window.winsshApi = createWinsshApiMock({
+      sftp: {
+        list
+      }
+    })
+
+    renderConnectedSftpPanel('session-1')
+
+    const pathField = await screen.findByLabelText('Current Path')
+
+    fireEvent.change(pathField, { target: { value: '/etc/nginx/sites-enabled' } })
+    fireEvent.keyDown(pathField, { key: 'Enter' })
+
+    await waitFor(() => {
+      expect(useSessionsStore.getState().tabs[0]?.currentPath).toBe('/etc/nginx/sites-enabled')
+    })
+    await waitFor(() => {
+      expect(list).toHaveBeenLastCalledWith('session-1', '/etc/nginx/sites-enabled')
+    })
   })
 })

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { File, Folder, FolderUp } from 'lucide-react'
+import { File, Folder, Undo2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { getParentRemotePath } from '@shared/sftp'
@@ -28,6 +28,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface SftpPanelProps {
@@ -58,6 +59,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const setCurrentPath = useSessionsStore((state) => state.setCurrentPath)
+  const setAuxView = useSessionsStore((state) => state.setAuxView)
   const [selectedEntryPaths, setSelectedEntryPaths] = useState<string[]>([])
   const [selectionAnchorPath, setSelectionAnchorPath] = useState<string | null>(null)
   const [newFileOpen, setNewFileOpen] = useState(false)
@@ -87,12 +89,18 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
     queryFn: () => window.winsshApi.sftp.list(session!.sessionId, session!.currentPath),
     enabled: Boolean(session && session.status === 'ready')
   })
+  const currentPath = listingQuery.data?.path ?? session?.currentPath ?? '/'
+  const [pathInputValue, setPathInputValue] = useState(currentPath)
 
   useEffect(() => {
     if (session && listingQuery.data?.path && listingQuery.data.path !== session.currentPath) {
       setCurrentPath(session.sessionId, listingQuery.data.path)
     }
   }, [listingQuery.data?.path, session, setCurrentPath])
+
+  useEffect(() => {
+    setPathInputValue(currentPath)
+  }, [currentPath])
 
   useEffect(() => {
     if (!listingQuery.data?.entries) {
@@ -105,16 +113,6 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
     setSelectionAnchorPath((current) => (current && availablePaths.has(current) ? current : null))
   }, [listingQuery.data?.entries])
 
-  const segments = useMemo(() => {
-    const currentPath = listingQuery.data?.path ?? session?.currentPath ?? '/'
-    if (currentPath === '/') {
-      return ['/']
-    }
-
-    const parts = currentPath.split('/').filter(Boolean)
-    return ['/', ...parts]
-  }, [listingQuery.data?.path, session?.currentPath])
-  const currentPath = listingQuery.data?.path ?? session?.currentPath ?? '/'
   const entries = listingQuery.data?.entries ?? []
   const selectedEntrySet = useMemo(() => new Set(selectedEntryPaths), [selectedEntryPaths])
   const selectedEntries = useMemo(
@@ -177,6 +175,17 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
   const openDirectory = (path: string) => {
     clearSelection()
     setCurrentPath(session.sessionId, path)
+  }
+
+  const jumpToPath = () => {
+    const nextPath = pathInputValue.replace(/\r?\n/g, '').trim()
+
+    if (!nextPath) {
+      setPathInputValue(currentPath)
+      return
+    }
+
+    openDirectory(nextPath)
   }
 
   const clearSelection = () => {
@@ -299,75 +308,52 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
               <TooltipIconButton
                 variant="outline"
                 size="icon-sm"
-                label={t('common.actions.refresh')}
-                onClick={() => void refresh()}
+                label={t('common.actions.close')}
+                onClick={() => setAuxView(session.sessionId, null)}
               >
-                <RefreshIcon className="size-4" />
-              </TooltipIconButton>
-              <TooltipIconButton
-                variant="outline"
-                size="icon-sm"
-                label={t('common.actions.upload')}
-                onClick={() =>
-                  void window.winsshApi.sftp
-                    .uploadFiles(session.sessionId, currentPath)
-                    .then(refresh)
-                }
-              >
-                <UploadIcon className="size-4" />
+                <X className="size-4" />
               </TooltipIconButton>
             </div>
           </div>
 
-          <div className="mt-3 rounded-md border bg-muted/20 p-2.5">
-            <div className="flex items-start gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
-                  {t('workbench.sftp.labels.currentPath')}
-                </div>
-                <div className="mt-1 break-all font-mono text-[11px] leading-4 text-foreground">
-                  {currentPath}
-                </div>
+          <div className="mt-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+                {t('workbench.sftp.labels.currentPath')}
               </div>
               <TooltipIconButton
-                variant="outline"
+                variant="ghost"
                 size="icon-xs"
+                className="shrink-0 text-muted-foreground hover:text-foreground"
                 label={t('workbench.sftp.actions.copyPath')}
                 onClick={() => void copyPath(currentPath)}
               >
                 <CopyIcon className="size-3.5" />
               </TooltipIconButton>
             </div>
+
+            <Textarea
+              aria-label={t('workbench.sftp.labels.currentPath')}
+              className="mt-2 min-h-[72px] resize-none overflow-y-auto border-border/60 bg-background font-mono text-[12px] leading-5 shadow-none [overflow-wrap:anywhere]"
+              rows={3}
+              spellCheck={false}
+              value={pathInputValue}
+              onChange={(event) => setPathInputValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter' || event.shiftKey) {
+                  return
+                }
+
+                event.preventDefault()
+                jumpToPath()
+              }}
+            />
           </div>
-
-          <ScrollArea className="mt-3 w-full">
-            <div className="flex w-max items-center gap-1 pr-3">
-              {segments.map((segment, index) => {
-                const target = index === 0 ? '/' : `/${segments.slice(1, index + 1).join('/')}`
-                const active = target === currentPath
-
-                return (
-                  <Button
-                    key={`${segment}-${index}`}
-                    type="button"
-                    variant={active ? 'secondary' : 'ghost'}
-                    size="xs"
-                    className="max-w-36 justify-start"
-                    onClick={() => setCurrentPath(session.sessionId, target)}
-                  >
-                    <span className="truncate">
-                      {segment === '/' ? t('common.labels.root') : segment}
-                    </span>
-                  </Button>
-                )
-              })}
-            </div>
-          </ScrollArea>
 
           <div className="mt-2 flex items-center gap-1 border-t pt-2">
             <TooltipIconButton
               variant="ghost"
-              size="icon-xs"
+              size="icon-sm"
               label={t('common.actions.refresh')}
               onClick={() => void refresh()}
             >
@@ -375,18 +361,18 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
             </TooltipIconButton>
             <TooltipIconButton
               variant="ghost"
-              size="icon-xs"
+              size="icon-sm"
               label={t('workbench.sftp.actions.backToParent')}
               onClick={() => {
                 clearSelection()
                 setCurrentPath(session.sessionId, getParentRemotePath(currentPath))
               }}
             >
-              <FolderUp className="size-4" />
+              <Undo2 className="size-4" />
             </TooltipIconButton>
             <TooltipIconButton
               variant="ghost"
-              size="icon-xs"
+              size="icon-sm"
               label={t('common.actions.newFile')}
               onClick={() => openCreateFileDialog(currentPath)}
             >
@@ -394,11 +380,23 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
             </TooltipIconButton>
             <TooltipIconButton
               variant="ghost"
-              size="icon-xs"
+              size="icon-sm"
               label={t('common.actions.newFolder')}
               onClick={() => openCreateFolderDialog(currentPath)}
             >
               <NewFolderIcon className="size-4" />
+            </TooltipIconButton>
+            <TooltipIconButton
+              variant="ghost"
+              size="icon-sm"
+              label={t('common.actions.upload')}
+              onClick={() =>
+                void window.winsshApi.sftp
+                  .uploadFiles(session.sessionId, currentPath)
+                  .then(refresh)
+              }
+            >
+              <UploadIcon className="size-4" />
             </TooltipIconButton>
           </div>
         </div>

@@ -9,7 +9,13 @@ import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import { SftpPanel } from '@/components/sftp-panel'
 import { TerminalPane } from '@/components/terminal-pane'
 import { Button } from '@/components/ui/button'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { useSessionsStore } from '@/store/sessions-store'
+
+const TERMINAL_PANEL_MIN_SIZE = '320px'
+const AUX_PANEL_DEFAULT_SIZE = '360px'
+const AUX_PANEL_MIN_SIZE = '280px'
+const AUX_PANEL_MAX_SIZE = '55%'
 
 export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
   const { t } = useTranslation()
@@ -54,6 +60,23 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
     themesQuery.data ?? [],
     prefersDark
   )
+  const terminalView = (
+    <div className="h-full min-w-0">
+      <TerminalPane
+        session={session}
+        settings={settingsQuery.data}
+        theme={resolvedTheme}
+        onReconnect={reconnectSession}
+      />
+    </div>
+  )
+  const auxPanelContent =
+    auxView === 'sftp' ? (
+      <SftpPanel session={session} className="h-full bg-[var(--workbench-sidebar)]" />
+    ) : auxView === 'port-forward' ? (
+      <PortForwardPanel session={session} className="h-full bg-[var(--workbench-sidebar)]" />
+    ) : null
+  const showAuxPanel = Boolean(auxPanelContent && !session.provisional)
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
@@ -100,28 +123,28 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1">
-        <div className="min-w-0 flex-1">
-          <TerminalPane
-            session={session}
-            settings={settingsQuery.data}
-            theme={resolvedTheme}
-            onReconnect={reconnectSession}
-          />
-        </div>
-        {auxView && !session.provisional ? (
-          <div className="w-[360px] shrink-0 border-l border-[var(--workbench-border)] bg-[var(--workbench-sidebar)]">
-            {auxView === 'sftp' ? (
-              <SftpPanel session={session} className="h-full bg-[var(--workbench-sidebar)]" />
-            ) : null}
-            {auxView === 'port-forward' ? (
-              <PortForwardPanel
-                session={session}
-                className="h-full bg-[var(--workbench-sidebar)]"
-              />
-            ) : null}
-          </div>
-        ) : null}
+      <div className="min-h-0 flex-1">
+        {showAuxPanel ? (
+          <ResizablePanelGroup className="h-full" orientation="horizontal">
+            <ResizablePanel minSize={TERMINAL_PANEL_MIN_SIZE} order={1}>
+              {terminalView}
+            </ResizablePanel>
+            <ResizableHandle
+              withHandle
+              className="bg-[var(--workbench-border)] data-[resize-handle-state=drag]:bg-[var(--workbench-accent)]"
+            />
+            <ResizablePanel
+              defaultSize={AUX_PANEL_DEFAULT_SIZE}
+              maxSize={AUX_PANEL_MAX_SIZE}
+              minSize={AUX_PANEL_MIN_SIZE}
+              order={2}
+            >
+              <div className="h-full min-w-0 bg-[var(--workbench-sidebar)]">{auxPanelContent}</div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        ) : (
+          terminalView
+        )}
       </div>
     </div>
   )
