@@ -33,6 +33,7 @@ import { createMainTranslator, resolveMainLanguage } from './localization'
 import { SecureStoreService } from './secure-store'
 import { SessionManager } from './session-manager'
 import { configureHardwareAcceleration } from './gpu-config'
+import { SystemFontService } from './system-fonts'
 import { ThemeRegistry } from './theme-registry'
 import { getWindowChromeOptions } from './window-config'
 
@@ -102,6 +103,7 @@ async function bootstrap(): Promise<void> {
     join(app.getPath('userData'), 'themes')
   )
   const secureStore = new SecureStoreService()
+  const systemFontService = new SystemFontService()
   const translate = createMainTranslator(() =>
     resolveMainLanguage(database.getSettings().language, app.getLocale())
   )
@@ -348,6 +350,7 @@ async function bootstrap(): Promise<void> {
 
     return readFile(filePath, 'utf8')
   })
+  ipcMain.handle('system:listFonts', () => systemFontService.listFonts())
   ipcMain.handle('system:getKnownHosts', () => database.listKnownHosts())
   ipcMain.handle('system:removeKnownHost', (_event, host: string, port: number) => {
     database.deleteKnownHost(host, port)

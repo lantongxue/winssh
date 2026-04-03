@@ -1,0 +1,27 @@
+{
+  "name": "liquid-glass-themes",
+  "displayName": "WinSSH Liquid Glass Themes",
+  "publisher": "winssh",
+  "version": "0.1.0",
+  "engines": {
+    "winssh": "^0.1.0"
+  },
+  "contributes": {
+    "themes": [
+      {
+        "id": "winssh.liquid-glass-light",
+        "label": "Liquid Glass Light",
+        "description": "Apple Liquid Glass design language — light variant. Translucent surfaces, soft refraction, and frosted depth.",
+        "uiTheme": "vs",
+        "path": "./themes/liquid-glass-light.json"
+      },
+      {
+        "id": "winssh.liquid-glass-dark",
+        "label": "Liquid Glass Dark",
+        "description": "Apple Liquid Glass design language — dark variant. Deep vitreous layers, spectral highlights, and luminous accents.",
+        "uiTheme": "vs-dark",
+        "path": "./themes/liquid-glass-dark.json"
+      }
+    ]
+  }
+}

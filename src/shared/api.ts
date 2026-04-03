@@ -90,6 +90,7 @@ export interface WinsshApi {
   }
   system: {
     pickPrivateKey: () => Promise<string | null>
+    listFonts: () => Promise<string[]>
     getKnownHosts: () => Promise<KnownHost[]>
     removeKnownHost: (host: string, port: number) => Promise<void>
     getCapabilities: () => Promise<RuntimeCapabilities>

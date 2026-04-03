@@ -81,6 +81,7 @@ export const THEME_COLOR_KEYS = [
   'terminal-overlay-warning',
   'terminal-overlay-warning-soft',
   'terminal-overlay-radius',
+  'terminal-overlay-backdrop-blur',
   'terminal-scanline-opacity',
   'terminal-scanline-color',
   'terminal-scanline-size'
@@ -241,6 +242,7 @@ export const lightThemeColors = {
   'terminal-overlay-warning': '#fcd34d',
   'terminal-overlay-warning-soft': 'rgba(245, 158, 11, 0.12)',
   'terminal-overlay-radius': '0.75rem',
+  'terminal-overlay-backdrop-blur': '0px',
   'terminal-scanline-opacity': '0',
   'terminal-scanline-color': 'rgba(255, 255, 255, 0)',
   'terminal-scanline-size': '3px'
@@ -313,6 +315,7 @@ export const darkThemeColors = {
   'terminal-overlay-warning': '#fcd34d',
   'terminal-overlay-warning-soft': 'rgba(245, 158, 11, 0.12)',
   'terminal-overlay-radius': '0.75rem',
+  'terminal-overlay-backdrop-blur': '0px',
   'terminal-scanline-opacity': '0',
   'terminal-scanline-color': 'rgba(255, 255, 255, 0)',
   'terminal-scanline-size': '3px'

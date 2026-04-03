@@ -168,6 +168,57 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     })
   })
 
+  it('uses a dropdown to select and save terminal font', async () => {
+    const updateSettings = vi.fn().mockResolvedValue({
+      copyOnSelect: true,
+      cursorBlink: true,
+      cursorStyle: 'block',
+      language: 'en-US',
+      terminalFontFamily: 'IBM Plex Mono',
+      terminalFontSize: 14,
+      theme: DEFAULT_DARK_THEME_ID,
+      windowTitleBarStyle: 'custom'
+    })
+
+    window.winsshApi = createWinsshApiMock({
+      settings: {
+        get: vi.fn().mockResolvedValue({
+          copyOnSelect: true,
+          cursorBlink: true,
+          cursorStyle: 'block',
+          language: 'en-US',
+          terminalFontFamily: 'Consolas',
+          terminalFontSize: 14,
+          theme: DEFAULT_DARK_THEME_ID,
+          windowTitleBarStyle: 'custom'
+        }),
+        update: updateSettings
+      },
+      system: {
+        listFonts: vi.fn().mockResolvedValue(['Consolas', 'IBM Plex Mono'])
+      }
+    })
+
+    renderSettingsEditor()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Terminal' }))
+
+    const fontSelect = screen.getByRole('combobox', { name: 'Terminal font' })
+    expect(fontSelect).toHaveTextContent('Consolas')
+
+    fireEvent.click(fontSelect)
+    fireEvent.click(await screen.findByText('IBM Plex Mono'))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(updateSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          terminalFontFamily: 'IBM Plex Mono'
+        })
+      )
+    })
+  })
+
   it('deletes a trusted host from the security section', async () => {
     const getKnownHosts = vi
       .fn()

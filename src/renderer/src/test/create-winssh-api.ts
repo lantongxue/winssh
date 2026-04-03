@@ -138,6 +138,9 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
     getCapabilities:
       systemOverrides?.getCapabilities ?? (async () => ({ credentialStorage: true })),
     getKnownHosts: systemOverrides?.getKnownHosts ?? (async () => []),
+    listFonts:
+      systemOverrides?.listFonts ??
+      (async () => ['Consolas', 'JetBrains Mono', 'Cascadia Mono', 'IBM Plex Mono']),
     removeKnownHost: systemOverrides?.removeKnownHost ?? (async () => undefined),
     pickPrivateKey: systemOverrides?.pickPrivateKey ?? (async () => null),
     relaunch: systemOverrides?.relaunch ?? (async () => undefined),

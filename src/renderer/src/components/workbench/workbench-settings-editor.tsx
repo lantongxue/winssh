@@ -53,6 +53,12 @@ const settingsSectionIcons = {
 
 const DEFAULT_SETTINGS_FORM_VALUES: SettingsFormValues = DEFAULT_APP_SETTINGS
 
+function getTerminalFontOptions(fonts: string[] | undefined, currentValue: string) {
+  return [...new Set([currentValue.trim(), ...(fonts ?? []).map((font) => font.trim())])]
+    .filter(Boolean)
+    .map((font) => ({ label: font, value: font }))
+}
+
 export function WorkbenchSettingsEditor() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -77,6 +83,10 @@ export function WorkbenchSettingsEditor() {
   const themesQuery = useQuery({
     queryKey: ['themes'],
     queryFn: () => window.winsshApi.themes.list()
+  })
+  const systemFontsQuery = useQuery({
+    queryKey: ['system-fonts'],
+    queryFn: () => window.winsshApi.system.listFonts()
   })
 
   const form = useForm<SettingsFormValues>({
@@ -308,15 +318,30 @@ export function WorkbenchSettingsEditor() {
                   <FormField
                     control={form.control}
                     name="terminalFontFamily"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('workbench.settings.form.terminalFontFamily')}</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      const fontOptions = getTerminalFontOptions(systemFontsQuery.data, field.value)
+
+                      return (
+                        <FormItem>
+                          <FormLabel>{t('workbench.settings.form.terminalFontFamily')}</FormLabel>
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {fontOptions.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  <span style={{ fontFamily: option.value }}>{option.label}</span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )
+                    }}
                   />
                   <FormField
                     control={form.control}

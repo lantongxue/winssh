@@ -72,6 +72,7 @@
   --terminal-overlay-warning: #fcd34d;
   --terminal-overlay-warning-soft: rgba(245, 158, 11, 0.12);
   --terminal-overlay-radius: 0.75rem;
+  --terminal-overlay-backdrop-blur: 0px;
   --terminal-scanline-opacity: 0;
   --terminal-scanline-color: rgba(255, 255, 255, 0);
   --terminal-scanline-size: 3px;

@@ -75,6 +75,7 @@ const api: WinsshApi = {
   },
   system: {
     pickPrivateKey: () => ipcRenderer.invoke('system:pickPrivateKey'),
+    listFonts: () => ipcRenderer.invoke('system:listFonts'),
     getKnownHosts: () => ipcRenderer.invoke('system:getKnownHosts'),
     removeKnownHost: (host, port) => ipcRenderer.invoke('system:removeKnownHost', host, port),
     getCapabilities: () => ipcRenderer.invoke('system:getCapabilities'),
