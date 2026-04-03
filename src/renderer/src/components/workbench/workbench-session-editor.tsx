@@ -124,27 +124,28 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
       </div>
 
       <div className="min-h-0 flex-1">
-        {showAuxPanel ? (
-          <ResizablePanelGroup className="h-full" orientation="horizontal">
-            <ResizablePanel minSize={TERMINAL_PANEL_MIN_SIZE} order={1}>
-              {terminalView}
-            </ResizablePanel>
-            <ResizableHandle
-              withHandle
-              className="bg-[var(--workbench-border)] data-[resize-handle-state=drag]:bg-[var(--workbench-accent)]"
-            />
-            <ResizablePanel
-              defaultSize={AUX_PANEL_DEFAULT_SIZE}
-              maxSize={AUX_PANEL_MAX_SIZE}
-              minSize={AUX_PANEL_MIN_SIZE}
-              order={2}
-            >
-              <div className="h-full min-w-0 bg-[var(--workbench-sidebar)]">{auxPanelContent}</div>
-            </ResizablePanel>
-          </ResizablePanelGroup>
-        ) : (
-          terminalView
-        )}
+        <ResizablePanelGroup className="h-full" orientation="horizontal">
+          <ResizablePanel minSize={TERMINAL_PANEL_MIN_SIZE}>
+            {terminalView}
+          </ResizablePanel>
+          {showAuxPanel ? (
+            <>
+              <ResizableHandle
+                withHandle
+                className="bg-[var(--workbench-border)] data-[resize-handle-state=drag]:bg-[var(--workbench-accent)]"
+              />
+              <ResizablePanel
+                defaultSize={AUX_PANEL_DEFAULT_SIZE}
+                maxSize={AUX_PANEL_MAX_SIZE}
+                minSize={AUX_PANEL_MIN_SIZE}
+              >
+                <div className="h-full min-w-0 bg-[var(--workbench-sidebar)]">
+                  {auxPanelContent}
+                </div>
+              </ResizablePanel>
+            </>
+          ) : null}
+        </ResizablePanelGroup>
       </div>
     </div>
   )

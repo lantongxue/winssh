@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { File, Folder, Undo2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -26,7 +27,6 @@ import {
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -55,11 +55,15 @@ function TooltipIconButton({
   )
 }
 
+// 每个文件条目的固定高度（px-3 py-2 两行文字，约 56px）
+const ENTRY_ITEM_HEIGHT = 56
+
 export function SftpPanel({ session, className }: SftpPanelProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const setCurrentPath = useSessionsStore((state) => state.setCurrentPath)
   const setAuxView = useSessionsStore((state) => state.setAuxView)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [selectedEntryPaths, setSelectedEntryPaths] = useState<string[]>([])
   const [selectionAnchorPath, setSelectionAnchorPath] = useState<string | null>(null)
   const [newFileOpen, setNewFileOpen] = useState(false)
@@ -119,6 +123,13 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
     () => entries.filter((entry) => selectedEntrySet.has(entry.path)),
     [entries, selectedEntrySet]
   )
+
+  const virtualizer = useVirtualizer({
+    count: entries.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => ENTRY_ITEM_HEIGHT,
+    overscan: 10
+  })
 
   if (!session) {
     return (
@@ -403,40 +414,60 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
 
         <ContextMenu>
           <ContextMenuTrigger asChild>
-            <div className="min-h-0 flex-1">
-              <ScrollArea className="h-full">
+            <div
+              ref={scrollContainerRef}
+              className="min-h-0 flex-1 overflow-y-auto"
+              onClick={(event) => event.target === event.currentTarget && clearSelection()}
+            >
+              {listingQuery.isLoading ? (
+                <div className="space-y-2 p-3">
+                  <Skeleton className="h-9 rounded-md" />
+                  <Skeleton className="h-9 rounded-md" />
+                  <Skeleton className="h-9 rounded-md" />
+                </div>
+              ) : null}
+
+              {!listingQuery.isLoading && entries.length === 0 ? (
+                <div className="m-3 rounded-md border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+                  {t('workbench.sftp.empty.directory')}
+                </div>
+              ) : null}
+
+              {!listingQuery.isLoading && entries.length > 0 ? (
                 <div
-                  className="min-h-full"
-                  onClick={(event) => event.target === event.currentTarget && clearSelection()}
+                  style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}
                 >
-                  <div className="divide-y">
-                    {listingQuery.isLoading ? (
-                      <div className="space-y-2 p-3">
-                        <Skeleton className="h-9 rounded-md" />
-                        <Skeleton className="h-9 rounded-md" />
-                        <Skeleton className="h-9 rounded-md" />
-                      </div>
-                    ) : null}
+                  {virtualizer.getVirtualItems().map((virtualItem) => {
+                    const entry = entries[virtualItem.index]
+                    const contextMenuTargets = resolveContextMenuTargets(entry)
+                    const isSelected = selectedEntrySet.has(entry.path)
+                    const hasSingleContextTarget = contextMenuTargets.length === 1
+                    const singleContextTarget = hasSingleContextTarget
+                      ? contextMenuTargets[0]
+                      : null
+                    const createTargetPath =
+                      singleContextTarget?.kind === 'directory'
+                        ? singleContextTarget.path
+                        : currentPath
 
-                    {entries.map((entry) => {
-                      const contextMenuTargets = resolveContextMenuTargets(entry)
-                      const isSelected = selectedEntrySet.has(entry.path)
-                      const hasSingleContextTarget = contextMenuTargets.length === 1
-                      const singleContextTarget = hasSingleContextTarget
-                        ? contextMenuTargets[0]
-                        : null
-                      const createTargetPath =
-                        singleContextTarget?.kind === 'directory'
-                          ? singleContextTarget.path
-                          : currentPath
-
-                      return (
-                        <ContextMenu key={entry.path}>
+                    return (
+                      <div
+                        key={entry.path}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: `${virtualItem.size}px`,
+                          transform: `translateY(${virtualItem.start}px)`
+                        }}
+                      >
+                        <ContextMenu>
                           <ContextMenuTrigger asChild>
                             <button
                               type="button"
                               className={cn(
-                                'flex w-full items-start gap-3 px-3 py-2 text-left transition-colors',
+                                'flex h-full w-full items-start gap-3 border-b px-3 py-2 text-left transition-colors',
                                 isSelected
                                   ? 'bg-[var(--workbench-hover)] text-foreground'
                                   : 'hover:bg-[var(--workbench-hover)] hover:text-foreground'
@@ -553,7 +584,9 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                               {t('common.actions.refresh')}
                             </ContextMenuItem>
 
-                            <ContextMenuItem onClick={() => openCreateFileDialog(createTargetPath)}>
+                            <ContextMenuItem
+                              onClick={() => openCreateFileDialog(createTargetPath)}
+                            >
                               <NewFileIcon className="size-4" />
                               {t('common.actions.newFile')}
                             </ContextMenuItem>
@@ -588,17 +621,11 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                             </ContextMenuItem>
                           </ContextMenuContent>
                         </ContextMenu>
-                      )
-                    })}
-
-                    {!listingQuery.isLoading && entries.length === 0 ? (
-                      <div className="m-3 rounded-md border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
-                        {t('workbench.sftp.empty.directory')}
                       </div>
-                    ) : null}
-                  </div>
+                    )
+                  })}
                 </div>
-              </ScrollArea>
+              ) : null}
             </div>
           </ContextMenuTrigger>
           <ContextMenuContent>

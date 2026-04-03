@@ -116,9 +116,11 @@ export const useSessionsStore = create<SessionsState>((set) => ({
         tab.sessionId === oldSessionId
           ? {
               auxView: tab.auxView ?? null,
-              connectionStartedAt: tab.connectionStartedAt,
               connectionPhase: tab.connectionPhase,
               ...summary,
+              // 重连成功后刷新 connectionStartedAt，确保 TerminalPane 识别为新连接周期
+              connectionStartedAt:
+                summary.status === 'ready' ? new Date().toISOString() : tab.connectionStartedAt,
               lastMessage: summary.status === 'ready' ? undefined : tab.lastMessage
             }
           : tab

@@ -586,8 +586,8 @@ export class SessionManager {
       })
 
       try {
-        this.emitConnectionPhase(sessionId, 'handshake')
         client.connect(connectConfig)
+        this.emitConnectionPhase(sessionId, 'handshake')
       } catch (error) {
         rejectWith(error)
       }

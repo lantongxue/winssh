@@ -8,8 +8,8 @@ import type { SessionTab } from '@/store/sessions-store'
 import { useTerminal } from '@/hooks/use-terminal'
 import { Button } from '@/components/ui/button'
 
-const MIN_CONNECTION_STAGE_DURATION_MS = 220
-const CONNECTED_OVERLAY_DURATION_MS = 320
+const MIN_CONNECTION_STAGE_DURATION_MS = 180
+const CONNECTED_OVERLAY_DURATION_MS = 600
 const LAST_CONNECTION_PHASE = SESSION_CONNECTION_PHASES[SESSION_CONNECTION_PHASES.length - 1]
 
 interface TerminalPaneProps {
@@ -123,15 +123,11 @@ function ConnectingOverlay({
   )
 }
 
-function getConnectionPhaseIndex(phase: SessionTab['connectionPhase']) {
-  const phaseIndex = SESSION_CONNECTION_PHASES.findIndex((currentPhase) => currentPhase === phase)
-  return phaseIndex >= 0 ? phaseIndex : 0
-}
-
 export function TerminalPane({ session, settings, theme, onReconnect }: TerminalPaneProps) {
   const { t } = useTranslation()
   const connectionCycleKey = `${session.sessionId}:${session.connectionStartedAt ?? ''}`
   const activeConnectionCycleRef = useRef(connectionCycleKey)
+  // 记录每个连接周期是否已完成"已连接"overlay 展示
   const completedOverlayCycleRef = useRef<string | null>(null)
   const [displayedConnectionPhase, setDisplayedConnectionPhase] = useState<
     SessionTab['connectionPhase']
@@ -153,22 +149,8 @@ export function TerminalPane({ session, settings, theme, onReconnect }: Terminal
       })),
     [t]
   )
-  const targetConnectionPhase =
-    session.status === 'ready'
-      ? LAST_CONNECTION_PHASE
-      : session.status === 'connecting'
-        ? session.connectionPhase ?? displayedConnectionPhase ?? SESSION_CONNECTION_PHASES[0]
-        : null
-  const shouldShowConnectedOverlay =
-    showConnectedOverlay ||
-    (session.status === 'ready' &&
-      displayedConnectionPhase === LAST_CONNECTION_PHASE &&
-      completedOverlayCycleRef.current !== connectionCycleKey)
-  const overlayVisible =
-    session.status === 'connecting' ||
-    (session.status === 'ready' &&
-      (displayedConnectionPhase !== LAST_CONNECTION_PHASE || shouldShowConnectedOverlay))
 
+  // 当连接周期切换（新连接 / 重连）时，重置所有显示状态
   useEffect(() => {
     if (activeConnectionCycleRef.current === connectionCycleKey) {
       return
@@ -180,25 +162,30 @@ export function TerminalPane({ session, settings, theme, onReconnect }: Terminal
     setShowConnectedOverlay(false)
   }, [connectionCycleKey, session.connectionPhase])
 
+  // 连接中：让 displayedConnectionPhase 以最小间隔追赶 session.connectionPhase
   useEffect(() => {
-    if (!targetConnectionPhase) {
-      setShowConnectedOverlay(false)
+    if (session.status !== 'connecting') {
       return
     }
 
-    const currentPhaseIndex = getConnectionPhaseIndex(displayedConnectionPhase)
-    const targetPhaseIndex = getConnectionPhaseIndex(targetConnectionPhase)
+    const targetPhase = session.connectionPhase ?? SESSION_CONNECTION_PHASES[0]
+    const currentIndex = SESSION_CONNECTION_PHASES.findIndex((p) => p === displayedConnectionPhase)
+    const targetIndex = SESSION_CONNECTION_PHASES.findIndex((p) => p === targetPhase)
 
-    if (currentPhaseIndex < targetPhaseIndex) {
-      const timeout = window.setTimeout(() => {
-        setDisplayedConnectionPhase(SESSION_CONNECTION_PHASES[currentPhaseIndex + 1])
-      }, MIN_CONNECTION_STAGE_DURATION_MS)
-
-      return () => window.clearTimeout(timeout)
+    if (currentIndex >= targetIndex) {
+      return
     }
 
+    const timeout = window.setTimeout(() => {
+      setDisplayedConnectionPhase(SESSION_CONNECTION_PHASES[currentIndex + 1])
+    }, MIN_CONNECTION_STAGE_DURATION_MS)
+
+    return () => window.clearTimeout(timeout)
+  }, [session.status, session.connectionPhase, displayedConnectionPhase])
+
+  // 连接成功：立刻拉满进度、显示"已连接" overlay
+  useEffect(() => {
     if (session.status !== 'ready') {
-      setShowConnectedOverlay(false)
       return
     }
 
@@ -207,13 +194,30 @@ export function TerminalPane({ session, settings, theme, onReconnect }: Terminal
     }
 
     completedOverlayCycleRef.current = connectionCycleKey
+    // 立即将进度推到最后一步
+    setDisplayedConnectionPhase(LAST_CONNECTION_PHASE)
     setShowConnectedOverlay(true)
+  }, [session.status, connectionCycleKey])
+
+  // "已连接" overlay 定时消失：独立 effect，避免被其他依赖变化打断 timer
+  useEffect(() => {
+    if (!showConnectedOverlay) {
+      return
+    }
+
     const timeout = window.setTimeout(() => {
       setShowConnectedOverlay(false)
     }, CONNECTED_OVERLAY_DURATION_MS)
 
     return () => window.clearTimeout(timeout)
-  }, [connectionCycleKey, displayedConnectionPhase, session.status, targetConnectionPhase])
+  }, [showConnectedOverlay])
+
+  // overlay 可见条件：
+  // - 正在连接中
+  // - 连接成功后短暂展示"已连接"
+  const overlayVisible =
+    session.status === 'connecting' ||
+    (session.status === 'ready' && showConnectedOverlay)
 
   return (
     <div
@@ -225,7 +229,7 @@ export function TerminalPane({ session, settings, theme, onReconnect }: Terminal
       {overlayVisible ? (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[var(--terminal-overlay-backdrop)]">
           <div className="flex w-[min(560px,calc(100%-2rem))] flex-col gap-4 rounded-[var(--terminal-overlay-radius)] border border-[var(--terminal-overlay-border)] bg-[var(--terminal-overlay-panel)] px-6 py-5 text-left shadow-xl">
-            {shouldShowConnectedOverlay ? (
+            {showConnectedOverlay ? (
               <ConnectingOverlay
                 connectionPhase={LAST_CONNECTION_PHASE}
                 connectionStages={connectionStages}
