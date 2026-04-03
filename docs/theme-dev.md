@@ -173,12 +173,15 @@ my-theme-pack/
 - `colors`
   - UI token 覆盖集合
   - 值是字符串，可以是 hex、rgb、rgba、长度值等
+  - 如果省略，运行时会按空对象处理
   - 未提供的键会从浅色或深色基础主题补全
 - `terminal`
   - xterm.js 调色板覆盖集合
+  - 如果省略，运行时会按空对象处理
   - 未提供的键会从默认终端调色板补全
 - `terminalDefaults`
   - 主题建议的终端默认字体配置
+  - 整体可省略
   - `fontSize` 当前限制为 `10` 到 `24`
   - `lineHeight` 当前限制为 `1` 到 `2`
 
@@ -286,6 +289,7 @@ my-theme-pack/
 | `terminal-overlay-warning` | 警告色 |
 | `terminal-overlay-warning-soft` | 警告背景 |
 | `terminal-overlay-radius` | 遮罩圆角 |
+| `terminal-overlay-backdrop-blur` | 遮罩背景模糊强度 |
 
 ### 7.6 扫描线 Token
 
@@ -299,6 +303,8 @@ my-theme-pack/
 
 - `terminal-scanline-opacity: "0"`
 - `terminal-scanline-color: "rgba(255, 255, 255, 0)"`
+
+如果你想让连接遮罩有更强的毛玻璃效果，可以同时调 `terminal-overlay-backdrop-blur`。
 
 ## 8. 终端调色板 Token
 
