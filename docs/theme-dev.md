@@ -1,61 +1,80 @@
-# WinSSH 主题插件开发文档
+# WinSSH 主题开发文档
 
-## 1. 目标
+## 1. 文档范围
 
-WinSSH 的主题系统已经从固定枚举模式改成了插件式加载模型。
+本文档基于当前仓库代码整理，覆盖的是 WinSSH 现阶段已经实现的主题系统，而不是未来规划。
 
-现在主题和 VS Code 的扩展主题类似，核心原则是：
+当前主题系统的核心事实是：
 
-1. 主题以“插件目录”存在。
-2. 每个插件通过 `package.json` 暴露 `contributes.themes`。
-3. 每个主题条目指向一个独立的主题 JSON 文件。
-4. 主进程在启动时扫描主题插件目录，解析后通过 IPC 提供给渲染层。
-5. 渲染层只消费标准化后的 `ThemeDefinition`，不再硬编码 `light`、`dark`、`pixel`。
+1. 主题已经不是固定枚举，而是插件式加载。
+2. 主题选择值存的是主题 id，或者特殊值 `system`。
+3. 主进程负责扫描、校验、合并和回退。
+4. 渲染层只消费标准化后的 `ThemeDefinition`。
 
-当前内置主题也已经按同样结构落在仓库里，可直接作为开发参考：
+当前内置主题可直接作为参考：
 
 - `themes/builtin/winssh-default-themes/package.json`
 - `themes/builtin/winssh-default-themes/themes/light-plus.json`
 - `themes/builtin/winssh-default-themes/themes/dark-plus.json`
 - `themes/builtin/winssh-default-themes/themes/pixel-crt.json`
 
-## 2. 运行时架构
+## 2. 当前主题系统概览
 
-主题加载链路如下：
+主题的加载和应用链路如下：
 
-1. 主进程 `ThemeRegistry` 扫描两个根目录：
+1. 主进程 `ThemeRegistry` 扫描两个主题根目录：
    - 内置主题目录：`themes/builtin`
    - 用户主题目录：`app.getPath('userData')/themes`
-2. 每个子目录被视为一个主题插件目录，必须包含 `package.json`。
-3. `package.json` 中的 `contributes.themes[]` 声明主题列表。
-4. 每个主题声明的 `path` 必须是插件目录内的相对路径。
-5. 主进程读取主题 JSON，和内置基础色板合并，生成完整主题对象。
+2. 每个子目录都被视为一个主题插件目录。
+3. 插件目录中的 `package.json` 通过 `contributes.themes[]` 声明主题。
+4. 每个主题条目的 `path` 指向一个主题 JSON 文件。
+5. 主进程读取主题 JSON，并基于浅色或深色基础主题生成完整的 `ThemeDefinition`。
 6. 渲染层通过 `window.winsshApi.themes.list()` 获取主题列表。
-7. 应用设置中的 `theme` 字段现在存储的是：
-   - `system`
-   - 或某个插件主题的 `id`
+7. `App.tsx` 调用 `applyThemeToRoot()`，把主题 token 写入 `document.documentElement`。
 
-## 3. 主题选择模型
-
-WinSSH 现在区分两种概念：
+应用设置里的 `theme` 字段现在存的是：
 
 - `system`
-  - 这是一个特殊选择值，不是插件主题。
-  - 当用户选择 `system` 时：
-    - 浅色系统偏好映射到 `winssh.light-plus`
-    - 深色系统偏好映射到 `winssh.dark-plus`
-- 插件主题 ID
-  - 例如：
-    - `winssh.light-plus`
-    - `winssh.dark-plus`
-    - `winssh.pixel-crt`
-    - `acme.nebula`
+- 或任意一个有效主题 id，例如：
+  - `winssh.light-plus`
+  - `winssh.dark-plus`
+  - `winssh.pixel-crt`
+  - `acme.nebula`
 
-这意味着“系统主题”只是一个解析规则，而不是一个真正的主题文件。
+## 3. 主题选择与解析规则
+
+WinSSH 当前区分“主题选择值”和“实际解析后的主题”。
+
+### 3.1 `system` 不是一个主题文件
+
+`system` 是特殊选择值，不对应任何插件主题文件。
+
+当用户选择 `system` 时：
+
+- 系统偏好为浅色：解析到 `winssh.light-plus`
+- 系统偏好为深色：解析到 `winssh.dark-plus`
+
+### 3.2 `uiTheme` 决定外观基线
+
+主题贡献项中的 `uiTheme` 当前只支持：
+
+- `vs`
+- `vs-dark`
+
+它会决定：
+
+- 主题的 `appearance`
+- 使用浅色还是深色基础 token
+- 根节点是否带 `.dark`
+- `color-scheme` 的值
+
+### 3.3 无效选择会被归一化
+
+如果设置里存着一个不存在的主题 id，主进程会把它归一化回 `system`。
 
 ## 4. 插件目录结构
 
-一个最小可用主题插件目录如下：
+一个最小可用的主题插件目录如下：
 
 ```text
 my-theme-pack/
@@ -64,15 +83,7 @@ my-theme-pack/
     nebula.json
 ```
 
-如果要让 WinSSH 识别用户主题，把整个目录放到用户主题根目录下。
-
-用户主题根目录规则：
-
-- 逻辑路径：`app.getPath('userData')/themes`
-- Windows 上通常接近：`%APPDATA%/winssh/themes`
-- 以 Electron 实际 `userData` 路径为准
-
-最终结构通常类似：
+用户主题需要放到用户主题根目录下。典型结构如下：
 
 ```text
 %APPDATA%/winssh/themes/
@@ -82,9 +93,12 @@ my-theme-pack/
       nebula.json
 ```
 
-修改或新增主题插件后，建议重启 WinSSH，让主进程重新扫描插件目录。
+注意：
 
-## 5. package.json 格式
+- 实际目录以 Electron 的 `app.getPath('userData')` 为准。
+- 当前实现没有主题热重载入口。新增、修改或替换用户主题后，建议重启 WinSSH。
+
+## 5. `package.json` 格式
 
 主题插件的 `package.json` 至少需要这些字段：
 
@@ -99,7 +113,7 @@ my-theme-pack/
       {
         "id": "acme.nebula",
         "label": "Nebula",
-        "description": "A cool dark theme for WinSSH.",
+        "description": "A blue-black theme for WinSSH.",
         "uiTheme": "vs-dark",
         "path": "./themes/nebula.json"
       }
@@ -112,40 +126,39 @@ my-theme-pack/
 
 | 字段 | 必填 | 说明 |
 | --- | --- | --- |
-| `name` | 是 | 插件名，用于组成插件 ID |
-| `displayName` | 否 | UI 友好名称，不填时退回 `name` |
-| `publisher` | 是 | 发布者，用于组成插件 ID |
-| `version` | 是 | 插件版本字符串 |
-| `contributes.themes` | 是 | 主题贡献列表，至少 1 个 |
-| `contributes.themes[].id` | 是 | 全局唯一主题 ID，建议 `publisher.theme-name` 风格 |
-| `contributes.themes[].label` | 是 | 设置页和命令面板里显示的名称 |
+| `name` | 是 | 插件名 |
+| `displayName` | 否 | 插件显示名，不填时回退到 `name` |
+| `publisher` | 是 | 发布者名 |
+| `version` | 是 | 插件版本 |
+| `contributes.themes` | 是 | 主题列表，至少 1 项 |
+| `contributes.themes[].id` | 是 | 主题全局唯一 id |
+| `contributes.themes[].label` | 是 | 设置页和命令中心中显示的主题名 |
 | `contributes.themes[].description` | 否 | 主题说明 |
 | `contributes.themes[].uiTheme` | 是 | `vs` 或 `vs-dark` |
 | `contributes.themes[].path` | 是 | 相对插件目录的主题 JSON 路径 |
 
-`uiTheme` 规则：
+运行时还会基于 manifest 派生出：
 
-- `vs`
-  - 主题被视为浅色主题
-  - WinSSH 不会给根节点加 `.dark`
-- `vs-dark`
-  - 主题被视为深色主题
-  - WinSSH 会给根节点加 `.dark`
+- `pluginId = ${publisher}.${name}`
+- `pluginDisplayName = displayName ?? name`
+
+额外字段目前不会被主题运行时使用。例如内置主题包里的 `engines` 字段不会参与主题解析。
 
 ## 6. 主题 JSON 格式
 
-主题 JSON 当前支持 3 个顶层字段：
+主题 JSON 当前只消费 3 个顶层字段：
 
 ```json
 {
   "colors": {
-    "workbench-bg": "#101522",
+    "workbench-bg": "#0c1220",
     "workbench-active": "#73c2fb",
-    "primary": "#73c2fb"
+    "workbench-logo": "#73c2fb"
   },
   "terminal": {
+    "background": "#070c16",
     "cursor": "#73c2fb",
-    "selectionBackground": "rgba(115, 194, 251, 0.22)"
+    "selectionBackground": "rgba(115, 194, 251, 0.2)"
   },
   "terminalDefaults": {
     "fontFamily": "Cascadia Mono, Consolas, monospace",
@@ -155,28 +168,40 @@ my-theme-pack/
 }
 ```
 
-规则：
+规则如下：
 
 - `colors`
-  - 定义 WinSSH UI 的 CSS token 覆盖值
-  - 只需要写你想覆盖的部分
-  - 未提供的 token 会按 `uiTheme` 对应的基础主题自动补全
+  - UI token 覆盖集合
+  - 值是字符串，可以是 hex、rgb、rgba、长度值等
+  - 未提供的键会从浅色或深色基础主题补全
 - `terminal`
-  - 定义 xterm.js 调色板覆盖值
+  - xterm.js 调色板覆盖集合
   - 未提供的键会从默认终端调色板补全
 - `terminalDefaults`
-  - 主题推荐的终端字体默认值
-  - 只有在用户仍然使用应用默认终端字体族和字号时才会生效
-  - 如果用户已在设置里自定义字体或字号，则仍以用户设置为准
+  - 主题建议的终端默认字体配置
+  - `fontSize` 当前限制为 `10` 到 `24`
+  - `lineHeight` 当前限制为 `1` 到 `2`
 
-## 7. UI 颜色 Token
+未知顶层字段不会成为主题定义的一部分。`colors` 和 `terminal` 中的未知 token 会被忽略，并在主进程输出告警。
+
+## 7. UI Token 清单
+
+`colors` 当前可用的 token 与 `THEME_COLOR_KEYS` 完全一致。
+
+这些 token 在渲染层会被写成 CSS 变量，形式是：
+
+```css
+--background
+--workbench-bg
+--terminal-overlay-panel
+```
 
 ### 7.1 基础界面 Token
 
 | Token | 说明 |
 | --- | --- |
 | `background` | 应用主背景 |
-| `foreground` | 主文本色 |
+| `foreground` | 应用主文本色 |
 | `card` | 卡片背景 |
 | `card-foreground` | 卡片文本 |
 | `popover` | 浮层背景 |
@@ -189,25 +214,25 @@ my-theme-pack/
 | `muted-foreground` | 弱对比文本 |
 | `accent` | 强调背景 |
 | `accent-foreground` | 强调文本 |
-| `destructive` | 危险操作色 |
-| `destructive-foreground` | 危险操作文本色 |
+| `destructive` | 危险色 |
+| `destructive-foreground` | 危险文本色 |
 | `border` | 默认边框色 |
 | `input` | 输入框背景 |
 | `ring` | 焦点高亮色 |
-| `radius` | 默认圆角 |
+| `radius` | 默认圆角值 |
 
 ### 7.2 Sidebar Token
 
 | Token | 说明 |
 | --- | --- |
-| `sidebar` | 侧栏背景 |
-| `sidebar-foreground` | 侧栏文本 |
-| `sidebar-primary` | 侧栏主强调色 |
-| `sidebar-primary-foreground` | 侧栏主强调文本 |
-| `sidebar-accent` | 侧栏 hover/强调背景 |
-| `sidebar-accent-foreground` | 侧栏强调文本 |
-| `sidebar-border` | 侧栏边框 |
-| `sidebar-ring` | 侧栏焦点色 |
+| `sidebar` | 主侧栏背景 |
+| `sidebar-foreground` | 主侧栏文本 |
+| `sidebar-primary` | 主侧栏强调色 |
+| `sidebar-primary-foreground` | 主侧栏强调文本 |
+| `sidebar-accent` | 主侧栏 hover/强调背景 |
+| `sidebar-accent-foreground` | 主侧栏强调文本 |
+| `sidebar-border` | 主侧栏边框 |
+| `sidebar-ring` | 主侧栏焦点色 |
 
 ### 7.3 Workbench Token
 
@@ -216,13 +241,14 @@ my-theme-pack/
 | `workbench-bg` | 整体 workbench 背景 |
 | `workbench-titlebar` | 标题栏背景 |
 | `workbench-activity-bar` | Activity Bar 背景 |
-| `workbench-sidebar` | 主侧栏背景 |
-| `workbench-tabs` | 标签栏背景 |
+| `workbench-sidebar` | Explorer / Settings 侧栏背景 |
+| `workbench-tabs` | 编辑器标签栏背景 |
 | `workbench-editor` | 编辑区背景 |
 | `workbench-panel` | 底部面板背景 |
 | `workbench-border` | workbench 通用边框 |
 | `workbench-hover` | hover 背景 |
 | `workbench-active` | 激活态强调色 |
+| `workbench-logo` | 标题栏 logo 主色 |
 | `workbench-statusbar` | 状态栏背景 |
 | `workbench-statusbar-foreground` | 状态栏文本 |
 | `workbench-muted` | workbench 弱化文本 |
@@ -232,7 +258,7 @@ my-theme-pack/
 
 | Token | 说明 |
 | --- | --- |
-| `toast-info` | 信息类 toast 强调色 |
+| `toast-info` | 信息 toast 强调色 |
 | `toast-success` | 成功 toast 强调色 |
 | `toast-warning` | 警告 toast 强调色 |
 | `toast-shadow` | toast 阴影 |
@@ -245,7 +271,7 @@ my-theme-pack/
 
 | Token | 说明 |
 | --- | --- |
-| `terminal-surface-bg` | 终端表层背景 |
+| `terminal-surface-bg` | 终端容器表层背景 |
 | `terminal-overlay-backdrop` | 连接中/重连遮罩背景 |
 | `terminal-overlay-panel` | 遮罩面板背景 |
 | `terminal-overlay-border` | 遮罩边框 |
@@ -256,10 +282,10 @@ my-theme-pack/
 | `terminal-overlay-accent-strong` | 遮罩强强调色 |
 | `terminal-overlay-accent-soft` | 遮罩柔和强调背景 |
 | `terminal-overlay-progress` | 进度条颜色 |
-| `terminal-overlay-step-border` | 阶段步骤边框 |
+| `terminal-overlay-step-border` | 步骤边框 |
 | `terminal-overlay-warning` | 警告色 |
 | `terminal-overlay-warning-soft` | 警告背景 |
-| `terminal-overlay-radius` | 终端遮罩圆角 |
+| `terminal-overlay-radius` | 遮罩圆角 |
 
 ### 7.6 扫描线 Token
 
@@ -269,14 +295,14 @@ my-theme-pack/
 | `terminal-scanline-color` | 扫描线颜色 |
 | `terminal-scanline-size` | 扫描线间距 |
 
-如果你不需要扫描线效果：
+如果不需要扫描线效果，最直接的做法是：
 
-- `terminal-scanline-opacity` 设为 `0`
-- `terminal-scanline-color` 可以保留透明色
+- `terminal-scanline-opacity: "0"`
+- `terminal-scanline-color: "rgba(255, 255, 255, 0)"`
 
 ## 8. 终端调色板 Token
 
-`terminal` 字段支持的键如下：
+`terminal` 字段当前支持的键与 `TERMINAL_COLOR_KEYS` 完全一致：
 
 | Token | 说明 |
 | --- | --- |
@@ -301,48 +327,99 @@ my-theme-pack/
 | `brightCyan` | ANSI 亮青 |
 | `brightWhite` | ANSI 亮白 |
 
-## 9. terminalDefaults 的行为
+## 9. 合并、回退与优先级规则
+
+当前主题定义的生成方式是：
+
+1. 根据 `uiTheme` 解析出 `appearance`
+2. 根据 `appearance` 选择基础 UI token：
+   - `vs` -> 浅色基础主题
+   - `vs-dark` -> 深色基础主题
+3. 用主题 JSON 的 `colors` 覆盖基础 UI token
+4. 用主题 JSON 的 `terminal` 覆盖默认终端调色板
+5. 产出完整 `ThemeDefinition`
+
+回退与容错规则如下：
+
+1. 如果主题 id 不存在，设置值会被归一化到 `system`
+2. `system` 最终解析到 `winssh.light-plus` 或 `winssh.dark-plus`
+3. 如果完全没有可加载主题，运行时会生成一个内置 fallback theme
+4. 如果某个主题文件不存在、manifest 非法或 theme document 非法，该主题会被忽略
+5. 如果 `colors` 或 `terminal` 中出现未知 token，该 token 会被忽略并输出主进程告警
+6. 如果 `contributes.themes[].path` 试图跳出插件目录，该主题会被忽略
+
+### 9.1 重复主题 id 的优先级
+
+当前加载顺序是：
+
+1. 内置主题根目录
+2. 用户主题根目录
+
+重复主题 id 的处理规则是“保留第一次加载到的定义”。
+
+这意味着：
+
+- 内置主题和用户主题如果使用同一个 id，内置主题会赢
+- 用户主题目前不能通过复用同 id 的方式覆盖内置主题
+
+## 10. 渲染层应用细节
+
+主题应用到根节点时，当前会做这些事：
+
+- 根据 `appearance` 切换 `.dark`
+- 设置 `data-theme`
+- 设置 `data-theme-appearance`
+- 设置 `data-theme-selection`
+- 设置 `color-scheme`
+- 把全部 `colors` token 写入 CSS 变量
+
+实际对应的数据属性名为：
+
+- `data-theme`
+- `data-theme-appearance`
+- `data-theme-selection`
+
+如果你是在 JS 里读取，则对应的 `dataset` key 是：
+
+- `dataset.theme`
+- `dataset.themeAppearance`
+- `dataset.themeSelection`
+
+如果你在自定义样式里需要根据当前主题状态做额外判断，可以直接读取这些属性。
+
+## 11. `terminalDefaults` 的真实行为
 
 `terminalDefaults` 不是强制覆盖，而是“主题建议默认值”。
 
-当前行为是：
+当前只有在下面两个条件同时满足时，主题默认终端配置才会生效：
 
-1. 如果用户终端字体族仍然等于应用默认值
-2. 且用户终端字号仍然等于应用默认值
-3. 才会应用主题里的：
-   - `fontFamily`
-   - `fontSize`
-   - `lineHeight`
+1. 用户终端字体族仍然等于应用默认值
+2. 用户终端字号仍然等于应用默认值
 
-一旦用户在设置页里手动改过字体族或字号，主题默认值会让位给用户设置。
+当前应用默认值来自 `DEFAULT_APP_SETTINGS`：
 
-这和当前内置 `Pixel CRT` 的行为一致。
+- `terminalFontFamily = "JetBrains Mono, Consolas, monospace"`
+- `terminalFontSize = 14`
 
-## 10. 合并与回退规则
+满足条件时，会使用：
 
-WinSSH 目前的合并规则如下：
+- `terminalDefaults.fontFamily`
+- `terminalDefaults.fontSize`
+- `terminalDefaults.lineHeight`
 
-1. 根据 `uiTheme` 选择基础色板：
-   - `vs` 使用浅色基础主题
-   - `vs-dark` 使用深色基础主题
-2. 用主题 JSON 的 `colors` 覆盖基础色板
-3. 用主题 JSON 的 `terminal` 覆盖默认终端调色板
-4. 输出完整主题对象给渲染层
+不满足条件时：
 
-回退规则：
+- 字体族使用用户设置
+- 字号使用用户设置
+- 行高回到默认 `1.2`
 
-1. 如果设置里存着一个不存在的主题 ID，运行时会自动回退到 `system`
-2. `system` 会解析到：
-   - 浅色系统偏好 -> `winssh.light-plus`
-   - 深色系统偏好 -> `winssh.dark-plus`
-3. 如果插件里出现重复的主题 ID，当前实现保留最先加载到的那一个，后续重复项会被忽略
-4. 如果主题 JSON 里写了未知 token，当前实现会忽略并输出主进程告警
+这也是为什么 `Pixel CRT` 这类主题只有在用户没改过终端字体和字号时，才会完全呈现其推荐终端风格。
 
-## 11. 开发一个新主题的建议流程
+## 12. 开发新主题的建议流程
 
-### 11.1 先复制内置插件
+### 12.1 先复制内置主题插件
 
-最省事的方式是复制：
+最省事的起点是直接复制：
 
 - `themes/builtin/winssh-default-themes`
 
@@ -352,12 +429,18 @@ WinSSH 目前的合并规则如下：
 - `name`
 - `displayName`
 - 主题 `id`
-- `label`
-- `path`
+- 主题 `label`
+- 主题文件路径
 
-### 11.2 先从少量 token 开始
+### 12.2 先决定浅色还是深色
 
-建议先只覆盖这些键，快速建立主视觉：
+`uiTheme` 会影响基础色板和整体可读性预期。
+
+如果主题本质是深色，请直接用 `vs-dark`，不要先选 `vs` 再手工把所有背景改黑。
+
+### 12.3 先只覆盖少量关键 token
+
+建议先覆盖这些键，快速跑通主视觉：
 
 - `background`
 - `foreground`
@@ -367,26 +450,23 @@ WinSSH 目前的合并规则如下：
 - `workbench-editor`
 - `workbench-border`
 - `workbench-active`
+- `workbench-logo`
 - `terminal-surface-bg`
 - `terminal.background`
 - `terminal.foreground`
 - `terminal.cursor`
 
-等主题气质稳定后，再继续补 overlay、toast、扫描线等细节。
+主题气质稳定后，再继续补：
 
-### 11.3 先决定它是浅色还是深色
+- toast
+- overlay
+- status bar
+- scanline
+- `terminalDefaults`
 
-因为 `uiTheme` 会影响：
+## 13. 最小示例
 
-- 根节点是否带 `.dark`
-- 默认基础色板
-- 整体可读性预期
-
-如果主题本质是深色，请直接使用 `vs-dark`，不要用 `vs` 再硬把颜色改成深色。
-
-## 12. 最小可运行示例
-
-### `package.json`
+### 13.1 `package.json`
 
 ```json
 {
@@ -408,7 +488,7 @@ WinSSH 目前的合并规则如下：
 }
 ```
 
-### `themes/nebula.json`
+### 13.2 `themes/nebula.json`
 
 ```json
 {
@@ -424,6 +504,7 @@ WinSSH 目前的合并规则如下：
     "workbench-panel": "#0a101b",
     "workbench-border": "#1b2940",
     "workbench-active": "#73c2fb",
+    "workbench-logo": "#73c2fb",
     "workbench-statusbar": "#11233b",
     "workbench-statusbar-foreground": "#d9e7ff",
     "terminal-surface-bg": "#070c16",
@@ -438,67 +519,83 @@ WinSSH 目前的合并规则如下：
     "selectionBackground": "rgba(115, 194, 251, 0.2)",
     "blue": "#73c2fb",
     "brightBlue": "#a7dbff"
+  },
+  "terminalDefaults": {
+    "fontFamily": "Cascadia Mono, Consolas, monospace",
+    "fontSize": 13,
+    "lineHeight": 1.1
   }
 }
 ```
 
-## 13. 常见问题
+## 14. 常见问题
 
-### 13.1 为什么主题没显示在设置页里？
+### 14.1 为什么主题没有出现在设置页或命令中心里？
 
-检查这几项：
+优先检查：
 
-1. 插件目录是不是放在 `userData/themes/<plugin-folder>` 下
-2. `package.json` 是否存在
-3. `contributes.themes[].path` 是否写成了相对路径
-4. 主题 `id` 是否和其它插件重复
+1. 目录是否在 `app.getPath('userData')/themes/<plugin-folder>` 下
+2. 插件目录下是否存在 `package.json`
+3. `contributes.themes[].path` 是否是相对插件目录的路径
+4. 主题 `id` 是否与已有主题重复
 5. 修改后是否已重启 WinSSH
 
-### 13.2 为什么某个颜色不生效？
+### 14.2 为什么某个颜色看起来没有生效？
 
-通常是这几类问题：
+常见原因：
 
-1. token 名写错了
-2. 写成了不存在的 token，主进程会忽略
-3. 你改的是 UI token，但实际受影响的是终端 token
-4. 你期待的是扫描线效果，但没有设置：
-   - `terminal-scanline-opacity`
-   - `terminal-scanline-color`
+1. token 名拼错了
+2. 你改的是 UI token，但实际受影响的是终端 token
+3. 你写了未知 token，运行时把它忽略了
+4. 你期待的是 logo、overlay 或 scanline 的变化，但只改了主背景
 
-### 13.3 为什么 terminalDefaults 没生效？
+### 14.3 为什么 `terminalDefaults` 没生效？
 
-因为用户可能已经在设置里手动改过终端字体或字号。
+因为用户可能已经在设置页手动改过：
 
-当前逻辑下，只在“用户仍使用应用默认终端字体族和字号”时应用主题推荐值。
+- 终端字体族
+- 终端字号
 
-## 14. 内置主题 ID 约定
+当前逻辑下，只在这两项仍保持默认值时，主题推荐值才会生效。
 
-当前内置主题 ID：
+### 14.4 为什么用户主题无法覆盖内置主题？
+
+因为当前重复 id 的处理规则是“先加载到的主题优先”，而内置主题会先于用户主题加载。
+
+如果你想基于内置主题做变体，请换一个新的主题 id，不要复用内置主题 id。
+
+## 15. 当前内置主题
+
+当前内置主题 id 为：
 
 - `winssh.light-plus`
 - `winssh.dark-plus`
 - `winssh.pixel-crt`
 
-建议第三方主题遵循类似格式：
+其中：
+
+- `Light+` 是默认浅色主题
+- `Dark+` 是默认深色主题
+- `Pixel CRT` 是带扫描线和终端默认字体策略的复古主题
+
+建议第三方主题继续使用清晰且不易冲突的命名方式，例如：
 
 - `publisher.theme-name`
 - `publisher.theme-pack.variant`
 
-不要使用过于泛化的 ID，例如：
+不要使用过于泛化的 id，例如：
 
 - `dark`
 - `light`
 - `blue`
 
-因为这些名字非常容易和其它插件冲突。
+## 16. 最后建议
 
-## 15. 最后的建议
+如果你是第一次开发 WinSSH 主题，最稳妥的路径不是从零写，而是：
 
-如果你是第一次开发 WinSSH 主题，最好的起点不是从零写，而是：
-
-1. 复制 `themes/builtin/winssh-default-themes`
+1. 复制内置主题包
 2. 先只改一个主题文件
 3. 先把 workbench 和 terminal 主色调跑通
-4. 再细修 overlay、toast、扫描线和圆角
+4. 再细修 overlay、toast、logo、扫描线和终端默认字体
 
-这样最容易快速得到一个完整可用的主题插件。
+这样最容易快速得到一个完整、可读并且不会明显漏项的主题插件。
