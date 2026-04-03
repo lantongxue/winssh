@@ -291,8 +291,8 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
-      <div className="flex h-10 shrink-0 items-center justify-between border-b border-[var(--workbench-border)] px-3">
+    <div className="liquid-glass-page flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
+      <div className="liquid-glass-toolbar flex h-10 shrink-0 items-center justify-between border-b border-[var(--workbench-border)] px-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-medium text-foreground">
             {server?.name ?? t('workbench.documents.serverEditor.newConnection')}
@@ -366,8 +366,8 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
       </div>
 
       <Form {...form}>
-        <form className="min-h-0 flex-1 overflow-auto">
-          <section className="border-b border-[var(--workbench-border)] px-6 py-5">
+        <form className="min-h-0 flex-1 space-y-4 overflow-auto px-4 py-4">
+          <section className="liquid-glass-card rounded-[24px] border border-[var(--workbench-border)] px-6 py-5">
             <div className="mb-4">
               <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
                 {t('workbench.serverEditor.sections.basic')}
@@ -441,7 +441,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
             </div>
           </section>
 
-          <section className="border-b border-[var(--workbench-border)] px-6 py-5">
+          <section className="liquid-glass-card rounded-[24px] border border-[var(--workbench-border)] px-6 py-5">
             <div className="mb-4 text-base font-semibold">
               {t('workbench.serverEditor.sections.strategy')}
             </div>
@@ -527,7 +527,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
           </section>
 
           {isPrivateKeyAuth ? (
-            <section className="border-b border-[var(--workbench-border)] px-6 py-5">
+            <section className="liquid-glass-card rounded-[24px] border border-[var(--workbench-border)] px-6 py-5">
               <div className="mb-4 text-base font-semibold">
                 {t('workbench.serverEditor.sections.privateKey')}
               </div>
@@ -573,7 +573,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
             </section>
           ) : null}
 
-          <section className="border-b border-[var(--workbench-border)] px-6 py-5">
+          <section className="liquid-glass-card rounded-[24px] border border-[var(--workbench-border)] px-6 py-5">
             <div className="mb-4 flex items-center gap-2 text-base font-semibold">
               {isPrivateKeyAuth ? (
                 <KeyRound className="size-4 text-primary" />
@@ -699,7 +699,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
             </div>
           </section>
 
-          <section className="border-b border-[var(--workbench-border)] px-6 py-5">
+          <section className="liquid-glass-card rounded-[24px] border border-[var(--workbench-border)] px-6 py-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="text-base font-semibold">
                 {t('workbench.serverEditor.sections.tags')}
@@ -753,7 +753,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
             />
           </section>
 
-          <section className="px-6 py-5">
+          <section className="liquid-glass-card rounded-[24px] border border-[var(--workbench-border)] px-6 py-5">
             <div className="mb-4 text-base font-semibold">
               {t('workbench.serverEditor.sections.note')}
             </div>

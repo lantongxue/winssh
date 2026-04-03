@@ -93,6 +93,7 @@ function createPasswordServer(): Server {
     lastConnectedAt: null,
     group: null,
     tags: [],
+    credentialId: null,
     hasPassword: false,
     hasPassphrase: false
   }

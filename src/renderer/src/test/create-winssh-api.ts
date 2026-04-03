@@ -255,6 +255,22 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       }),
       ...overrides.settings
     },
+    credentials: {
+      create: async () => {
+        throw new Error('not implemented')
+      },
+      delete: async () => undefined,
+      getSecret: async () => ({
+        password: null,
+        passphrase: null,
+        privateKey: null
+      }),
+      list: async () => [],
+      update: async () => {
+        throw new Error('not implemented')
+      },
+      ...overrides.credentials
+    },
     themes: {
       list: async () => defaultThemes,
       ...overrides.themes

@@ -34,8 +34,8 @@ function WorkbenchTerminalWelcome() {
   const NewConnectionIcon = actionIcons.newConnection
 
   return (
-    <div className="flex h-full items-center justify-center bg-[var(--workbench-editor)] px-6">
-      <div className="max-w-xl text-center">
+    <div className="liquid-glass-page flex h-full items-center justify-center bg-[var(--workbench-editor)] px-6">
+      <div className="liquid-glass-hero max-w-xl rounded-[28px] border border-[var(--workbench-border)] px-8 py-10 text-center">
         <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
           {t('workbench.activity.terminal.title')}
         </div>
@@ -221,7 +221,7 @@ function WorkbenchShellContent() {
   )
 
   return (
-    <div className="workbench-shell flex h-full min-h-0 flex-col bg-[var(--workbench-bg)] text-foreground">
+    <div className="workbench-shell liquid-glass-shell flex h-full min-h-0 flex-col bg-[var(--workbench-bg)] text-foreground">
       <WorkbenchTitlebar />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">

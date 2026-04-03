@@ -177,7 +177,7 @@ export function WorkbenchEditorTabs() {
   return (
     <>
       <div
-        className="flex h-9 shrink-0 items-stretch border-b border-[var(--workbench-border)] bg-[var(--workbench-tabs)]"
+        className="liquid-glass-toolbar liquid-glass-tabs flex h-9 shrink-0 items-stretch border-b border-[var(--workbench-border)] bg-[var(--workbench-tabs)]"
         onDragLeave={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
             setDropIndicatorIndex(null)
@@ -192,8 +192,9 @@ export function WorkbenchEditorTabs() {
               <button
                 draggable
                 type="button"
+                data-active={active}
                 className={cn(
-                  'group relative flex h-full min-w-[150px] max-w-[260px] shrink-0 items-center gap-2 border-r border-[var(--workbench-border)] px-3 text-xs transition-colors',
+                  'liquid-glass-tab group relative flex h-full min-w-[150px] max-w-[260px] shrink-0 items-center gap-2 border-r border-[var(--workbench-border)] px-3 text-xs transition-colors',
                   active
                     ? 'bg-[var(--workbench-editor)] text-foreground shadow-[inset_0_1px_0_0_var(--workbench-active)]'
                     : 'bg-[var(--workbench-tabs)] text-[var(--workbench-muted)] hover:bg-[var(--workbench-hover)] hover:text-foreground'

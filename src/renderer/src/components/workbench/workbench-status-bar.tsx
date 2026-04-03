@@ -27,7 +27,7 @@ export function WorkbenchStatusBar() {
   )
 
   return (
-    <footer className="flex h-6 shrink-0 items-center justify-between bg-[var(--workbench-statusbar)] px-3 text-[11px] text-[var(--workbench-statusbar-foreground)]">
+    <footer className="liquid-glass-toolbar liquid-glass-statusbar flex h-6 shrink-0 items-center justify-between bg-[var(--workbench-statusbar)] px-3 text-[11px] text-[var(--workbench-statusbar-foreground)]">
       <div className="flex min-w-0 items-center gap-3 truncate">
         <span className="font-semibold">{t('common.appName')}</span>
         <span>{t(`workbench.activity.${activeActivityId}.title`)}</span>

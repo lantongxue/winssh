@@ -99,8 +99,9 @@ function TreeRow({
     <div
       role="button"
       tabIndex={0}
+      data-active={active}
       className={cn(
-        'group/tree-row flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-[13px] transition-colors',
+        'liquid-glass-list-item group/tree-row flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-[13px] transition-colors',
         active
           ? 'bg-[var(--workbench-hover)] text-foreground'
           : 'text-muted-foreground hover:bg-[var(--workbench-hover)] hover:text-foreground',
@@ -395,7 +396,7 @@ export function WorkbenchPrimarySidebar() {
 
   return (
     <>
-      <aside className="flex h-full min-h-0 flex-col border-r border-[var(--workbench-border)] bg-[var(--workbench-sidebar)]">
+      <aside className="liquid-glass-pane flex h-full min-h-0 flex-col border-r border-[var(--workbench-border)] bg-[var(--workbench-sidebar)]">
         <div className="border-b border-[var(--workbench-border)] px-4 py-3">
           <div className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground">
             {t('workbench.primarySidebar.title').toUpperCase()}

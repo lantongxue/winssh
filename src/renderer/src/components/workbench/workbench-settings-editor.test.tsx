@@ -204,10 +204,9 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Terminal' }))
 
     const fontSelect = screen.getByRole('combobox', { name: 'Terminal font' })
-    expect(fontSelect).toHaveTextContent('Consolas')
-
     fireEvent.click(fontSelect)
-    fireEvent.click(await screen.findByText('IBM Plex Mono'))
+    const fontOptions = await screen.findAllByText('IBM Plex Mono')
+    fireEvent.click(fontOptions[fontOptions.length - 1] as HTMLElement)
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {

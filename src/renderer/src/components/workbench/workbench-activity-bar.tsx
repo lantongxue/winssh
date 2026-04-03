@@ -15,7 +15,7 @@ export function WorkbenchActivityBar() {
   const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen)
 
   return (
-    <aside className="flex w-12 shrink-0 flex-col items-center border-r border-[var(--workbench-border)] bg-[var(--workbench-activity-bar)] py-2">
+    <aside className="liquid-glass-pane flex w-12 shrink-0 flex-col items-center border-r border-[var(--workbench-border)] bg-[var(--workbench-activity-bar)] py-2">
       <div className="flex flex-col items-center gap-1">
         {workbenchActivities.map((activity) => {
           const Icon = activity.icon
@@ -27,9 +27,10 @@ export function WorkbenchActivityBar() {
               <TooltipTrigger asChild>
                 <button
                   type="button"
+                  data-active={active}
                   aria-label={title}
                   className={cn(
-                    'relative flex size-10 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground',
+                    'liquid-glass-chip relative flex size-10 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground',
                     active && 'bg-[var(--workbench-hover)] text-foreground'
                   )}
                   onClick={() => {

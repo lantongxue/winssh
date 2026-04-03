@@ -406,7 +406,7 @@ export function CredentialVault() {
   const credentials = credentialsQuery.data ?? []
 
   return (
-    <div className="rounded-sm border border-[var(--workbench-border)]">
+    <div className="liquid-glass-card rounded-[24px] border border-[var(--workbench-border)]">
       <div className="flex items-center justify-between border-b border-[var(--workbench-border)] px-4 py-3">
         <div className="flex items-center gap-2 text-sm font-medium">
           <ShieldCheck className="size-4 text-primary" />
@@ -431,7 +431,7 @@ export function CredentialVault() {
           {credentials.map((credential) => (
             <div
               key={credential.id}
-              className="group flex items-center gap-3 px-4 py-3 hover:bg-[var(--workbench-hover)] transition-colors"
+              className="liquid-glass-list-item group flex items-center gap-3 rounded-xl border border-transparent px-4 py-3 transition-colors hover:bg-[var(--workbench-hover)]"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">

@@ -21,15 +21,16 @@ export function WorkbenchPanel() {
   const CloseIcon = actionIcons.close
 
   return (
-    <section className="flex h-full min-h-0 flex-col bg-[var(--workbench-panel)]">
-      <div className="flex h-9 shrink-0 items-center justify-between border-b border-[var(--workbench-border)] px-2">
+    <section className="liquid-glass-pane flex h-full min-h-0 flex-col bg-[var(--workbench-panel)]">
+      <div className="liquid-glass-toolbar flex h-9 shrink-0 items-center justify-between border-b border-[var(--workbench-border)] px-2">
         <div className="flex min-w-0 items-center">
           {workbenchPanels.map((panel) => (
             <button
               key={panel.id}
               type="button"
+              data-active={panel.id === activePanelId}
               className={cn(
-                'rounded-sm px-2.5 py-1 text-[11px] tracking-[0.12em] text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground',
+                'liquid-glass-chip rounded-sm px-2.5 py-1 text-[11px] tracking-[0.12em] text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground',
                 panel.id === activePanelId && 'bg-[var(--workbench-hover)] text-foreground'
               )}
               onClick={() => setActivePanel(panel.id)}

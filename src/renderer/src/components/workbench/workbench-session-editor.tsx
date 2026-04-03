@@ -41,11 +41,11 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
 
   if (!session) {
     return (
-      <div className="flex h-full items-center justify-center bg-[var(--workbench-editor)] px-6">
-        <div className="max-w-md text-center">
-          <div className="text-lg font-semibold text-foreground">
-            {t('workbench.sessionEditor.closed.title')}
-          </div>
+    <div className="liquid-glass-page flex h-full items-center justify-center bg-[var(--workbench-editor)] px-6">
+      <div className="liquid-glass-hero max-w-md rounded-[28px] border border-[var(--workbench-border)] px-8 py-10 text-center">
+        <div className="text-lg font-semibold text-foreground">
+          {t('workbench.sessionEditor.closed.title')}
+        </div>
           <div className="mt-2 text-sm text-muted-foreground">
             {t('workbench.sessionEditor.closed.description')}
           </div>
@@ -61,7 +61,7 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
     prefersDark
   )
   const terminalView = (
-    <div className="h-full min-w-0">
+    <div className="h-full min-w-0 p-3">
       <TerminalPane
         session={session}
         settings={settingsQuery.data}
@@ -72,15 +72,21 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
   )
   const auxPanelContent =
     auxView === 'sftp' ? (
-      <SftpPanel session={session} className="h-full bg-[var(--workbench-sidebar)]" />
+      <SftpPanel
+        session={session}
+        className="liquid-glass-pane h-full overflow-hidden rounded-[1.35rem] bg-[var(--workbench-sidebar)]"
+      />
     ) : auxView === 'port-forward' ? (
-      <PortForwardPanel session={session} className="h-full bg-[var(--workbench-sidebar)]" />
+      <PortForwardPanel
+        session={session}
+        className="liquid-glass-pane h-full overflow-hidden rounded-[1.35rem] bg-[var(--workbench-sidebar)]"
+      />
     ) : null
   const showAuxPanel = Boolean(auxPanelContent && !session.provisional)
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
-      <div className="flex h-10 shrink-0 items-center justify-between border-b border-[var(--workbench-border)] px-3">
+    <div className="liquid-glass-page flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
+      <div className="liquid-glass-toolbar flex h-10 shrink-0 items-center justify-between border-b border-[var(--workbench-border)] px-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-medium text-foreground">{session.serverName}</div>
           <div className="truncate text-[11px] text-muted-foreground">
@@ -132,14 +138,14 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
             <>
               <ResizableHandle
                 withHandle
-                className="bg-[var(--workbench-border)] data-[resize-handle-state=drag]:bg-[var(--workbench-accent)]"
+                className="bg-[var(--workbench-border)] data-[resize-handle-state=drag]:bg-[var(--workbench-active)]"
               />
               <ResizablePanel
                 defaultSize={AUX_PANEL_DEFAULT_SIZE}
                 maxSize={AUX_PANEL_MAX_SIZE}
                 minSize={AUX_PANEL_MIN_SIZE}
               >
-                <div className="h-full min-w-0 bg-[var(--workbench-sidebar)]">
+                <div className="h-full min-w-0 bg-[var(--workbench-sidebar)] p-3">
                   {auxPanelContent}
                 </div>
               </ResizablePanel>

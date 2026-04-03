@@ -54,7 +54,7 @@ function TitlebarButton({
           variant="ghost"
           {...props}
           className={cn(
-            'h-7 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2 text-[var(--workbench-muted)] hover:bg-[var(--workbench-hover)] hover:text-foreground',
+            'liquid-glass-chip h-7 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2 text-[var(--workbench-muted)] hover:bg-[var(--workbench-hover)] hover:text-foreground',
             className
           )}
           style={noDragStyle}
@@ -82,7 +82,7 @@ function WindowControlButton({
           aria-label={tooltip}
           {...props}
           className={cn(
-            'h-9 w-11 rounded-none border-0 bg-transparent p-0 text-[var(--workbench-muted)] hover:bg-[var(--workbench-hover)] hover:text-foreground',
+            'liquid-glass-chip h-9 w-11 rounded-none border-0 bg-transparent p-0 text-[var(--workbench-muted)] hover:bg-[var(--workbench-hover)] hover:text-foreground',
             className
           )}
           style={noDragStyle}
@@ -143,7 +143,7 @@ export function WorkbenchTitlebar() {
 
   return (
     <header
-      className="relative flex h-9 shrink-0 items-center border-b border-[var(--workbench-border)] bg-[var(--workbench-titlebar)] px-2 text-xs"
+      className="liquid-glass-toolbar relative flex h-9 shrink-0 items-center border-b border-[var(--workbench-border)] bg-[var(--workbench-titlebar)] px-2 text-xs"
       style={
         {
           WebkitAppRegion: customTitleBar ? 'drag' : 'no-drag',

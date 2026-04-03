@@ -50,8 +50,10 @@ export function applyThemeToRoot(
   }
 
   root.classList.toggle('dark', resolvedTheme.appearance === 'dark')
+  root.classList.toggle('theme-liquid-glass', resolvedTheme.pluginId === 'winssh.liquid-glass-themes')
   root.dataset.theme = resolvedTheme.id
   root.dataset.themeAppearance = resolvedTheme.appearance
+  root.dataset.themePlugin = resolvedTheme.pluginId
   root.dataset.themeSelection = selection
   root.style.colorScheme = resolvedTheme.appearance
 
