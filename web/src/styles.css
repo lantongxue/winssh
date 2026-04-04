@@ -1,0 +1,178 @@
+@import 'tailwindcss';
+
+:root {
+  color-scheme: light;
+  --background: #fdfdfd;
+  --foreground: #1f2328;
+  --border: #d7dce2;
+  --input: #f6f8fa;
+  --workbench-bg: #f3f5f7;
+  --workbench-titlebar: #f3f5f7;
+  --workbench-activity-bar: #eef2f6;
+  --workbench-sidebar: #f6f8fa;
+  --workbench-editor: #ffffff;
+  --workbench-panel: #f6f8fa;
+  --workbench-hover: rgba(15, 23, 42, 0.06);
+  --workbench-active: #0f6cbd;
+  --workbench-logo: #01364f;
+  --workbench-statusbar: #007acc;
+  --workbench-statusbar-foreground: #ffffff;
+  --workbench-muted: #5f6b7a;
+  --workbench-input: #ffffff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+}
+
+* {
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--workbench-active) 30%, var(--workbench-muted) 70%)
+    color-mix(in srgb, var(--workbench-panel) 84%, var(--background) 16%);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--workbench-bg);
+  color: var(--foreground);
+  font-family: 'Segoe UI Variable Text', 'Segoe UI', 'Microsoft YaHei UI', sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+#root {
+  isolation: isolate;
+}
+
+.site-titlebar {
+  position: relative;
+  z-index: 5;
+}
+
+.site-toolbar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--workbench-border);
+  background: var(--workbench-input);
+  color: var(--workbench-muted);
+  border-radius: 2px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.75rem;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease;
+}
+
+.site-toolbar-link:hover,
+.site-toolbar-link--active {
+  background: var(--workbench-hover);
+  color: var(--foreground);
+}
+
+.site-activity-link {
+  position: relative;
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  color: var(--workbench-muted);
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.site-activity-link:hover,
+.site-activity-link--active {
+  background: var(--workbench-hover);
+  color: var(--foreground);
+}
+
+.site-mobile-chip {
+  white-space: nowrap;
+  border-radius: 2px;
+  border: 1px solid var(--workbench-border);
+  background: var(--workbench-input);
+  padding: 0.55rem 0.85rem;
+  font-size: 0.75rem;
+  color: var(--workbench-muted);
+}
+
+.site-primary-button,
+.site-secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border-radius: 2px;
+  border: 1px solid var(--workbench-border);
+  padding: 0.8rem 1.1rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease;
+}
+
+.site-primary-button {
+  border-color: color-mix(in srgb, var(--workbench-active) 66%, var(--workbench-border) 34%);
+  background: var(--workbench-active);
+  color: var(--workbench-statusbar-foreground);
+}
+
+.site-primary-button:hover {
+  background: color-mix(in srgb, var(--workbench-active) 92%, #ffffff 8%);
+}
+
+.site-secondary-button {
+  background: var(--workbench-input);
+  color: var(--workbench-muted);
+}
+
+.site-secondary-button:hover {
+  background: var(--workbench-hover);
+  color: var(--foreground);
+}
+
+@media (max-width: 767px) {
+  .site-titlebar {
+    height: auto;
+    min-height: 3.5rem;
+    align-items: flex-start;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .site-primary-button,
+  .site-secondary-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
