@@ -72,7 +72,7 @@ export const serverSchema = z
       .min(1, 'validation.server.username.required')
       .max(64, 'validation.server.username.max'),
     authType: z.enum(['password', 'privateKey']),
-    privateKey: z.string().optional(),
+    privateKey: z.string().optional().nullable(),
     note: z.string().trim().max(400, 'validation.server.note.max').optional(),
     groupId: z.string().trim().nullable().optional(),
     tagIds: z.array(z.string()).default([]),
