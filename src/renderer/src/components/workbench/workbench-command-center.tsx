@@ -12,6 +12,7 @@ import {
   SunMedium,
   TerminalSquare
 } from 'lucide-react'
+import { ServerBrandIcon } from '@/components/server-brand-icon'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import { actionIcons } from '@/lib/action-icons'
 import { isMacPlatform } from '@/lib/platform'
@@ -296,7 +297,11 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
                   openServerEditor(server.id)
                 }}
               >
-                <ServerCog className="size-4" />
+                <ServerBrandIcon
+                  brandId={server.brandId}
+                  customIconDataUrl={server.customIconDataUrl}
+                  className="size-4 text-[var(--workbench-active)]"
+                />
                 <span>{server.name}</span>
                 <CommandShortcut>{server.host}</CommandShortcut>
               </CommandItem>

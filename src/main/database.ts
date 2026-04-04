@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
+import type { ServerBrandId, ServerIconMimeType } from '@shared/server-brands'
 import type {
   AppSettings,
   Credential,
@@ -51,6 +52,9 @@ type ServerRow = {
   port: number
   username: string
   auth_type: 'password' | 'privateKey'
+  brand_id: ServerBrandId | null
+  custom_icon_mime_type: ServerIconMimeType | null
+  custom_icon: Buffer | null
   private_key_path: string | null
   private_key: string | null
   note: string | null
@@ -125,6 +129,14 @@ function mapTag(row: TagRow): Tag {
   }
 }
 
+function toDataUrl(mimeType: ServerIconMimeType | null, data: Buffer | null): string | null {
+  if (!mimeType || !data || data.byteLength === 0) {
+    return null
+  }
+
+  return `data:${mimeType};base64,${data.toString('base64')}`
+}
+
 function mapServer(row: ServerRow, tags: Tag[]): Server {
   return {
     id: row.id,
@@ -133,6 +145,8 @@ function mapServer(row: ServerRow, tags: Tag[]): Server {
     port: row.port,
     username: row.username,
     authType: row.auth_type,
+    brandId: row.brand_id,
+    customIconDataUrl: toDataUrl(row.custom_icon_mime_type, row.custom_icon),
     privateKeyPath: row.private_key_path,
     note: row.note,
     groupId: row.group_id,
@@ -216,6 +230,9 @@ export class DatabaseService {
         port INTEGER NOT NULL,
         username TEXT NOT NULL,
         auth_type TEXT NOT NULL CHECK (auth_type IN ('password', 'privateKey')),
+        brand_id TEXT,
+        custom_icon_mime_type TEXT,
+        custom_icon BLOB,
         private_key_path TEXT,
         private_key TEXT,
         note TEXT,
@@ -267,6 +284,15 @@ export class DatabaseService {
       this.db.exec(
         'ALTER TABLE servers ADD COLUMN jump_server_id TEXT REFERENCES servers(id) ON DELETE SET NULL'
       )
+    }
+    if (!serverColumns.some((column) => column.name === 'brand_id')) {
+      this.db.exec('ALTER TABLE servers ADD COLUMN brand_id TEXT')
+    }
+    if (!serverColumns.some((column) => column.name === 'custom_icon_mime_type')) {
+      this.db.exec('ALTER TABLE servers ADD COLUMN custom_icon_mime_type TEXT')
+    }
+    if (!serverColumns.some((column) => column.name === 'custom_icon')) {
+      this.db.exec('ALTER TABLE servers ADD COLUMN custom_icon BLOB')
     }
   }
 
@@ -422,6 +448,21 @@ export class DatabaseService {
   private saveServer(input: ServerUpsertInput & { id: string }): void {
     const now = nowIso()
     const existing = this.getServerById(input.id)
+    const existingAssets = this.db
+      .prepare('SELECT custom_icon_mime_type, custom_icon FROM servers WHERE id = ?')
+      .get(input.id) as
+      | Pick<ServerRow, 'custom_icon_mime_type' | 'custom_icon'>
+      | undefined
+    const customIconMimeType =
+      input.customIconMimeType === undefined
+        ? (existingAssets?.custom_icon_mime_type ?? null)
+        : input.customIconMimeType
+    const customIcon =
+      input.customIconData === undefined
+        ? (existingAssets?.custom_icon ?? null)
+        : input.customIconData
+          ? Buffer.from(input.customIconData)
+          : null
 
     const transaction = this.db.transaction((payload: ServerUpsertInput & { id: string }) => {
       if (existing) {
@@ -435,6 +476,8 @@ export class DatabaseService {
                 port = ?,
                 username = ?,
                 auth_type = ?,
+                custom_icon_mime_type = ?,
+                custom_icon = ?,
                 private_key = ?,
                 private_key_path = ?,
                 note = ?,
@@ -452,6 +495,8 @@ export class DatabaseService {
             payload.port,
             payload.username.trim(),
             payload.authType,
+            customIconMimeType,
+            customIcon,
             payload.privateKey?.trim() ? payload.privateKey : null,
             null,
             payload.note?.trim() || null,
@@ -467,9 +512,10 @@ export class DatabaseService {
           .prepare(
             `
               INSERT INTO servers (
-                id, name, host, port, username, auth_type, private_key, private_key_path, note,
-                group_id, jump_server_id, favorite, credential_id, created_at, updated_at, last_connected_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                id, name, host, port, username, auth_type, brand_id, custom_icon_mime_type,
+                custom_icon, private_key, private_key_path, note, group_id, jump_server_id,
+                favorite, credential_id, created_at, updated_at, last_connected_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `
           )
           .run(
@@ -479,6 +525,9 @@ export class DatabaseService {
             payload.port,
             payload.username.trim(),
             payload.authType,
+            null,
+            customIconMimeType,
+            customIcon,
             payload.privateKey?.trim() ? payload.privateKey : null,
             null,
             payload.note?.trim() || null,
@@ -501,6 +550,16 @@ export class DatabaseService {
     })
 
     transaction(input)
+  }
+
+  updateServerBrand(id: string, brandId: ServerBrandId): Server {
+    this.db.prepare('UPDATE servers SET brand_id = ?, updated_at = ? WHERE id = ?').run(
+      brandId,
+      nowIso(),
+      id
+    )
+
+    return this.getServerById(id) as Server
   }
 
   deleteServer(id: string): void {

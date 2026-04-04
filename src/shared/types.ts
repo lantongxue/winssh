@@ -1,4 +1,5 @@
 import type { ThemeSelection } from './themes'
+import type { ServerBrandId, ServerIconMimeType } from './server-brands'
 
 export type AuthType = 'password' | 'privateKey'
 export type CredentialKind = 'password' | 'privateKey'
@@ -38,6 +39,8 @@ export interface Server {
   port: number
   username: string
   authType: AuthType
+  brandId: ServerBrandId | null
+  customIconDataUrl: string | null
   privateKeyPath: string | null
   note: string | null
   groupId: string | null
@@ -130,6 +133,8 @@ export interface ServerUpsertInput {
   username: string
   authType: AuthType
   privateKey?: string | null
+  customIconMimeType?: ServerIconMimeType | null
+  customIconData?: Uint8Array | null
   note?: string
   groupId?: string | null
   jumpServerId?: string | null

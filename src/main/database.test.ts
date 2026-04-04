@@ -66,11 +66,11 @@ afterEach(() => {
   }
 })
 
-describeDatabase('DatabaseService jump server support', () => {
+describeDatabase('DatabaseService server persistence', () => {
   const Database = betterSqliteModule?.default
   const DatabaseService = databaseModule?.DatabaseService
 
-  it('adds the jump_server_id column when opening an older database', () => {
+  it('adds brand, icon, and jump server columns when opening an older database', () => {
     if (!Database || !DatabaseService) {
       return
     }
@@ -127,7 +127,14 @@ describeDatabase('DatabaseService jump server support', () => {
     const columns = migrated.prepare('PRAGMA table_info(servers)').all() as Array<{ name: string }>
     migrated.close()
 
-    expect(columns.map((column) => column.name)).toContain('jump_server_id')
+    expect(columns.map((column) => column.name)).toEqual(
+      expect.arrayContaining([
+        'brand_id',
+        'custom_icon',
+        'custom_icon_mime_type',
+        'jump_server_id'
+      ])
+    )
   })
 
   it('persists and clears jump server references when the jump server is deleted', () => {
@@ -157,5 +164,43 @@ describeDatabase('DatabaseService jump server support', () => {
     service.deleteServer(jumpServer.id)
 
     expect(service.getServerById(targetServer.id)?.jumpServerId).toBeNull()
+  })
+
+  it('stores custom icons as data URLs and keeps the detected brand when the icon is removed', () => {
+    if (!DatabaseService) {
+      return
+    }
+
+    const databasePath = createTempDatabasePath()
+    const service = new DatabaseService(databasePath)
+
+    const server = service.createServer(
+      createServerInput({
+        customIconData: Uint8Array.from([1, 2, 3]),
+        customIconMimeType: 'image/png',
+        name: 'Icon Host'
+      })
+    )
+
+    expect(service.getServerById(server.id)).toMatchObject({
+      brandId: null,
+      customIconDataUrl: 'data:image/png;base64,AQID'
+    })
+
+    service.updateServerBrand(server.id, 'ubuntu')
+    const updated = service.updateServer(
+      server.id,
+      createServerInput({
+        customIconData: null,
+        customIconMimeType: null,
+        name: 'Icon Host Updated'
+      })
+    )
+
+    expect(updated).toMatchObject({
+      brandId: 'ubuntu',
+      customIconDataUrl: null,
+      name: 'Icon Host Updated'
+    })
   })
 })

@@ -15,6 +15,8 @@ describe('main localization', () => {
 
     expect(zh('dialogs.pickPrivateKey.title')).toBe('选择 SSH 私钥文件')
     expect(en('dialogs.pickPrivateKey.title')).toBe('Choose SSH Private Key')
+    expect(zh('dialogs.pickServerIcon.title')).toBe('选择服务器图标')
+    expect(en('dialogs.pickServerIcon.title')).toBe('Choose Server Icon')
     expect(
       zh('dialogs.hostFirstSeen.detail', {
         fingerprint: 'SHA256:demo',

@@ -6,6 +6,9 @@ export type MainTranslationKey =
   | 'dialogs.pickPrivateKey.title'
   | 'dialogs.pickPrivateKey.filters.privateKey'
   | 'dialogs.pickPrivateKey.filters.allFiles'
+  | 'dialogs.pickServerIcon.title'
+  | 'dialogs.pickServerIcon.filters.images'
+  | 'dialogs.pickServerIcon.filters.allFiles'
   | 'dialogs.uploadFiles.title'
   | 'dialogs.downloadFile.title'
   | 'dialogs.hostChanged.buttons.cancel'
@@ -49,6 +52,13 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
         title: 'Choose SSH Private Key',
         filters: {
           privateKey: 'Private Keys',
+          allFiles: 'All Files'
+        }
+      },
+      pickServerIcon: {
+        title: 'Choose Server Icon',
+        filters: {
+          images: 'Images',
           allFiles: 'All Files'
         }
       },
@@ -103,6 +113,13 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
         title: '选择 SSH 私钥文件',
         filters: {
           privateKey: '私钥文件',
+          allFiles: '所有文件'
+        }
+      },
+      pickServerIcon: {
+        title: '选择服务器图标',
+        filters: {
+          images: '图片文件',
           allFiles: '所有文件'
         }
       },

@@ -143,6 +143,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       (async () => ['Consolas', 'JetBrains Mono', 'Cascadia Mono', 'IBM Plex Mono']),
     removeKnownHost: systemOverrides?.removeKnownHost ?? (async () => undefined),
     pickPrivateKey: systemOverrides?.pickPrivateKey ?? (async () => null),
+    pickServerIcon: systemOverrides?.pickServerIcon ?? (async () => null),
     relaunch: systemOverrides?.relaunch ?? (async () => undefined),
     window: resolvedWindowApi
   }

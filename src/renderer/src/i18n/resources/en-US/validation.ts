@@ -40,6 +40,11 @@ const validation = {
       }
     },
     server: {
+      customIcon: {
+        invalid: 'The server icon payload is invalid.',
+        required: 'A server icon upload must include both the image type and binary data.',
+        size: 'The server icon must be 256 KB or smaller.'
+      },
       host: {
         max: 'Host is too long.',
         required: 'Enter a host.'

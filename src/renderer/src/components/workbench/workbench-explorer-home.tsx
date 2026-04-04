@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { formatDateTime } from '@/i18n/format'
 import { actionIcons } from '@/lib/action-icons'
+import { ServerBrandIcon } from '@/components/server-brand-icon'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import { useSingleOrDoubleClick } from '@/hooks/use-single-or-double-click'
 import { useSessionsStore } from '@/store/sessions-store'
@@ -139,7 +140,13 @@ export function WorkbenchExplorerHome() {
                       key={recent.id}
                       title={recent.serverName}
                       metadata={`${recent.host} · ${formatDateTime(recent.connectedAt)}`}
-                      icon={<ArrowUpRight className="size-4 shrink-0 text-muted-foreground" />}
+                      icon={
+                        <ServerBrandIcon
+                          brandId={server.brandId}
+                          customIconDataUrl={server.customIconDataUrl}
+                          className="size-4 shrink-0 text-[var(--workbench-active)]"
+                        />
+                      }
                       onConnect={() => (server ? void connectServer(server) : undefined)}
                     />
                   )
@@ -164,7 +171,13 @@ export function WorkbenchExplorerHome() {
                     key={server.id}
                     title={server.name}
                     metadata={`${server.username}@${server.host}:${server.port}`}
-                    icon={<Heart className="size-4 shrink-0 fill-amber-400 text-amber-400" />}
+                    icon={
+                      <ServerBrandIcon
+                        brandId={server.brandId}
+                        customIconDataUrl={server.customIconDataUrl}
+                        className="size-4 shrink-0 text-amber-400"
+                      />
+                    }
                     onOpen={() => openServerEditor(server.id)}
                     onConnect={() => void connectServer(server)}
                   />

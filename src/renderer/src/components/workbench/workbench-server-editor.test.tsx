@@ -36,8 +36,10 @@ function renderServerEditor() {
 
 const savedServer = {
   authType: 'password' as const,
+  brandId: null,
   createdAt: '',
   credentialId: null,
+  customIconDataUrl: null,
   favorite: false,
   group: null,
   groupId: null,
@@ -189,6 +191,117 @@ describe('WorkbenchServerEditor credentials field', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('Private Key')).toHaveValue(
         '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----'
+      )
+    })
+  })
+
+  it('uploads a custom server icon and saves its binary payload', async () => {
+    const updateServer = vi.fn().mockResolvedValue({
+      ...savedServer,
+      customIconDataUrl: 'data:image/png;base64,AQID'
+    })
+
+    window.winsshApi = createWinsshApiMock({
+      servers: {
+        getSecrets: vi.fn().mockResolvedValue({
+          password: 'hunter2',
+          passphrase: null,
+          privateKey: null
+        }),
+        list: vi.fn().mockResolvedValue([savedServer]),
+        update: updateServer
+      },
+      system: {
+        pickServerIcon: vi.fn().mockResolvedValue({
+          data: Uint8Array.from([1, 2, 3]),
+          mimeType: 'image/png'
+        })
+      }
+    })
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false
+        }
+      }
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <WorkbenchProvider>
+          <WorkbenchServerEditor document={createServerEditorDocument(savedServer.id)} />
+        </WorkbenchProvider>
+      </QueryClientProvider>
+    )
+
+    await screen.findByText('Production Bastion')
+    fireEvent.click(screen.getByRole('button', { name: 'Upload' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(updateServer).toHaveBeenCalledWith(
+        savedServer.id,
+        expect.objectContaining({
+          customIconData: expect.any(Uint8Array),
+          customIconMimeType: 'image/png'
+        })
+      )
+    })
+    const payload = updateServer.mock.calls[0]?.[1] as { customIconData: Uint8Array }
+    expect(Array.from(payload.customIconData)).toEqual([1, 2, 3])
+  })
+
+  it('removes an existing custom icon without clearing the detected brand', async () => {
+    const brandedServer = {
+      ...savedServer,
+      brandId: 'ubuntu' as const,
+      customIconDataUrl: 'data:image/png;base64,AQID'
+    }
+    const updateServer = vi.fn().mockResolvedValue({
+      ...brandedServer,
+      customIconDataUrl: null
+    })
+
+    window.winsshApi = createWinsshApiMock({
+      servers: {
+        getSecrets: vi.fn().mockResolvedValue({
+          password: 'hunter2',
+          passphrase: null,
+          privateKey: null
+        }),
+        list: vi.fn().mockResolvedValue([brandedServer]),
+        update: updateServer
+      }
+    })
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false
+        }
+      }
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <WorkbenchProvider>
+          <WorkbenchServerEditor document={createServerEditorDocument(brandedServer.id)} />
+        </WorkbenchProvider>
+      </QueryClientProvider>
+    )
+
+    await screen.findByText('Production Bastion')
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Custom Icon' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(updateServer).toHaveBeenCalledWith(
+        brandedServer.id,
+        expect.objectContaining({
+          customIconData: null,
+          customIconMimeType: null
+        })
       )
     })
   })

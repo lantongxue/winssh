@@ -164,4 +164,50 @@ describe('serverSchema', () => {
       }).success
     ).toBe(false)
   })
+
+  it('accepts a valid custom server icon payload', () => {
+    expect(
+      serverSchema.parse({
+        authType: 'password',
+        customIconData: Uint8Array.from([1, 2, 3]),
+        customIconMimeType: 'image/png',
+        favorite: false,
+        groupId: null,
+        host: '10.0.0.12',
+        jumpServerId: null,
+        name: 'Icon Host',
+        note: '',
+        port: 22,
+        privateKey: null,
+        rememberPassphrase: false,
+        rememberPassword: true,
+        tagIds: [],
+        username: 'root'
+      })
+    ).toMatchObject({
+      customIconMimeType: 'image/png'
+    })
+  })
+
+  it('rejects custom server icons larger than 256 KB', () => {
+    expect(
+      serverSchema.safeParse({
+        authType: 'password',
+        customIconData: new Uint8Array(256 * 1024 + 1),
+        customIconMimeType: 'image/png',
+        favorite: false,
+        groupId: null,
+        host: '10.0.0.13',
+        jumpServerId: null,
+        name: 'Large Icon Host',
+        note: '',
+        port: 22,
+        privateKey: null,
+        rememberPassphrase: false,
+        rememberPassword: true,
+        tagIds: [],
+        username: 'root'
+      }).success
+    ).toBe(false)
+  })
 })

@@ -16,10 +16,11 @@ type MockClientBehavior =
   | { type: 'error'; error: Error }
   | { type: 'ready' }
 
-const { clientBehaviors, connectConfigs, forwardOutCalls } = vi.hoisted(() => ({
+const { clientBehaviors, connectConfigs, forwardOutCalls, sftpFiles } = vi.hoisted(() => ({
   clientBehaviors: [] as MockClientBehavior[],
   connectConfigs: [] as Array<Record<string, unknown>>,
-  forwardOutCalls: [] as Array<{ dstIP: string; dstPort: number; srcIP: string; srcPort: number }>
+  forwardOutCalls: [] as Array<{ dstIP: string; dstPort: number; srcIP: string; srcPort: number }>,
+  sftpFiles: new Map<string, string>()
 }))
 
 vi.mock('ssh2', () => ({
@@ -81,6 +82,27 @@ vi.mock('ssh2', () => ({
 
     sftp = vi.fn((callback: (error: undefined, sftp: unknown) => void) => {
       callback(undefined, {
+        close: (_handle: Buffer, next: (error?: Error) => void) => next(),
+        open: (remotePath: string, _flags: string, next: (error: undefined, handle: Buffer) => void) =>
+          next(undefined, Buffer.from(remotePath)),
+        read: (
+          handle: Buffer,
+          buffer: Buffer,
+          offset: number,
+          length: number,
+          position: number,
+          next: (error: Error | undefined, bytesRead: number, buffer: Buffer) => void
+        ) => {
+          const contents = sftpFiles.get(handle.toString('utf8'))
+          if (contents === undefined) {
+            next(new Error('ENOENT'), 0, buffer)
+            return
+          }
+
+          const chunk = Buffer.from(contents).subarray(position, position + length)
+          chunk.copy(buffer, offset)
+          next(undefined, chunk.length, buffer)
+        },
         realpath: (_remotePath: string, next: (error: undefined, absolutePath: string) => void) =>
           next(undefined, '/home/test')
       })
@@ -99,6 +121,8 @@ function createPasswordServer(overrides: Partial<Server> = {}): Server {
     port: 22,
     username: 'root',
     authType: 'password',
+    brandId: null,
+    customIconDataUrl: null,
     privateKeyPath: null,
     note: null,
     groupId: null,
@@ -131,6 +155,7 @@ function createManager() {
       id === 'server-1' ? createPasswordServer() : null
     ),
     recordRecentSession: vi.fn(),
+    updateServerBrand: vi.fn(),
     upsertKnownHost: vi.fn()
   }
   const secureStore = {
@@ -158,6 +183,7 @@ beforeEach(() => {
   clientBehaviors.length = 0
   connectConfigs.length = 0
   forwardOutCalls.length = 0
+  sftpFiles.clear()
 })
 
 describe('SessionManager connect', () => {
@@ -371,5 +397,59 @@ describe('SessionManager connect', () => {
         srcPort: 0
       }
     ])
+  })
+
+  it('detects and stores a brand from /etc/os-release on the first successful connection', async () => {
+    const { database, manager } = createManager()
+    clientBehaviors.push({ type: 'ready' })
+    sftpFiles.set('/etc/os-release', 'ID=ubuntu\nNAME="Ubuntu"\n')
+
+    const result = await manager.connect({
+      secrets: {
+        'server-1': {
+          password: 'correct-password'
+        }
+      },
+      serverId: 'server-1'
+    })
+
+    expect(result.ok).toBe(true)
+    expect(database.updateServerBrand).toHaveBeenCalledWith('server-1', 'ubuntu')
+  })
+
+  it('falls back to linux when brand detection cannot match the remote OS', async () => {
+    const { database, manager } = createManager()
+    clientBehaviors.push({ type: 'ready' })
+    sftpFiles.set('/usr/lib/os-release', 'ID=nixos\nNAME="NixOS"\n')
+
+    const result = await manager.connect({
+      secrets: {
+        'server-1': {
+          password: 'correct-password'
+        }
+      },
+      serverId: 'server-1'
+    })
+
+    expect(result.ok).toBe(true)
+    expect(database.updateServerBrand).toHaveBeenCalledWith('server-1', 'linux')
+  })
+
+  it('skips brand detection when the server already has a saved brand', async () => {
+    const { database, manager } = createManager()
+    database.getServerById.mockReturnValue(createPasswordServer({ brandId: 'fedora' }))
+    clientBehaviors.push({ type: 'ready' })
+
+    const result = await manager.connect({
+      secrets: {
+        'server-1': {
+          password: 'correct-password'
+        }
+      },
+      serverId: 'server-1'
+    })
+
+    expect(result.ok).toBe(true)
+    expect(database.updateServerBrand).not.toHaveBeenCalled()
   })
 })

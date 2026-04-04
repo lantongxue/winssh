@@ -206,13 +206,28 @@ const workbench = {
         createJumpServer: '新建 Jump Server',
         deleteTag: '删除 {{name}}',
         hideSecret: '隐藏凭据',
+        removeCustomIcon: '移除自定义图标',
         showSecret: '显示凭据'
       },
       auth: {
         password: '密码认证',
         privateKey: '私钥认证'
       },
+      brands: {
+        centos: 'CentOS',
+        debian: 'Debian',
+        fedora: 'Fedora',
+        linux: 'Linux',
+        redhat: 'Red Hat',
+        suse: 'SUSE',
+        ubuntu: 'Ubuntu'
+      },
       descriptions: {
+        brand:
+          '内置品牌图标会在首次成功连接后自动识别。自定义图标会覆盖展示，但不会清空已识别的品牌。',
+        brandCustomIcon: '当前服务器正在使用自定义图标。',
+        brandDetected: '该品牌是在首次成功连接时从服务器自动识别得到的。',
+        brandPending: '该服务器会在首次成功连接后自动识别品牌。',
         existing: '{{username}}@{{host}}:{{port}}',
         jumpServer: '选择已有跳板机，或快速新建一个最小化 Jump Server 配置。',
         new: '新的 SSH 连接',
@@ -223,6 +238,7 @@ const workbench = {
       },
       fields: {
         authType: '认证方式',
+        brand: '品牌',
         connectNote: '连接说明',
         credential: '引用凭据',
         credentials: '凭据策略',
@@ -268,6 +284,7 @@ const workbench = {
       },
       sections: {
         basic: '基础信息',
+        brand: '品牌',
         connection: '连接参数',
         credentials: '凭据策略',
         note: '备注',
@@ -282,6 +299,7 @@ const workbench = {
       toasts: {
         created: '服务器已创建。',
         jumpServerCreated: 'Jump Server {{name}} 已创建。',
+        saveFailed: '无法保存服务器。',
         tagDeleteFailed: '无法删除标签。',
         tagCreateFailed: '无法创建标签。',
         updated: '服务器已更新。'

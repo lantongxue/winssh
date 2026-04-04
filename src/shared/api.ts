@@ -27,6 +27,7 @@ import type {
   TransferProgressEvent,
   WindowState
 } from './types'
+import type { ServerIconMimeType } from './server-brands'
 import type { ThemeDefinition } from './themes'
 
 export type Unsubscribe = () => void
@@ -100,6 +101,7 @@ export interface WinsshApi {
   }
   system: {
     pickPrivateKey: () => Promise<string | null>
+    pickServerIcon: () => Promise<{ mimeType: ServerIconMimeType; data: Uint8Array } | null>
     listFonts: () => Promise<string[]>
     getKnownHosts: () => Promise<KnownHost[]>
     removeKnownHost: (host: string, port: number) => Promise<void>

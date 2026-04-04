@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { Server, ServerGroup, Tag } from '@shared/types'
 import { actionIcons } from '@/lib/action-icons'
+import { ServerBrandIcon } from '@/components/server-brand-icon'
 import { getColorStyle } from '@/lib/colors'
 import { cn } from '@/lib/utils'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
@@ -157,10 +158,12 @@ function ServerRow({
     <ContextMenu>
       <ContextMenuTrigger>
         <TreeRow active={active} depth={depth} onClick={onSelect} onDoubleClick={handleConnect}>
-          <span
+          <ServerBrandIcon
+            brandId={server.brandId}
+            customIconDataUrl={server.customIconDataUrl}
             className={cn(
-              'size-2 rounded-full',
-              server.favorite ? 'bg-amber-400' : 'bg-[var(--workbench-active)]'
+              'size-3.5',
+              server.favorite ? 'text-amber-400' : 'text-[var(--workbench-active)]'
             )}
           />
           <span className="min-w-0 flex-1 truncate">{server.name}</span>

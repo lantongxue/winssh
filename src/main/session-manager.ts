@@ -17,6 +17,7 @@ import {
   type OpenDialogOptions
 } from 'electron'
 import { normalizeRemotePath, sortRemoteEntries } from '@shared/sftp'
+import { DEFAULT_SERVER_BRAND_ID, resolveServerBrandFromOsRelease } from '@shared/server-brands'
 import {
   type ConnectionSecretInput,
   ConnectionRequest,
@@ -150,6 +151,79 @@ function sftpRealpath(sftp: SFTPWrapper, remotePath: string): Promise<string> {
       resolve(absolutePath)
     })
   })
+}
+
+function sftpOpen(sftp: SFTPWrapper, remotePath: string, flags: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    sftp.open(remotePath, flags, (error, handle) => {
+      if (error) {
+        reject(error)
+        return
+      }
+
+      resolve(handle)
+    })
+  })
+}
+
+function sftpClose(sftp: SFTPWrapper, handle: Buffer): Promise<void> {
+  return new Promise((resolve, reject) => {
+    sftp.close(handle, (error) => {
+      if (error) {
+        reject(error)
+        return
+      }
+
+      resolve()
+    })
+  })
+}
+
+function sftpRead(
+  sftp: SFTPWrapper,
+  handle: Buffer,
+  buffer: Buffer,
+  offset: number,
+  length: number,
+  position: number
+): Promise<number> {
+  return new Promise((resolve, reject) => {
+    sftp.read(handle, buffer, offset, length, position, (error, bytesRead) => {
+      if (error) {
+        reject(error)
+        return
+      }
+
+      resolve(bytesRead)
+    })
+  })
+}
+
+async function sftpReadFile(sftp: SFTPWrapper, remotePath: string): Promise<string> {
+  const handle = await sftpOpen(sftp, remotePath, 'r')
+  const chunks: Buffer[] = []
+  let position = 0
+
+  try {
+    while (true) {
+      const chunk = Buffer.allocUnsafe(4096)
+      const bytesRead = await sftpRead(sftp, handle, chunk, 0, chunk.byteLength, position)
+      if (bytesRead <= 0) {
+        break
+      }
+
+      chunks.push(chunk.subarray(0, bytesRead))
+      position += bytesRead
+
+      if (bytesRead < chunk.byteLength) {
+        break
+      }
+    }
+
+    return Buffer.concat(chunks).toString('utf8')
+  } finally {
+    await sftpClose(sftp, handle).catch(() => undefined)
+  }
 }
 
 function sftpReadDir(sftp: SFTPWrapper, remotePath: string): Promise<RemoteEntry[]> {
@@ -496,6 +570,7 @@ export class SessionManager {
       this.emitConnectionPhase(sessionId, 'prepare')
       const [shell, sftp] = await Promise.all([openShell(client), openSftp(client)])
       const currentPath = normalizeRemotePath(await sftpRealpath(sftp, '.').catch(() => '/'))
+      await this.detectAndStoreServerBrand(server, sftp)
       const summary: SessionSummary = {
         ...baseSummary,
         status: 'ready',
@@ -1094,6 +1169,34 @@ export class SessionManager {
       }
 
       await this.persistServerConnectionSecrets(server.id, server.authType, secrets)
+    }
+  }
+
+  private async detectAndStoreServerBrand(server: Server, sftp: SFTPWrapper): Promise<void> {
+    if (server.brandId !== null) {
+      return
+    }
+
+    let brandId = DEFAULT_SERVER_BRAND_ID
+
+    try {
+      for (const remotePath of ['/etc/os-release', '/usr/lib/os-release']) {
+        try {
+          const contents = await sftpReadFile(sftp, remotePath)
+          brandId = resolveServerBrandFromOsRelease(contents)
+          break
+        } catch {
+          continue
+        }
+      }
+    } catch {
+      brandId = DEFAULT_SERVER_BRAND_ID
+    }
+
+    try {
+      this.database.updateServerBrand(server.id, brandId)
+    } catch {
+      // Brand detection is best-effort and must not block a successful connection.
     }
   }
 

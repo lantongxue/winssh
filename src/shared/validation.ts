@@ -1,7 +1,12 @@
 import { z } from 'zod'
 import { COLOR_PRESETS } from './constants'
+import { MAX_SERVER_ICON_BYTES, SERVER_ICON_MIME_TYPES } from './server-brands'
 
 const colorSchema = z.enum(COLOR_PRESETS)
+const serverIconMimeTypeSchema = z.enum(SERVER_ICON_MIME_TYPES)
+const serverIconDataSchema = z.custom<Uint8Array>((value) => value instanceof Uint8Array, {
+  message: 'validation.server.customIcon.invalid'
+})
 
 export const groupSchema = z.object({
   name: z
@@ -73,6 +78,8 @@ export const serverSchema = z
       .max(64, 'validation.server.username.max'),
     authType: z.enum(['password', 'privateKey']),
     privateKey: z.string().optional().nullable(),
+    customIconMimeType: serverIconMimeTypeSchema.nullable().optional(),
+    customIconData: serverIconDataSchema.nullable().optional(),
     note: z.string().trim().max(400, 'validation.server.note.max').optional(),
     groupId: z.string().trim().nullable().optional(),
     jumpServerId: z.string().trim().nullable().optional(),
@@ -98,6 +105,42 @@ export const serverSchema = z
         code: z.ZodIssueCode.custom,
         path: ['jumpServerId'],
         message: 'validation.server.jumpServer.self'
+      })
+    }
+
+    const hasMimeType = Object.prototype.hasOwnProperty.call(value, 'customIconMimeType')
+    const hasIconData = Object.prototype.hasOwnProperty.call(value, 'customIconData')
+    if (!hasMimeType && !hasIconData) {
+      return
+    }
+
+    const isRemovingCustomIcon = value.customIconMimeType === null && value.customIconData === null
+    if (isRemovingCustomIcon) {
+      return
+    }
+
+    if (!value.customIconMimeType || !value.customIconData) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['customIconData'],
+        message: 'validation.server.customIcon.required'
+      })
+      return
+    }
+
+    if (value.customIconData.byteLength === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['customIconData'],
+        message: 'validation.server.customIcon.required'
+      })
+    }
+
+    if (value.customIconData.byteLength > MAX_SERVER_ICON_BYTES) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['customIconData'],
+        message: 'validation.server.customIcon.size'
       })
     }
   })

@@ -40,6 +40,11 @@ const validation = {
       }
     },
     server: {
+      customIcon: {
+        invalid: '服务器图标数据无效。',
+        required: '上传服务器图标时，必须同时提供图片类型和二进制数据。',
+        size: '服务器图标不能超过 256 KB。'
+      },
       host: {
         max: '主机地址过长。',
         required: '请输入主机地址。'

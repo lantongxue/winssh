@@ -1,6 +1,7 @@
 import { useEffect, useState, type KeyboardEvent } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { type ServerIconMimeType } from '@shared/server-brands'
 import { Eye, EyeOff, KeyRound, LoaderCircle, LockKeyhole, ShieldCheck, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
@@ -9,7 +10,9 @@ import { z } from 'zod'
 import type { Credential, Server, ServerSecrets, ServerUpsertInput, Tag } from '@shared/types'
 import { serverSchema, tagSchema, type ServerFormValues } from '@shared/validation'
 import { actionIcons } from '@/lib/action-icons'
+import { ServerBrandIcon } from '@/components/server-brand-icon'
 import { colorOptions, getColorStyle } from '@/lib/colors'
+import { bytesToDataUrl, resolveServerBrandId } from '@/lib/server-brand'
 import { cn } from '@/lib/utils'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import {
@@ -241,6 +244,67 @@ function ServerTagBadges({ tags }: { tags: Tag[] }) {
   )
 }
 
+type CustomIconDraft =
+  | { kind: 'unchanged' }
+  | { kind: 'removed' }
+  | {
+      kind: 'updated'
+      data: Uint8Array
+      dataUrl: string
+      mimeType: ServerIconMimeType
+    }
+
+function createDefaultCustomIconDraft(): CustomIconDraft {
+  return { kind: 'unchanged' }
+}
+
+function getCustomIconPayload(
+  customIconDraft: CustomIconDraft
+): Pick<ServerUpsertInput, 'customIconData' | 'customIconMimeType'> {
+  if (customIconDraft.kind === 'updated') {
+    return {
+      customIconData: customIconDraft.data,
+      customIconMimeType: customIconDraft.mimeType
+    }
+  }
+
+  if (customIconDraft.kind === 'removed') {
+    return {
+      customIconData: null,
+      customIconMimeType: null
+    }
+  }
+
+  return {}
+}
+
+function getVisibleCustomIconDataUrl(
+  server: Server | null,
+  customIconDraft: CustomIconDraft
+): string | null {
+  if (customIconDraft.kind === 'updated') {
+    return customIconDraft.dataUrl
+  }
+
+  if (customIconDraft.kind === 'removed') {
+    return null
+  }
+
+  return server?.customIconDataUrl ?? null
+}
+
+function buildServerPayload(
+  values: ServerFormValues,
+  credentialStorageAvailable: boolean,
+  customIconDraft: CustomIconDraft,
+  options: { includeSecrets?: boolean } = {}
+): ServerUpsertInput {
+  return {
+    ...toPayload(values, credentialStorageAvailable, options),
+    ...getCustomIconPayload(customIconDraft)
+  }
+}
+
 export function WorkbenchServerEditor({ document }: { document: ServerEditorDocument }) {
   const { t } = useTranslation()
   const { connectServer, refreshWorkspaceData } = useWorkbenchContext()
@@ -252,6 +316,8 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   const DiscardIcon = actionIcons.discard
   const BrowseIcon = actionIcons.browse
   const FavoriteIcon = actionIcons.star
+  const UploadIcon = actionIcons.upload
+  const RemoveIcon = actionIcons.delete
 
   const serversQuery = useQuery({
     queryKey: ['servers'],
@@ -287,6 +353,9 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   const [tagDraftError, setTagDraftError] = useState<string | null>(null)
   const [tagDraftSubmitting, setTagDraftSubmitting] = useState(false)
   const [deletingTagId, setDeletingTagId] = useState<string | null>(null)
+  const [customIconDraft, setCustomIconDraft] = useState<CustomIconDraft>(
+    createDefaultCustomIconDraft()
+  )
 
   const form = useForm<ServerFormValues>({
     resolver: zodResolver(serverSchema as never),
@@ -348,6 +417,16 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   const selectedCredential = credentialId
     ? (credentials.find((c: Credential) => c.id === credentialId) ?? null)
     : null
+  const resolvedBrandId = resolveServerBrandId(server?.brandId)
+  const visibleCustomIconDataUrl = getVisibleCustomIconDataUrl(server, customIconDraft)
+  const hasCustomIconChanges = customIconDraft.kind !== 'unchanged'
+  const hasVisibleCustomIcon = Boolean(visibleCustomIconDataUrl)
+  const brandLabel = t(`workbench.serverEditor.brands.${resolvedBrandId}`)
+  const brandDescription = hasVisibleCustomIcon
+    ? t('workbench.serverEditor.descriptions.brandCustomIcon')
+    : server?.brandId
+      ? t('workbench.serverEditor.descriptions.brandDetected')
+      : t('workbench.serverEditor.descriptions.brandPending')
 
   // When a credential is selected, auto-fill relevant fields as visual preview
   useEffect(() => {
@@ -402,6 +481,10 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     setTagDraftSubmitting(false)
   }, [document.id])
 
+  useEffect(() => {
+    setCustomIconDraft(createDefaultCustomIconDraft())
+  }, [document.id, server?.customIconDataUrl, server?.id])
+
   const reportValidationFailure = () => {
     const firstMessage = Object.values(form.formState.errors)[0]?.message
     pushProblem({
@@ -420,6 +503,50 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     jumpServerForm.reset(createJumpServerDefaultValues(credentialStorageAvailable))
     setJumpSecretVisible(false)
     setJumpServerDialogOpen(true)
+  }
+
+  const reportPersistenceError = (error: unknown) => {
+    const message =
+      error instanceof Error ? error.message : t('workbench.serverEditor.toasts.saveFailed')
+
+    pushProblem({
+      detail: server?.name ?? t('workbench.documents.serverEditor.newConnection'),
+      documentId: document.id,
+      id: `server-editor:${document.id}:save:${Date.now()}`,
+      severity: 'error',
+      title: message
+    })
+    toast.error(message)
+  }
+
+  const validatePayload = (payload: ServerUpsertInput) => {
+    const parsed = serverSchema.safeParse(payload)
+    if (parsed.success) {
+      return parsed.data as ServerUpsertInput
+    }
+
+    throw new Error(
+      t(parsed.error.issues[0]?.message ?? 'workbench.serverEditor.validation.failed')
+    )
+  }
+
+  const handleUploadCustomIcon = async () => {
+    const selectedIcon = await window.winsshApi.system.pickServerIcon()
+    if (!selectedIcon) {
+      return
+    }
+
+    setCustomIconDraft({
+      kind: 'updated',
+      data: selectedIcon.data,
+      dataUrl: bytesToDataUrl(selectedIcon.mimeType, selectedIcon.data),
+      mimeType: selectedIcon.mimeType
+    })
+  }
+
+  const resetEditor = () => {
+    form.reset(toDefaultValues(server, credentialStorageAvailable, serverSecretsQuery.data))
+    setCustomIconDraft(createDefaultCustomIconDraft())
   }
 
   const ensureJumpServerTag = async () => {
@@ -576,7 +703,9 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     announce = true,
     options: { includeSecrets?: boolean } = {}
   ) => {
-    const payload = toPayload(values, credentialStorageAvailable, options)
+    const payload = validatePayload(
+      buildServerPayload(values, credentialStorageAvailable, customIconDraft, options)
+    )
     const saved = document.serverId
       ? await window.winsshApi.servers.update(document.serverId, payload)
       : await window.winsshApi.servers.create(payload)
@@ -641,7 +770,11 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
 
   const handleSave = form.handleSubmit(
     async (values) => {
-      await persistServer(values)
+      try {
+        await persistServer(values)
+      } catch (error) {
+        reportPersistenceError(error)
+      }
     },
     () => reportValidationFailure()
   )
@@ -649,18 +782,27 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   return (
     <div className="liquid-glass-page flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
       <div className="liquid-glass-toolbar flex h-10 shrink-0 items-center justify-between border-b border-[var(--workbench-border)] px-3">
-        <div className="min-w-0">
-          <div className="truncate text-sm font-medium text-foreground">
-            {server?.name ?? t('workbench.documents.serverEditor.newConnection')}
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-panel)]/40">
+            <ServerBrandIcon
+              brandId={server?.brandId}
+              customIconDataUrl={visibleCustomIconDataUrl}
+              className="size-5 text-[var(--workbench-active)]"
+            />
           </div>
-          <div className="truncate text-[11px] text-muted-foreground">
-            {server
-              ? t('workbench.serverEditor.descriptions.existing', {
-                  host: server.host,
-                  port: server.port,
-                  username: server.username
-                })
-              : t('workbench.serverEditor.descriptions.new')}
+          <div className="min-w-0">
+            <div className="truncate text-sm font-medium text-foreground">
+              {server?.name ?? t('workbench.documents.serverEditor.newConnection')}
+            </div>
+            <div className="truncate text-[11px] text-muted-foreground">
+              {server
+                ? t('workbench.serverEditor.descriptions.existing', {
+                    host: server.host,
+                    port: server.port,
+                    username: server.username
+                  })
+                : t('workbench.serverEditor.descriptions.new')}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -679,23 +821,27 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
             size="sm"
             disabled={form.formState.isSubmitting}
             onClick={async () => {
-              const valid = await form.trigger()
+              try {
+                const valid = await form.trigger()
 
-              if (!valid) {
-                reportValidationFailure()
-                return
+                if (!valid) {
+                  reportValidationFailure()
+                  return
+                }
+
+                const values = form.getValues()
+                const targetServer =
+                  server && !form.formState.isDirty && !hasCustomIconChanges
+                    ? server
+                    : await persistServer(values, Boolean(server), { includeSecrets: false })
+
+                await connectServer(
+                  targetServer,
+                  buildConnectionRequest(targetServer.id, values, credentialStorageAvailable)
+                )
+              } catch (error) {
+                reportPersistenceError(error)
               }
-
-              const values = form.getValues()
-              const targetServer =
-                server && !form.formState.isDirty
-                  ? server
-                  : await persistServer(values, Boolean(server), { includeSecrets: false })
-
-              await connectServer(
-                targetServer,
-                buildConnectionRequest(targetServer.id, values, credentialStorageAvailable)
-              )
             }}
           >
             <ConnectIcon className="size-4" />
@@ -705,11 +851,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
             variant="ghost"
             size="sm"
             disabled={form.formState.isSubmitting}
-            onClick={() =>
-              form.reset(
-                toDefaultValues(server, credentialStorageAvailable, serverSecretsQuery.data)
-              )
-            }
+            onClick={resetEditor}
           >
             <DiscardIcon className="size-4" />
             {t('common.actions.discard')}
@@ -954,6 +1096,54 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                 </FormItem>
               )}
             />
+          </section>
+
+          <section className="liquid-glass-card border border-[var(--workbench-border)] px-6 py-5">
+            <div className="mb-4 text-base font-semibold">
+              {t('workbench.serverEditor.sections.brand')}
+            </div>
+            <div className="rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-panel)]/35 p-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex min-w-0 items-center gap-4">
+                  <div className="flex size-14 shrink-0 items-center justify-center rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-editor)]">
+                    <ServerBrandIcon
+                      brandId={server?.brandId}
+                      customIconDataUrl={visibleCustomIconDataUrl}
+                      className="size-8 text-[var(--workbench-active)]"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-medium text-foreground">
+                      {t('workbench.serverEditor.fields.brand')}
+                    </div>
+                    <div className="mt-1 truncate text-sm text-foreground">{brandLabel}</div>
+                    <div className="mt-1 text-sm text-muted-foreground">{brandDescription}</div>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void handleUploadCustomIcon()}
+                  >
+                    <UploadIcon className="size-4" />
+                    {t('common.actions.upload')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!hasVisibleCustomIcon}
+                    onClick={() => setCustomIconDraft({ kind: 'removed' })}
+                  >
+                    <RemoveIcon className="size-4" />
+                    {t('workbench.serverEditor.actions.removeCustomIcon')}
+                  </Button>
+                </div>
+              </div>
+              <FormDescription className="mt-4">
+                {t('workbench.serverEditor.descriptions.brand')}
+              </FormDescription>
+            </div>
           </section>
 
           {isPrivateKeyAuth ? (

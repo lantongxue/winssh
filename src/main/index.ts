@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { extname, join } from 'node:path'
 import {
   app,
   BrowserWindow,
@@ -12,6 +12,7 @@ import {
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { APP_ID } from '@shared/constants'
+import { isServerIconMimeType, type ServerIconMimeType } from '@shared/server-brands'
 import type {
   AppSettings,
   ConnectionRequest,
@@ -94,6 +95,20 @@ function createWindow(settings: AppSettings, themeRegistry: ThemeRegistry): Brow
 
 function parseInput<T>(parser: { parse: (value: unknown) => T }, value: unknown): T {
   return parser.parse(value)
+}
+
+function getServerIconMimeType(filePath: string): ServerIconMimeType | null {
+  const extension = extname(filePath).toLowerCase()
+  const mimeType =
+    extension === '.png'
+      ? 'image/png'
+      : extension === '.jpg' || extension === '.jpeg'
+        ? 'image/jpeg'
+        : extension === '.webp'
+          ? 'image/webp'
+          : null
+
+  return mimeType && isServerIconMimeType(mimeType) ? mimeType : null
 }
 
 async function bootstrap(): Promise<void> {
@@ -389,6 +404,42 @@ async function bootstrap(): Promise<void> {
     }
 
     return readFile(filePath, 'utf8')
+  })
+  ipcMain.handle('system:pickServerIcon', async () => {
+    const options: OpenDialogOptions = {
+      title: translate('dialogs.pickServerIcon.title'),
+      properties: ['openFile'],
+      filters: [
+        {
+          name: translate('dialogs.pickServerIcon.filters.images'),
+          extensions: ['png', 'jpg', 'jpeg', 'webp']
+        },
+        { name: translate('dialogs.pickServerIcon.filters.allFiles'), extensions: ['*'] }
+      ]
+    }
+    const result = mainWindow
+      ? await dialog.showOpenDialog(mainWindow, options)
+      : await dialog.showOpenDialog(options)
+
+    if (result.canceled) {
+      return null
+    }
+
+    const filePath = result.filePaths[0]
+    if (!filePath) {
+      return null
+    }
+
+    const mimeType = getServerIconMimeType(filePath)
+    if (!mimeType) {
+      return null
+    }
+
+    const data = new Uint8Array(await readFile(filePath))
+    return {
+      mimeType,
+      data
+    }
   })
   ipcMain.handle('system:listFonts', () => systemFontService.listFonts())
   ipcMain.handle('system:getKnownHosts', () => database.listKnownHosts())

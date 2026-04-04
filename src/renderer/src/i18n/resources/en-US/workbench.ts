@@ -209,13 +209,29 @@ const workbench = {
         createJumpServer: 'New Jump Server',
         deleteTag: 'Delete {{name}}',
         hideSecret: 'Hide secret',
+        removeCustomIcon: 'Remove Custom Icon',
         showSecret: 'Show secret'
       },
       auth: {
         password: 'Password',
         privateKey: 'Private Key'
       },
+      brands: {
+        centos: 'CentOS',
+        debian: 'Debian',
+        fedora: 'Fedora',
+        linux: 'Linux',
+        redhat: 'Red Hat',
+        suse: 'SUSE',
+        ubuntu: 'Ubuntu'
+      },
       descriptions: {
+        brand:
+          'The built-in brand icon is detected on the first successful connection. A custom icon overrides the built-in brand without clearing it.',
+        brandCustomIcon: 'A custom icon is active for this server.',
+        brandDetected: 'Detected from the server during the first successful connection.',
+        brandPending:
+          'This server will be identified automatically after the first successful connection.',
         existing: '{{username}}@{{host}}:{{port}}',
         jumpServer:
           'Choose an existing jump server, or quickly create a minimal one for this route.',
@@ -227,6 +243,7 @@ const workbench = {
       },
       fields: {
         authType: 'Authentication',
+        brand: 'Brand',
         connectNote: 'Connection Notes',
         credential: 'Use Credential',
         credentials: 'Credentials',
@@ -273,6 +290,7 @@ const workbench = {
       },
       sections: {
         basic: 'Basic',
+        brand: 'Brand',
         connection: 'Connection',
         credentials: 'Credentials',
         note: 'Notes',
@@ -287,6 +305,7 @@ const workbench = {
       toasts: {
         created: 'Server created.',
         jumpServerCreated: 'Jump server {{name}} created.',
+        saveFailed: 'Unable to save the server.',
         tagDeleteFailed: 'Unable to delete tag.',
         tagCreateFailed: 'Unable to create tag.',
         updated: 'Server updated.'
