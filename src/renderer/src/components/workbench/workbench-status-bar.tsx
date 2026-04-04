@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { isMacPlatform } from '@/lib/platform'
 import { getThemeSelectionLabel } from '@/lib/theme'
+import { getWorkbenchShortcutLabel } from '@/lib/workbench-shortcuts'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 
@@ -25,6 +27,11 @@ export function WorkbenchStatusBar() {
     themesQuery.data ?? [],
     t('common.theme.system')
   )
+  const isMac = isMacPlatform()
+  const primaryShortcutLabel = getWorkbenchShortcutLabel(
+    isMac ? 'commandPalette' : 'quickOpen',
+    isMac
+  )
 
   return (
     <footer className="liquid-glass-toolbar liquid-glass-statusbar flex h-6 shrink-0 items-center justify-between bg-[var(--workbench-statusbar)] px-3 text-[11px] text-[var(--workbench-statusbar-foreground)]">
@@ -39,9 +46,9 @@ export function WorkbenchStatusBar() {
         <span>{t(sidebarOpen ? 'workbench.statusBar.sidebarOn' : 'workbench.statusBar.sidebarOff')}</span>
         <span>{t(panelOpen ? 'workbench.statusBar.panelOn' : 'workbench.statusBar.panelOff')}</span>
         <span>{t('workbench.statusBar.theme', { value: themeLabel })}</span>
-        <span>{t('common.shortcuts.toggleSidebar')}</span>
-        <span>{t('common.shortcuts.togglePanel')}</span>
-        <span>{t('common.shortcuts.quickOpen')}</span>
+        <span>{getWorkbenchShortcutLabel('toggleSidebar', isMac)}</span>
+        <span>{getWorkbenchShortcutLabel('togglePanel', isMac)}</span>
+        <span>{primaryShortcutLabel}</span>
       </div>
     </footer>
   )

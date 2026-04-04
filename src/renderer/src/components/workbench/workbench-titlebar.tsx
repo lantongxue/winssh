@@ -2,18 +2,11 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { actionIcons } from '@/lib/action-icons'
+import { getPlatform } from '@/lib/platform'
 import { cn } from '@/lib/utils'
 import { useWorkbenchStore } from '@/store/workbench-store'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-
-function getPlatform() {
-  const platform =
-    (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ??
-    navigator.platform ??
-    navigator.userAgent
-  return platform.toLowerCase()
-}
 
 type AppRegionStyle = CSSProperties & {
   WebkitAppRegion?: 'drag' | 'no-drag'

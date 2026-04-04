@@ -14,11 +14,13 @@ import {
 } from 'lucide-react'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import { actionIcons } from '@/lib/action-icons'
+import { isMacPlatform } from '@/lib/platform'
 import {
   createSessionEditorDocument,
   createSettingsEditorDocument,
   type WorkbenchDocument
 } from '@/lib/workbench'
+import { getWorkbenchShortcutLabel } from '@/lib/workbench-shortcuts'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 import {
@@ -62,6 +64,7 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
   const TogglePanelIcon = actionIcons.togglePanel
   const ConnectIcon = actionIcons.connect
   const DisconnectIcon = actionIcons.disconnect
+  const isMac = isMacPlatform()
 
   const serversQuery = useQuery({
     queryKey: ['servers'],
@@ -116,7 +119,7 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
             >
               <NewConnectionIcon className="size-4" />
               {t('common.actions.newConnection')}
-              <CommandShortcut>Ctrl+N</CommandShortcut>
+              <CommandShortcut>{getWorkbenchShortcutLabel('newConnection', isMac)}</CommandShortcut>
             </CommandItem>
             <CommandItem
               onSelect={() => {
@@ -158,7 +161,7 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
             >
               <ToggleSidebarIcon className="size-4" />
               {t('common.actions.toggleSidebar')}
-              <CommandShortcut>Ctrl+B</CommandShortcut>
+              <CommandShortcut>{getWorkbenchShortcutLabel('toggleSidebar', isMac)}</CommandShortcut>
             </CommandItem>
             <CommandItem
               onSelect={() => {
@@ -168,7 +171,7 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
             >
               <TogglePanelIcon className="size-4" />
               {t('common.actions.togglePanel')}
-              <CommandShortcut>Ctrl+J</CommandShortcut>
+              <CommandShortcut>{getWorkbenchShortcutLabel('togglePanel', isMac)}</CommandShortcut>
             </CommandItem>
           </CommandGroup>
 

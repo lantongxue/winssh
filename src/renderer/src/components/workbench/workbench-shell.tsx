@@ -3,6 +3,7 @@ import { Files } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { actionIcons } from '@/lib/action-icons'
+import { isMacPlatform } from '@/lib/platform'
 import {
   createSessionEditorDocument,
   createSettingsEditorDocument,
@@ -10,6 +11,7 @@ import {
   getLegacyPathForActivity,
   getLegacyPathForDocument
 } from '@/lib/workbench'
+import { resolveWorkbenchShortcutAction } from '@/lib/workbench-shortcuts'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
@@ -61,6 +63,7 @@ function WorkbenchTerminalWelcome() {
 }
 
 function WorkbenchShellContent() {
+  const { openServerEditor } = useWorkbenchContext()
   const location = useLocation()
   const navigate = useNavigate()
   const activeDocumentId = useWorkbenchStore((state) => state.activeDocumentId)
@@ -74,6 +77,7 @@ function WorkbenchShellContent() {
   const setQuickOpenOpen = useWorkbenchStore((state) => state.setQuickOpenOpen)
   const togglePanel = useWorkbenchStore((state) => state.togglePanel)
   const toggleSidebar = useWorkbenchStore((state) => state.toggleSidebar)
+  const isMac = isMacPlatform()
 
   const activeDocument = openDocuments.find((document) => document.id === activeDocumentId) ?? null
 
@@ -122,41 +126,44 @@ function WorkbenchShellContent() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!event.metaKey && !event.ctrlKey) {
+      const action = resolveWorkbenchShortcutAction(event, isMac)
+
+      if (!action) {
         return
       }
 
-      const key = event.key.toLowerCase()
+      event.preventDefault()
 
-      if (key === 'b') {
-        event.preventDefault()
+      if (action === 'toggleSidebar') {
         toggleSidebar()
         return
       }
 
-      if (key === 'j') {
-        event.preventDefault()
+      if (action === 'togglePanel') {
         togglePanel()
         return
       }
 
-      if (key === 'p') {
-        event.preventDefault()
-
-        if (event.shiftKey) {
-          setCommandPaletteOpen(true)
-          setQuickOpenOpen(false)
-          return
-        }
-
-        setQuickOpenOpen(true)
-        setCommandPaletteOpen(false)
+      if (action === 'openCommandPalette') {
+        setCommandPaletteOpen(true)
+        setQuickOpenOpen(false)
+        return
       }
+
+      if (action === 'openNewConnection') {
+        setCommandPaletteOpen(false)
+        setQuickOpenOpen(false)
+        openServerEditor()
+        return
+      }
+
+      setQuickOpenOpen(true)
+      setCommandPaletteOpen(false)
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [setCommandPaletteOpen, setQuickOpenOpen, togglePanel, toggleSidebar])
+  }, [isMac, openServerEditor, setCommandPaletteOpen, setQuickOpenOpen, togglePanel, toggleSidebar])
 
   useEffect(() => {
     const targetPath =
