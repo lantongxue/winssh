@@ -339,6 +339,12 @@ const workbench = {
         },
         cursorStyle: '光标样式',
         language: '界面语言',
+        terminalFontFamilyError: '系统字体加载失败，但你仍然可以手动输入自定义字体栈。',
+        terminalFontFamilyEmpty: '没有匹配的系统字体。',
+        terminalFontFamilyHint: '已检测到 {{count}} 个系统字体，也可以直接输入自定义字体栈。',
+        terminalFontFamilyLoading: '正在加载系统字体...',
+        terminalFontFamilySearchPlaceholder: '搜索系统字体，或输入自定义字体栈',
+        terminalFontFamilyUseCustom: '使用“{{value}}”',
         terminalFontFamily: '终端字体',
         terminalFontSize: '终端字号',
         theme: '主题模式',
@@ -487,7 +493,8 @@ const workbench = {
         createTitle: '新建凭据',
         editTitle: '编辑凭据',
         deleteTitle: '删除凭据',
-        deleteDescription: '将永久删除凭据"{{name}}"，已引用此凭据的服务器将回退到内联凭据。此操作无法撤销。'
+        deleteDescription:
+          '将永久删除凭据"{{name}}"，已引用此凭据的服务器将回退到内联凭据。此操作无法撤销。'
       },
       empty: '还没有保存的凭据。点击「新建凭据」添加第一条记录。',
       fields: {

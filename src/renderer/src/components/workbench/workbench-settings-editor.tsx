@@ -3,15 +3,31 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import { SYSTEM_THEME_ID } from '@shared/themes'
-import { KeyRound, Languages, ShieldCheck, SlidersHorizontal, TerminalSquare } from 'lucide-react'
+import {
+  Check,
+  ChevronsUpDown,
+  KeyRound,
+  Languages,
+  ShieldCheck,
+  SlidersHorizontal,
+  TerminalSquare
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { settingsSchema, type SettingsFormValues } from '@shared/validation'
 import { formatDateTime } from '@/i18n/format'
 import { actionIcons } from '@/lib/action-icons'
+import { cn } from '@/lib/utils'
 import { useWorkbenchStore } from '@/store/workbench-store'
 import { Button } from '@/components/ui/button'
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from '@/components/ui/command'
 import {
   Form,
   FormControl,
@@ -21,6 +37,7 @@ import {
   FormMessage
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
@@ -59,6 +76,93 @@ function getTerminalFontOptions(fonts: string[] | undefined, currentValue: strin
   return [...new Set([currentValue.trim(), ...(fonts ?? []).map((font) => font.trim())])]
     .filter(Boolean)
     .map((font) => ({ label: font, value: font }))
+}
+
+type TerminalFontFamilyComboboxProps = {
+  value: string
+  onChange: (value: string) => void
+  options: Array<{ label: string; value: string }>
+}
+
+function TerminalFontFamilyCombobox({ value, onChange, options }: TerminalFontFamilyComboboxProps) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+
+  const normalizedQuery = query.trim()
+  const hasExactMatch = options.some(
+    (option) => option.value.toLowerCase() === normalizedQuery.toLowerCase()
+  )
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen)
+    if (!nextOpen) {
+      setQuery('')
+    }
+  }
+
+  const handleSelect = (nextValue: string) => {
+    onChange(nextValue)
+    setOpen(false)
+    setQuery('')
+  }
+
+  return (
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <FormControl>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between bg-transparent px-3 font-normal"
+          >
+            <span className="truncate text-left" style={{ fontFamily: value }}>
+              {value}
+            </span>
+            <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+      </FormControl>
+      <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
+        <Command>
+          <CommandInput
+            value={query}
+            onValueChange={setQuery}
+            placeholder={t('workbench.settings.form.terminalFontFamilySearchPlaceholder')}
+          />
+          <CommandList className="max-h-72">
+            <CommandEmpty>{t('workbench.settings.form.terminalFontFamilyEmpty')}</CommandEmpty>
+            {normalizedQuery && !hasExactMatch ? (
+              <CommandItem value={normalizedQuery} onSelect={() => handleSelect(normalizedQuery)}>
+                <Check
+                  className={cn('size-4', value === normalizedQuery ? 'opacity-100' : 'opacity-0')}
+                />
+                <span className="truncate">
+                  {t('workbench.settings.form.terminalFontFamilyUseCustom', {
+                    value: normalizedQuery
+                  })}
+                </span>
+              </CommandItem>
+            ) : null}
+            {options.map((option) => (
+              <CommandItem
+                key={option.value}
+                value={option.value}
+                onSelect={() => handleSelect(option.value)}
+              >
+                <Check
+                  className={cn('size-4', value === option.value ? 'opacity-100' : 'opacity-0')}
+                />
+                <span className="truncate">{option.label}</span>
+              </CommandItem>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
 }
 
 export function WorkbenchSettingsEditor() {
@@ -328,26 +432,11 @@ export function WorkbenchSettingsEditor() {
                       return (
                         <FormItem>
                           <FormLabel>{t('workbench.settings.form.terminalFontFamily')}</FormLabel>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <span className="truncate" style={{ fontFamily: field.value }}>
-                                  {field.value}
-                                </span>
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {fontOptions.map((option) => (
-                                <SelectItem
-                                  key={option.value}
-                                  value={option.value}
-                                  style={{ fontFamily: option.value }}
-                                >
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <TerminalFontFamilyCombobox
+                            value={field.value}
+                            onChange={field.onChange}
+                            options={fontOptions}
+                          />
                           <FormMessage />
                         </FormItem>
                       )

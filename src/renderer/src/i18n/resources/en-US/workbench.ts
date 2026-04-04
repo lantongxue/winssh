@@ -345,6 +345,14 @@ const workbench = {
         },
         cursorStyle: 'Cursor style',
         language: 'Display language',
+        terminalFontFamilyError:
+          'Failed to load system fonts. You can still enter a custom font stack.',
+        terminalFontFamilyEmpty: 'No matching system fonts.',
+        terminalFontFamilyHint:
+          'Detected {{count}} system fonts. You can also enter a custom font stack.',
+        terminalFontFamilyLoading: 'Loading system fonts...',
+        terminalFontFamilySearchPlaceholder: 'Search system fonts or type a custom stack',
+        terminalFontFamilyUseCustom: 'Use "{{value}}"',
         terminalFontFamily: 'Terminal font',
         terminalFontSize: 'Terminal font size',
         theme: 'Theme mode',

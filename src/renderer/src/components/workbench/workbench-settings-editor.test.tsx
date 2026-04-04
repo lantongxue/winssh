@@ -168,7 +168,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     })
   })
 
-  it('uses a dropdown to select and save terminal font', async () => {
+  it('uses a searchable combobox to save terminal font settings', async () => {
     const updateSettings = vi.fn().mockResolvedValue({
       copyOnSelect: true,
       cursorBlink: true,
@@ -205,8 +205,10 @@ describe('WorkbenchSettingsEditor theme selection', () => {
 
     const fontSelect = screen.getByRole('combobox', { name: 'Terminal font' })
     fireEvent.click(fontSelect)
-    const fontOptions = await screen.findAllByText('IBM Plex Mono')
-    fireEvent.click(fontOptions[fontOptions.length - 1] as HTMLElement)
+    fireEvent.change(screen.getByPlaceholderText('Search system fonts or type a custom stack'), {
+      target: { value: 'IBM Plex Mono' }
+    })
+    fireEvent.click(await screen.findByText('IBM Plex Mono'))
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {

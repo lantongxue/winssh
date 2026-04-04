@@ -570,8 +570,8 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                       <Textarea
                         {...field}
                         value={field.value ?? ''}
-                        rows={10}
-                        className="font-mono text-xs leading-5"
+                        rows={6}
+                        className="field-sizing-fixed min-h-[8rem] resize-y font-mono text-xs leading-5"
                         placeholder={t('workbench.serverEditor.placeholders.privateKeyFile')}
                       />
                     </FormControl>

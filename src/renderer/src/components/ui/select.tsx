@@ -4,8 +4,41 @@ import { Select as SelectPrimitive } from 'radix-ui'
 
 import { cn } from '@/lib/utils'
 
-function Select({ ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
-  return <SelectPrimitive.Root data-slot="select" {...props} />
+type SelectContextValue = {
+  open: boolean
+}
+
+const SelectContext = React.createContext<SelectContextValue>({ open: false })
+
+function Select({
+  open: controlledOpen,
+  onOpenChange,
+  ...props
+}: React.ComponentProps<typeof SelectPrimitive.Root>) {
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
+  const resolvedOpen = controlledOpen ?? uncontrolledOpen
+
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (controlledOpen === undefined) {
+        setUncontrolledOpen(nextOpen)
+      }
+
+      onOpenChange?.(nextOpen)
+    },
+    [controlledOpen, onOpenChange]
+  )
+
+  return (
+    <SelectContext.Provider value={{ open: resolvedOpen }}>
+      <SelectPrimitive.Root
+        data-slot="select"
+        open={controlledOpen}
+        onOpenChange={handleOpenChange}
+        {...props}
+      />
+    </SelectContext.Provider>
+  )
 }
 
 function SelectGroup({ ...props }: React.ComponentProps<typeof SelectPrimitive.Group>) {
@@ -45,10 +78,18 @@ function SelectTrigger({
 function SelectContent({
   className,
   children,
+  lazy = false,
   position = 'item-aligned',
   align = 'center',
   ...props
-}: React.ComponentProps<typeof SelectPrimitive.Content>) {
+}: React.ComponentProps<typeof SelectPrimitive.Content> & {
+  children?: React.ReactNode | ((state: SelectContextValue) => React.ReactNode)
+  lazy?: boolean
+}) {
+  const context = React.useContext(SelectContext)
+  const resolvedChildren =
+    typeof children === 'function' ? (lazy && !context.open ? null : children(context)) : children
+
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
@@ -71,7 +112,7 @@ function SelectContent({
               'h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)] scroll-my-1'
           )}
         >
-          {children}
+          {resolvedChildren}
         </SelectPrimitive.Viewport>
         <SelectScrollDownButton />
       </SelectPrimitive.Content>
