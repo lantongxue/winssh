@@ -242,7 +242,7 @@ const workbench = {
       placeholders: {
         credential: 'Select an existing credential (optional)',
         host: '192.168.1.10 or demo.example.com',
-        name: 'Production Bastion',
+        name: 'My Server',
         note: 'Record environment notes, jump-host topology, or maintenance details.',
         privateKeyFile: 'Paste the private key content, or import it from a PEM / KEY / PPK file',
         privateKeySecret: 'Leave empty if there is no passphrase',

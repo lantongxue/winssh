@@ -1,6 +1,6 @@
 import type { TransferProgressEvent } from '@shared/types'
 import type { LucideIcon } from 'lucide-react'
-import { Files, Settings2, TerminalSquare } from 'lucide-react'
+import { Files, Settings2, Terminal } from 'lucide-react'
 
 export type WorkbenchActivityId = 'explorer' | 'terminal' | 'settings'
 export type WorkbenchPanelId = 'output' | 'transfers' | 'problems'
@@ -94,7 +94,7 @@ export const workbenchActivities: WorkbenchActivityMeta[] = [
   },
   {
     activityId: 'terminal',
-    icon: TerminalSquare
+    icon: Terminal
   },
   {
     activityId: 'settings',

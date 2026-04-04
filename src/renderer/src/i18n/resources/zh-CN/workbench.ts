@@ -239,7 +239,7 @@ const workbench = {
       placeholders: {
         credential: '选择已有凭据（可选）',
         host: '192.168.1.10 或 demo.example.com',
-        name: 'Production Bastion',
+        name: '我的服务器',
         note: '记录环境说明、跳板关系或维护信息。',
         privateKeyFile: '粘贴私钥内容，或从 PEM / KEY / PPK 文件导入',
         privateKeySecret: '留空表示无口令',

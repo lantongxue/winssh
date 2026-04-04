@@ -396,7 +396,7 @@ export function WorkbenchPrimarySidebar() {
 
   return (
     <>
-      <aside className="liquid-glass-pane flex h-full min-h-0 flex-col border-r border-[var(--workbench-border)] bg-[var(--workbench-sidebar)]">
+      <aside className="liquid-glass-pane flex h-full min-h-0 flex-col bg-[var(--workbench-sidebar)]">
         <div className="border-b border-[var(--workbench-border)] px-4 py-3">
           <div className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground">
             {t('workbench.primarySidebar.title').toUpperCase()}
