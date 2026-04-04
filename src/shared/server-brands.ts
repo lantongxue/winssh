@@ -1,5 +1,6 @@
 export const SERVER_BRAND_IDS = [
   'linux',
+  'archlinux',
   'ubuntu',
   'debian',
   'fedora',
@@ -20,6 +21,9 @@ export const MAX_SERVER_ICON_BYTES = 256 * 1024
 
 const BRAND_ALIASES: Record<string, ServerBrandId> = {
   almalinux: 'redhat',
+  arch: 'archlinux',
+  'arch-linux': 'archlinux',
+  archlinux: 'archlinux',
   centos: 'centos',
   debian: 'debian',
   fedora: 'fedora',

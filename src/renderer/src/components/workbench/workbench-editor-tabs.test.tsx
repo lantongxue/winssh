@@ -5,7 +5,7 @@ import i18n from '@/i18n'
 import { WorkbenchEditorTabs } from '@/components/workbench/workbench-editor-tabs'
 import { WorkbenchProvider } from '@/components/workbench/workbench-context'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { createSessionEditorDocument } from '@/lib/workbench'
+import { createServerEditorDocument, createSessionEditorDocument } from '@/lib/workbench'
 import { createWinsshApiMock } from '@/test/create-winssh-api'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
@@ -19,8 +19,10 @@ vi.mock('sonner', () => ({
 
 const savedServer = {
   authType: 'password' as const,
+  brandId: 'ubuntu' as const,
   createdAt: '',
   credentialId: null,
+  customIconDataUrl: null,
   favorite: false,
   group: null,
   groupId: null,
@@ -178,5 +180,21 @@ describe('WorkbenchEditorTabs session context menu', () => {
     })
     expect(useSessionsStore.getState().tabs).toHaveLength(0)
     expect(useWorkbenchStore.getState().openDocuments).toEqual([])
+  })
+
+  it('shows the server brand icon in both session and server editor tabs', async () => {
+    window.winsshApi = createWinsshApiMock({
+      servers: {
+        list: vi.fn().mockResolvedValue([savedServer])
+      }
+    })
+
+    seedSessionTab()
+    useWorkbenchStore.getState().openDocument(createServerEditorDocument(savedServer.id))
+    const { container } = renderEditorTabs()
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('svg[data-icon="ubuntu"]')).toHaveLength(2)
+    })
   })
 })

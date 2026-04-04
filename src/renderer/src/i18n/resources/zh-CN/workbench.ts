@@ -135,6 +135,9 @@ const workbench = {
         rename: '重命名'
       },
       description: '单击打开编辑器，双击建立 SSH 会话。',
+      labels: {
+        connected: '已连接'
+      },
       dialogs: {
         deleteServer: {
           description:
@@ -214,6 +217,7 @@ const workbench = {
         privateKey: '私钥认证'
       },
       brands: {
+        archlinux: 'Arch Linux',
         centos: 'CentOS',
         debian: 'Debian',
         fedora: 'Fedora',

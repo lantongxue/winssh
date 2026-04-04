@@ -25,4 +25,11 @@ describe('ServerBrandIcon', () => {
     )
     expect(container.querySelector('svg[data-icon]')).not.toBeInTheDocument()
   })
+
+  it('renders the arch linux brand icon when the server brand is archlinux', () => {
+    const { container } = render(<ServerBrandIcon brandId="archlinux" data-testid="brand-icon" />)
+
+    expect(screen.getByTestId('brand-icon')).toBeInTheDocument()
+    expect(container.querySelector('svg[data-icon="arch-linux"]')).toBeInTheDocument()
+  })
 })

@@ -237,6 +237,9 @@ describe('WorkbenchServerEditor credentials field', () => {
 
     await screen.findByText('Production Bastion')
     fireEvent.click(screen.getByRole('button', { name: 'Upload' }))
+    await waitFor(() => {
+      expect(document.querySelector('img[src="data:image/png;base64,AQID"]')).toBeInTheDocument()
+    })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {

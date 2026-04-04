@@ -125,6 +125,7 @@ function TreeRow({
 
 function ServerRow({
   active,
+  connected,
   depth,
   onConnect,
   onDelete,
@@ -134,6 +135,7 @@ function ServerRow({
   server
 }: {
   active: boolean
+  connected?: boolean
   depth?: number
   onConnect: () => void
   onDelete: () => void
@@ -153,6 +155,7 @@ function ServerRow({
     onConnect()
   }
   const connectLabel = t('workbench.primarySidebar.actions.connect')
+  const connectedLabel = t('workbench.primarySidebar.labels.connected')
 
   return (
     <ContextMenu>
@@ -167,6 +170,11 @@ function ServerRow({
             )}
           />
           <span className="min-w-0 flex-1 truncate">{server.name}</span>
+          {connected ? (
+            <span className="rounded-full border border-emerald-500/25 bg-emerald-500/12 px-2 py-0.5 text-[10px] font-medium tracking-[0.08em] text-emerald-700 dark:text-emerald-300">
+              {connectedLabel}
+            </span>
+          ) : null}
           {server.favorite ? <Heart className="size-3.5 fill-amber-400 text-amber-400" /> : null}
           <TooltipAction content={connectLabel} side="right">
             <button
@@ -271,7 +279,6 @@ export function WorkbenchPrimarySidebar() {
     refreshWorkspaceData,
     toggleFavorite
   } = useWorkbenchContext()
-  const activeSessionId = useSessionsStore((state) => state.activeSessionId)
   const sessions = useSessionsStore((state) => state.tabs)
   const ClearIcon = actionIcons.clear
   const collapsedSections = useWorkbenchStore((state) => state.collapsedSections)
@@ -307,6 +314,13 @@ export function WorkbenchPrimarySidebar() {
   const tags = useMemo(() => tagsQuery.data ?? [], [tagsQuery.data])
   const recents = useMemo(() => recentQuery.data ?? [], [recentQuery.data])
   const recentIds = useMemo(() => new Set(recents.map((recent) => recent.serverId)), [recents])
+  const connectedServerIds = useMemo(
+    () =>
+      new Set(
+        sessions.filter((session) => session.status === 'ready').map((session) => session.serverId)
+      ),
+    [sessions]
+  )
 
   const filteredServers = useMemo(() => {
     if (selectedExplorerNode === 'favorites') {
@@ -415,6 +429,55 @@ export function WorkbenchPrimarySidebar() {
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-2 py-3">
           <section className="space-y-1">
             <SectionHeader
+              title={t('workbench.primarySidebar.sections.allServers')}
+              collapsed={Boolean(collapsedSections['all-servers'])}
+              onToggle={() => toggleSection('all-servers')}
+              action={
+                <TooltipAction content={t('common.actions.newConnection')}>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="text-muted-foreground"
+                    aria-label={t('common.actions.newConnection')}
+                    onClick={() => openServerEditor()}
+                  >
+                    <Plus className="size-3.5" />
+                  </Button>
+                </TooltipAction>
+              }
+            />
+            {!collapsedSections['all-servers'] ? (
+              <div className="space-y-0.5">
+                <TreeRow
+                  active={selectedExplorerNode === 'all-servers' || selectedExplorerNode === 'home'}
+                  onClick={() => setSelectedExplorerNode('all-servers')}
+                >
+                  <Tags className="size-4" />
+                  <span className="flex-1 truncate">
+                    {t('workbench.primarySidebar.sections.allServers')}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{filteredServers.length}</span>
+                </TreeRow>
+                {filteredServers.map((server) => (
+                  <ServerRow
+                    key={server.id}
+                    active={selectedExplorerNode === `server:${server.id}`}
+                    connected={connectedServerIds.has(server.id)}
+                    depth={1}
+                    server={server}
+                    onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
+                    onConnect={() => void connectServer(server)}
+                    onDelete={() => setPendingDeleteServer(server)}
+                    onEdit={() => openServerEditor(server.id)}
+                    onToggleFavorite={() => void toggleFavorite(server.id)}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="space-y-1">
+            <SectionHeader
               title={t('workbench.primarySidebar.sections.favorites')}
               collapsed={Boolean(collapsedSections.favorites)}
               onToggle={() => toggleSection('favorites')}
@@ -439,6 +502,7 @@ export function WorkbenchPrimarySidebar() {
                     <ServerRow
                       key={server.id}
                       active={selectedExplorerNode === `server:${server.id}`}
+                      connected={connectedServerIds.has(server.id)}
                       depth={1}
                       server={server}
                       onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
@@ -448,72 +512,6 @@ export function WorkbenchPrimarySidebar() {
                       onToggleFavorite={() => void toggleFavorite(server.id)}
                     />
                   ))}
-              </div>
-            ) : null}
-          </section>
-
-          <section className="space-y-1">
-            <SectionHeader
-              title={t('workbench.primarySidebar.sections.recent')}
-              collapsed={Boolean(collapsedSections.recent)}
-              onToggle={() => toggleSection('recent')}
-            />
-            {!collapsedSections.recent ? (
-              <div className="space-y-0.5">
-                <TreeRow
-                  active={selectedExplorerNode === 'recent'}
-                  onClick={() => setSelectedExplorerNode('recent')}
-                >
-                  <FolderTree className="size-4" />
-                  <span className="flex-1 truncate">
-                    {t('workbench.primarySidebar.sections.recent')}
-                  </span>
-                  <TooltipAction
-                    content={t('workbench.primarySidebar.actions.clearRecent')}
-                    side="right"
-                  >
-                    <button
-                      type="button"
-                      className="flex size-5 shrink-0 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--workbench-muted)]"
-                      aria-label={t('workbench.primarySidebar.actions.clearRecent')}
-                      disabled={recents.length === 0}
-                      onMouseDown={(event) => {
-                        event.stopPropagation()
-                      }}
-                      onDoubleClick={(event) => {
-                        event.preventDefault()
-                        event.stopPropagation()
-                      }}
-                      onClick={(event) => {
-                        event.preventDefault()
-                        event.stopPropagation()
-                        void handleClearRecent()
-                      }}
-                    >
-                      <ClearIcon className="size-3.5" />
-                    </button>
-                  </TooltipAction>
-                  <span className="text-xs text-muted-foreground">{recents.length}</span>
-                </TreeRow>
-                {recents.map((recent) => {
-                  const server = servers.find((item) => item.id === recent.serverId)
-                  if (!server) {
-                    return null
-                  }
-
-                  return (
-                    <ServerRow
-                      key={recent.id}
-                      active={false}
-                      depth={1}
-                      server={server}
-                      onConnect={() => void connectServer(server)}
-                      onDelete={() => setPendingDeleteServer(server)}
-                      onEdit={() => openServerEditor(server.id)}
-                      onToggleFavorite={() => void toggleFavorite(server.id)}
-                    />
-                  )
-                })}
               </div>
             ) : null}
           </section>
@@ -590,6 +588,7 @@ export function WorkbenchPrimarySidebar() {
                             <ServerRow
                               key={server.id}
                               active={selectedExplorerNode === `server:${server.id}`}
+                              connected={connectedServerIds.has(server.id)}
                               depth={1}
                               server={server}
                               onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
@@ -681,6 +680,7 @@ export function WorkbenchPrimarySidebar() {
                             <ServerRow
                               key={server.id}
                               active={selectedExplorerNode === `server:${server.id}`}
+                              connected={connectedServerIds.has(server.id)}
                               depth={1}
                               server={server}
                               onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
@@ -700,53 +700,66 @@ export function WorkbenchPrimarySidebar() {
 
           <section className="space-y-1">
             <SectionHeader
-              title={t('workbench.primarySidebar.sections.allServers')}
-              collapsed={Boolean(collapsedSections['all-servers'])}
-              onToggle={() => toggleSection('all-servers')}
-              action={
-                <TooltipAction content={t('common.actions.newConnection')}>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    className="text-muted-foreground"
-                    aria-label={t('common.actions.newConnection')}
-                    onClick={() => openServerEditor()}
-                  >
-                    <Plus className="size-3.5" />
-                  </Button>
-                </TooltipAction>
-              }
+              title={t('workbench.primarySidebar.sections.recent')}
+              collapsed={Boolean(collapsedSections.recent)}
+              onToggle={() => toggleSection('recent')}
             />
-            {!collapsedSections['all-servers'] ? (
+            {!collapsedSections.recent ? (
               <div className="space-y-0.5">
                 <TreeRow
-                  active={selectedExplorerNode === 'all-servers' || selectedExplorerNode === 'home'}
-                  onClick={() => setSelectedExplorerNode('all-servers')}
+                  active={selectedExplorerNode === 'recent'}
+                  onClick={() => setSelectedExplorerNode('recent')}
                 >
-                  <Tags className="size-4" />
+                  <FolderTree className="size-4" />
                   <span className="flex-1 truncate">
-                    {t('workbench.primarySidebar.sections.allServers')}
+                    {t('workbench.primarySidebar.sections.recent')}
                   </span>
-                  <span className="text-xs text-muted-foreground">{filteredServers.length}</span>
+                  <TooltipAction
+                    content={t('workbench.primarySidebar.actions.clearRecent')}
+                    side="right"
+                  >
+                    <button
+                      type="button"
+                      className="flex size-5 shrink-0 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--workbench-muted)]"
+                      aria-label={t('workbench.primarySidebar.actions.clearRecent')}
+                      disabled={recents.length === 0}
+                      onMouseDown={(event) => {
+                        event.stopPropagation()
+                      }}
+                      onDoubleClick={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                      }}
+                      onClick={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        void handleClearRecent()
+                      }}
+                    >
+                      <ClearIcon className="size-3.5" />
+                    </button>
+                  </TooltipAction>
+                  <span className="text-xs text-muted-foreground">{recents.length}</span>
                 </TreeRow>
-                {filteredServers.map((server) => (
-                  <ServerRow
-                    key={server.id}
-                    active={
-                      selectedExplorerNode === `server:${server.id}` ||
-                      (activeSessionId
-                        ? sessions.some((session) => session.serverId === server.id)
-                        : false)
-                    }
-                    depth={1}
-                    server={server}
-                    onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
-                    onConnect={() => void connectServer(server)}
-                    onDelete={() => setPendingDeleteServer(server)}
-                    onEdit={() => openServerEditor(server.id)}
-                    onToggleFavorite={() => void toggleFavorite(server.id)}
-                  />
-                ))}
+                {recents.map((recent) => {
+                  const server = servers.find((item) => item.id === recent.serverId)
+                  if (!server) {
+                    return null
+                  }
+
+                  return (
+                    <ServerRow
+                      key={recent.id}
+                      active={false}
+                      depth={1}
+                      server={server}
+                      onConnect={() => void connectServer(server)}
+                      onDelete={() => setPendingDeleteServer(server)}
+                      onEdit={() => openServerEditor(server.id)}
+                      onToggleFavorite={() => void toggleFavorite(server.id)}
+                    />
+                  )
+                })}
               </div>
             ) : null}
           </section>

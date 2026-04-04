@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
+  faArchLinux,
   faCentos,
   faDebian,
   faFedora,
@@ -14,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { resolveServerBrandId } from '@/lib/server-brand'
 
 const brandIcons = {
+  archlinux: faArchLinux,
   centos: faCentos,
   debian: faDebian,
   fedora: faFedora,

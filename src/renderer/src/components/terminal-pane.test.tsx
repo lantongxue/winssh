@@ -145,9 +145,34 @@ describe('TerminalPane', () => {
     expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('100')
 
     act(() => {
-      vi.advanceTimersByTime(320)
+      vi.advanceTimersByTime(620)
     })
 
     expect(screen.queryByText('Connected to alpha')).not.toBeInTheDocument()
+  })
+
+  it('keeps terminal padding off the xterm mount node so fit calculations stay accurate', () => {
+    const readySession: SessionTab = {
+      ...session,
+      connectionPhase: 'attach',
+      status: 'ready'
+    }
+
+    const { container } = render(
+      <TerminalPane
+        session={readySession}
+        settings={settings}
+        theme={theme}
+        onReconnect={async () => undefined}
+      />
+    )
+
+    const surface = container.querySelector('.terminal-surface')
+    expect(surface).toBeTruthy()
+    expect(surface?.className).toContain('p-2')
+
+    const terminalMount = surface?.firstElementChild
+    expect(terminalMount).toBeTruthy()
+    expect(terminalMount?.className).not.toContain('p-2')
   })
 })

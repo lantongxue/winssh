@@ -164,11 +164,14 @@ export function TerminalPane({ session, settings, theme, onReconnect }: Terminal
 
   // 连接中：让 displayedConnectionPhase 以最小间隔追赶 session.connectionPhase
   useEffect(() => {
-    if (session.status !== 'connecting') {
+    if (session.status !== 'connecting' && session.status !== 'ready') {
       return
     }
 
-    const targetPhase = session.connectionPhase ?? SESSION_CONNECTION_PHASES[0]
+    const targetPhase =
+      session.status === 'ready'
+        ? LAST_CONNECTION_PHASE
+        : session.connectionPhase ?? SESSION_CONNECTION_PHASES[0]
     const currentIndex = SESSION_CONNECTION_PHASES.findIndex((p) => p === displayedConnectionPhase)
     const targetIndex = SESSION_CONNECTION_PHASES.findIndex((p) => p === targetPhase)
 
@@ -183,7 +186,7 @@ export function TerminalPane({ session, settings, theme, onReconnect }: Terminal
     return () => window.clearTimeout(timeout)
   }, [session.status, session.connectionPhase, displayedConnectionPhase])
 
-  // 连接成功：立刻拉满进度、显示"已连接" overlay
+  // 连接成功：等待阶段回放完成后显示"已连接" overlay
   useEffect(() => {
     if (session.status !== 'ready') {
       return
@@ -193,11 +196,13 @@ export function TerminalPane({ session, settings, theme, onReconnect }: Terminal
       return
     }
 
+    if (displayedConnectionPhase !== LAST_CONNECTION_PHASE) {
+      return
+    }
+
     completedOverlayCycleRef.current = connectionCycleKey
-    // 立即将进度推到最后一步
-    setDisplayedConnectionPhase(LAST_CONNECTION_PHASE)
     setShowConnectedOverlay(true)
-  }, [session.status, connectionCycleKey])
+  }, [session.status, connectionCycleKey, displayedConnectionPhase])
 
   // "已连接" overlay 定时消失：独立 effect，避免被其他依赖变化打断 timer
   useEffect(() => {
@@ -215,16 +220,19 @@ export function TerminalPane({ session, settings, theme, onReconnect }: Terminal
   // overlay 可见条件：
   // - 正在连接中
   // - 连接成功后短暂展示"已连接"
+  const replayingCompletedConnection =
+    session.status === 'ready' && displayedConnectionPhase !== LAST_CONNECTION_PHASE
   const overlayVisible =
     session.status === 'connecting' ||
+    replayingCompletedConnection ||
     (session.status === 'ready' && showConnectedOverlay)
 
   return (
     <div
-      className="relative h-full terminal-surface"
+      className="relative h-full p-2 terminal-surface"
       style={theme ? { backgroundColor: theme.terminal.background } : undefined}
     >
-      <div ref={terminalRef} className="h-full w-full overflow-hidden p-2" />
+      <div ref={terminalRef} className="h-full w-full overflow-hidden" />
 
       {overlayVisible ? (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[var(--terminal-overlay-backdrop)] backdrop-blur-[var(--terminal-overlay-backdrop-blur)]">

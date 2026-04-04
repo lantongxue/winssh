@@ -417,6 +417,24 @@ describe('SessionManager connect', () => {
     expect(database.updateServerBrand).toHaveBeenCalledWith('server-1', 'ubuntu')
   })
 
+  it('detects and stores the archlinux brand from Arch os-release identifiers', async () => {
+    const { database, manager } = createManager()
+    clientBehaviors.push({ type: 'ready' })
+    sftpFiles.set('/etc/os-release', 'ID=arch\nNAME="Arch Linux"\n')
+
+    const result = await manager.connect({
+      secrets: {
+        'server-1': {
+          password: 'correct-password'
+        }
+      },
+      serverId: 'server-1'
+    })
+
+    expect(result.ok).toBe(true)
+    expect(database.updateServerBrand).toHaveBeenCalledWith('server-1', 'archlinux')
+  })
+
   it('falls back to linux when brand detection cannot match the remote OS', async () => {
     const { database, manager } = createManager()
     clientBehaviors.push({ type: 'ready' })

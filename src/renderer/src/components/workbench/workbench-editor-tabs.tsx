@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import type { Server } from '@shared/types'
 import { actionIcons } from '@/lib/action-icons'
+import { ServerBrandIcon } from '@/components/server-brand-icon'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import { Button } from '@/components/ui/button'
 import {
@@ -97,8 +99,16 @@ export function WorkbenchEditorTabs() {
     () => new Map(sessions.map((session) => [session.sessionId, session.serverName])),
     [sessions]
   )
+  const sessionServerIdMap = useMemo(
+    () => new Map(sessions.map((session) => [session.sessionId, session.serverId])),
+    [sessions]
+  )
   const serverNameMap = useMemo(
     () => new Map((serversQuery.data ?? []).map((server) => [server.id, server.name])),
+    [serversQuery.data]
+  )
+  const serverMap = useMemo(
+    () => new Map((serversQuery.data ?? []).map((server) => [server.id, server])),
     [serversQuery.data]
   )
   const renameTargetDocument = useMemo(
@@ -111,6 +121,19 @@ export function WorkbenchEditorTabs() {
 
   const getBaseTitle = (document: WorkbenchDocument) =>
     getBaseDocumentTitle(document, sessionNameMap, serverNameMap, t)
+
+  const getDocumentServer = (document: WorkbenchDocument): Server | null => {
+    if (document.kind === 'server-editor') {
+      return document.serverId ? serverMap.get(document.serverId) ?? null : null
+    }
+
+    if (document.kind === 'session-editor') {
+      const serverId = sessionServerIdMap.get(document.sessionId)
+      return serverId ? serverMap.get(serverId) ?? null : null
+    }
+
+    return null
+  }
 
   const resetDragState = () => {
     setDraggedDocumentId(null)
@@ -187,6 +210,7 @@ export function WorkbenchEditorTabs() {
         <div className="liquid-glass-tab-strip flex min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
           {openDocuments.map((document, index) => {
             const active = document.id === activeDocumentId
+            const documentServer = getDocumentServer(document)
             const title = getTitle(document)
             const tabButton = (
               <button
@@ -226,6 +250,13 @@ export function WorkbenchEditorTabs() {
                   resetDragState()
                 }}
               >
+                {document.kind === 'server-editor' || document.kind === 'session-editor' ? (
+                  <ServerBrandIcon
+                    brandId={documentServer?.brandId}
+                    customIconDataUrl={documentServer?.customIconDataUrl}
+                    className="size-3.5 shrink-0 text-[var(--workbench-active)]"
+                  />
+                ) : null}
                 <span className="truncate">{title}</span>
                 <Tooltip>
                   <TooltipTrigger asChild>

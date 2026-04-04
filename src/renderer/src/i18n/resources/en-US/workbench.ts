@@ -137,6 +137,9 @@ const workbench = {
         rename: 'Rename'
       },
       description: 'Single-click to open the editor, double-click to start an SSH session.',
+      labels: {
+        connected: 'Connected'
+      },
       dialogs: {
         deleteServer: {
           description:
@@ -217,6 +220,7 @@ const workbench = {
         privateKey: 'Private Key'
       },
       brands: {
+        archlinux: 'Arch Linux',
         centos: 'CentOS',
         debian: 'Debian',
         fedora: 'Fedora',
