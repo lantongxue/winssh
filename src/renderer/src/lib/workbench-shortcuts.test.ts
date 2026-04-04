@@ -61,6 +61,20 @@ describe('resolveWorkbenchShortcutAction', () => {
     ).toBe('saveActiveDocument')
   })
 
+  it('closes the active document with Cmd+W on macOS', () => {
+    expect(
+      resolveWorkbenchShortcutAction(
+        {
+          ctrlKey: false,
+          key: 'w',
+          metaKey: true,
+          shiftKey: false
+        },
+        true
+      )
+    ).toBe('closeActiveDocument')
+  })
+
   it('opens settings with Cmd+, on macOS', () => {
     expect(
       resolveWorkbenchShortcutAction(
@@ -104,6 +118,18 @@ describe('resolveWorkbenchShortcutAction', () => {
       resolveWorkbenchShortcutAction(
         {
           ctrlKey: true,
+          key: 'w',
+          metaKey: false,
+          shiftKey: false
+        },
+        false
+      )
+    ).toBe('closeActiveDocument')
+
+    expect(
+      resolveWorkbenchShortcutAction(
+        {
+          ctrlKey: true,
           key: 'p',
           metaKey: false,
           shiftKey: false
@@ -134,10 +160,15 @@ describe('getWorkbenchShortcutLabel', () => {
   })
 
   it('returns control-based labels for non-mac platforms', () => {
+    expect(getWorkbenchShortcutLabel('closeTab', false)).toBe('Ctrl+W')
     expect(getWorkbenchShortcutLabel('commandPalette', false)).toBe('Ctrl+Shift+P')
     expect(getWorkbenchShortcutLabel('openSettings', false)).toBe('Ctrl+,')
     expect(getWorkbenchShortcutLabel('quickOpen', false)).toBe('Ctrl+P')
     expect(getWorkbenchShortcutLabel('save', false)).toBe('Ctrl+S')
     expect(getWorkbenchShortcutLabel('toggleSidebar', false)).toBe('Ctrl+B')
+  })
+
+  it('returns the macOS close-tab label', () => {
+    expect(getWorkbenchShortcutLabel('closeTab', true)).toBe('Cmd+W')
   })
 })

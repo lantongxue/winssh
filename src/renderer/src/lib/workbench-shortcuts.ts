@@ -1,6 +1,7 @@
 import { isMacPlatform } from '@/lib/platform'
 
 export type WorkbenchShortcutId =
+  | 'closeTab'
   | 'commandPalette'
   | 'newConnection'
   | 'openSettings'
@@ -10,6 +11,7 @@ export type WorkbenchShortcutId =
   | 'toggleSidebar'
 
 export type WorkbenchShortcutAction =
+  | 'closeActiveDocument'
   | 'openCommandPalette'
   | 'openNewConnection'
   | 'openSettings'
@@ -27,6 +29,8 @@ export function getWorkbenchShortcutLabel(
   const modifierLabel = isMac ? 'Cmd' : 'Ctrl'
 
   switch (shortcutId) {
+    case 'closeTab':
+      return `${modifierLabel}+W`
     case 'commandPalette':
       return isMac ? `${modifierLabel}+P` : `${modifierLabel}+Shift+P`
     case 'newConnection':
@@ -72,6 +76,10 @@ export function resolveWorkbenchShortcutAction(
 
   if (key === 's') {
     return 'saveActiveDocument'
+  }
+
+  if (key === 'w') {
+    return 'closeActiveDocument'
   }
 
   if (key !== 'p') {

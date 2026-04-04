@@ -5,12 +5,16 @@ import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { WorkbenchShell } from '@/components/workbench/workbench-shell'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { createServerEditorDocument } from '@/lib/workbench'
+import { createServerEditorDocument, createSessionEditorDocument } from '@/lib/workbench'
 import { createWinsshApiMock } from '@/test/create-winssh-api'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 
-function renderWorkbenchShell() {
+vi.mock('@/components/workbench/workbench-session-editor', () => ({
+  WorkbenchSessionEditor: () => <div data-testid="session-editor" />
+}))
+
+function renderWorkbenchShell(initialEntry = '/servers') {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -20,7 +24,7 @@ function renderWorkbenchShell() {
   })
 
   return render(
-    <MemoryRouter initialEntries={['/servers']}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <WorkbenchShell />
@@ -50,6 +54,17 @@ const createdServer = {
   tags: [],
   updatedAt: '',
   username: 'ops'
+}
+
+const activeSession = {
+  connectedAt: new Date().toISOString(),
+  currentPath: '/root',
+  host: '203.0.113.10',
+  port: 22,
+  serverId: 'server-1',
+  serverName: 'Shortcut Host',
+  sessionId: 'session-1',
+  status: 'ready' as const
 }
 
 beforeEach(async () => {
@@ -110,6 +125,50 @@ describe('WorkbenchShell shortcuts', () => {
       const state = useWorkbenchStore.getState()
       expect(state.activeActivityId).toBe('settings')
       expect(state.activeDocumentId).toBe('settings-editor')
+    })
+  })
+
+  it('closes the active server editor with Cmd+W', async () => {
+    window.winsshApi = createWinsshApiMock({
+      servers: {
+        list: vi.fn().mockResolvedValue([])
+      }
+    })
+
+    useWorkbenchStore.getState().openDocument(createServerEditorDocument())
+    renderWorkbenchShell()
+
+    fireEvent.keyDown(window, { key: 'w', metaKey: true })
+
+    await waitFor(() => {
+      const state = useWorkbenchStore.getState()
+      expect(state.openDocuments).toEqual([])
+      expect(state.activeDocumentId).toBeNull()
+    })
+  })
+
+  it('disconnects the active session with Cmd+W', async () => {
+    const disconnect = vi.fn().mockResolvedValue(undefined)
+
+    window.winsshApi = createWinsshApiMock({
+      servers: {
+        list: vi.fn().mockResolvedValue([createdServer])
+      },
+      sessions: {
+        disconnect
+      }
+    })
+
+    useSessionsStore.getState().addSession(activeSession)
+    useWorkbenchStore.getState().openDocument(createSessionEditorDocument(activeSession.sessionId))
+    renderWorkbenchShell('/sessions')
+
+    fireEvent.keyDown(window, { key: 'w', metaKey: true })
+
+    await waitFor(() => {
+      expect(disconnect).toHaveBeenCalledWith(activeSession.sessionId)
+      expect(useSessionsStore.getState().tabs).toEqual([])
+      expect(useWorkbenchStore.getState().openDocuments).toEqual([])
     })
   })
 })

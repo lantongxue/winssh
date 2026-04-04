@@ -71,7 +71,16 @@ const jumpServer = {
   hasPassword: false,
   host: '10.0.0.9',
   id: 'jump-1',
-  name: 'Existing Jump'
+  name: 'Existing Jump',
+  tags: [
+    {
+      color: 'amber',
+      createdAt: '',
+      id: 'tag-jump',
+      name: 'jumpserver',
+      updatedAt: ''
+    }
+  ]
 }
 
 const databaseTag = {
@@ -196,9 +205,14 @@ describe('WorkbenchServerEditor credentials field', () => {
     const jumpServerSelect = (await screen.findAllByRole('combobox'))[2]
     expect(jumpServerSelect).toBeDefined()
     fireEvent.click(jumpServerSelect as HTMLElement)
-    fireEvent.click(await screen.findByRole('option', { name: 'Existing Jump' }))
+
+    const jumpServerOption = await screen.findByRole('option', { name: /Existing Jump/i })
+    expect(within(jumpServerOption).getByText('jumpserver')).toBeInTheDocument()
+
+    fireEvent.click(jumpServerOption)
 
     expect(screen.getByText('root@10.0.0.9:22')).toBeInTheDocument()
+    expect(screen.getAllByText('jumpserver').length).toBeGreaterThan(0)
   })
 
   it('creates a minimal jump server, tags it, and selects it in the form', async () => {

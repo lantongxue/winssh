@@ -79,7 +79,7 @@ function WorkbenchTerminalWelcome() {
 }
 
 function WorkbenchShellContent() {
-  const { openServerEditor, openSettingsEditor } = useWorkbenchContext()
+  const { disconnectSession, openServerEditor, openSettingsEditor } = useWorkbenchContext()
   const location = useLocation()
   const navigate = useNavigate()
   const activeDocumentId = useWorkbenchStore((state) => state.activeDocumentId)
@@ -88,6 +88,7 @@ function WorkbenchShellContent() {
   const panelOpen = useWorkbenchStore((state) => state.panelOpen)
   const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen)
   const openDocument = useWorkbenchStore((state) => state.openDocument)
+  const closeDocument = useWorkbenchStore((state) => state.closeDocument)
   const setActiveActivity = useWorkbenchStore((state) => state.setActiveActivity)
   const setCommandPaletteOpen = useWorkbenchStore((state) => state.setCommandPaletteOpen)
   const setQuickOpenOpen = useWorkbenchStore((state) => state.setQuickOpenOpen)
@@ -157,6 +158,20 @@ function WorkbenchShellContent() {
         return
       }
 
+      if (action === 'closeActiveDocument') {
+        if (!activeDocument) {
+          return
+        }
+
+        if (activeDocument.kind === 'session-editor') {
+          void disconnectSession(activeDocument.sessionId)
+          return
+        }
+
+        closeDocument(activeDocument.id)
+        return
+      }
+
       if (action === 'toggleSidebar') {
         toggleSidebar()
         return
@@ -195,6 +210,8 @@ function WorkbenchShellContent() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [
     activeDocument,
+    closeDocument,
+    disconnectSession,
     isMac,
     openServerEditor,
     openSettingsEditor,

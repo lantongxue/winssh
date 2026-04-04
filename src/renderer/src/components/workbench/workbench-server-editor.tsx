@@ -216,6 +216,31 @@ function sortTagsByName(tags: Tag[]) {
   )
 }
 
+function ServerTagBadges({ tags }: { tags: Tag[] }) {
+  if (tags.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+      {tags.map((tag) => {
+        const style = getColorStyle(tag.color)
+
+        return (
+          <Badge
+            key={tag.id}
+            variant="outline"
+            className={cn('max-w-full px-2 py-0.5 text-[11px]', style.badge)}
+          >
+            <span className={cn('size-1.5 rounded-full', style.dot)} />
+            <span className="truncate">{tag.name}</span>
+          </Badge>
+        )
+      })}
+    </div>
+  )
+}
+
 export function WorkbenchServerEditor({ document }: { document: ServerEditorDocument }) {
   const { t } = useTranslation()
   const { connectServer, refreshWorkspaceData } = useWorkbenchContext()
@@ -875,18 +900,26 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                           {t('workbench.serverEditor.placeholders.jumpServer')}
                         </SelectItem>
                         {availableJumpServers.map((jumpServer) => (
-                          <SelectItem key={jumpServer.id} value={jumpServer.id}>
-                            {jumpServer.name}
+                          <SelectItem
+                            key={jumpServer.id}
+                            value={jumpServer.id}
+                            textValue={`${jumpServer.name} ${jumpServer.tags.map((tag) => tag.name).join(' ')}`.trim()}
+                          >
+                            <div className="flex w-full min-w-0 items-center gap-2">
+                              <span className="truncate">{jumpServer.name}</span>
+                              <ServerTagBadges tags={jumpServer.tags} />
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     {selectedJumpServer ? (
-                      <div className="flex items-center gap-2 rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-editor)] px-3 py-2 text-sm">
+                      <div className="flex flex-wrap items-center gap-2 rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-editor)] px-3 py-2 text-sm">
                         <ShieldCheck className="size-4 text-amber-500" />
                         <span className="font-medium text-foreground">
                           {selectedJumpServer.name}
                         </span>
+                        <ServerTagBadges tags={selectedJumpServer.tags} />
                         <span className="text-muted-foreground">
                           {t('workbench.serverEditor.descriptions.existing', {
                             host: selectedJumpServer.host,
