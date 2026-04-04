@@ -437,6 +437,7 @@ button,
     var(--glass-surface-interactive)
   );
   border-color: var(--glass-border);
+  color: var(--foreground);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 84%, transparent);
 }
 
@@ -471,6 +472,7 @@ button,
 .theme-liquid-glass [data-slot='button'][data-variant='secondary'],
 .theme-liquid-glass [data-slot='button'][data-variant='ghost'] {
   border-color: var(--glass-border);
+  color: var(--foreground);
   background: linear-gradient(
     180deg,
     color-mix(in srgb, var(--glass-surface-interactive-hover) 82%, var(--glass-highlight) 18%),
@@ -494,9 +496,49 @@ button,
 .theme-liquid-glass [data-slot='button'][data-variant='ghost']:hover {
   transform: translateY(-1px);
   border-color: var(--glass-border-strong);
+  color: var(--foreground);
   box-shadow:
     inset 0 1px 0 var(--glass-highlight),
     var(--glass-glow);
+}
+
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='button'][data-variant='outline'],
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='button'][data-variant='secondary'],
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='button'][data-variant='ghost'],
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='button'][data-variant='outline']:hover,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='button'][data-variant='secondary']:hover,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='button'][data-variant='ghost']:hover,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='command-item'][data-selected='true'],
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='context-menu-item']:focus,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='context-menu-checkbox-item']:focus,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='context-menu-radio-item']:focus,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='context-menu-sub-trigger']:focus,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='context-menu-sub-trigger'][data-state='open'],
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='dropdown-menu-item']:focus,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='dropdown-menu-checkbox-item']:focus,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='dropdown-menu-radio-item']:focus,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='dropdown-menu-sub-trigger']:focus,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='dropdown-menu-sub-trigger'][data-state='open'],
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='select-item']:focus {
+  color: var(--foreground);
+}
+
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='button'][data-variant='outline'] svg,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='button'][data-variant='secondary'] svg,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='button'][data-variant='ghost'] svg,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='command-item'][data-selected='true'] svg,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='context-menu-item']:focus svg,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='context-menu-checkbox-item']:focus svg,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='context-menu-radio-item']:focus svg,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='context-menu-sub-trigger']:focus svg,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='context-menu-sub-trigger'][data-state='open'] svg,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='dropdown-menu-item']:focus svg,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='dropdown-menu-checkbox-item']:focus svg,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='dropdown-menu-radio-item']:focus svg,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='dropdown-menu-sub-trigger']:focus svg,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='dropdown-menu-sub-trigger'][data-state='open'] svg,
+.theme-liquid-glass[data-theme-appearance='light'] [data-slot='select-item']:focus svg {
+  color: var(--workbench-muted);
 }
 
 .theme-liquid-glass [data-slot='button'][data-variant='destructive'] {
