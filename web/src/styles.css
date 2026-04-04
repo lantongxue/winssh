@@ -123,6 +123,27 @@ a {
   color: var(--workbench-muted);
 }
 
+.site-marker-title {
+  line-height: 1.08;
+}
+
+.site-marker-title__text {
+  display: inline;
+  padding-inline: 0.08em;
+  padding-bottom: 0.08em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  background-image: linear-gradient(
+    180deg,
+    transparent 0 46%,
+    color-mix(in srgb, var(--workbench-active) 12%, transparent) 46% 54%,
+    color-mix(in srgb, var(--workbench-active) 32%, transparent) 54% 90%,
+    color-mix(in srgb, var(--workbench-active) 18%, white) 90% 96%,
+    transparent 96% 100%
+  );
+  background-repeat: no-repeat;
+}
+
 .site-primary-button,
 .site-secondary-button {
   display: inline-flex;

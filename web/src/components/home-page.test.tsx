@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { HomePage } from '@/components/home-page'
 import { SiteLanguageProvider } from '@/components/site-language'
 
@@ -29,8 +29,10 @@ describe('HomePage', () => {
 
     expect(screen.getByLabelText('Overview')).toHaveAttribute('aria-current', 'location')
 
-    window.location.hash = '#features'
-    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    act(() => {
+      window.location.hash = '#features'
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+    })
 
     await waitFor(() => {
       expect(screen.getByLabelText('Features')).toHaveAttribute('aria-current', 'location')

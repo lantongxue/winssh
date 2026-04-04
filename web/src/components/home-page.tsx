@@ -40,8 +40,8 @@ export function HomePage() {
           <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--workbench-muted)]">
             {copy.home.hero.eyebrow}
           </div>
-          <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-[-0.03em] text-[var(--foreground)] sm:text-5xl">
-            {copy.home.hero.title}
+          <h1 className="site-marker-title mt-3 max-w-3xl text-4xl font-semibold tracking-[-0.03em] text-[var(--foreground)] sm:text-5xl">
+            <span className="site-marker-title__text">{copy.home.hero.title}</span>
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--workbench-muted)] sm:text-lg">
             {copy.home.hero.subtitle}
