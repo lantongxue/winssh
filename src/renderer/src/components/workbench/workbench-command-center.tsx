@@ -147,6 +147,7 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
             >
               <OpenSettingsIcon className="size-4" />
               {t('common.actions.openSettings')}
+              <CommandShortcut>{getWorkbenchShortcutLabel('openSettings', isMac)}</CommandShortcut>
             </CommandItem>
           </CommandGroup>
 

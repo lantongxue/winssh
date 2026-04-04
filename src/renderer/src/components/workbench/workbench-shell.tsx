@@ -79,7 +79,7 @@ function WorkbenchTerminalWelcome() {
 }
 
 function WorkbenchShellContent() {
-  const { openServerEditor } = useWorkbenchContext()
+  const { openServerEditor, openSettingsEditor } = useWorkbenchContext()
   const location = useLocation()
   const navigate = useNavigate()
   const activeDocumentId = useWorkbenchStore((state) => state.activeDocumentId)
@@ -180,6 +180,13 @@ function WorkbenchShellContent() {
         return
       }
 
+      if (action === 'openSettings') {
+        setCommandPaletteOpen(false)
+        setQuickOpenOpen(false)
+        openSettingsEditor()
+        return
+      }
+
       setQuickOpenOpen(true)
       setCommandPaletteOpen(false)
     }
@@ -190,6 +197,7 @@ function WorkbenchShellContent() {
     activeDocument,
     isMac,
     openServerEditor,
+    openSettingsEditor,
     setCommandPaletteOpen,
     setQuickOpenOpen,
     togglePanel,

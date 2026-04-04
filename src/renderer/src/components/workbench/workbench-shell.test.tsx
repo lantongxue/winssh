@@ -93,4 +93,22 @@ describe('WorkbenchShell shortcuts', () => {
       )
     })
   })
+
+  it('opens the settings editor with Cmd+,', async () => {
+    window.winsshApi = createWinsshApiMock({
+      servers: {
+        list: vi.fn().mockResolvedValue([])
+      }
+    })
+
+    renderWorkbenchShell()
+
+    fireEvent.keyDown(window, { key: ',', metaKey: true })
+
+    await waitFor(() => {
+      const state = useWorkbenchStore.getState()
+      expect(state.activeActivityId).toBe('settings')
+      expect(state.activeDocumentId).toBe('settings-editor')
+    })
+  })
 })

@@ -61,6 +61,20 @@ describe('resolveWorkbenchShortcutAction', () => {
     ).toBe('saveActiveDocument')
   })
 
+  it('opens settings with Cmd+, on macOS', () => {
+    expect(
+      resolveWorkbenchShortcutAction(
+        {
+          ctrlKey: false,
+          key: ',',
+          metaKey: true,
+          shiftKey: false
+        },
+        true
+      )
+    ).toBe('openSettings')
+  })
+
   it('keeps the existing quick-open-first behavior on non-mac platforms', () => {
     expect(
       resolveWorkbenchShortcutAction(
@@ -115,11 +129,13 @@ describe('resolveWorkbenchShortcutAction', () => {
 describe('getWorkbenchShortcutLabel', () => {
   it('returns macOS-specific labels for the command palette and quick connect', () => {
     expect(getWorkbenchShortcutLabel('commandPalette', true)).toBe('Cmd+P')
+    expect(getWorkbenchShortcutLabel('openSettings', true)).toBe('Cmd+,')
     expect(getWorkbenchShortcutLabel('quickOpen', true)).toBe('Cmd+Shift+P')
   })
 
   it('returns control-based labels for non-mac platforms', () => {
     expect(getWorkbenchShortcutLabel('commandPalette', false)).toBe('Ctrl+Shift+P')
+    expect(getWorkbenchShortcutLabel('openSettings', false)).toBe('Ctrl+,')
     expect(getWorkbenchShortcutLabel('quickOpen', false)).toBe('Ctrl+P')
     expect(getWorkbenchShortcutLabel('save', false)).toBe('Ctrl+S')
     expect(getWorkbenchShortcutLabel('toggleSidebar', false)).toBe('Ctrl+B')

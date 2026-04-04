@@ -3,6 +3,7 @@ import { isMacPlatform } from '@/lib/platform'
 export type WorkbenchShortcutId =
   | 'commandPalette'
   | 'newConnection'
+  | 'openSettings'
   | 'quickOpen'
   | 'save'
   | 'togglePanel'
@@ -11,6 +12,7 @@ export type WorkbenchShortcutId =
 export type WorkbenchShortcutAction =
   | 'openCommandPalette'
   | 'openNewConnection'
+  | 'openSettings'
   | 'openQuickOpen'
   | 'saveActiveDocument'
   | 'togglePanel'
@@ -29,6 +31,8 @@ export function getWorkbenchShortcutLabel(
       return isMac ? `${modifierLabel}+P` : `${modifierLabel}+Shift+P`
     case 'newConnection':
       return `${modifierLabel}+N`
+    case 'openSettings':
+      return `${modifierLabel}+,`
     case 'quickOpen':
       return isMac ? `${modifierLabel}+Shift+P` : `${modifierLabel}+P`
     case 'save':
@@ -60,6 +64,10 @@ export function resolveWorkbenchShortcutAction(
 
   if (key === 'n') {
     return 'openNewConnection'
+  }
+
+  if (key === ',') {
+    return 'openSettings'
   }
 
   if (key === 's') {
