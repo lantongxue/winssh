@@ -205,7 +205,9 @@ const workbench = {
     },
     serverEditor: {
       actions: {
+        addTag: 'Add Tag',
         createJumpServer: 'New Jump Server',
+        deleteTag: 'Delete {{name}}',
         hideSecret: 'Hide secret',
         showSecret: 'Show secret'
       },
@@ -215,11 +217,13 @@ const workbench = {
       },
       descriptions: {
         existing: '{{username}}@{{host}}:{{port}}',
-        jumpServer: 'Choose an existing jump server, or quickly create a minimal one for this route.',
-        new: 'New SSH connection'
+        jumpServer:
+          'Choose an existing jump server, or quickly create a minimal one for this route.',
+        new: 'New SSH connection',
+        tagsInput: 'Press Enter to select an existing tag or create a new one inline.'
       },
       empty: {
-        tags: 'No tags yet. Create one in Explorer.'
+        tags: 'No tags yet. Create one here or from Explorer.'
       },
       fields: {
         authType: 'Authentication',
@@ -239,6 +243,7 @@ const workbench = {
         privateKeyFile: 'Private Key',
         rememberPassphrase: 'Remember Passphrase',
         rememberPassword: 'Remember Password',
+        tagInput: 'Add Tag',
         tags: 'Tags',
         username: 'Username'
       },
@@ -251,6 +256,7 @@ const workbench = {
         privateKeyFile: 'Paste the private key content, or import it from a PEM / KEY / PPK file',
         privateKeySecret: 'Leave empty if there is no passphrase',
         savedPassword: 'Leave empty to keep the saved password',
+        tag: 'Type a tag name and press Enter',
         ungrouped: 'Ungrouped',
         username: 'root / ubuntu / admin'
       },
@@ -281,6 +287,8 @@ const workbench = {
       toasts: {
         created: 'Server created.',
         jumpServerCreated: 'Jump server {{name}} created.',
+        tagDeleteFailed: 'Unable to delete tag.',
+        tagCreateFailed: 'Unable to create tag.',
         updated: 'Server updated.'
       },
       validation: {

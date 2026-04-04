@@ -202,7 +202,9 @@ const workbench = {
     },
     serverEditor: {
       actions: {
+        addTag: '添加标签',
         createJumpServer: '新建 Jump Server',
+        deleteTag: '删除 {{name}}',
         hideSecret: '隐藏凭据',
         showSecret: '显示凭据'
       },
@@ -213,10 +215,11 @@ const workbench = {
       descriptions: {
         existing: '{{username}}@{{host}}:{{port}}',
         jumpServer: '选择已有跳板机，或快速新建一个最小化 Jump Server 配置。',
-        new: '新的 SSH 连接'
+        new: '新的 SSH 连接',
+        tagsInput: '输入标签名后按 Enter，命中已有标签会直接选中，不存在则立即创建。'
       },
       empty: {
-        tags: '还没有标签，可在资源管理器中创建。'
+        tags: '还没有标签，可直接在这里输入创建，也可以在资源管理器中创建。'
       },
       fields: {
         authType: '认证方式',
@@ -236,6 +239,7 @@ const workbench = {
         privateKeyFile: '私钥内容',
         rememberPassphrase: '记住口令',
         rememberPassword: '记住密码',
+        tagInput: '添加标签',
         tags: '标签',
         username: '用户名'
       },
@@ -248,6 +252,7 @@ const workbench = {
         privateKeyFile: '粘贴私钥内容，或从 PEM / KEY / PPK 文件导入',
         privateKeySecret: '留空表示无口令',
         savedPassword: '留空则沿用已保存密码',
+        tag: '输入标签名称后按 Enter',
         ungrouped: '未分组',
         username: 'root / ubuntu / admin'
       },
@@ -277,6 +282,8 @@ const workbench = {
       toasts: {
         created: '服务器已创建。',
         jumpServerCreated: 'Jump Server {{name}} 已创建。',
+        tagDeleteFailed: '无法删除标签。',
+        tagCreateFailed: '无法创建标签。',
         updated: '服务器已更新。'
       },
       validation: {

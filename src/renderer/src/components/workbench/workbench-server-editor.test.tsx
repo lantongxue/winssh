@@ -74,6 +74,14 @@ const jumpServer = {
   name: 'Existing Jump'
 }
 
+const databaseTag = {
+  color: 'slate',
+  createdAt: '',
+  id: 'tag-db',
+  name: 'Database',
+  updatedAt: ''
+}
+
 beforeEach(async () => {
   await i18n.changeLanguage('en-US')
   useWorkbenchStore.getState().reset()
@@ -251,5 +259,86 @@ describe('WorkbenchServerEditor credentials field', () => {
         username: 'jump'
       })
     )
+  })
+
+  it('creates a new tag directly from the inline tag input and selects it', async () => {
+    const createTag = vi.fn().mockResolvedValue(databaseTag)
+
+    window.winsshApi = createWinsshApiMock({
+      tags: {
+        create: createTag,
+        list: vi.fn().mockResolvedValue([])
+      }
+    })
+
+    renderServerEditor()
+
+    const tagInput = await screen.findByLabelText('Add Tag')
+    fireEvent.change(tagInput, {
+      target: { value: 'Database' }
+    })
+    fireEvent.keyDown(tagInput, { code: 'Enter', key: 'Enter' })
+
+    await waitFor(() => {
+      expect(createTag).toHaveBeenCalledWith({ color: 'slate', name: 'Database' })
+    })
+
+    expect(screen.getByText('1 selected')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Database' })).toBeInTheDocument()
+  })
+
+  it('selects an existing tag from the inline input without creating a duplicate', async () => {
+    const createTag = vi.fn()
+
+    window.winsshApi = createWinsshApiMock({
+      tags: {
+        create: createTag,
+        list: vi.fn().mockResolvedValue([databaseTag])
+      }
+    })
+
+    renderServerEditor()
+
+    await screen.findByRole('button', { name: 'Database' })
+    const tagInput = await screen.findByLabelText('Add Tag')
+    fireEvent.change(tagInput, {
+      target: { value: 'database' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Add Tag' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('1 selected')).toBeInTheDocument()
+    })
+
+    expect(createTag).not.toHaveBeenCalled()
+  })
+
+  it('deletes a tag from the hover action button', async () => {
+    const deleteTag = vi.fn().mockResolvedValue(undefined)
+    const listTags = vi.fn().mockResolvedValueOnce([databaseTag]).mockResolvedValue([])
+
+    window.winsshApi = createWinsshApiMock({
+      tags: {
+        delete: deleteTag,
+        list: listTags
+      }
+    })
+
+    renderServerEditor()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Database' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('1 selected')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Database' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('0 selected')).toBeInTheDocument()
+    })
+
+    expect(deleteTag).toHaveBeenCalledWith('tag-db')
+    expect(screen.queryByRole('button', { name: 'Database' })).not.toBeInTheDocument()
   })
 })

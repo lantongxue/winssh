@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type KeyboardEvent } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, EyeOff, KeyRound, LockKeyhole, ShieldCheck } from 'lucide-react'
+import { Eye, EyeOff, KeyRound, LoaderCircle, LockKeyhole, ShieldCheck, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import type { Credential, Server, ServerSecrets, ServerUpsertInput, Tag } from '@shared/types'
-import { serverSchema, type ServerFormValues } from '@shared/validation'
+import { serverSchema, tagSchema, type ServerFormValues } from '@shared/validation'
 import { actionIcons } from '@/lib/action-icons'
-import { getColorStyle } from '@/lib/colors'
+import { colorOptions, getColorStyle } from '@/lib/colors'
 import { cn } from '@/lib/utils'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import {
@@ -204,6 +204,18 @@ function buildConnectionRequest(
   return undefined
 }
 
+const defaultTagColor = colorOptions[0] ?? 'slate'
+
+function normalizeTagName(value: string) {
+  return value.trim().toLocaleLowerCase()
+}
+
+function sortTagsByName(tags: Tag[]) {
+  return [...tags].sort((left, right) =>
+    left.name.localeCompare(right.name, undefined, { sensitivity: 'base' })
+  )
+}
+
 export function WorkbenchServerEditor({ document }: { document: ServerEditorDocument }) {
   const { t } = useTranslation()
   const { connectServer, refreshWorkspaceData } = useWorkbenchContext()
@@ -246,6 +258,10 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   })
   const serverSecrets = serverSecretsQuery.data
   const [secretVisible, setSecretVisible] = useState(false)
+  const [tagDraft, setTagDraft] = useState('')
+  const [tagDraftError, setTagDraftError] = useState<string | null>(null)
+  const [tagDraftSubmitting, setTagDraftSubmitting] = useState(false)
+  const [deletingTagId, setDeletingTagId] = useState<string | null>(null)
 
   const form = useForm<ServerFormValues>({
     resolver: zodResolver(serverSchema as never),
@@ -291,10 +307,16 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   const credentialId = form.watch('credentialId')
   const jumpServerId = form.watch('jumpServerId')
   const selectedTagIds = form.watch('tagIds')
+  const tags = tagsQuery.data ?? []
+  const matchingTag = tagDraft.trim()
+    ? (tags.find((tag) => normalizeTagName(tag.name) === normalizeTagName(tagDraft)) ?? null)
+    : null
+  const matchingTagAlreadySelected = matchingTag ? selectedTagIds.includes(matchingTag.id) : false
   const isPrivateKeyAuth = authType === 'privateKey'
-  const availableJumpServers = (serversQuery.data ?? []).filter((item) => item.id !== document.serverId)
-  const selectedJumpServer =
-    availableJumpServers.find((item) => item.id === jumpServerId) ?? null
+  const availableJumpServers = (serversQuery.data ?? []).filter(
+    (item) => item.id !== document.serverId
+  )
+  const selectedJumpServer = availableJumpServers.find((item) => item.id === jumpServerId) ?? null
 
   // Derive selected credential object
   const credentials = credentialsQuery.data ?? []
@@ -349,6 +371,12 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     setJumpSecretVisible(false)
   }, [jumpAuthType])
 
+  useEffect(() => {
+    setTagDraft('')
+    setTagDraftError(null)
+    setTagDraftSubmitting(false)
+  }, [document.id])
+
   const reportValidationFailure = () => {
     const firstMessage = Object.values(form.formState.errors)[0]?.message
     pushProblem({
@@ -371,7 +399,9 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
 
   const ensureJumpServerTag = async () => {
     const availableTags = tagsQuery.data ?? (await window.winsshApi.tags.list())
-    const existing = availableTags.find((tag: Tag) => tag.name.trim().toLowerCase() === 'jumpserver')
+    const existing = availableTags.find(
+      (tag: Tag) => tag.name.trim().toLowerCase() === 'jumpserver'
+    )
 
     if (existing) {
       return existing
@@ -381,6 +411,139 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
       color: 'amber',
       name: 'jumpserver'
     })
+  }
+
+  const syncTagsQueryData = (nextTags: Tag[]) => {
+    queryClient.setQueryData<Tag[]>(['tags'], sortTagsByName(nextTags))
+  }
+
+  const setSelectedTags = (nextTagIds: string[]) => {
+    form.setValue('tagIds', nextTagIds, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true
+    })
+  }
+
+  const selectTag = (tagId: string) => {
+    const currentTagIds = form.getValues('tagIds')
+    if (currentTagIds.includes(tagId)) {
+      return
+    }
+
+    setSelectedTags([...currentTagIds, tagId])
+  }
+
+  const removeSelectedTag = (tagId: string) => {
+    setSelectedTags(form.getValues('tagIds').filter((currentTagId) => currentTagId !== tagId))
+  }
+
+  const toggleSelectedTag = (tagId: string) => {
+    const currentTagIds = form.getValues('tagIds')
+    setSelectedTags(
+      currentTagIds.includes(tagId)
+        ? currentTagIds.filter((currentTagId) => currentTagId !== tagId)
+        : [...currentTagIds, tagId]
+    )
+  }
+
+  const handleDeleteTag = async (tag: Tag) => {
+    setDeletingTagId(tag.id)
+
+    try {
+      await window.winsshApi.tags.delete(tag.id)
+      removeSelectedTag(tag.id)
+      queryClient.setQueryData<Tag[]>(['tags'], (current) =>
+        sortTagsByName((current ?? []).filter((currentTag) => currentTag.id !== tag.id))
+      )
+      queryClient.setQueryData<Server[]>(['servers'], (current) =>
+        (current ?? []).map((serverItem) => ({
+          ...serverItem,
+          tags: serverItem.tags.filter((serverTag) => serverTag.id !== tag.id)
+        }))
+      )
+      await refreshWorkspaceData()
+      toast.success(t('workbench.primarySidebar.toasts.tagDeleted'))
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t('workbench.serverEditor.toasts.tagDeleteFailed')
+      )
+    } finally {
+      setDeletingTagId((current) => (current === tag.id ? null : current))
+    }
+  }
+
+  const handleTagDraftSubmit = async () => {
+    const tagName = tagDraft.trim()
+    if (!tagName) {
+      return
+    }
+
+    const parsed = tagSchema.safeParse({
+      color: defaultTagColor,
+      name: tagName
+    })
+    if (!parsed.success) {
+      setTagDraftError(t(parsed.error.issues[0]?.message ?? 'validation.tag.name.required'))
+      return
+    }
+
+    setTagDraftSubmitting(true)
+
+    try {
+      const availableTags = tagsQuery.data ?? (await window.winsshApi.tags.list())
+      if (!tagsQuery.data) {
+        syncTagsQueryData(availableTags)
+      }
+
+      const existing = availableTags.find(
+        (tag) => normalizeTagName(tag.name) === normalizeTagName(tagName)
+      )
+      if (existing) {
+        selectTag(existing.id)
+        setTagDraft('')
+        setTagDraftError(null)
+        return
+      }
+
+      const created = await window.winsshApi.tags.create(parsed.data)
+      syncTagsQueryData([...availableTags, created])
+      selectTag(created.id)
+      setTagDraft('')
+      setTagDraftError(null)
+    } catch (error) {
+      try {
+        const latestTags = await window.winsshApi.tags.list()
+        syncTagsQueryData(latestTags)
+        const matched = latestTags.find(
+          (tag) => normalizeTagName(tag.name) === normalizeTagName(tagName)
+        )
+        if (matched) {
+          selectTag(matched.id)
+          setTagDraft('')
+          setTagDraftError(null)
+          return
+        }
+      } catch {
+        // Ignore the recovery lookup and surface the original error instead.
+      }
+
+      const message =
+        error instanceof Error ? error.message : t('workbench.serverEditor.toasts.tagCreateFailed')
+      setTagDraftError(message)
+      toast.error(message)
+    } finally {
+      setTagDraftSubmitting(false)
+    }
+  }
+
+  const handleTagDraftKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') {
+      return
+    }
+
+    event.preventDefault()
+    void handleTagDraftSubmit()
   }
 
   const persistServer = async (
@@ -952,37 +1115,98 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
               render={({ field }) => (
                 <FormItem>
                   <FormControl>
-                    <div className="flex flex-wrap gap-2">
-                      {(tagsQuery.data ?? []).map((tag) => {
-                        const active = field.value.includes(tag.id)
-                        const style = getColorStyle(tag.color)
-
-                        return (
-                          <Button
-                            key={tag.id}
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className={cn(
-                              'h-auto rounded-full px-3 py-2',
-                              active ? `${style.badge} ${style.ring} ring-1` : 'bg-transparent'
-                            )}
-                            onClick={() => {
-                              const next = active
-                                ? selectedTagIds.filter((tagId) => tagId !== tag.id)
-                                : [...selectedTagIds, tag.id]
-                              field.onChange(next)
-                            }}
-                          >
-                            {tag.name}
-                          </Button>
-                        )
-                      })}
-                      {(tagsQuery.data ?? []).length === 0 ? (
-                        <div className="rounded-sm border border-dashed border-[var(--workbench-border)] px-3 py-4 text-sm text-muted-foreground">
-                          {t('workbench.serverEditor.empty.tags')}
-                        </div>
+                    <div className="space-y-3">
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <Input
+                          value={tagDraft}
+                          aria-label={t('workbench.serverEditor.fields.tagInput')}
+                          placeholder={t('workbench.serverEditor.placeholders.tag')}
+                          disabled={form.formState.isSubmitting || tagDraftSubmitting}
+                          onChange={(event) => {
+                            setTagDraft(event.target.value)
+                            if (tagDraftError) {
+                              setTagDraftError(null)
+                            }
+                          }}
+                          onKeyDown={handleTagDraftKeyDown}
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="sm:self-start"
+                          disabled={
+                            form.formState.isSubmitting ||
+                            tagDraftSubmitting ||
+                            !tagDraft.trim() ||
+                            matchingTagAlreadySelected
+                          }
+                          onClick={() => void handleTagDraftSubmit()}
+                        >
+                          {tagDraftSubmitting ? (
+                            <LoaderCircle className="size-4 animate-spin" />
+                          ) : null}
+                          {matchingTag
+                            ? t('workbench.serverEditor.actions.addTag')
+                            : t('common.actions.create')}
+                        </Button>
+                      </div>
+                      <FormDescription>
+                        {t('workbench.serverEditor.descriptions.tagsInput')}
+                      </FormDescription>
+                      {tagDraftError ? (
+                        <div className="text-sm font-medium text-destructive">{tagDraftError}</div>
                       ) : null}
+                      <div className="flex flex-wrap gap-2">
+                        {tags.map((tag) => {
+                          const active = field.value.includes(tag.id)
+                          const style = getColorStyle(tag.color)
+                          const isDeleting = deletingTagId === tag.id
+
+                          return (
+                            <div key={tag.id} className="group/tag relative">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className={cn(
+                                  'h-auto rounded-full px-3 py-2 pr-7',
+                                  active ? `${style.badge} ${style.ring} ring-1` : 'bg-transparent'
+                                )}
+                                disabled={isDeleting}
+                                onClick={() => toggleSelectedTag(tag.id)}
+                              >
+                                {tag.name}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-xs"
+                                disabled={isDeleting}
+                                className="absolute -top-1 -right-1 z-10 rounded-full border border-[var(--workbench-border)] bg-[var(--workbench-editor)] text-[var(--workbench-muted)] opacity-0 shadow-sm transition-all pointer-events-none group-hover/tag:opacity-100 group-hover/tag:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto hover:bg-destructive hover:text-destructive-foreground"
+                                aria-label={t('workbench.serverEditor.actions.deleteTag', {
+                                  name: tag.name
+                                })}
+                                onClick={(event) => {
+                                  event.preventDefault()
+                                  event.stopPropagation()
+                                  void handleDeleteTag(tag)
+                                }}
+                              >
+                                {isDeleting ? (
+                                  <LoaderCircle className="size-3 animate-spin" />
+                                ) : (
+                                  <X className="size-3" />
+                                )}
+                              </Button>
+                            </div>
+                          )
+                        })}
+                        {tags.length === 0 ? (
+                          <div className="rounded-sm border border-dashed border-[var(--workbench-border)] px-3 py-4 text-sm text-muted-foreground">
+                            {t('workbench.serverEditor.empty.tags')}
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
                   </FormControl>
                   <FormMessage />
