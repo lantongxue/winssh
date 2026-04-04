@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import i18n from '@/i18n'
 import { WorkbenchProvider } from '@/components/workbench/workbench-context'
 import { WorkbenchServerEditor } from '@/components/workbench/workbench-server-editor'
@@ -37,6 +37,7 @@ function renderServerEditor() {
 const savedServer = {
   authType: 'password' as const,
   createdAt: '',
+  credentialId: null,
   favorite: false,
   group: null,
   groupId: null,
@@ -44,6 +45,7 @@ const savedServer = {
   hasPassword: true,
   host: '10.0.0.8',
   id: 'server-1',
+  jumpServerId: null,
   lastConnectedAt: null,
   name: 'Production Bastion',
   note: null,
@@ -61,6 +63,15 @@ const privateKeyServer = {
   hasPassword: false,
   id: 'server-2',
   name: 'Key Host'
+}
+
+const jumpServer = {
+  ...savedServer,
+  credentialId: null,
+  hasPassword: false,
+  host: '10.0.0.9',
+  id: 'jump-1',
+  name: 'Existing Jump'
 }
 
 beforeEach(async () => {
@@ -163,5 +174,82 @@ describe('WorkbenchServerEditor credentials field', () => {
         '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----'
       )
     })
+  })
+
+  it('allows selecting an existing jump server', async () => {
+    window.winsshApi = createWinsshApiMock({
+      servers: {
+        list: vi.fn().mockResolvedValue([savedServer, jumpServer])
+      }
+    })
+
+    renderServerEditor()
+
+    const jumpServerSelect = (await screen.findAllByRole('combobox'))[2]
+    expect(jumpServerSelect).toBeDefined()
+    fireEvent.click(jumpServerSelect as HTMLElement)
+    fireEvent.click(await screen.findByRole('option', { name: 'Existing Jump' }))
+
+    expect(screen.getByText('root@10.0.0.9:22')).toBeInTheDocument()
+  })
+
+  it('creates a minimal jump server, tags it, and selects it in the form', async () => {
+    const listServers = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([{ ...jumpServer, name: 'Fresh Jump', id: 'jump-new' }])
+    const createTag = vi.fn().mockResolvedValue({
+      color: 'amber',
+      createdAt: '',
+      id: 'tag-jump',
+      name: 'jumpserver',
+      updatedAt: ''
+    })
+    const createServer = vi.fn().mockResolvedValue({
+      ...jumpServer,
+      id: 'jump-new',
+      name: 'Fresh Jump'
+    })
+
+    window.winsshApi = createWinsshApiMock({
+      servers: {
+        create: createServer,
+        list: listServers
+      },
+      tags: {
+        create: createTag,
+        list: vi.fn().mockResolvedValue([])
+      }
+    })
+
+    renderServerEditor()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'New Jump Server' }))
+
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByPlaceholderText('Production Jump Server'), {
+      target: { value: 'Fresh Jump' }
+    })
+    fireEvent.change(within(dialog).getByLabelText('Host'), {
+      target: { value: '10.0.0.9' }
+    })
+    fireEvent.change(within(dialog).getByLabelText('Username'), {
+      target: { value: 'jump' }
+    })
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Create' }))
+
+    await waitFor(() => {
+      expect(createTag).toHaveBeenCalledWith({ color: 'amber', name: 'jumpserver' })
+    })
+    expect(createServer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        host: '10.0.0.9',
+        jumpServerId: null,
+        name: 'Fresh Jump',
+        tagIds: ['tag-jump'],
+        username: 'jump'
+      })
+    )
   })
 })

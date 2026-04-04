@@ -13,7 +13,7 @@ export type SecretKind = 'password' | 'passphrase'
 export type WindowTitleBarStyle = 'native' | 'custom'
 export type PortForwardKind = 'local' | 'remote'
 export type PortForwardStatus = 'starting' | 'active' | 'stopped' | 'error'
-export type SessionConnectFailureCode = 'password_required' | 'auth_failed' | 'connection_failed'
+export type SessionConnectFailureCode = 'secret_required' | 'auth_failed' | 'connection_failed'
 
 export interface ServerGroup {
   id: string
@@ -42,6 +42,7 @@ export interface Server {
   note: string | null
   groupId: string | null
   credentialId: string | null
+  jumpServerId: string | null
   favorite: boolean
   createdAt: string
   updatedAt: string
@@ -131,6 +132,7 @@ export interface ServerUpsertInput {
   privateKey?: string | null
   note?: string
   groupId?: string | null
+  jumpServerId?: string | null
   tagIds: string[]
   favorite: boolean
   password?: string
@@ -140,13 +142,17 @@ export interface ServerUpsertInput {
   credentialId?: string | null
 }
 
-export interface ConnectionRequest {
-  serverId: string
-  sessionId?: string
+export interface ConnectionSecretInput {
   password?: string
   passphrase?: string
   rememberPassword?: boolean
   rememberPassphrase?: boolean
+}
+
+export interface ConnectionRequest {
+  serverId: string
+  sessionId?: string
+  secrets?: Record<string, ConnectionSecretInput>
 }
 
 export type SessionConnectResult =
@@ -158,6 +164,8 @@ export type SessionConnectResult =
       ok: false
       code: SessionConnectFailureCode
       message: string
+      serverId?: string
+      secretKind?: SecretKind
     }
 
 export interface SessionSummary {

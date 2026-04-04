@@ -44,6 +44,9 @@ const validation = {
         max: '主机地址过长。',
         required: '请输入主机地址。'
       },
+      jumpServer: {
+        self: '服务器不能把自己配置为 jumpserver。'
+      },
       name: {
         max: '服务器名称不能超过 60 个字符。',
         required: '请输入服务器名称。'

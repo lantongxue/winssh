@@ -5,7 +5,8 @@ import { Eye, EyeOff, KeyRound, LockKeyhole, ShieldCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
-import type { Credential, Server, ServerSecrets, ServerUpsertInput } from '@shared/types'
+import { z } from 'zod'
+import type { Credential, Server, ServerSecrets, ServerUpsertInput, Tag } from '@shared/types'
 import { serverSchema, type ServerFormValues } from '@shared/validation'
 import { actionIcons } from '@/lib/action-icons'
 import { getColorStyle } from '@/lib/colors'
@@ -22,12 +23,21 @@ import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -37,6 +47,62 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+
+const jumpServerSchema = z
+  .object({
+    authType: z.enum(['password', 'privateKey']),
+    host: z
+      .string()
+      .trim()
+      .min(1, 'validation.server.host.required')
+      .max(255, 'validation.server.host.max'),
+    name: z
+      .string()
+      .trim()
+      .min(1, 'validation.server.name.required')
+      .max(60, 'validation.server.name.max'),
+    passphrase: z.string().optional(),
+    password: z.string().optional(),
+    port: z.coerce
+      .number()
+      .int()
+      .min(1, 'validation.server.port.min')
+      .max(65535, 'validation.server.port.max'),
+    privateKey: z.string().optional().nullable(),
+    rememberPassphrase: z.boolean().default(false),
+    rememberPassword: z.boolean().default(true),
+    username: z
+      .string()
+      .trim()
+      .min(1, 'validation.server.username.required')
+      .max(64, 'validation.server.username.max')
+  })
+  .superRefine((value, ctx) => {
+    if (value.authType === 'privateKey' && !value.privateKey?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['privateKey'],
+        message: 'validation.server.privateKey.required'
+      })
+    }
+  })
+
+type JumpServerFormValues = z.infer<typeof jumpServerSchema>
+
+function createJumpServerDefaultValues(credentialStorageAvailable: boolean): JumpServerFormValues {
+  return {
+    authType: 'password',
+    host: '',
+    name: '',
+    passphrase: '',
+    password: '',
+    port: 22,
+    privateKey: '',
+    rememberPassphrase: false,
+    rememberPassword: credentialStorageAvailable,
+    username: ''
+  }
+}
 
 function toDefaultValues(
   server: Server | null,
@@ -48,6 +114,7 @@ function toDefaultValues(
       authType: 'password',
       favorite: false,
       groupId: null,
+      jumpServerId: null,
       host: '',
       name: '',
       note: '',
@@ -67,6 +134,7 @@ function toDefaultValues(
     authType: server.authType,
     favorite: server.favorite,
     groupId: server.groupId,
+    jumpServerId: server.jumpServerId,
     host: server.host,
     id: server.id,
     name: server.name,
@@ -93,6 +161,7 @@ function toPayload(
   return {
     ...values,
     groupId: values.groupId || null,
+    jumpServerId: values.jumpServerId || null,
     note: values.note || '',
     password: includeSecrets ? values.password : undefined,
     passphrase: includeSecrets ? values.passphrase : undefined,
@@ -110,16 +179,24 @@ function buildConnectionRequest(
 ) {
   if (values.authType === 'password' && values.password) {
     return {
-      password: values.password,
-      rememberPassword: credentialStorageAvailable ? values.rememberPassword : false,
+      secrets: {
+        [serverId]: {
+          password: values.password,
+          rememberPassword: credentialStorageAvailable ? values.rememberPassword : false
+        }
+      },
       serverId
     }
   }
 
   if (values.authType === 'privateKey' && values.passphrase) {
     return {
-      passphrase: values.passphrase,
-      rememberPassphrase: credentialStorageAvailable ? values.rememberPassphrase : false,
+      secrets: {
+        [serverId]: {
+          passphrase: values.passphrase,
+          rememberPassphrase: credentialStorageAvailable ? values.rememberPassphrase : false
+        }
+      },
       serverId
     }
   }
@@ -174,10 +251,18 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     resolver: zodResolver(serverSchema as never),
     defaultValues: toDefaultValues(server, credentialStorageAvailable, serverSecretsQuery.data)
   })
+  const jumpServerForm = useForm<JumpServerFormValues>({
+    resolver: zodResolver(jumpServerSchema),
+    defaultValues: createJumpServerDefaultValues(credentialStorageAvailable)
+  })
 
   useEffect(() => {
     form.reset(toDefaultValues(server, credentialStorageAvailable))
   }, [credentialStorageAvailable, document.id, form, server])
+
+  useEffect(() => {
+    jumpServerForm.reset(createJumpServerDefaultValues(credentialStorageAvailable))
+  }, [credentialStorageAvailable, jumpServerForm])
 
   useEffect(() => {
     if (!document.serverId) {
@@ -204,8 +289,12 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
 
   const authType = form.watch('authType')
   const credentialId = form.watch('credentialId')
+  const jumpServerId = form.watch('jumpServerId')
   const selectedTagIds = form.watch('tagIds')
   const isPrivateKeyAuth = authType === 'privateKey'
+  const availableJumpServers = (serversQuery.data ?? []).filter((item) => item.id !== document.serverId)
+  const selectedJumpServer =
+    availableJumpServers.find((item) => item.id === jumpServerId) ?? null
 
   // Derive selected credential object
   const credentials = credentialsQuery.data ?? []
@@ -239,10 +328,26 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     : t('workbench.serverEditor.actions.showSecret')
   const SecretToggleIcon = secretVisible ? EyeOff : Eye
   const formId = getServerEditorFormId(document.id)
+  const jumpServerFormId = `${formId}:jumpserver`
+  const [jumpServerDialogOpen, setJumpServerDialogOpen] = useState(false)
+  const [jumpSecretVisible, setJumpSecretVisible] = useState(false)
+  const jumpAuthType = jumpServerForm.watch('authType')
+  const isJumpPrivateKeyAuth = jumpAuthType === 'privateKey'
+  const jumpSecretLabel = isJumpPrivateKeyAuth
+    ? t('workbench.serverEditor.fields.passphrase')
+    : t('workbench.serverEditor.fields.password')
+  const jumpRememberLabel = isJumpPrivateKeyAuth
+    ? t('workbench.serverEditor.fields.rememberPassphrase')
+    : t('workbench.serverEditor.fields.rememberPassword')
+  const JumpSecretToggleIcon = jumpSecretVisible ? EyeOff : Eye
 
   useEffect(() => {
     setSecretVisible(false)
   }, [authType, document.id])
+
+  useEffect(() => {
+    setJumpSecretVisible(false)
+  }, [jumpAuthType])
 
   const reportValidationFailure = () => {
     const firstMessage = Object.values(form.formState.errors)[0]?.message
@@ -255,6 +360,26 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
         typeof firstMessage === 'string'
           ? firstMessage
           : t('workbench.serverEditor.validation.failed')
+    })
+  }
+
+  const openJumpServerDialog = () => {
+    jumpServerForm.reset(createJumpServerDefaultValues(credentialStorageAvailable))
+    setJumpSecretVisible(false)
+    setJumpServerDialogOpen(true)
+  }
+
+  const ensureJumpServerTag = async () => {
+    const availableTags = tagsQuery.data ?? (await window.winsshApi.tags.list())
+    const existing = availableTags.find((tag: Tag) => tag.name.trim().toLowerCase() === 'jumpserver')
+
+    if (existing) {
+      return existing
+    }
+
+    return window.winsshApi.tags.create({
+      color: 'amber',
+      name: 'jumpserver'
     })
   }
 
@@ -289,6 +414,42 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
 
     return saved
   }
+
+  const handleCreateJumpServer = jumpServerForm.handleSubmit(async (values) => {
+    const jumpTag = await ensureJumpServerTag()
+    const created = await window.winsshApi.servers.create({
+      authType: values.authType,
+      credentialId: null,
+      favorite: false,
+      groupId: null,
+      host: values.host,
+      jumpServerId: null,
+      name: values.name,
+      note: '',
+      passphrase: values.passphrase,
+      password: values.password,
+      port: values.port,
+      privateKey: values.privateKey?.trim() ? values.privateKey : null,
+      rememberPassphrase: credentialStorageAvailable ? values.rememberPassphrase : false,
+      rememberPassword: credentialStorageAvailable ? values.rememberPassword : false,
+      tagIds: [jumpTag.id],
+      username: values.username
+    })
+
+    form.setValue('jumpServerId', created.id, {
+      shouldDirty: true,
+      shouldValidate: true
+    })
+    setJumpServerDialogOpen(false)
+
+    await Promise.all([
+      refreshWorkspaceData(),
+      queryClient.invalidateQueries({ queryKey: ['servers'] }),
+      queryClient.invalidateQueries({ queryKey: ['tags'] })
+    ])
+
+    toast.success(t('workbench.serverEditor.toasts.jumpServerCreated', { name: created.name }))
+  })
 
   const handleSave = form.handleSubmit(
     async (values) => {
@@ -506,6 +667,72 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="mt-5 rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-input)]/35 p-4">
+              <FormField
+                control={form.control}
+                name="jumpServerId"
+                render={({ field }) => (
+                  <FormItem className="gap-3">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="space-y-1">
+                        <FormLabel>{t('workbench.serverEditor.fields.jumpServer')}</FormLabel>
+                        <FormDescription>
+                          {t('workbench.serverEditor.descriptions.jumpServer')}
+                        </FormDescription>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full lg:w-auto lg:self-start"
+                        onClick={openJumpServerDialog}
+                      >
+                        <ShieldCheck className="size-4" />
+                        {t('workbench.serverEditor.actions.createJumpServer')}
+                      </Button>
+                    </div>
+                    <Select
+                      value={field.value ?? '__none__'}
+                      onValueChange={(value) => field.onChange(value === '__none__' ? null : value)}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="bg-[var(--workbench-editor)]">
+                          <SelectValue
+                            placeholder={t('workbench.serverEditor.placeholders.jumpServer')}
+                          />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="__none__">
+                          {t('workbench.serverEditor.placeholders.jumpServer')}
+                        </SelectItem>
+                        {availableJumpServers.map((jumpServer) => (
+                          <SelectItem key={jumpServer.id} value={jumpServer.id}>
+                            {jumpServer.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedJumpServer ? (
+                      <div className="flex items-center gap-2 rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-editor)] px-3 py-2 text-sm">
+                        <ShieldCheck className="size-4 text-amber-500" />
+                        <span className="font-medium text-foreground">
+                          {selectedJumpServer.name}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {t('workbench.serverEditor.descriptions.existing', {
+                            host: selectedJumpServer.host,
+                            port: selectedJumpServer.port,
+                            username: selectedJumpServer.username
+                          })}
+                        </span>
+                      </div>
+                    ) : null}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -788,6 +1015,244 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
           </section>
         </form>
       </Form>
+      <Dialog
+        open={jumpServerDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && !jumpServerForm.formState.isSubmitting) {
+            setJumpServerDialogOpen(false)
+          }
+        }}
+      >
+        <DialogContent
+          className="max-w-2xl rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-0"
+          showCloseButton={false}
+        >
+          <DialogHeader className="border-b border-[var(--workbench-border)] px-5 py-4">
+            <DialogTitle>{t('workbench.serverEditor.jumpServer.dialog.title')}</DialogTitle>
+            <DialogDescription>
+              {t('workbench.serverEditor.jumpServer.dialog.description')}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...jumpServerForm}>
+            <form
+              id={jumpServerFormId}
+              className="space-y-4 px-5 py-5"
+              onSubmit={handleCreateJumpServer}
+            >
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={jumpServerForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('workbench.serverEditor.fields.name')}</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder={t('workbench.serverEditor.jumpServer.placeholders.name')}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={jumpServerForm.control}
+                  name="authType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('workbench.serverEditor.fields.authType')}</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="password">
+                            {t('workbench.serverEditor.auth.password')}
+                          </SelectItem>
+                          <SelectItem value="privateKey">
+                            {t('workbench.serverEditor.auth.privateKey')}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={jumpServerForm.control}
+                  name="host"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('workbench.serverEditor.fields.host')}</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder={t('workbench.serverEditor.placeholders.host')}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={jumpServerForm.control}
+                  name="port"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('workbench.serverEditor.fields.port')}</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" min={1} max={65535} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={jumpServerForm.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>{t('workbench.serverEditor.fields.username')}</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder={t('workbench.serverEditor.placeholders.username')}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {isJumpPrivateKeyAuth ? (
+                <FormField
+                  control={jumpServerForm.control}
+                  name="privateKey"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <FormLabel className="leading-none">
+                          {t('workbench.serverEditor.fields.privateKeyFile')}
+                        </FormLabel>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full sm:w-auto"
+                          onClick={async () => {
+                            const privateKey = await window.winsshApi.system.pickPrivateKey()
+                            if (privateKey) {
+                              jumpServerForm.setValue('privateKey', privateKey, {
+                                shouldDirty: true,
+                                shouldValidate: true
+                              })
+                            }
+                          }}
+                        >
+                          <BrowseIcon className="size-4" />
+                          {t('common.actions.browse')}
+                        </Button>
+                      </div>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          value={field.value ?? ''}
+                          rows={6}
+                          className="field-sizing-fixed min-h-[8rem] resize-y font-mono text-xs leading-5"
+                          placeholder={t('workbench.serverEditor.placeholders.privateKeyFile')}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
+
+              <div className="space-y-4 rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-panel)]/35 px-4 py-4">
+                <FormField
+                  control={jumpServerForm.control}
+                  name={isJumpPrivateKeyAuth ? 'passphrase' : 'password'}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{jumpSecretLabel}</FormLabel>
+                      <div className="relative">
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type={jumpSecretVisible ? 'text' : 'password'}
+                            className="pr-11"
+                            placeholder={t(
+                              isJumpPrivateKeyAuth
+                                ? 'workbench.serverEditor.placeholders.privateKeySecret'
+                                : 'workbench.serverEditor.jumpServer.placeholders.password'
+                            )}
+                          />
+                        </FormControl>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground"
+                          aria-label={toggleSecretLabel}
+                          aria-pressed={jumpSecretVisible}
+                          title={toggleSecretLabel}
+                          onClick={() => setJumpSecretVisible((visible) => !visible)}
+                        >
+                          <JumpSecretToggleIcon className="size-4" />
+                        </Button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={jumpServerForm.control}
+                  name={isJumpPrivateKeyAuth ? 'rememberPassphrase' : 'rememberPassword'}
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="font-medium leading-none">{jumpRememberLabel}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {credentialStorageAvailable
+                            ? t('workbench.serverEditor.systemKeychain.available')
+                            : t('workbench.serverEditor.systemKeychain.unavailable')}
+                        </div>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value && credentialStorageAvailable}
+                          disabled={!credentialStorageAvailable}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </form>
+          </Form>
+          <DialogFooter className="border-t border-[var(--workbench-border)] px-5 py-4">
+            <Button
+              variant="ghost"
+              disabled={jumpServerForm.formState.isSubmitting}
+              onClick={() => setJumpServerDialogOpen(false)}
+            >
+              {t('common.actions.cancel')}
+            </Button>
+            <Button
+              type="submit"
+              form={jumpServerFormId}
+              disabled={jumpServerForm.formState.isSubmitting}
+            >
+              {t('common.actions.create')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

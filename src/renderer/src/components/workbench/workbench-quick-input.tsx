@@ -26,8 +26,8 @@ export function WorkbenchQuickInput() {
     quickInput,
     closeQuickInput,
     connectQuickConnectTarget,
-    connectServer,
-    refreshWorkspaceData
+    refreshWorkspaceData,
+    submitConnectionSecret
   } = useWorkbenchContext()
   const [secret, setSecret] = useState('')
   const [remember, setRemember] = useState(true)
@@ -97,8 +97,7 @@ export function WorkbenchQuickInput() {
   }
 
   const isPassword =
-    quickInput.kind === 'credentials' &&
-    (quickInput.source === 'quick-connect' || quickInput.server.authType === 'password')
+    quickInput.kind === 'credentials' && quickInput.secretKind === 'password'
   const credentialTargetName =
     quickInput.kind === 'credentials'
       ? quickInput.source === 'server'
@@ -194,16 +193,13 @@ export function WorkbenchQuickInput() {
                       return
                     }
 
-                    await connectServer(
-                      quickInput.server,
-                      {
-                        passphrase: isPassword ? undefined : secret,
-                        password: isPassword ? secret : undefined,
-                        rememberPassphrase: isPassword ? undefined : remember,
-                        rememberPassword: isPassword ? remember : undefined,
-                        serverId: quickInput.server.id
-                      },
-                      { pendingSessionId: quickInput.pendingSessionId }
+                    await submitConnectionSecret(
+                      quickInput.rootServerId,
+                      quickInput.server.id,
+                      quickInput.secretKind,
+                      secret,
+                      quickInput.canRemember ? remember : false,
+                      quickInput.pendingSessionId
                     )
                   } finally {
                     setSubmitting(false)

@@ -74,6 +74,7 @@ function createRuntime(sessionId: string, client: MockClient) {
   return {
     sessionId,
     client,
+    upstreamClients: [],
     shell,
     sftp: {} as never,
     summary: {

@@ -5,9 +5,11 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { formatQuickConnectTarget } from '@shared/quick-connect'
 import type {
+  ConnectionSecretInput,
   ConnectionRequest,
   QuickConnectTarget,
   RuntimeCapabilities,
+  SecretKind,
   Server
 } from '@shared/types'
 import type { WorkbenchActivityId } from '@/lib/workbench'
@@ -34,9 +36,11 @@ type CredentialsQuickInputBaseState = {
   lastErrorMessage?: string
   pendingSessionId?: string
   rememberByDefault: boolean
+  secretKind: SecretKind
 }
 
 type ServerCredentialsQuickInputState = CredentialsQuickInputBaseState & {
+  rootServerId: string
   server: Server
   source: 'server'
 }
@@ -56,6 +60,11 @@ type EntityQuickInput = EntityQuickInputState & {
 
 export type WorkbenchQuickInputState = CredentialsQuickInputState | EntityQuickInput
 
+type PendingConnectionState = {
+  request: ConnectionRequest
+  rootServerId: string
+}
+
 interface DisconnectSessionOptions {
   closeDocument?: boolean
 }
@@ -68,6 +77,8 @@ interface ConnectionSecretsRequestOptions {
   lastErrorMessage?: string
   pendingSessionId?: string
   rememberByDefault?: boolean
+  rootServerId?: string
+  secretKind: SecretKind
 }
 
 interface WorkbenchContextValue {
@@ -98,6 +109,14 @@ interface WorkbenchContextValue {
     server: Server,
     options?: ConnectionSecretsRequestOptions
   ) => Promise<void>
+  submitConnectionSecret: (
+    rootServerId: string,
+    serverId: string,
+    secretKind: SecretKind,
+    secret: string,
+    remember: boolean,
+    pendingSessionId?: string
+  ) => Promise<void>
   toggleFavorite: (serverId: string) => Promise<void>
 }
 
@@ -112,13 +131,6 @@ const workspaceQueryKeys = [
   ['known-hosts']
 ] as const
 
-function requiresSecretPrompt(server: Server) {
-  return (
-    (server.authType === 'password' && !server.hasPassword) ||
-    (server.authType === 'privateKey' && !server.hasPassphrase)
-  )
-}
-
 function buildQuickConnectServerName(target: QuickConnectTarget) {
   return formatQuickConnectTarget(target)
 }
@@ -127,10 +139,35 @@ function createClientSessionId(serverId: string) {
   return globalThis.crypto?.randomUUID?.() ?? `session:${serverId}:${Date.now().toString(36)}`
 }
 
+function buildConnectionRequest(
+  serverId: string,
+  sessionId: string,
+  request?: ConnectionRequest
+): ConnectionRequest {
+  return {
+    ...request,
+    serverId,
+    sessionId,
+    secrets: request?.secrets ? { ...request.secrets } : undefined
+  }
+}
+
+function getRememberPreference(
+  request: ConnectionRequest | undefined,
+  serverId: string,
+  secretKind: SecretKind
+) {
+  const secrets = request?.secrets?.[serverId]
+  return secretKind === 'password' ? secrets?.rememberPassword : secrets?.rememberPassphrase
+}
+
 export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [quickInput, setQuickInput] = useState<WorkbenchQuickInputState | null>(null)
+  const [pendingConnections, setPendingConnections] = useState<
+    Record<string, PendingConnectionState>
+  >({})
   const tabs = useSessionsStore((state) => state.tabs)
   const activeSessionId = useSessionsStore((state) => state.activeSessionId)
   const addPendingSession = useSessionsStore((state) => state.addPendingSession)
@@ -167,8 +204,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     return capabilities.credentialStorage
   }
 
-  const getServers = async () => {
-    const cached = queryClient.getQueryData<Server[]>(['servers'])
+  const getServers = async (options?: { force?: boolean }) => {
+    const cached = !options?.force ? queryClient.getQueryData<Server[]>(['servers']) : undefined
     if (cached) {
       return cached
     }
@@ -177,6 +214,17 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       queryKey: ['servers'],
       queryFn: () => window.winsshApi.servers.list()
     })
+  }
+
+  const getServerById = async (serverId: string) => {
+    const servers = await getServers()
+    const cachedMatch = servers.find((server) => server.id === serverId)
+    if (cachedMatch) {
+      return cachedMatch
+    }
+
+    const freshServers = await getServers({ force: true })
+    return freshServers.find((server) => server.id === serverId) ?? null
   }
 
   const focusExplorerHome = () => {
@@ -225,15 +273,18 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 
   const requestConnectionSecrets = async (
     server: Server,
-    options: ConnectionSecretsRequestOptions = {}
+    options?: ConnectionSecretsRequestOptions
   ) => {
     const canRemember = await getCredentialStorageAvailable()
+    const secretKind = options?.secretKind ?? (server.authType === 'password' ? 'password' : 'passphrase')
     setQuickInput({
       canRemember,
       kind: 'credentials',
-      lastErrorMessage: options.lastErrorMessage,
-      pendingSessionId: options.pendingSessionId,
-      rememberByDefault: options.rememberByDefault ?? canRemember,
+      lastErrorMessage: options?.lastErrorMessage,
+      pendingSessionId: options?.pendingSessionId,
+      rememberByDefault: options?.rememberByDefault ?? canRemember,
+      rootServerId: options?.rootServerId ?? server.id,
+      secretKind,
       server,
       source: 'server'
     })
@@ -245,6 +296,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       canRemember,
       kind: 'credentials',
       rememberByDefault: canRemember,
+      secretKind: 'password',
       source: 'quick-connect',
       target
     })
@@ -274,6 +326,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       authType: 'password',
       favorite: false,
       groupId: null,
+      jumpServerId: null,
       host: target.host,
       name: buildQuickConnectServerName(target),
       note: '',
@@ -285,8 +338,20 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       username: target.username
     })
 
+    queryClient.setQueryData<Server[]>(['servers'], (current) => {
+      const servers = current ?? []
+      return servers.some((server) => server.id === created.id) ? servers : [...servers, created]
+    })
     await refreshWorkspaceData()
     return created
+  }
+
+  const resolveFailureServer = async (rootServer: Server, serverId?: string) => {
+    if (!serverId || serverId === rootServer.id) {
+      return rootServer
+    }
+
+    return (await getServerById(serverId)) ?? rootServer
   }
 
   const startConnection = async (
@@ -294,12 +359,16 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     request?: ConnectionRequest,
     options: ConnectServerOptions = {}
   ) => {
-    if (!request && requiresSecretPrompt(server)) {
-      await requestConnectionSecrets(server)
-      return
-    }
+    const pendingSessionId = options.pendingSessionId ?? request?.sessionId ?? createClientSessionId(server.id)
+    const nextRequest = buildConnectionRequest(server.id, pendingSessionId, request)
 
-    const pendingSessionId = options.pendingSessionId ?? createClientSessionId(server.id)
+    setPendingConnections((current) => ({
+      ...current,
+      [pendingSessionId]: {
+        request: nextRequest,
+        rootServerId: server.id
+      }
+    }))
 
     addPendingSession({
       connectionPhase: 'validate',
@@ -320,11 +389,13 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       message: t('workbench.output.connectingTo', { name: server.name })
     })
 
-    const result = await window.winsshApi.sessions.connect({
-      ...(request ?? { serverId: server.id }),
-      sessionId: pendingSessionId
-    })
+    const result = await window.winsshApi.sessions.connect(nextRequest)
     if (result.ok) {
+      setPendingConnections((current) => {
+        const next = { ...current }
+        delete next[pendingSessionId]
+        return next
+      })
       replaceSession(pendingSessionId, result.summary)
       replaceDocument(
         `session-editor:${pendingSessionId}`,
@@ -347,18 +418,32 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       message: result.message
     })
 
-    const isRecoverablePasswordFailure =
-      server.authType === 'password' &&
-      (result.code === 'password_required' || result.code === 'auth_failed')
+    const recoverableServerId = result.serverId
+    const recoverableSecretKind = result.secretKind
+    const isRecoverableFailure =
+      (result.code === 'secret_required' || result.code === 'auth_failed') &&
+      Boolean(recoverableServerId) &&
+      Boolean(recoverableSecretKind)
 
-    if (isRecoverablePasswordFailure) {
-      await requestConnectionSecrets(server, {
+    if (isRecoverableFailure && recoverableServerId && recoverableSecretKind) {
+      const failingServer = await resolveFailureServer(server, recoverableServerId)
+      await requestConnectionSecrets(failingServer, {
         lastErrorMessage: result.message,
         pendingSessionId,
-        rememberByDefault: request?.rememberPassword
+        rememberByDefault:
+          getRememberPreference(nextRequest, failingServer.id, recoverableSecretKind) ??
+          undefined,
+        rootServerId: server.id,
+        secretKind: recoverableSecretKind
       })
       return
     }
+
+    setPendingConnections((current) => {
+      const next = { ...current }
+      delete next[pendingSessionId]
+      return next
+    })
 
     pushProblem({
       detail: `${server.name} · ${server.host}:${server.port}`,
@@ -392,12 +477,62 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     await startConnection(
       server,
       {
-        password,
-        rememberPassword: canRemember ? remember : false,
+        secrets: {
+          [server.id]: {
+            password,
+            rememberPassword: canRemember ? remember : false
+          }
+        },
         serverId: server.id
       },
       { pendingSessionId }
     )
+  }
+
+  const submitConnectionSecret = async (
+    rootServerId: string,
+    serverId: string,
+    secretKind: SecretKind,
+    secret: string,
+    remember: boolean,
+    pendingSessionId?: string
+  ) => {
+    const rootServer = await getServerById(rootServerId)
+    if (!rootServer) {
+      toast.error(t('workbench.toasts.serverConfigMissing'))
+      return
+    }
+
+    const nextSessionId = pendingSessionId ?? createClientSessionId(rootServerId)
+    const existingPending = pendingConnections[nextSessionId]
+    const baseRequest = buildConnectionRequest(
+      rootServer.id,
+      nextSessionId,
+      existingPending?.request
+    )
+    const currentSecret = baseRequest.secrets?.[serverId] ?? {}
+    const nextSecret: ConnectionSecretInput =
+      secretKind === 'password'
+        ? {
+            ...currentSecret,
+            password: secret,
+            rememberPassword: remember
+          }
+        : {
+            ...currentSecret,
+            passphrase: secret,
+            rememberPassphrase: remember
+          }
+
+    await startConnection(rootServer, {
+      ...baseRequest,
+      secrets: {
+        ...(baseRequest.secrets ?? {}),
+        [serverId]: nextSecret
+      }
+    }, {
+      pendingSessionId: nextSessionId
+    })
   }
 
   const connectServer = async (
@@ -417,6 +552,11 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     if (!session?.provisional) {
       await window.winsshApi.sessions.disconnect(sessionId)
     }
+    setPendingConnections((current) => {
+      const next = { ...current }
+      delete next[sessionId]
+      return next
+    })
     removeSession(sessionId)
 
     if (options.closeDocument !== false) {
@@ -450,7 +590,9 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      await startConnection(server, undefined, { pendingSessionId: session.sessionId })
+      await startConnection(server, pendingConnections[session.sessionId]?.request, {
+        pendingSessionId: session.sessionId
+      })
       return
     }
 
@@ -530,6 +672,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         reconnectSession,
         refreshWorkspaceData,
         requestConnectionSecrets,
+        submitConnectionSecret,
         toggleFavorite
       }}
     >

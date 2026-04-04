@@ -202,6 +202,7 @@ const workbench = {
     },
     serverEditor: {
       actions: {
+        createJumpServer: '新建 Jump Server',
         hideSecret: '隐藏凭据',
         showSecret: '显示凭据'
       },
@@ -211,6 +212,7 @@ const workbench = {
       },
       descriptions: {
         existing: '{{username}}@{{host}}:{{port}}',
+        jumpServer: '选择已有跳板机，或快速新建一个最小化 Jump Server 配置。',
         new: '新的 SSH 连接'
       },
       empty: {
@@ -225,6 +227,7 @@ const workbench = {
         favoriteTitle: '收藏该服务器',
         group: '分组',
         host: '主机地址',
+        jumpServer: 'Jump Server',
         name: '名称',
         note: '备注',
         password: '密码',
@@ -239,6 +242,7 @@ const workbench = {
       placeholders: {
         credential: '选择已有凭据（可选）',
         host: '192.168.1.10 或 demo.example.com',
+        jumpServer: '不使用 jumpserver，直接连接目标主机',
         name: '我的服务器',
         note: '记录环境说明、跳板关系或维护信息。',
         privateKeyFile: '粘贴私钥内容，或从 PEM / KEY / PPK 文件导入',
@@ -246,6 +250,16 @@ const workbench = {
         savedPassword: '留空则沿用已保存密码',
         ungrouped: '未分组',
         username: 'root / ubuntu / admin'
+      },
+      jumpServer: {
+        dialog: {
+          description: '创建一个最小化 jumpserver 配置，保存后会立即打上 jumpserver 标签。',
+          title: '新建 Jump Server'
+        },
+        placeholders: {
+          name: '生产跳板机',
+          password: '请输入 jumpserver 密码'
+        }
       },
       sections: {
         basic: '基础信息',
@@ -262,6 +276,7 @@ const workbench = {
       },
       toasts: {
         created: '服务器已创建。',
+        jumpServerCreated: 'Jump Server {{name}} 已创建。',
         updated: '服务器已更新。'
       },
       validation: {

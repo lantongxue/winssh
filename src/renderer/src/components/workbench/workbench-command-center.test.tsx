@@ -60,6 +60,7 @@ describe('WorkbenchCommandCenter quick connect', () => {
           {
             authType: 'password',
             createdAt: '',
+            credentialId: null,
             favorite: false,
             group: null,
             groupId: null,
@@ -67,6 +68,7 @@ describe('WorkbenchCommandCenter quick connect', () => {
             hasPassword: false,
             host: '127.0.0.1',
             id: 'server-1',
+            jumpServerId: null,
             lastConnectedAt: null,
             name: 'alpha',
             note: null,

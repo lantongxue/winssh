@@ -41,6 +41,7 @@ const createdServer = {
   hasPassword: false,
   host: '203.0.113.10',
   id: 'server-1',
+  jumpServerId: null,
   lastConnectedAt: null,
   name: 'Shortcut Host',
   note: '',

@@ -22,6 +22,8 @@ export type MainTranslationKey =
   | 'errors.passwordRequired'
   | 'errors.authFailed'
   | 'errors.privateKeyMissing'
+  | 'errors.jumpServerNotFound'
+  | 'errors.jumpServerChainUnsupported'
   | 'errors.connectionFailed'
   | 'errors.reconnectUnavailable'
   | 'errors.sessionUnavailable'
@@ -81,6 +83,8 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
       passwordRequired: 'No saved password is available for this server. Enter a password first.',
       authFailed: 'Authentication failed. Check the password and try again.',
       privateKeyMissing: 'This server does not have a private key configured.',
+      jumpServerNotFound: 'The selected jump server could not be found.',
+      jumpServerChainUnsupported: 'Only one jump server hop is supported right now.',
       connectionFailed: 'Connection failed.',
       reconnectUnavailable: 'This tab does not have reusable connection parameters.',
       sessionUnavailable: 'This session does not exist or has already closed.',
@@ -133,6 +137,8 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
       passwordRequired: '该服务器未保存密码，请先输入密码后再连接',
       authFailed: '身份验证失败，请检查密码后重试',
       privateKeyMissing: '该服务器未配置私钥',
+      jumpServerNotFound: '所选 jumpserver 不存在',
+      jumpServerChainUnsupported: '当前只支持单跳 jumpserver',
       connectionFailed: '连接失败',
       reconnectUnavailable: '当前标签缺少可复用的连接参数',
       sessionUnavailable: '当前会话不存在或已经关闭',

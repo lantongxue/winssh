@@ -18,12 +18,15 @@ import {
 } from 'electron'
 import { normalizeRemotePath, sortRemoteEntries } from '@shared/sftp'
 import {
+  type ConnectionSecretInput,
   ConnectionRequest,
   PortForwardInput,
   PortForwardRule,
   PortForwardStateEvent,
   RemoteEntry,
   type RemoteEntryKind,
+  type SecretKind,
+  type Server,
   SessionConnectFailureCode,
   SessionConnectResult,
   type SessionConnectionPhase,
@@ -72,6 +75,7 @@ type ActivePortForward = LocalPortForwardRuntime | RemotePortForwardRuntime
 interface SessionRuntime {
   sessionId: string
   client: Client
+  upstreamClients: Client[]
   shell: ClientChannel
   sftp: SFTPWrapper
   summary: SessionSummary
@@ -372,11 +376,17 @@ function isWildcardBindHost(host: string): boolean {
 class ConnectionFailure extends Error {
   constructor(
     readonly code: SessionConnectFailureCode,
-    message: string
+    message: string,
+    readonly serverId?: string,
+    readonly secretKind?: SecretKind
   ) {
     super(message)
     this.name = 'ConnectionFailure'
   }
+}
+
+function getSecretKindForServer(server: Server): SecretKind {
+  return server.authType === 'password' ? 'password' : 'passphrase'
 }
 
 function isAuthenticationFailure(error: unknown): boolean {
@@ -417,7 +427,9 @@ export class SessionManager {
       return {
         ok: false,
         code: failure.code,
-        message: failure.message
+        message: failure.message,
+        serverId: failure.serverId,
+        secretKind: failure.secretKind
       }
     }
   }
@@ -448,29 +460,6 @@ export class SessionManager {
       throw new ConnectionFailure('connection_failed', this.t('errors.serverNotFound'))
     }
 
-    const password =
-      request.password ?? (await this.secureStore.getSecret(server.id, 'password')) ?? undefined
-    const passphrase =
-      request.passphrase ?? (await this.secureStore.getSecret(server.id, 'passphrase')) ?? undefined
-
-    if (server.authType === 'password' && !password) {
-      throw new ConnectionFailure('password_required', this.t('errors.passwordRequired'))
-    }
-
-    let privateKey: string | undefined
-    if (server.authType === 'privateKey') {
-      const storedPrivateKey = this.database.getServerPrivateKey(server.id)
-      if (storedPrivateKey?.trim()) {
-        privateKey = storedPrivateKey
-      } else if (server.privateKeyPath) {
-        privateKey = await fs.readFile(server.privateKeyPath, 'utf8')
-      }
-
-      if (!privateKey) {
-        throw new ConnectionFailure('connection_failed', this.t('errors.privateKeyMissing'))
-      }
-    }
-
     const sessionId = request.sessionId ?? randomUUID()
     const connectedAt = now()
     const baseSummary: SessionSummary = {
@@ -485,113 +474,89 @@ export class SessionManager {
     }
 
     this.emitConnectionPhase(sessionId, 'validate')
+    const jumpServer = this.resolveJumpServer(server)
+    const upstreamClients: Client[] = []
+    let client: Client | null = null
 
-    const client = new Client()
-    const connectConfig: ConnectConfig = {
-      host: server.host,
-      port: server.port,
-      username: server.username,
-      readyTimeout: 15_000,
-      keepaliveInterval: 10_000,
-      keepaliveCountMax: 3,
-      password,
-      privateKey,
-      passphrase,
-      hostVerifier: (key, verify) => {
-        this.verifyHost(server.name, server.host, server.port, key)
-          .then(verify)
-          .catch(() => verify(false))
+    try {
+      this.emitConnectionPhase(sessionId, 'handshake')
+
+      let targetSocket: ClientChannel | undefined
+
+      if (jumpServer) {
+        const jumpAuth = await this.resolveConnectionAuth(jumpServer, request)
+        const jumpClient = await this.connectToServer(jumpServer, jumpAuth)
+        upstreamClients.push(jumpClient)
+        targetSocket = await connectForwardOut(jumpClient, '127.0.0.1', 0, server.host, server.port)
       }
+
+      const targetAuth = await this.resolveConnectionAuth(server, request)
+      client = await this.connectToServer(server, targetAuth, targetSocket)
+
+      this.emitConnectionPhase(sessionId, 'prepare')
+      const [shell, sftp] = await Promise.all([openShell(client), openSftp(client)])
+      const currentPath = normalizeRemotePath(await sftpRealpath(sftp, '.').catch(() => '/'))
+      const summary: SessionSummary = {
+        ...baseSummary,
+        status: 'ready',
+        currentPath
+      }
+
+      this.emitConnectionPhase(sessionId, 'attach')
+
+      const runtime: SessionRuntime = {
+        sessionId,
+        client,
+        upstreamClients,
+        shell,
+        sftp,
+        summary,
+        portForwards: new Map()
+      }
+
+      shell.on('data', (chunk: Buffer | string) => {
+        this.emitToRenderer('sessions:data', {
+          sessionId,
+          data: chunk.toString()
+        })
+      })
+      shell.stderr.on('data', (chunk: Buffer | string) => {
+        this.emitToRenderer('sessions:data', {
+          sessionId,
+          data: chunk.toString()
+        })
+      })
+      shell.on('close', (code?: number, signal?: string) => {
+        runtime.lastExit = { sessionId, code, signal }
+        client?.end()
+      })
+
+      client.on('tcp connection', (details, accept, rejectConnection) => {
+        this.handleRemoteTcpConnection(sessionId, details, accept, rejectConnection)
+      })
+
+      this.bindRuntimeClient(runtime, client, true)
+      for (const upstreamClient of upstreamClients) {
+        this.bindRuntimeClient(runtime, upstreamClient)
+      }
+
+      this.sessions.set(sessionId, runtime)
+      this.history.set(sessionId, {
+        ...request,
+        sessionId
+      })
+      this.database.recordRecentSession(server.id)
+      await this.persistConnectionSecrets([...(jumpServer ? [jumpServer] : []), server], request)
+      this.emitSessionState(sessionId, 'ready', undefined, this.t('session.connected'))
+
+      return summary
+    } catch (error) {
+      client?.end()
+      for (const upstreamClient of upstreamClients) {
+        upstreamClient.end()
+      }
+      throw this.normalizeConnectionFailure(error)
     }
-
-    return new Promise<SessionSummary>((resolve, reject) => {
-      let settled = false
-
-      const rejectWith = (error: unknown) => {
-        if (!settled) {
-          settled = true
-          reject(this.normalizeConnectionFailure(error))
-        }
-      }
-
-      client.once('error', (error) => {
-        rejectWith(error)
-      })
-
-      client.once('ready', async () => {
-        try {
-          this.emitConnectionPhase(sessionId, 'prepare')
-          const [shell, sftp] = await Promise.all([openShell(client), openSftp(client)])
-          const currentPath = normalizeRemotePath(await sftpRealpath(sftp, '.').catch(() => '/'))
-          const summary: SessionSummary = {
-            ...baseSummary,
-            status: 'ready',
-            currentPath
-          }
-
-          this.emitConnectionPhase(sessionId, 'attach')
-
-          const runtime: SessionRuntime = {
-            sessionId,
-            client,
-            shell,
-            sftp,
-            summary,
-            portForwards: new Map()
-          }
-
-          shell.on('data', (chunk: Buffer | string) => {
-            this.emitToRenderer('sessions:data', {
-              sessionId,
-              data: chunk.toString()
-            })
-          })
-          shell.stderr.on('data', (chunk: Buffer | string) => {
-            this.emitToRenderer('sessions:data', {
-              sessionId,
-              data: chunk.toString()
-            })
-          })
-          shell.on('close', (code?: number, signal?: string) => {
-            runtime.lastExit = { sessionId, code, signal }
-            client.end()
-          })
-
-          client.on('tcp connection', (details, accept, rejectConnection) => {
-            this.handleRemoteTcpConnection(sessionId, details, accept, rejectConnection)
-          })
-          client.on('error', (error) => {
-            runtime.lastError = error.message
-            this.emitToRenderer('sessions:error', { sessionId, message: error.message })
-            this.emitSessionState(sessionId, 'error', undefined, error.message)
-          })
-          client.on('close', () => {
-            void this.finalizeSession(sessionId)
-          })
-
-          this.sessions.set(sessionId, runtime)
-          this.history.set(sessionId, request)
-          this.database.recordRecentSession(server.id)
-          await this.persistConnectionSecrets(server.id, server.authType, request)
-          this.emitSessionState(sessionId, 'ready', undefined, this.t('session.connected'))
-
-          if (!settled) {
-            settled = true
-            resolve(summary)
-          }
-        } catch (error) {
-          rejectWith(error)
-          client.end()
-        }
-      })
-
-      try {
-        client.connect(connectConfig)
-        this.emitConnectionPhase(sessionId, 'handshake')
-      } catch (error) {
-        rejectWith(error)
-      }
-    })
   }
 
   async disconnect(sessionId: string): Promise<void> {
@@ -600,7 +565,7 @@ export class SessionManager {
     if (runtime) {
       runtime.finalizing = true
       await this.releaseSessionPortForwards(sessionId)
-      runtime.client.end()
+      this.releaseRuntimeClients(runtime)
       this.sessions.delete(sessionId)
     }
 
@@ -907,7 +872,7 @@ export class SessionManager {
       for (const active of [...runtime.portForwards.values()]) {
         void this.releasePortForwardRuntime(runtime.sessionId, runtime, active)
       }
-      runtime.client.end()
+      this.releaseRuntimeClients(runtime)
     }
 
     this.sessions.clear()
@@ -928,10 +893,214 @@ export class SessionManager {
     return new ConnectionFailure('connection_failed', message)
   }
 
+  private resolveJumpServer(server: Server): Server | null {
+    if (!server.jumpServerId) {
+      return null
+    }
+
+    const jumpServer = this.database.getServerById(server.jumpServerId)
+    if (!jumpServer) {
+      throw new ConnectionFailure('connection_failed', this.t('errors.jumpServerNotFound'))
+    }
+
+    if (jumpServer.id === server.id || jumpServer.jumpServerId) {
+      throw new ConnectionFailure('connection_failed', this.t('errors.jumpServerChainUnsupported'))
+    }
+
+    return jumpServer
+  }
+
+  private async resolveConnectionAuth(
+    server: Server,
+    request: ConnectionRequest
+  ): Promise<{
+    password?: string
+    passphrase?: string
+    privateKey?: string
+  }> {
+    const requestSecrets = request.secrets?.[server.id]
+    const password =
+      requestSecrets?.password ?? (await this.secureStore.getSecret(server.id, 'password')) ?? undefined
+    const passphrase =
+      requestSecrets?.passphrase ??
+      (await this.secureStore.getSecret(server.id, 'passphrase')) ??
+      undefined
+
+    if (server.authType === 'password' && !password) {
+      throw new ConnectionFailure(
+        'secret_required',
+        this.t('errors.passwordRequired'),
+        server.id,
+        'password'
+      )
+    }
+
+    let privateKey: string | undefined
+    if (server.authType === 'privateKey') {
+      const storedPrivateKey = this.database.getServerPrivateKey(server.id)
+      if (storedPrivateKey?.trim()) {
+        privateKey = storedPrivateKey
+      } else if (server.privateKeyPath) {
+        privateKey = await fs.readFile(server.privateKeyPath, 'utf8')
+      }
+
+      if (!privateKey) {
+        throw new ConnectionFailure('connection_failed', this.t('errors.privateKeyMissing'))
+      }
+    }
+
+    return {
+      password,
+      passphrase,
+      privateKey
+    }
+  }
+
+  private createConnectConfig(
+    server: Server,
+    auth: {
+      password?: string
+      passphrase?: string
+      privateKey?: string
+    },
+    sock?: ClientChannel
+  ): ConnectConfig {
+    return {
+      host: server.host,
+      port: server.port,
+      username: server.username,
+      readyTimeout: 15_000,
+      keepaliveInterval: 10_000,
+      keepaliveCountMax: 3,
+      password: auth.password,
+      privateKey: auth.privateKey,
+      passphrase: auth.passphrase,
+      ...(sock ? { sock } : {}),
+      hostVerifier: (key, verify) => {
+        this.verifyHost(server.name, server.host, server.port, key)
+          .then(verify)
+          .catch(() => verify(false))
+      }
+    }
+  }
+
+  private async connectToServer(
+    server: Server,
+    auth: {
+      password?: string
+      passphrase?: string
+      privateKey?: string
+    },
+    sock?: ClientChannel
+  ): Promise<Client> {
+    const client = new Client()
+
+    return new Promise<Client>((resolve, reject) => {
+      let settled = false
+
+      const rejectWith = (error: unknown) => {
+        if (settled) {
+          return
+        }
+
+        settled = true
+        reject(this.normalizeHopConnectionFailure(server, error))
+      }
+
+      client.once('error', (error) => {
+        rejectWith(error)
+      })
+      client.once('ready', () => {
+        if (settled) {
+          return
+        }
+
+        settled = true
+        resolve(client)
+      })
+
+      try {
+        client.connect(this.createConnectConfig(server, auth, sock))
+      } catch (error) {
+        rejectWith(error)
+      }
+    })
+  }
+
+  private normalizeHopConnectionFailure(server: Server, error: unknown): ConnectionFailure {
+    if (error instanceof ConnectionFailure) {
+      return error
+    }
+
+    if (isAuthenticationFailure(error)) {
+      return new ConnectionFailure(
+        'auth_failed',
+        this.t('errors.authFailed'),
+        server.id,
+        getSecretKindForServer(server)
+      )
+    }
+
+    const message = error instanceof Error ? error.message : this.t('errors.connectionFailed')
+    return new ConnectionFailure('connection_failed', message, server.id)
+  }
+
+  private bindRuntimeClient(runtime: SessionRuntime, client: Client, primary = false): void {
+    const sessionId = runtime.sessionId
+
+    client.on('error', (error) => {
+      if (runtime.finalizing) {
+        return
+      }
+
+      runtime.lastError = error.message
+      this.emitToRenderer('sessions:error', { sessionId, message: error.message })
+      this.emitSessionState(sessionId, 'error', undefined, error.message)
+
+      if (!primary) {
+        runtime.client.end()
+      }
+    })
+
+    client.on('close', () => {
+      if (runtime.finalizing) {
+        return
+      }
+
+      if (!primary) {
+        runtime.lastError = runtime.lastError ?? this.t('session.disconnected')
+        runtime.client.end()
+      }
+
+      void this.finalizeSession(sessionId)
+    })
+  }
+
+  private releaseRuntimeClients(runtime: SessionRuntime): void {
+    runtime.client.end()
+    for (const upstreamClient of runtime.upstreamClients) {
+      upstreamClient.end()
+    }
+  }
+
   private async persistConnectionSecrets(
+    servers: Server[],
+    request: ConnectionRequest
+  ): Promise<void> {
+    for (const server of servers) {
+      const secrets = request.secrets?.[server.id]
+      if (!secrets) {
+        continue
+      }
+
+      await this.persistServerConnectionSecrets(server.id, server.authType, secrets)
+    }
+  }
+
+  private async persistServerConnectionSecrets(
     serverId: string,
     authType: 'password' | 'privateKey',
-    request: ConnectionRequest
+    request: ConnectionSecretInput
   ): Promise<void> {
     if (authType === 'password') {
       if (request.rememberPassword === false) {
@@ -1295,6 +1464,7 @@ export class SessionManager {
 
     runtime.finalizing = true
     await this.releaseSessionPortForwards(sessionId)
+    this.releaseRuntimeClients(runtime)
     this.sessions.delete(sessionId)
 
     for (const rule of this.getPortForwardRules(sessionId)) {

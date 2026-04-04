@@ -205,6 +205,7 @@ const workbench = {
     },
     serverEditor: {
       actions: {
+        createJumpServer: 'New Jump Server',
         hideSecret: 'Hide secret',
         showSecret: 'Show secret'
       },
@@ -214,6 +215,7 @@ const workbench = {
       },
       descriptions: {
         existing: '{{username}}@{{host}}:{{port}}',
+        jumpServer: 'Choose an existing jump server, or quickly create a minimal one for this route.',
         new: 'New SSH connection'
       },
       empty: {
@@ -228,6 +230,7 @@ const workbench = {
         favoriteTitle: 'Favorite this server',
         group: 'Group',
         host: 'Host',
+        jumpServer: 'Jump Server',
         name: 'Name',
         note: 'Notes',
         password: 'Password',
@@ -242,6 +245,7 @@ const workbench = {
       placeholders: {
         credential: 'Select an existing credential (optional)',
         host: '192.168.1.10 or demo.example.com',
+        jumpServer: 'Connect directly without a jump server',
         name: 'My Server',
         note: 'Record environment notes, jump-host topology, or maintenance details.',
         privateKeyFile: 'Paste the private key content, or import it from a PEM / KEY / PPK file',
@@ -249,6 +253,17 @@ const workbench = {
         savedPassword: 'Leave empty to keep the saved password',
         ungrouped: 'Ungrouped',
         username: 'root / ubuntu / admin'
+      },
+      jumpServer: {
+        dialog: {
+          description:
+            'Create a minimal jump server profile, save it immediately, and tag it as jumpserver.',
+          title: 'New Jump Server'
+        },
+        placeholders: {
+          name: 'Production Jump Server',
+          password: 'Enter the jump server password'
+        }
       },
       sections: {
         basic: 'Basic',
@@ -265,6 +280,7 @@ const workbench = {
       },
       toasts: {
         created: 'Server created.',
+        jumpServerCreated: 'Jump server {{name}} created.',
         updated: 'Server updated.'
       },
       validation: {

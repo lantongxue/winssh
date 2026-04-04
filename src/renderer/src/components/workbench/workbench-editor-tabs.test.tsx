@@ -20,6 +20,7 @@ vi.mock('sonner', () => ({
 const savedServer = {
   authType: 'password' as const,
   createdAt: '',
+  credentialId: null,
   favorite: false,
   group: null,
   groupId: null,
@@ -27,6 +28,7 @@ const savedServer = {
   hasPassword: true,
   host: '127.0.0.1',
   id: 'server-1',
+  jumpServerId: null,
   lastConnectedAt: null,
   name: 'alpha',
   note: null,

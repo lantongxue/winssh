@@ -56,6 +56,7 @@ type ServerRow = {
   note: string | null
   group_id: string | null
   credential_id: string | null
+  jump_server_id: string | null
   favorite: number
   created_at: string
   updated_at: string
@@ -136,6 +137,7 @@ function mapServer(row: ServerRow, tags: Tag[]): Server {
     note: row.note,
     groupId: row.group_id,
     credentialId: row.credential_id,
+    jumpServerId: row.jump_server_id,
     favorite: Boolean(row.favorite),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -218,6 +220,7 @@ export class DatabaseService {
         private_key TEXT,
         note TEXT,
         group_id TEXT REFERENCES server_groups(id) ON DELETE SET NULL,
+        jump_server_id TEXT REFERENCES servers(id) ON DELETE SET NULL,
         favorite INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
@@ -258,6 +261,11 @@ export class DatabaseService {
     if (!serverColumns.some((column) => column.name === 'credential_id')) {
       this.db.exec(
         'ALTER TABLE servers ADD COLUMN credential_id TEXT REFERENCES credentials(id) ON DELETE SET NULL'
+      )
+    }
+    if (!serverColumns.some((column) => column.name === 'jump_server_id')) {
+      this.db.exec(
+        'ALTER TABLE servers ADD COLUMN jump_server_id TEXT REFERENCES servers(id) ON DELETE SET NULL'
       )
     }
   }
@@ -431,6 +439,7 @@ export class DatabaseService {
                 private_key_path = ?,
                 note = ?,
                 group_id = ?,
+                jump_server_id = ?,
                 favorite = ?,
                 credential_id = ?,
                 updated_at = ?
@@ -447,6 +456,7 @@ export class DatabaseService {
             null,
             payload.note?.trim() || null,
             payload.groupId || null,
+            payload.jumpServerId || null,
             payload.favorite ? 1 : 0,
             payload.credentialId || null,
             now,
@@ -458,8 +468,8 @@ export class DatabaseService {
             `
               INSERT INTO servers (
                 id, name, host, port, username, auth_type, private_key, private_key_path, note,
-                group_id, favorite, credential_id, created_at, updated_at, last_connected_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                group_id, jump_server_id, favorite, credential_id, created_at, updated_at, last_connected_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `
           )
           .run(
@@ -473,6 +483,7 @@ export class DatabaseService {
             null,
             payload.note?.trim() || null,
             payload.groupId || null,
+            payload.jumpServerId || null,
             payload.favorite ? 1 : 0,
             payload.credentialId || null,
             now,

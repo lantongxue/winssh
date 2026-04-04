@@ -75,6 +75,7 @@ export const serverSchema = z
     privateKey: z.string().optional().nullable(),
     note: z.string().trim().max(400, 'validation.server.note.max').optional(),
     groupId: z.string().trim().nullable().optional(),
+    jumpServerId: z.string().trim().nullable().optional(),
     tagIds: z.array(z.string()).default([]),
     favorite: z.boolean().default(false),
     password: z.string().optional(),
@@ -91,14 +92,27 @@ export const serverSchema = z
         message: 'validation.server.privateKey.required'
       })
     }
+
+    if (value.id && value.jumpServerId && value.id === value.jumpServerId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['jumpServerId'],
+        message: 'validation.server.jumpServer.self'
+      })
+    }
   })
 
-export const connectionRequestSchema = z.object({
-  serverId: z.string().min(1, 'validation.connectionRequest.serverId.required'),
+const connectionSecretInputSchema = z.object({
   password: z.string().optional(),
   passphrase: z.string().optional(),
   rememberPassword: z.boolean().optional(),
   rememberPassphrase: z.boolean().optional()
+})
+
+export const connectionRequestSchema = z.object({
+  serverId: z.string().min(1, 'validation.connectionRequest.serverId.required'),
+  sessionId: z.string().min(1).optional(),
+  secrets: z.record(z.string(), connectionSecretInputSchema).optional()
 })
 
 const portForwardHostSchema = z

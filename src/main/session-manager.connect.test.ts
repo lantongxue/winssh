@@ -16,14 +16,15 @@ type MockClientBehavior =
   | { type: 'error'; error: Error }
   | { type: 'ready' }
 
-const { clientBehaviors, connectConfigs } = vi.hoisted(() => ({
+const { clientBehaviors, connectConfigs, forwardOutCalls } = vi.hoisted(() => ({
   clientBehaviors: [] as MockClientBehavior[],
-  connectConfigs: [] as unknown[]
+  connectConfigs: [] as Array<Record<string, unknown>>,
+  forwardOutCalls: [] as Array<{ dstIP: string; dstPort: number; srcIP: string; srcPort: number }>
 }))
 
 vi.mock('ssh2', () => ({
   Client: class MockSshClient extends EventEmitter {
-    connect = vi.fn((config: unknown) => {
+    connect = vi.fn((config: Record<string, unknown>) => {
       connectConfigs.push(config)
       const behavior = clientBehaviors.shift() ?? { type: 'ready' }
 
@@ -51,6 +52,20 @@ vi.mock('ssh2', () => ({
 
     end = vi.fn(() => this)
 
+    forwardOut = vi.fn(
+      (
+        srcIP: string,
+        srcPort: number,
+        dstIP: string,
+        dstPort: number,
+        callback?: (error: undefined, stream: PassThrough) => void
+      ) => {
+        forwardOutCalls.push({ dstIP, dstPort, srcIP, srcPort })
+        callback?.(undefined, new PassThrough())
+        return this
+      }
+    )
+
     shell = vi.fn((_: unknown, callback: (error: undefined, stream: PassThrough) => void) => {
       const shell = new PassThrough() as PassThrough & {
         stderr: PassThrough
@@ -76,41 +91,45 @@ vi.mock('ssh2', () => ({
 
 import { SessionManager } from './session-manager'
 
-function createPasswordServer(): Server {
+function createPasswordServer(overrides: Partial<Server> = {}): Server {
   return {
     id: 'server-1',
     name: 'alpha',
     host: '127.0.0.1',
     port: 22,
     username: 'root',
-    authType: 'password' as const,
+    authType: 'password',
     privateKeyPath: null,
     note: null,
     groupId: null,
+    credentialId: null,
+    jumpServerId: null,
     favorite: false,
     createdAt: '',
     updatedAt: '',
     lastConnectedAt: null,
     group: null,
     tags: [],
-    credentialId: null,
     hasPassword: false,
-    hasPassphrase: false
+    hasPassphrase: false,
+    ...overrides
   }
 }
 
-function createPrivateKeyServer(): Server {
-  return {
-    ...createPasswordServer(),
-    authType: 'privateKey' as const
-  }
+function createPrivateKeyServer(overrides: Partial<Server> = {}): Server {
+  return createPasswordServer({
+    authType: 'privateKey',
+    ...overrides
+  })
 }
 
 function createManager() {
   const database = {
     getKnownHost: vi.fn(),
     getServerPrivateKey: vi.fn((): string | null => null),
-    getServerById: vi.fn((): Server => createPasswordServer()),
+    getServerById: vi.fn((id: string): Server | null =>
+      id === 'server-1' ? createPasswordServer() : null
+    ),
     recordRecentSession: vi.fn(),
     upsertKnownHost: vi.fn()
   }
@@ -138,10 +157,11 @@ function createManager() {
 beforeEach(() => {
   clientBehaviors.length = 0
   connectConfigs.length = 0
+  forwardOutCalls.length = 0
 })
 
 describe('SessionManager connect', () => {
-  it('returns password_required when no password is available', async () => {
+  it('returns secret_required with server metadata when no password is available', async () => {
     const { manager, secureStore } = createManager()
     secureStore.getSecret.mockResolvedValueOnce(null)
 
@@ -149,28 +169,34 @@ describe('SessionManager connect', () => {
 
     expect(result).toEqual({
       ok: false,
-      code: 'password_required',
-      message: 'errors.passwordRequired'
+      code: 'secret_required',
+      message: 'errors.passwordRequired',
+      serverId: 'server-1',
+      secretKind: 'password'
     })
   })
 
-  it('returns auth_failed for SSH authentication errors', async () => {
-    const { manager, secureStore } = createManager()
-    secureStore.getSecret.mockResolvedValueOnce(null)
+  it('returns auth_failed with the failing hop metadata for SSH authentication errors', async () => {
+    const { manager } = createManager()
     clientBehaviors.push({ type: 'auth-failed' })
 
     const result = await manager.connect({
-      password: 'bad-password',
-      rememberPassword: true,
+      secrets: {
+        'server-1': {
+          password: 'bad-password',
+          rememberPassword: true
+        }
+      },
       serverId: 'server-1'
     })
 
     expect(result).toEqual({
       ok: false,
       code: 'auth_failed',
-      message: 'errors.authFailed'
+      message: 'errors.authFailed',
+      serverId: 'server-1',
+      secretKind: 'password'
     })
-    expect(secureStore.setSecret).not.toHaveBeenCalled()
   })
 
   it('returns connection_failed for non-auth SSH errors', async () => {
@@ -178,14 +204,20 @@ describe('SessionManager connect', () => {
     clientBehaviors.push({ type: 'error', error: new Error('socket hang up') })
 
     const result = await manager.connect({
-      password: 'bad-password',
+      secrets: {
+        'server-1': {
+          password: 'bad-password'
+        }
+      },
       serverId: 'server-1'
     })
 
     expect(result).toEqual({
       ok: false,
       code: 'connection_failed',
-      message: 'socket hang up'
+      message: 'socket hang up',
+      serverId: 'server-1',
+      secretKind: undefined
     })
   })
 
@@ -194,8 +226,12 @@ describe('SessionManager connect', () => {
     clientBehaviors.push({ type: 'ready' })
 
     const result = await manager.connect({
-      password: 'correct-password',
-      rememberPassword: true,
+      secrets: {
+        'server-1': {
+          password: 'correct-password',
+          rememberPassword: true
+        }
+      },
       serverId: 'server-1'
     })
 
@@ -207,11 +243,18 @@ describe('SessionManager connect', () => {
   it('uses the stored private key content for key-based authentication', async () => {
     const { database, manager } = createManager()
     database.getServerById.mockReturnValue(createPrivateKeyServer())
-    database.getServerPrivateKey.mockReturnValue('-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----')
+    database.getServerPrivateKey.mockReturnValue(
+      '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----'
+    )
     clientBehaviors.push({ type: 'ready' })
 
     const result = await manager.connect({
-      passphrase: 'secret',
+      secrets: {
+        'server-1': {
+          passphrase: 'secret',
+          rememberPassphrase: true
+        }
+      },
       serverId: 'server-1'
     })
 
@@ -223,5 +266,110 @@ describe('SessionManager connect', () => {
         privateKey: '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----'
       })
     )
+  })
+
+  it('returns secret_required for the jump server when its password is missing', async () => {
+    const { database, manager, secureStore } = createManager()
+    const targetServer = createPasswordServer({
+      id: 'server-1',
+      jumpServerId: 'jump-1',
+      name: 'target',
+      port: 2222
+    })
+    const jumpServer = createPasswordServer({
+      host: '10.0.0.10',
+      id: 'jump-1',
+      name: 'jump',
+      port: 22,
+      username: 'jump'
+    })
+
+    database.getServerById.mockImplementation((id: string) => {
+      if (id === 'server-1') {
+        return targetServer
+      }
+
+      if (id === 'jump-1') {
+        return jumpServer
+      }
+
+      return null
+    })
+    secureStore.getSecret.mockResolvedValue(null)
+
+    const result = await manager.connect({ serverId: 'server-1' })
+
+    expect(result).toEqual({
+      ok: false,
+      code: 'secret_required',
+      message: 'errors.passwordRequired',
+      serverId: 'jump-1',
+      secretKind: 'password'
+    })
+  })
+
+  it('connects through the jump server and passes the forwarded socket to the target connection', async () => {
+    const { database, manager, secureStore } = createManager()
+    const targetServer = createPasswordServer({
+      id: 'server-1',
+      host: '10.0.0.20',
+      jumpServerId: 'jump-1',
+      name: 'target',
+      port: 2222,
+      username: 'target'
+    })
+    const jumpServer = createPasswordServer({
+      host: '10.0.0.10',
+      id: 'jump-1',
+      name: 'jump',
+      port: 22,
+      username: 'jump'
+    })
+
+    database.getServerById.mockImplementation((id: string) => {
+      if (id === 'server-1') {
+        return targetServer
+      }
+
+      if (id === 'jump-1') {
+        return jumpServer
+      }
+
+      return null
+    })
+    secureStore.getSecret.mockImplementation((serverId: string) =>
+      Promise.resolve(serverId === 'jump-1' ? 'jump-password' : 'target-password')
+    )
+    clientBehaviors.push({ type: 'ready' }, { type: 'ready' })
+
+    const result = await manager.connect({ serverId: 'server-1' })
+
+    expect(result.ok).toBe(true)
+    expect(connectConfigs).toHaveLength(2)
+    expect(connectConfigs[0]).toEqual(
+      expect.objectContaining({
+        host: '10.0.0.10',
+        password: 'jump-password',
+        port: 22,
+        username: 'jump'
+      })
+    )
+    expect(connectConfigs[1]).toEqual(
+      expect.objectContaining({
+        host: '10.0.0.20',
+        password: 'target-password',
+        port: 2222,
+        sock: expect.any(PassThrough),
+        username: 'target'
+      })
+    )
+    expect(forwardOutCalls).toEqual([
+      {
+        dstIP: '10.0.0.20',
+        dstPort: 2222,
+        srcIP: '127.0.0.1',
+        srcPort: 0
+      }
+    ])
   })
 })

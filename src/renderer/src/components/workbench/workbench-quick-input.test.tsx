@@ -78,6 +78,7 @@ describe('WorkbenchQuickInput quick connect flow', () => {
     const createdServer = {
       authType: 'password' as const,
       createdAt: '',
+      credentialId: null,
       favorite: false,
       group: null,
       groupId: null,
@@ -85,6 +86,7 @@ describe('WorkbenchQuickInput quick connect flow', () => {
       hasPassword: false,
       host: '127.0.0.1',
       id: 'server-1',
+      jumpServerId: null,
       lastConnectedAt: null,
       name: 'root@127.0.0.1',
       note: null,
@@ -114,7 +116,9 @@ describe('WorkbenchQuickInput quick connect flow', () => {
       .mockResolvedValueOnce({
         ok: false,
         code: 'auth_failed',
-        message: 'Wrong password'
+        message: 'Wrong password',
+        secretKind: 'password',
+        serverId: 'server-1'
       })
       .mockImplementationOnce(() => secondConnect.promise)
 
@@ -152,10 +156,14 @@ describe('WorkbenchQuickInput quick connect flow', () => {
     expect(sessionsConnect).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        password: 'wrong-password',
-        rememberPassword: true,
         serverId: 'server-1',
-        sessionId: expect.any(String)
+        sessionId: expect.any(String),
+        secrets: {
+          'server-1': {
+            password: 'wrong-password',
+            rememberPassword: true
+          }
+        }
       })
     )
 
@@ -185,17 +193,24 @@ describe('WorkbenchQuickInput quick connect flow', () => {
     })
 
     await waitFor(() => {
-      expect(useSessionsStore.getState().tabs[0]?.sessionId).toBe('session-1')
+      expect(useSessionsStore.getState().activeSessionId).toBe('session-1')
+      expect(
+        useSessionsStore.getState().tabs.some((tab) => tab.sessionId === 'session-1')
+      ).toBe(true)
     })
 
     expect(serversCreate).toHaveBeenCalledTimes(1)
     expect(sessionsConnect).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
-        password: 'correct-password',
-        rememberPassword: true,
         serverId: 'server-1',
-        sessionId: pendingSessionId
+        sessionId: pendingSessionId,
+        secrets: {
+          'server-1': {
+            password: 'correct-password',
+            rememberPassword: true
+          }
+        }
       })
     )
   })

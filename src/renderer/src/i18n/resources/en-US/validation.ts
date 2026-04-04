@@ -44,6 +44,9 @@ const validation = {
         max: 'Host is too long.',
         required: 'Enter a host.'
       },
+      jumpServer: {
+        self: 'A server cannot use itself as its jump server.'
+      },
       name: {
         max: 'Server name must be 60 characters or fewer.',
         required: 'Enter a server name.'

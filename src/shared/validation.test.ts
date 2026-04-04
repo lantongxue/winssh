@@ -83,6 +83,7 @@ describe('serverSchema', () => {
         favorite: false,
         groupId: null,
         host: '10.0.0.8',
+        jumpServerId: null,
         name: 'Production Bastion',
         note: '',
         port: 22,
@@ -106,6 +107,7 @@ describe('serverSchema', () => {
         favorite: false,
         groupId: null,
         host: '10.0.0.9',
+        jumpServerId: null,
         name: 'Vault Host',
         note: '',
         port: 22,
@@ -129,6 +131,7 @@ describe('serverSchema', () => {
         favorite: false,
         groupId: null,
         host: '10.0.0.10',
+        jumpServerId: null,
         name: 'Key Host',
         note: '',
         port: 22,
@@ -137,6 +140,27 @@ describe('serverSchema', () => {
         rememberPassword: false,
         tagIds: [],
         username: 'deploy'
+      }).success
+    ).toBe(false)
+  })
+
+  it('rejects selecting the current server as its own jump server', () => {
+    expect(
+      serverSchema.safeParse({
+        authType: 'password',
+        favorite: false,
+        groupId: null,
+        host: '10.0.0.11',
+        id: 'server-1',
+        jumpServerId: 'server-1',
+        name: 'Loop Host',
+        note: '',
+        port: 22,
+        privateKey: null,
+        rememberPassphrase: false,
+        rememberPassword: true,
+        tagIds: [],
+        username: 'root'
       }).success
     ).toBe(false)
   })
