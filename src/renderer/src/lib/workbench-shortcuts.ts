@@ -4,6 +4,7 @@ export type WorkbenchShortcutId =
   | 'commandPalette'
   | 'newConnection'
   | 'quickOpen'
+  | 'save'
   | 'togglePanel'
   | 'toggleSidebar'
 
@@ -11,6 +12,7 @@ export type WorkbenchShortcutAction =
   | 'openCommandPalette'
   | 'openNewConnection'
   | 'openQuickOpen'
+  | 'saveActiveDocument'
   | 'togglePanel'
   | 'toggleSidebar'
 
@@ -29,6 +31,8 @@ export function getWorkbenchShortcutLabel(
       return `${modifierLabel}+N`
     case 'quickOpen':
       return isMac ? `${modifierLabel}+Shift+P` : `${modifierLabel}+P`
+    case 'save':
+      return `${modifierLabel}+S`
     case 'togglePanel':
       return `${modifierLabel}+J`
     case 'toggleSidebar':
@@ -56,6 +60,10 @@ export function resolveWorkbenchShortcutAction(
 
   if (key === 'n') {
     return 'openNewConnection'
+  }
+
+  if (key === 's') {
+    return 'saveActiveDocument'
   }
 
   if (key !== 'p') {

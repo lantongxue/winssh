@@ -11,7 +11,11 @@ import { actionIcons } from '@/lib/action-icons'
 import { getColorStyle } from '@/lib/colors'
 import { cn } from '@/lib/utils'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
-import { createServerEditorDocument, type ServerEditorDocument } from '@/lib/workbench'
+import {
+  createServerEditorDocument,
+  getServerEditorFormId,
+  type ServerEditorDocument
+} from '@/lib/workbench'
 import { useWorkbenchStore } from '@/store/workbench-store'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -163,6 +167,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     queryFn: () => window.winsshApi.servers.getSecrets(document.serverId as string),
     enabled: Boolean(document.serverId)
   })
+  const serverSecrets = serverSecretsQuery.data
   const [secretVisible, setSecretVisible] = useState(false)
 
   const form = useForm<ServerFormValues>({
@@ -179,7 +184,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
       return
     }
 
-    const secrets: ServerSecrets | undefined = serverSecretsQuery.data
+    const secrets: ServerSecrets | undefined = serverSecrets
     if (!secrets) {
       return
     }
@@ -195,13 +200,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     if (!form.getFieldState('privateKey').isDirty) {
       form.setValue('privateKey', secrets.privateKey ?? '', { shouldDirty: false })
     }
-  }, [
-    document.serverId,
-    form,
-    serverSecretsQuery.data?.passphrase,
-    serverSecretsQuery.data?.password,
-    serverSecretsQuery.data?.privateKey
-  ])
+  }, [document.serverId, form, serverSecrets])
 
   const authType = form.watch('authType')
   const credentialId = form.watch('credentialId')
@@ -239,6 +238,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     ? t('workbench.serverEditor.actions.hideSecret')
     : t('workbench.serverEditor.actions.showSecret')
   const SecretToggleIcon = secretVisible ? EyeOff : Eye
+  const formId = getServerEditorFormId(document.id)
 
   useEffect(() => {
     setSecretVisible(false)
@@ -290,6 +290,13 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     return saved
   }
 
+  const handleSave = form.handleSubmit(
+    async (values) => {
+      await persistServer(values)
+    },
+    () => reportValidationFailure()
+  )
+
   return (
     <div className="liquid-glass-page flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
       <div className="liquid-glass-toolbar flex h-10 shrink-0 items-center justify-between border-b border-[var(--workbench-border)] px-3">
@@ -309,15 +316,11 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
         </div>
         <div className="flex items-center gap-2">
           <Button
+            type="submit"
+            form={formId}
             variant="ghost"
             size="sm"
             disabled={form.formState.isSubmitting}
-            onClick={form.handleSubmit(
-              async (values) => {
-                await persistServer(values)
-              },
-              () => reportValidationFailure()
-            )}
           >
             <SaveIcon className="size-4" />
             {t('common.actions.save')}
@@ -366,7 +369,11 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
       </div>
 
       <Form {...form}>
-        <form className="min-h-0 flex-1 space-y-4 overflow-auto px-4 py-4">
+        <form
+          id={formId}
+          className="min-h-0 flex-1 space-y-4 overflow-auto px-4 py-4"
+          onSubmit={handleSave}
+        >
           <section className="liquid-glass-card border border-[var(--workbench-border)] px-6 py-5">
             <div className="mb-4">
               <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
@@ -531,45 +538,47 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
               <div className="mb-4 text-base font-semibold">
                 {t('workbench.serverEditor.sections.privateKey')}
               </div>
-              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-                <FormField
-                  control={form.control}
-                  name="privateKey"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('workbench.serverEditor.fields.privateKeyFile')}</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          {...field}
-                          value={field.value ?? ''}
-                          rows={10}
-                          className="font-mono text-xs leading-5"
-                          placeholder={t('workbench.serverEditor.placeholders.privateKeyFile')}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="flex items-start">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={async () => {
-                      const privateKey = await window.winsshApi.system.pickPrivateKey()
-                      if (privateKey) {
-                        form.setValue('privateKey', privateKey, {
-                          shouldDirty: true,
-                          shouldValidate: true
-                        })
-                      }
-                    }}
-                  >
-                    <BrowseIcon className="size-4" />
-                    {t('common.actions.browse')}
-                  </Button>
-                </div>
-              </div>
+              <FormField
+                control={form.control}
+                name="privateKey"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <FormLabel className="leading-none">
+                        {t('workbench.serverEditor.fields.privateKeyFile')}
+                      </FormLabel>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                        onClick={async () => {
+                          const privateKey = await window.winsshApi.system.pickPrivateKey()
+                          if (privateKey) {
+                            form.setValue('privateKey', privateKey, {
+                              shouldDirty: true,
+                              shouldValidate: true
+                            })
+                          }
+                        }}
+                      >
+                        <BrowseIcon className="size-4" />
+                        {t('common.actions.browse')}
+                      </Button>
+                    </div>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        value={field.value ?? ''}
+                        rows={10}
+                        className="font-mono text-xs leading-5"
+                        placeholder={t('workbench.serverEditor.placeholders.privateKeyFile')}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </section>
           ) : null}
 
@@ -636,7 +645,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
               />
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="space-y-4">
               <FormField
                 control={form.control}
                 name={isPrivateKeyAuth ? 'passphrase' : 'password'}
@@ -677,22 +686,24 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                 control={form.control}
                 name={isPrivateKeyAuth ? 'rememberPassphrase' : 'rememberPassword'}
                 render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-sm border border-[var(--workbench-border)] px-4 py-3">
-                    <div>
-                      <div className="font-medium">{rememberLabel}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {credentialStorageAvailable
-                          ? t('workbench.serverEditor.systemKeychain.available')
-                          : t('workbench.serverEditor.systemKeychain.unavailable')}
+                  <FormItem className="rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-panel)]/35 px-4 py-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="space-y-1">
+                        <div className="font-medium leading-none">{rememberLabel}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {credentialStorageAvailable
+                            ? t('workbench.serverEditor.systemKeychain.available')
+                            : t('workbench.serverEditor.systemKeychain.unavailable')}
+                        </div>
                       </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value && credentialStorageAvailable}
+                          disabled={!credentialStorageAvailable}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
                     </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value && credentialStorageAvailable}
-                        disabled={!credentialStorageAvailable}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
                   </FormItem>
                 )}
               />

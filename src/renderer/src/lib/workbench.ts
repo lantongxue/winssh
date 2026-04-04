@@ -5,12 +5,7 @@ import { Files, Settings2, Terminal } from 'lucide-react'
 export type WorkbenchActivityId = 'explorer' | 'terminal' | 'settings'
 export type WorkbenchPanelId = 'output' | 'transfers' | 'problems'
 export type WorkbenchLegacyPath = '/servers' | '/sessions' | '/settings'
-export type WorkbenchExplorerSectionId =
-  | 'favorites'
-  | 'recent'
-  | 'groups'
-  | 'tags'
-  | 'all-servers'
+export type WorkbenchExplorerSectionId = 'favorites' | 'recent' | 'groups' | 'tags' | 'all-servers'
 
 export type WorkbenchExplorerNodeId =
   | 'home'
@@ -122,6 +117,10 @@ export function createServerEditorDocument(serverId?: string | null): ServerEdit
     kind: 'server-editor',
     serverId: serverId ?? null
   }
+}
+
+export function getServerEditorFormId(documentId: ServerEditorDocument['id']) {
+  return `${documentId}:form`
 }
 
 export function createSessionEditorDocument(sessionId: string): SessionEditorDocument {

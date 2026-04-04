@@ -246,21 +246,15 @@ function CredentialFormDialog({
                   name="privateKey"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('workbench.credentialVault.fields.privateKey')}</FormLabel>
-                      <div className="flex gap-2 items-start">
-                        <FormControl>
-                          <Textarea
-                            {...field}
-                            value={field.value ?? ''}
-                            rows={6}
-                            className="font-mono text-xs leading-5 flex-1"
-                            placeholder={t('workbench.credentialVault.placeholders.privateKey')}
-                          />
-                        </FormControl>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <FormLabel className="leading-none">
+                          {t('workbench.credentialVault.fields.privateKey')}
+                        </FormLabel>
                         <Button
                           type="button"
                           variant="outline"
-                          className="shrink-0"
+                          size="sm"
+                          className="w-full sm:w-auto"
                           onClick={async () => {
                             const key = await window.winsshApi.system.pickPrivateKey()
                             if (key) {
@@ -275,6 +269,15 @@ function CredentialFormDialog({
                           {t('common.actions.browse')}
                         </Button>
                       </div>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          value={field.value ?? ''}
+                          rows={6}
+                          className="font-mono text-xs leading-5"
+                          placeholder={t('workbench.credentialVault.placeholders.privateKey')}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

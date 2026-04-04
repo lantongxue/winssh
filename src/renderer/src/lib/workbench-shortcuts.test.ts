@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { getWorkbenchShortcutLabel, resolveWorkbenchShortcutAction } from '@/lib/workbench-shortcuts'
+import {
+  getWorkbenchShortcutLabel,
+  resolveWorkbenchShortcutAction
+} from '@/lib/workbench-shortcuts'
 
 describe('resolveWorkbenchShortcutAction', () => {
   it('opens the new connection editor with Cmd+N on macOS', () => {
@@ -44,6 +47,20 @@ describe('resolveWorkbenchShortcutAction', () => {
     ).toBe('openQuickOpen')
   })
 
+  it('resolves Cmd+S to saving the active document on macOS', () => {
+    expect(
+      resolveWorkbenchShortcutAction(
+        {
+          ctrlKey: false,
+          key: 's',
+          metaKey: true,
+          shiftKey: false
+        },
+        true
+      )
+    ).toBe('saveActiveDocument')
+  })
+
   it('keeps the existing quick-open-first behavior on non-mac platforms', () => {
     expect(
       resolveWorkbenchShortcutAction(
@@ -56,6 +73,18 @@ describe('resolveWorkbenchShortcutAction', () => {
         false
       )
     ).toBe('openNewConnection')
+
+    expect(
+      resolveWorkbenchShortcutAction(
+        {
+          ctrlKey: true,
+          key: 's',
+          metaKey: false,
+          shiftKey: false
+        },
+        false
+      )
+    ).toBe('saveActiveDocument')
 
     expect(
       resolveWorkbenchShortcutAction(
@@ -92,6 +121,7 @@ describe('getWorkbenchShortcutLabel', () => {
   it('returns control-based labels for non-mac platforms', () => {
     expect(getWorkbenchShortcutLabel('commandPalette', false)).toBe('Ctrl+Shift+P')
     expect(getWorkbenchShortcutLabel('quickOpen', false)).toBe('Ctrl+P')
+    expect(getWorkbenchShortcutLabel('save', false)).toBe('Ctrl+S')
     expect(getWorkbenchShortcutLabel('toggleSidebar', false)).toBe('Ctrl+B')
   })
 })

@@ -8,6 +8,7 @@ import {
   createSessionEditorDocument,
   createSettingsEditorDocument,
   createTerminalWelcomeDocument,
+  getServerEditorFormId,
   getLegacyPathForActivity,
   getLegacyPathForDocument
 } from '@/lib/workbench'
@@ -29,6 +30,21 @@ import { WorkbenchSessionEditor } from '@/components/workbench/workbench-session
 import { WorkbenchSettingsEditor } from '@/components/workbench/workbench-settings-editor'
 import { WorkbenchStatusBar } from '@/components/workbench/workbench-status-bar'
 import { WorkbenchTitlebar } from '@/components/workbench/workbench-titlebar'
+
+function submitServerEditorForm(documentId: `server-editor:${string}`) {
+  const form = document.getElementById(getServerEditorFormId(documentId))
+
+  if (!(form instanceof HTMLFormElement)) {
+    return
+  }
+
+  if (typeof form.requestSubmit === 'function') {
+    form.requestSubmit()
+    return
+  }
+
+  form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+}
 
 function WorkbenchTerminalWelcome() {
   const { t } = useTranslation()
@@ -134,6 +150,13 @@ function WorkbenchShellContent() {
 
       event.preventDefault()
 
+      if (action === 'saveActiveDocument') {
+        if (activeDocument?.kind === 'server-editor') {
+          submitServerEditorForm(activeDocument.id)
+        }
+        return
+      }
+
       if (action === 'toggleSidebar') {
         toggleSidebar()
         return
@@ -163,7 +186,15 @@ function WorkbenchShellContent() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isMac, openServerEditor, setCommandPaletteOpen, setQuickOpenOpen, togglePanel, toggleSidebar])
+  }, [
+    activeDocument,
+    isMac,
+    openServerEditor,
+    setCommandPaletteOpen,
+    setQuickOpenOpen,
+    togglePanel,
+    toggleSidebar
+  ])
 
   useEffect(() => {
     const targetPath =
