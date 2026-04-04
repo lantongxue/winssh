@@ -111,7 +111,11 @@ function CredentialFormDialog({
         await queryClient.invalidateQueries({ queryKey: ['credential-secret', credential.id] })
       }
       toast.success(
-        t(isEdit ? 'workbench.credentialVault.toasts.updated' : 'workbench.credentialVault.toasts.created')
+        t(
+          isEdit
+            ? 'workbench.credentialVault.toasts.updated'
+            : 'workbench.credentialVault.toasts.created'
+        )
       )
       onClose()
     }
@@ -129,7 +133,11 @@ function CredentialFormDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldCheck className="size-4 text-primary" />
-            {t(isEdit ? 'workbench.credentialVault.dialog.editTitle' : 'workbench.credentialVault.dialog.createTitle')}
+            {t(
+              isEdit
+                ? 'workbench.credentialVault.dialog.editTitle'
+                : 'workbench.credentialVault.dialog.createTitle'
+            )}
           </DialogTitle>
         </DialogHeader>
         <Form {...form}>
@@ -406,17 +414,13 @@ export function CredentialVault() {
   const credentials = credentialsQuery.data ?? []
 
   return (
-    <div className="liquid-glass-card rounded-[24px] border border-[var(--workbench-border)]">
+    <div className="liquid-glass-card border border-[var(--workbench-border)]">
       <div className="flex items-center justify-between border-b border-[var(--workbench-border)] px-4 py-3">
         <div className="flex items-center gap-2 text-sm font-medium">
           <ShieldCheck className="size-4 text-primary" />
           {t('workbench.credentialVault.title')}
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setEditTarget('new')}
-        >
+        <Button variant="ghost" size="sm" onClick={() => setEditTarget('new')}>
           <Plus className="size-4" />
           {t('workbench.credentialVault.actions.new')}
         </Button>
@@ -431,7 +435,7 @@ export function CredentialVault() {
           {credentials.map((credential) => (
             <div
               key={credential.id}
-              className="liquid-glass-list-item group flex items-center gap-3 rounded-xl border border-transparent px-4 py-3 transition-colors hover:bg-[var(--workbench-hover)]"
+              className="liquid-glass-list-item group flex items-center gap-3 border border-transparent px-4 py-3 transition-colors hover:bg-[var(--workbench-hover)]"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -456,11 +460,7 @@ export function CredentialVault() {
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setEditTarget(credential)}
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => setEditTarget(credential)}>
                       <EditIcon className="size-4" />
                     </Button>
                   </TooltipTrigger>
@@ -490,10 +490,7 @@ export function CredentialVault() {
         credential={editTarget === 'new' ? null : editTarget}
         onClose={() => setEditTarget(null)}
       />
-      <DeleteCredentialDialog
-        credential={deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-      />
+      <DeleteCredentialDialog credential={deleteTarget} onClose={() => setDeleteTarget(null)} />
     </div>
   )
 }

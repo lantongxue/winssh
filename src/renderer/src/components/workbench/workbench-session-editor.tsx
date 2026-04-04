@@ -41,11 +41,11 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
 
   if (!session) {
     return (
-    <div className="liquid-glass-page flex h-full items-center justify-center bg-[var(--workbench-editor)] px-6">
-      <div className="liquid-glass-hero max-w-md rounded-[28px] border border-[var(--workbench-border)] px-8 py-10 text-center">
-        <div className="text-lg font-semibold text-foreground">
-          {t('workbench.sessionEditor.closed.title')}
-        </div>
+      <div className="liquid-glass-page flex h-full items-center justify-center bg-[var(--workbench-editor)] px-6">
+        <div className="liquid-glass-hero max-w-md border border-[var(--workbench-border)] px-8 py-10 text-center">
+          <div className="text-lg font-semibold text-foreground">
+            {t('workbench.sessionEditor.closed.title')}
+          </div>
           <div className="mt-2 text-sm text-muted-foreground">
             {t('workbench.sessionEditor.closed.description')}
           </div>
@@ -74,12 +74,12 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
     auxView === 'sftp' ? (
       <SftpPanel
         session={session}
-        className="liquid-glass-pane h-full overflow-hidden rounded-[1.35rem] bg-[var(--workbench-sidebar)]"
+        className="liquid-glass-pane liquid-glass-panel-frame h-full overflow-hidden bg-[var(--workbench-sidebar)]"
       />
     ) : auxView === 'port-forward' ? (
       <PortForwardPanel
         session={session}
-        className="liquid-glass-pane h-full overflow-hidden rounded-[1.35rem] bg-[var(--workbench-sidebar)]"
+        className="liquid-glass-pane liquid-glass-panel-frame h-full overflow-hidden bg-[var(--workbench-sidebar)]"
       />
     ) : null
   const showAuxPanel = Boolean(auxPanelContent && !session.provisional)
@@ -131,9 +131,7 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
 
       <div className="min-h-0 flex-1">
         <ResizablePanelGroup className="h-full" orientation="horizontal">
-          <ResizablePanel minSize={TERMINAL_PANEL_MIN_SIZE}>
-            {terminalView}
-          </ResizablePanel>
+          <ResizablePanel minSize={TERMINAL_PANEL_MIN_SIZE}>{terminalView}</ResizablePanel>
           {showAuxPanel ? (
             <>
               <ResizableHandle

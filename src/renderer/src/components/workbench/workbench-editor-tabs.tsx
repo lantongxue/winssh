@@ -184,7 +184,7 @@ export function WorkbenchEditorTabs() {
           }
         }}
       >
-        <div className="flex min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
+        <div className="liquid-glass-tab-strip flex min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
           {openDocuments.map((document, index) => {
             const active = document.id === activeDocumentId
             const title = getTitle(document)

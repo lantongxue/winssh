@@ -70,7 +70,8 @@ describe('ThemeRegistry', () => {
       colors: {
         'workbench-bg': '#101522',
         'workbench-active': '#73c2fb',
-        'workbench-logo': '#8ed7ff'
+        'workbench-logo': '#8ed7ff',
+        'workbench-card-radius': '18px'
       },
       terminal: {
         cursor: '#73c2fb'
@@ -87,6 +88,7 @@ describe('ThemeRegistry', () => {
     ])
     expect(themes[2]?.colors['workbench-bg']).toBe('#101522')
     expect(themes[2]?.colors['workbench-logo']).toBe('#8ed7ff')
+    expect(themes[2]?.colors['workbench-card-radius']).toBe('18px')
     expect(themes[2]?.terminal.cursor).toBe('#73c2fb')
     expect(themes[2]?.terminal.background).toBe('#09090b')
   })

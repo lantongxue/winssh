@@ -44,7 +44,9 @@ const themes = [
     id: DEFAULT_PIXEL_THEME_ID,
     label: 'Pixel CRT',
     colors: {
-      'workbench-logo': '#9ff6a8'
+      'workbench-logo': '#9ff6a8',
+      'workbench-card-radius': '2px',
+      'workbench-tab-radius': '2px'
     },
     pluginDisplayName: 'WinSSH Default Themes',
     pluginId: 'winssh.default-themes',
@@ -73,6 +75,8 @@ describe('theme helpers', () => {
     expect(root.classList.contains('dark')).toBe(true)
     expect(root.dataset.theme).toBe(DEFAULT_PIXEL_THEME_ID)
     expect(root.style.getPropertyValue('--workbench-logo')).toBe('#9ff6a8')
+    expect(root.style.getPropertyValue('--workbench-card-radius')).toBe('2px')
+    expect(root.style.getPropertyValue('--workbench-tab-radius')).toBe('2px')
   })
 
   it('resolves system theme against the OS preference', () => {

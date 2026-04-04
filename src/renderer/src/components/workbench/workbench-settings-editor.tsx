@@ -180,7 +180,7 @@ export function WorkbenchSettingsEditor() {
       </aside>
 
       <div className="min-h-0 flex-1 overflow-auto">
-        <div className="liquid-glass-hero mx-6 mt-6 rounded-[28px] border border-[var(--workbench-border)] px-6 py-5">
+        <div className="liquid-glass-hero mx-6 mt-6 border border-[var(--workbench-border)] px-6 py-5">
           <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
             {t(settingsSections.find((section) => section.id === selectedSection)?.labelKey ?? '')}
           </div>
@@ -210,7 +210,7 @@ export function WorkbenchSettingsEditor() {
             )}
           >
             {selectedSection === 'appearance' ? (
-              <section className="liquid-glass-card space-y-4 rounded-[24px] border border-[var(--workbench-border)] p-5">
+              <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <SlidersHorizontal className="size-4 text-primary" />
                   {t('workbench.settings.sections.appearance')}
@@ -300,7 +300,7 @@ export function WorkbenchSettingsEditor() {
             ) : null}
 
             {selectedSection === 'terminal' ? (
-              <section className="liquid-glass-card space-y-4 rounded-[24px] border border-[var(--workbench-border)] p-5">
+              <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <TerminalSquare className="size-4 text-primary" />
                   {t('workbench.settings.sections.terminal')}
@@ -426,7 +426,7 @@ export function WorkbenchSettingsEditor() {
             ) : null}
 
             {selectedSection === 'security' ? (
-              <section className="liquid-glass-card space-y-4 rounded-[24px] border border-[var(--workbench-border)] p-5">
+              <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <ShieldCheck className="size-4 text-primary" />
                   {t('workbench.settings.sections.security')}
@@ -505,7 +505,7 @@ export function WorkbenchSettingsEditor() {
             ) : null}
 
             {selectedSection === 'credentialVault' ? (
-              <section className="liquid-glass-card space-y-4 rounded-[24px] border border-[var(--workbench-border)] p-5">
+              <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <KeyRound className="size-4 text-primary" />
                   {t('workbench.credentialVault.title')}

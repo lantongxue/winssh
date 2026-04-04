@@ -35,7 +35,7 @@ function WorkbenchTerminalWelcome() {
 
   return (
     <div className="liquid-glass-page flex h-full items-center justify-center bg-[var(--workbench-editor)] px-6">
-      <div className="liquid-glass-hero max-w-xl rounded-[28px] border border-[var(--workbench-border)] px-8 py-10 text-center">
+      <div className="liquid-glass-hero max-w-xl border border-[var(--workbench-border)] px-8 py-10 text-center">
         <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
           {t('workbench.activity.terminal.title')}
         </div>
@@ -75,13 +75,14 @@ function WorkbenchShellContent() {
   const togglePanel = useWorkbenchStore((state) => state.togglePanel)
   const toggleSidebar = useWorkbenchStore((state) => state.toggleSidebar)
 
-  const activeDocument =
-    openDocuments.find((document) => document.id === activeDocumentId) ?? null
+  const activeDocument = openDocuments.find((document) => document.id === activeDocumentId) ?? null
 
   useEffect(() => {
     const currentState = useWorkbenchStore.getState()
     const currentActiveDocument =
-      currentState.openDocuments.find((document) => document.id === currentState.activeDocumentId) ?? null
+      currentState.openDocuments.find(
+        (document) => document.id === currentState.activeDocumentId
+      ) ?? null
 
     if (location.pathname === '/servers') {
       setActiveActivity('explorer')
@@ -107,7 +108,8 @@ function WorkbenchShellContent() {
     }
 
     if (location.pathname === '/sessions') {
-      const { activeSessionId: currentActiveSessionId, tabs: currentTabs } = useSessionsStore.getState()
+      const { activeSessionId: currentActiveSessionId, tabs: currentTabs } =
+        useSessionsStore.getState()
       const preferredSessionId = currentActiveSessionId ?? currentTabs.at(-1)?.sessionId
       openDocument(
         preferredSessionId
@@ -208,7 +210,9 @@ function WorkbenchShellContent() {
               className={document.id === activeDocumentId ? 'h-full' : 'hidden h-full'}
             >
               {document.kind === 'terminal-welcome' ? <WorkbenchTerminalWelcome /> : null}
-              {document.kind === 'server-editor' ? <WorkbenchServerEditor document={document} /> : null}
+              {document.kind === 'server-editor' ? (
+                <WorkbenchServerEditor document={document} />
+              ) : null}
               {document.kind === 'session-editor' ? (
                 <WorkbenchSessionEditor sessionId={document.sessionId} />
               ) : null}

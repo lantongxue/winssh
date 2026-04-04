@@ -402,9 +402,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
               size="icon-sm"
               label={t('common.actions.upload')}
               onClick={() =>
-                void window.winsshApi.sftp
-                  .uploadFiles(session.sessionId, currentPath)
-                  .then(refresh)
+                void window.winsshApi.sftp.uploadFiles(session.sessionId, currentPath).then(refresh)
               }
             >
               <UploadIcon className="size-4" />
@@ -434,9 +432,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
               ) : null}
 
               {!listingQuery.isLoading && entries.length > 0 ? (
-                <div
-                  style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}
-                >
+                <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
                   {virtualizer.getVirtualItems().map((virtualItem) => {
                     const entry = entries[virtualItem.index]
                     const contextMenuTargets = resolveContextMenuTargets(entry)
@@ -584,9 +580,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                               {t('common.actions.refresh')}
                             </ContextMenuItem>
 
-                            <ContextMenuItem
-                              onClick={() => openCreateFileDialog(createTargetPath)}
-                            >
+                            <ContextMenuItem onClick={() => openCreateFileDialog(createTargetPath)}>
                               <NewFileIcon className="size-4" />
                               {t('common.actions.newFile')}
                             </ContextMenuItem>
@@ -659,7 +653,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
           }
         }}
       >
-        <DialogContent className="max-w-sm rounded-xl">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{t('workbench.sftp.dialogs.createFile')}</DialogTitle>
           </DialogHeader>
@@ -703,7 +697,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
           }
         }}
       >
-        <DialogContent className="max-w-sm rounded-xl">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{t('workbench.sftp.dialogs.createFolder')}</DialogTitle>
           </DialogHeader>
@@ -738,7 +732,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
       </Dialog>
 
       <Dialog open={Boolean(renameTarget)} onOpenChange={(open) => !open && setRenameTarget(null)}>
-        <DialogContent className="max-w-sm rounded-xl">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{t('workbench.sftp.dialogs.rename')}</DialogTitle>
           </DialogHeader>

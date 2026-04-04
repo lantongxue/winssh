@@ -242,7 +242,7 @@ export function PortForwardPanel({ session, className }: PortForwardPanelProps) 
       </div>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-md rounded-xl">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{t('workbench.portForward.dialog.create')}</DialogTitle>
             <DialogDescription>{t('workbench.portForward.dialog.description')}</DialogDescription>

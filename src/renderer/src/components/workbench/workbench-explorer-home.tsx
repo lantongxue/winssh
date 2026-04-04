@@ -30,7 +30,7 @@ function ServerShortcut({
   return (
     <button
       type="button"
-      className="liquid-glass-list-item flex w-full items-center justify-between gap-3 rounded-xl border border-transparent px-3 py-3 text-left transition-colors hover:border-[var(--workbench-border)] hover:bg-[var(--workbench-hover)]"
+      className="liquid-glass-list-item flex w-full items-center justify-between gap-3 border border-transparent px-3 py-3 text-left transition-colors hover:border-[var(--workbench-border)] hover:bg-[var(--workbench-hover)]"
       onClick={clickIntent.onClick}
       onDoubleClick={clickIntent.onDoubleClick}
     >
@@ -74,13 +74,15 @@ export function WorkbenchExplorerHome() {
 
   return (
     <div className="liquid-glass-page flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
-      <div className="liquid-glass-hero mx-6 mt-6 rounded-[28px] border border-[var(--workbench-border)] px-6 py-5">
+      <div className="liquid-glass-hero mx-6 mt-6 border border-[var(--workbench-border)] px-6 py-5">
         <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
           {t('workbench.activity.explorer.title')}
         </div>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-semibold text-foreground">{t('workbench.explorerHome.title')}</h2>
+            <h2 className="text-xl font-semibold text-foreground">
+              {t('workbench.explorerHome.title')}
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {t('workbench.explorerHome.subtitle')}
             </p>
@@ -103,7 +105,7 @@ export function WorkbenchExplorerHome() {
       </div>
 
       <div className="grid min-h-0 flex-1 gap-4 px-6 py-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-        <div className="liquid-glass-card min-h-0 overflow-auto rounded-[24px] border border-[var(--workbench-border)] bg-[var(--workbench-editor)]">
+        <div className="liquid-glass-card min-h-0 overflow-auto border border-[var(--workbench-border)] bg-[var(--workbench-editor)]">
           <section className="border-b border-[var(--workbench-border)] px-6 py-5">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
@@ -172,25 +174,25 @@ export function WorkbenchExplorerHome() {
           </section>
         </div>
 
-        <aside className="liquid-glass-card min-h-0 overflow-auto rounded-[24px] border border-[var(--workbench-border)] bg-[var(--workbench-sidebar)]">
+        <aside className="liquid-glass-card min-h-0 overflow-auto border border-[var(--workbench-border)] bg-[var(--workbench-sidebar)]">
           <section className="border-b border-[var(--workbench-border)] px-5 py-5">
             <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
               {t('workbench.explorerHome.overview.title')}
             </div>
             <div className="mt-4 grid gap-3">
-              <div className="liquid-glass-list-item rounded-[20px] border border-[var(--workbench-border)] bg-[var(--workbench-bg)] px-4 py-3">
+              <div className="liquid-glass-list-item liquid-glass-metric-card border border-[var(--workbench-border)] bg-[var(--workbench-bg)] px-4 py-3">
                 <div className="text-xs text-muted-foreground">
                   {t('workbench.explorerHome.overview.savedConnections')}
                 </div>
                 <div className="mt-1 text-lg font-semibold">{serversQuery.data?.length ?? 0}</div>
               </div>
-              <div className="liquid-glass-list-item rounded-[20px] border border-[var(--workbench-border)] bg-[var(--workbench-bg)] px-4 py-3">
+              <div className="liquid-glass-list-item liquid-glass-metric-card border border-[var(--workbench-border)] bg-[var(--workbench-bg)] px-4 py-3">
                 <div className="text-xs text-muted-foreground">
                   {t('workbench.explorerHome.overview.activeSessions')}
                 </div>
                 <div className="mt-1 text-lg font-semibold">{sessions.length}</div>
               </div>
-              <div className="liquid-glass-list-item rounded-[20px] border border-[var(--workbench-border)] bg-[var(--workbench-bg)] px-4 py-3">
+              <div className="liquid-glass-list-item liquid-glass-metric-card border border-[var(--workbench-border)] bg-[var(--workbench-bg)] px-4 py-3">
                 <div className="text-xs text-muted-foreground">
                   {t('workbench.explorerHome.overview.recentConnections')}
                 </div>

@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
 import { WorkbenchEditorTabs } from '@/components/workbench/workbench-editor-tabs'
 import { WorkbenchProvider } from '@/components/workbench/workbench-context'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { createSessionEditorDocument } from '@/lib/workbench'
 import { createWinsshApiMock } from '@/test/create-winssh-api'
 import { useSessionsStore } from '@/store/sessions-store'
@@ -58,9 +59,11 @@ function renderEditorTabs() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <WorkbenchProvider>
-        <WorkbenchEditorTabs />
-      </WorkbenchProvider>
+      <TooltipProvider>
+        <WorkbenchProvider>
+          <WorkbenchEditorTabs />
+        </WorkbenchProvider>
+      </TooltipProvider>
     </QueryClientProvider>
   )
 }
