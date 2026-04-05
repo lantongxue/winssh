@@ -15,7 +15,10 @@ export function DocsPage() {
       pageKeywords={copy.docs.seoKeywords}
       sectionLinks={copy.docs.sections}
     >
-      <section className="site-entrance site-entrance-1 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-6">
+      <section
+        id="docs-top"
+        className="site-entrance site-entrance-1 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-6"
+      >
         <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--workbench-muted)]">
           {copy.docs.hero.eyebrow}
         </div>
@@ -75,7 +78,7 @@ export function DocsPage() {
                 </div>
                 <h2 className="mt-2 text-2xl font-semibold tracking-[-0.02em]">{card.title}</h2>
               </div>
-              <a className="site-secondary-button" href="#top">
+              <a className="site-secondary-button" href="#docs-top">
                 {copy.docs.backToTopLabel}
               </a>
             </div>
