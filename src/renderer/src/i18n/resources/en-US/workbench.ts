@@ -133,12 +133,14 @@ const workbench = {
         createGroup: 'New Group',
         createTag: 'New Tag',
         edit: 'Edit',
+        moveToGroup: 'Move to Group',
         removeFromFavorites: 'Remove from Favorites',
         rename: 'Rename'
       },
       description: 'Single-click to open the editor, double-click to start an SSH session.',
       labels: {
-        connected: 'Connected'
+        connected: 'Connected',
+        ungrouped: 'Ungrouped'
       },
       dialogs: {
         deleteServer: {
@@ -150,7 +152,7 @@ const workbench = {
       sections: {
         allServers: 'All Servers',
         favorites: 'Favorites',
-        groups: 'Groups',
+        groups: 'Server Management',
         recent: 'Recent',
         tags: 'Tags'
       },
@@ -159,6 +161,8 @@ const workbench = {
         groupDeleted: 'Group deleted.',
         recentCleared: 'Recent connections cleared.',
         serverDeleteFailed: 'Failed to delete the server.',
+        serverMoveFailed: 'Failed to move the server.',
+        serverMoved: '{{name}} moved to {{group}}.',
         tagDeleted: 'Tag deleted.'
       }
     },

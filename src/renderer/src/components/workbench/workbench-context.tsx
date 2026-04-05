@@ -10,7 +10,8 @@ import type {
   QuickConnectTarget,
   RuntimeCapabilities,
   SecretKind,
-  Server
+  Server,
+  ServerUpsertInput
 } from '@shared/types'
 import type { WorkbenchActivityId } from '@/lib/workbench'
 import {
@@ -99,6 +100,7 @@ interface WorkbenchContextValue {
   disconnectSession: (sessionId: string, options?: DisconnectSessionOptions) => Promise<void>
   focusActivity: (activityId: WorkbenchActivityId) => void
   focusExplorerHome: () => void
+  moveServerToGroup: (server: Server, groupId: string | null, groupName?: string) => Promise<void>
   openEntityQuickInput: (input: EntityQuickInputState) => void
   openServerEditor: (serverId?: string | null) => void
   openSettingsEditor: () => void
@@ -159,6 +161,34 @@ function getRememberPreference(
 ) {
   const secrets = request?.secrets?.[serverId]
   return secretKind === 'password' ? secrets?.rememberPassword : secrets?.rememberPassphrase
+}
+
+function buildServerGroupUpdatePayload(
+  server: Server,
+  groupId: string | null,
+  options: { privateKey?: string | null } = {}
+): ServerUpsertInput {
+  return {
+    authType: server.authType,
+    credentialId: server.credentialId ?? null,
+    favorite: server.favorite,
+    groupId,
+    host: server.host,
+    jumpServerId: server.jumpServerId,
+    name: server.name,
+    note: server.note ?? '',
+    port: server.port,
+    privateKey:
+      server.authType === 'privateKey' && !server.credentialId
+        ? options.privateKey?.trim()
+          ? options.privateKey
+          : null
+        : undefined,
+    rememberPassphrase: server.authType === 'privateKey' ? server.hasPassphrase : false,
+    rememberPassword: server.authType === 'password' ? server.hasPassword : false,
+    tagIds: server.tags.map((tag) => tag.id),
+    username: server.username
+  }
 }
 
 export function WorkbenchProvider({ children }: { children: ReactNode }) {
@@ -643,6 +673,47 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     toast.success(t('workbench.toasts.serverDeleted'))
   }
 
+  const moveServerToGroup = async (
+    server: Server,
+    groupId: string | null,
+    groupName?: string
+  ) => {
+    const currentServer = (await getServerById(server.id)) ?? server
+    if (currentServer.groupId === groupId) {
+      return
+    }
+
+    try {
+      let privateKey: string | null | undefined
+
+      if (currentServer.authType === 'privateKey' && !currentServer.credentialId) {
+        const secrets = await window.winsshApi.servers.getSecrets(currentServer.id)
+        privateKey = secrets.privateKey
+
+        if (!privateKey?.trim()) {
+          throw new Error(t('workbench.primarySidebar.toasts.serverMoveFailed'))
+        }
+      }
+
+      await window.winsshApi.servers.update(
+        currentServer.id,
+        buildServerGroupUpdatePayload(currentServer, groupId, { privateKey })
+      )
+      await refreshWorkspaceData()
+      toast.success(
+        t('workbench.primarySidebar.toasts.serverMoved', {
+          group: groupName ?? t('workbench.primarySidebar.labels.ungrouped'),
+          name: currentServer.name
+        })
+      )
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : t('workbench.primarySidebar.toasts.serverMoveFailed')
+      toast.error(message)
+      throw error
+    }
+  }
+
   const openEntityQuickInput = (input: EntityQuickInputState) => {
     setQuickInput({
       ...input,
@@ -665,6 +736,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         disconnectSession,
         focusActivity,
         focusExplorerHome,
+        moveServerToGroup,
         openEntityQuickInput,
         openServerEditor,
         openSettingsEditor,

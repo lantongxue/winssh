@@ -1,14 +1,13 @@
-import { useMemo, useState, type ReactElement, type ReactNode } from 'react'
+import { useMemo, useState, type DragEvent, type ReactElement, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowRight,
-  ChevronDown,
-  ChevronRight,
   FolderTree,
   Heart,
   LoaderCircle,
   Plus,
-  Tags
+  Server as ServerIcon,
+  Tag as TagIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -26,6 +25,9 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
 import {
@@ -55,28 +57,79 @@ function TooltipAction({
   )
 }
 
+const UNGROUPED_GROUP_ID = '__ungrouped__'
+const SERVER_DRAG_MIME = 'application/x-winssh-server-id'
+
 function SectionHeader({
   action,
+  active = false,
   collapsed,
+  count,
+  icon,
+  onDoubleClick,
+  onSelect,
   onToggle,
   title
 }: {
   action?: ReactNode
+  active?: boolean
   collapsed: boolean
+  count?: number
+  icon?: ReactNode
+  onDoubleClick?: () => void
+  onSelect?: () => void
   onToggle: () => void
   title: string
 }) {
+  const ToggleIcon = collapsed ? actionIcons.expand : actionIcons.collapse
+
   return (
-    <div className="flex items-center justify-between gap-2 px-2 text-[11px] font-medium tracking-[0.14em] text-muted-foreground">
+    <div
+      data-active={active}
+      className={cn(
+        'flex w-full min-w-0 items-stretch rounded-sm text-[11px] font-medium tracking-[0.14em] transition-colors',
+        active
+          ? 'bg-[var(--workbench-hover)] text-foreground'
+          : 'text-muted-foreground hover:bg-[var(--workbench-hover)] hover:text-foreground'
+      )}
+    >
       <button
         type="button"
-        className="flex min-w-0 items-center gap-1 transition-colors hover:text-foreground"
+        className="flex h-8 w-8 shrink-0 items-center justify-center text-inherit"
         onClick={onToggle}
       >
-        {collapsed ? <ChevronRight className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-        <span className="truncate uppercase">{title}</span>
+        <ToggleIcon className="size-3.5" />
       </button>
-      {action}
+
+      {onSelect ? (
+        <button
+          type="button"
+          className="flex min-w-0 h-8 flex-1 items-center gap-1.5 text-inherit"
+          onClick={onSelect}
+          onDoubleClick={onDoubleClick}
+        >
+          {icon ? <span className="shrink-0">{icon}</span> : null}
+          <span className="min-w-0 truncate text-left uppercase">{title}</span>
+          {typeof count === 'number' ? (
+            <span className="shrink-0 text-[11px] text-muted-foreground">{count}</span>
+          ) : null}
+          <span className="flex-1" />
+        </button>
+      ) : (
+        <div
+          className="flex min-w-0 h-8 flex-1 items-center gap-1.5 text-inherit"
+          onDoubleClick={onDoubleClick}
+        >
+          {icon ? <span className="shrink-0">{icon}</span> : null}
+          <span className="min-w-0 truncate uppercase">{title}</span>
+          {typeof count === 'number' ? (
+            <span className="shrink-0 text-[11px] text-muted-foreground">{count}</span>
+          ) : null}
+          <span className="flex-1" />
+        </div>
+      )}
+
+      {action ? <div className="flex h-8 shrink-0 items-center pr-1">{action}</div> : null}
     </div>
   )
 }
@@ -86,31 +139,52 @@ function TreeRow({
   children,
   className,
   depth = 0,
+  draggable = false,
+  dropTarget = false,
   onClick,
-  onDoubleClick
+  onDragEnd,
+  onDragLeave,
+  onDragOver,
+  onDragStart,
+  onDoubleClick,
+  onDrop
 }: {
   active?: boolean
   children: ReactNode
   className?: string
   depth?: number
+  draggable?: boolean
+  dropTarget?: boolean
   onClick?: () => void
+  onDragEnd?: (event: DragEvent<HTMLDivElement>) => void
+  onDragLeave?: (event: DragEvent<HTMLDivElement>) => void
+  onDragOver?: (event: DragEvent<HTMLDivElement>) => void
+  onDragStart?: (event: DragEvent<HTMLDivElement>) => void
   onDoubleClick?: () => void
+  onDrop?: (event: DragEvent<HTMLDivElement>) => void
 }) {
   return (
     <div
       role="button"
       tabIndex={0}
       data-active={active}
+      draggable={draggable}
       className={cn(
         'liquid-glass-list-item group/tree-row flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-[13px] transition-colors',
         active
           ? 'bg-[var(--workbench-hover)] text-foreground'
           : 'text-muted-foreground hover:bg-[var(--workbench-hover)] hover:text-foreground',
+        dropTarget && 'bg-[var(--workbench-hover)] text-foreground ring-1 ring-[var(--workbench-active)]/35',
         className
       )}
       style={{ paddingLeft: `${depth * 16 + 8}px` }}
       onClick={onClick}
+      onDragEnd={onDragEnd}
+      onDragLeave={onDragLeave}
+      onDragOver={onDragOver}
+      onDragStart={onDragStart}
       onDoubleClick={onDoubleClick}
+      onDrop={onDrop}
       onKeyDown={(event) => {
         if ((event.key === 'Enter' || event.key === ' ') && onClick) {
           event.preventDefault()
@@ -127,9 +201,14 @@ function ServerRow({
   active,
   connected,
   depth,
+  dragging = false,
+  groups,
   onConnect,
   onDelete,
+  onDragEnd,
+  onDragStart,
   onEdit,
+  onMoveToGroup,
   onSelect,
   onToggleFavorite,
   server
@@ -137,9 +216,14 @@ function ServerRow({
   active: boolean
   connected?: boolean
   depth?: number
+  dragging?: boolean
+  groups: ServerGroup[]
   onConnect: () => void
   onDelete: () => void
+  onDragEnd?: (event: DragEvent<HTMLDivElement>) => void
+  onDragStart?: (event: DragEvent<HTMLDivElement>) => void
   onEdit: () => void
+  onMoveToGroup: (server: Server, group: ServerGroup | null) => void | Promise<void>
   onSelect?: () => void
   onToggleFavorite: () => void
   server: Server
@@ -149,6 +233,7 @@ function ServerRow({
   const EditIcon = actionIcons.edit
   const FavoriteIcon = actionIcons.star
   const DeleteIcon = actionIcons.delete
+  const hasTags = server.tags.length > 0
 
   const handleConnect = () => {
     onSelect?.()
@@ -160,27 +245,66 @@ function ServerRow({
   return (
     <ContextMenu>
       <ContextMenuTrigger>
-        <TreeRow active={active} depth={depth} onClick={onSelect} onDoubleClick={handleConnect}>
+        <TreeRow
+          active={active}
+          className={dragging ? 'opacity-60' : undefined}
+          depth={depth}
+          draggable
+          onClick={onSelect}
+          onDragEnd={onDragEnd}
+          onDragStart={onDragStart}
+          onDoubleClick={handleConnect}
+        >
           <ServerBrandIcon
             brandId={server.brandId}
             customIconDataUrl={server.customIconDataUrl}
             className={cn(
-              'size-3.5',
+              'size-3.5 shrink-0',
+              hasTags && 'mt-0.5 self-start',
               server.favorite ? 'text-amber-400' : 'text-[var(--workbench-active)]'
             )}
           />
-          <span className="min-w-0 flex-1 truncate">{server.name}</span>
-          {connected ? (
-            <span className="rounded-full border border-emerald-500/25 bg-emerald-500/12 px-2 py-0.5 text-[10px] font-medium tracking-[0.08em] text-emerald-700 dark:text-emerald-300">
-              {connectedLabel}
-            </span>
-          ) : null}
-          {server.favorite ? <Heart className="size-3.5 fill-amber-400 text-amber-400" /> : null}
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <span className="min-w-0 flex-1 truncate">{server.name}</span>
+              {connected ? (
+                <span className="rounded-full border border-emerald-500/25 bg-emerald-500/12 px-2 py-0.5 text-[10px] font-medium tracking-[0.08em] text-emerald-700 dark:text-emerald-300">
+                  {connectedLabel}
+                </span>
+              ) : null}
+              {server.favorite ? (
+                <Heart className="size-3.5 shrink-0 fill-amber-400 text-amber-400" />
+              ) : null}
+            </div>
+            {hasTags ? (
+              <div
+                className="mt-1 flex flex-wrap gap-1"
+              >
+                {server.tags.map((tag) => {
+                  const style = getColorStyle(tag.color)
+
+                  return (
+                    <span
+                      key={tag.id}
+                      className={cn(
+                        'inline-flex max-w-full items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] leading-none',
+                        style.badge
+                      )}
+                    >
+                      <span className={cn('size-1.5 shrink-0 rounded-full', style.dot)} />
+                      <span className="truncate">{tag.name}</span>
+                    </span>
+                  )
+                })}
+              </div>
+            ) : null}
+          </div>
           <TooltipAction content={connectLabel} side="right">
             <button
               type="button"
               className={cn(
                 'flex size-5 shrink-0 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-all hover:bg-[var(--workbench-hover)] hover:text-foreground',
+                hasTags && 'mt-0.5 self-start',
                 'opacity-0 pointer-events-none group-hover/tree-row:opacity-100 group-hover/tree-row:pointer-events-auto',
                 'group-focus-within/tree-row:opacity-100 group-focus-within/tree-row:pointer-events-auto'
               )}
@@ -218,6 +342,29 @@ function ServerRow({
             ? t('workbench.primarySidebar.actions.removeFromFavorites')
             : t('workbench.primarySidebar.actions.addToFavorites')}
         </ContextMenuItem>
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>
+            <FolderTree className="size-4" />
+            {t('workbench.primarySidebar.actions.moveToGroup')}
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem
+              disabled={server.groupId === null}
+              onClick={() => void onMoveToGroup(server, null)}
+            >
+              {t('workbench.primarySidebar.labels.ungrouped')}
+            </ContextMenuItem>
+            {groups.map((group) => (
+              <ContextMenuItem
+                key={group.id}
+                disabled={server.groupId === group.id}
+                onClick={() => void onMoveToGroup(server, group)}
+              >
+                {group.name}
+              </ContextMenuItem>
+            ))}
+          </ContextMenuSubContent>
+        </ContextMenuSub>
         <ContextMenuSeparator />
         <ContextMenuItem variant="destructive" onClick={onDelete}>
           <DeleteIcon className="size-4" />
@@ -232,14 +379,24 @@ function EntityNode({
   active,
   children,
   depth,
+  dropTarget = false,
   onClick,
+  onDragLeave,
+  onDragOver,
+  onDoubleClick,
+  onDrop,
   onDelete,
   onRename
 }: {
   active: boolean
   children: ReactNode
   depth: number
+  dropTarget?: boolean
   onClick: () => void
+  onDragLeave?: (event: DragEvent<HTMLDivElement>) => void
+  onDragOver?: (event: DragEvent<HTMLDivElement>) => void
+  onDoubleClick?: () => void
+  onDrop?: (event: DragEvent<HTMLDivElement>) => void
   onDelete: () => void
   onRename: () => void
 }) {
@@ -250,7 +407,16 @@ function EntityNode({
   return (
     <ContextMenu>
       <ContextMenuTrigger>
-        <TreeRow active={active} depth={depth} onClick={onClick}>
+        <TreeRow
+          active={active}
+          depth={depth}
+          dropTarget={dropTarget}
+          onClick={onClick}
+          onDragLeave={onDragLeave}
+          onDragOver={onDragOver}
+          onDoubleClick={onDoubleClick}
+          onDrop={onDrop}
+        >
           {children}
         </TreeRow>
       </ContextMenuTrigger>
@@ -274,6 +440,7 @@ export function WorkbenchPrimarySidebar() {
   const {
     connectServer,
     deleteServer,
+    moveServerToGroup,
     openEntityQuickInput,
     openServerEditor,
     refreshWorkspaceData,
@@ -287,10 +454,14 @@ export function WorkbenchPrimarySidebar() {
   const toggleSection = useWorkbenchStore((state) => state.toggleSection)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const [expandedTags, setExpandedTags] = useState<Record<string, boolean>>({})
+  const [draggedServerId, setDraggedServerId] = useState<string | null>(null)
+  const [dropTargetGroupId, setDropTargetGroupId] = useState<string | null>(null)
   const [pendingDeleteServer, setPendingDeleteServer] = useState<Server | null>(null)
   const [isDeletingServer, setIsDeletingServer] = useState(false)
   const CancelIcon = actionIcons.cancel
+  const CollapseIcon = actionIcons.collapse
   const DeleteIcon = actionIcons.delete
+  const ExpandIcon = actionIcons.expand
 
   const serversQuery = useQuery({
     queryKey: ['servers'],
@@ -313,7 +484,11 @@ export function WorkbenchPrimarySidebar() {
   const groups = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data])
   const tags = useMemo(() => tagsQuery.data ?? [], [tagsQuery.data])
   const recents = useMemo(() => recentQuery.data ?? [], [recentQuery.data])
-  const recentIds = useMemo(() => new Set(recents.map((recent) => recent.serverId)), [recents])
+  const favoriteServers = useMemo(() => servers.filter((server) => server.favorite), [servers])
+  const ungroupedServers = useMemo(
+    () => servers.filter((server) => !server.groupId),
+    [servers]
+  )
   const connectedServerIds = useMemo(
     () =>
       new Set(
@@ -321,28 +496,6 @@ export function WorkbenchPrimarySidebar() {
       ),
     [sessions]
   )
-
-  const filteredServers = useMemo(() => {
-    if (selectedExplorerNode === 'favorites') {
-      return servers.filter((server) => server.favorite)
-    }
-
-    if (selectedExplorerNode === 'recent') {
-      return servers.filter((server) => recentIds.has(server.id))
-    }
-
-    if (selectedExplorerNode.startsWith('group:')) {
-      const groupId = selectedExplorerNode.slice('group:'.length)
-      return servers.filter((server) => server.groupId === groupId)
-    }
-
-    if (selectedExplorerNode.startsWith('tag:')) {
-      const tagId = selectedExplorerNode.slice('tag:'.length)
-      return servers.filter((server) => server.tags.some((tag) => tag.id === tagId))
-    }
-
-    return servers
-  }, [recentIds, selectedExplorerNode, servers])
 
   const groupCounts = useMemo(() => {
     const counts = new Map<string, number>()
@@ -363,6 +516,100 @@ export function WorkbenchPrimarySidebar() {
     }
     return counts
   }, [servers])
+
+  const serverMap = useMemo(() => new Map(servers.map((server) => [server.id, server])), [servers])
+
+  const clearDragState = () => {
+    setDraggedServerId(null)
+    setDropTargetGroupId(null)
+  }
+
+  const resolveDraggedServerId = (event: DragEvent<HTMLElement>) => {
+    const dataTransferServerId =
+      event.dataTransfer.getData(SERVER_DRAG_MIME) || event.dataTransfer.getData('text/plain')
+
+    return draggedServerId ?? dataTransferServerId ?? null
+  }
+
+  const canMoveServerToGroup = (serverId: string, targetGroupId: string | null) => {
+    const server = serverMap.get(serverId)
+    return Boolean(server) && server?.groupId !== targetGroupId
+  }
+
+  const getDropTargetKey = (groupId: string | null) => groupId ?? UNGROUPED_GROUP_ID
+
+  const handleMoveServerGroup = async (server: Server, group: ServerGroup | null) => {
+    await moveServerToGroup(
+      server,
+      group?.id ?? null,
+      group?.name ?? t('workbench.primarySidebar.labels.ungrouped')
+    )
+
+    if (group) {
+      setExpandedGroups((current) => ({
+        ...current,
+        [group.id]: true
+      }))
+      return
+    }
+
+    setExpandedGroups((current) => ({
+      ...current,
+      [UNGROUPED_GROUP_ID]: true
+    }))
+  }
+
+  const handleServerDragStart = (serverId: string) => (event: DragEvent<HTMLDivElement>) => {
+    setDraggedServerId(serverId)
+    setDropTargetGroupId(null)
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData(SERVER_DRAG_MIME, serverId)
+    event.dataTransfer.setData('text/plain', serverId)
+  }
+
+  const handleServerDragEnd = () => {
+    clearDragState()
+  }
+
+  const handleGroupDragOver = (groupId: string | null) => (event: DragEvent<HTMLDivElement>) => {
+    const serverId = resolveDraggedServerId(event)
+    if (!serverId || !canMoveServerToGroup(serverId, groupId)) {
+      return
+    }
+
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+    setDropTargetGroupId(getDropTargetKey(groupId))
+  }
+
+  const handleGroupDragLeave =
+    (groupId: string | null) => (event: DragEvent<HTMLDivElement>) => {
+      if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+        return
+      }
+
+      const targetKey = getDropTargetKey(groupId)
+      setDropTargetGroupId((current) => (current === targetKey ? null : current))
+    }
+
+  const handleGroupDrop = (groupId: string | null) => (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+
+    const serverId = resolveDraggedServerId(event)
+    clearDragState()
+
+    if (!serverId || !canMoveServerToGroup(serverId, groupId)) {
+      return
+    }
+
+    const server = serverMap.get(serverId)
+    if (!server) {
+      return
+    }
+
+    const targetGroup = groupId ? groups.find((group) => group.id === groupId) ?? null : null
+    void handleMoveServerGroup(server, targetGroup)
+  }
 
   const handleDeleteGroup = async (group: ServerGroup) => {
     await window.winsshApi.groups.delete(group.id)
@@ -411,6 +658,13 @@ export function WorkbenchPrimarySidebar() {
     }
   }
 
+  const ungroupedExpanded = expandedGroups[UNGROUPED_GROUP_ID] ?? true
+  const toggleUngrouped = () =>
+    setExpandedGroups((current) => ({
+      ...current,
+      [UNGROUPED_GROUP_ID]: !(current[UNGROUPED_GROUP_ID] ?? true)
+    }))
+
   return (
     <>
       <aside className="liquid-glass-pane flex h-full min-h-0 flex-col bg-[var(--workbench-sidebar)]">
@@ -426,117 +680,87 @@ export function WorkbenchPrimarySidebar() {
           </p>
         </div>
 
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-2 py-3">
-          <section className="space-y-1">
-            <SectionHeader
-              title={t('workbench.primarySidebar.sections.allServers')}
-              collapsed={Boolean(collapsedSections['all-servers'])}
-              onToggle={() => toggleSection('all-servers')}
-              action={
-                <TooltipAction content={t('common.actions.newConnection')}>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    className="text-muted-foreground"
-                    aria-label={t('common.actions.newConnection')}
-                    onClick={() => openServerEditor()}
-                  >
-                    <Plus className="size-3.5" />
-                  </Button>
-                </TooltipAction>
-              }
-            />
-            {!collapsedSections['all-servers'] ? (
-              <div className="space-y-0.5">
-                <TreeRow
-                  active={selectedExplorerNode === 'all-servers' || selectedExplorerNode === 'home'}
-                  onClick={() => setSelectedExplorerNode('all-servers')}
-                >
-                  <Tags className="size-4" />
-                  <span className="flex-1 truncate">
-                    {t('workbench.primarySidebar.sections.allServers')}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{filteredServers.length}</span>
-                </TreeRow>
-                {filteredServers.map((server) => (
-                  <ServerRow
-                    key={server.id}
-                    active={selectedExplorerNode === `server:${server.id}`}
-                    connected={connectedServerIds.has(server.id)}
-                    depth={1}
-                    server={server}
-                    onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
-                    onConnect={() => void connectServer(server)}
-                    onDelete={() => setPendingDeleteServer(server)}
-                    onEdit={() => openServerEditor(server.id)}
-                    onToggleFavorite={() => void toggleFavorite(server.id)}
-                  />
-                ))}
-              </div>
-            ) : null}
-          </section>
-
-          <section className="space-y-1">
-            <SectionHeader
-              title={t('workbench.primarySidebar.sections.favorites')}
-              collapsed={Boolean(collapsedSections.favorites)}
-              onToggle={() => toggleSection('favorites')}
-            />
-            {!collapsedSections.favorites ? (
-              <div className="space-y-0.5">
-                <TreeRow
-                  active={selectedExplorerNode === 'favorites'}
-                  onClick={() => setSelectedExplorerNode('favorites')}
-                >
-                  <Heart className="size-4" />
-                  <span className="flex-1 truncate">
-                    {t('workbench.primarySidebar.sections.favorites')}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {servers.filter((server) => server.favorite).length}
-                  </span>
-                </TreeRow>
-                {servers
-                  .filter((server) => server.favorite)
-                  .map((server) => (
-                    <ServerRow
-                      key={server.id}
-                      active={selectedExplorerNode === `server:${server.id}`}
-                      connected={connectedServerIds.has(server.id)}
-                      depth={1}
-                      server={server}
-                      onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
-                      onConnect={() => void connectServer(server)}
-                      onDelete={() => setPendingDeleteServer(server)}
-                      onEdit={() => openServerEditor(server.id)}
-                      onToggleFavorite={() => void toggleFavorite(server.id)}
-                    />
-                  ))}
-              </div>
-            ) : null}
-          </section>
-
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-2 py-3">
           <section className="space-y-1">
             <SectionHeader
               title={t('workbench.primarySidebar.sections.groups')}
+              icon={<ServerIcon className="size-3.5" />}
+              count={groups.length + 1}
+              active={selectedExplorerNode === 'groups'}
               collapsed={Boolean(collapsedSections.groups)}
+              onDoubleClick={() => toggleSection('groups')}
+              onSelect={() => setSelectedExplorerNode('groups')}
               onToggle={() => toggleSection('groups')}
               action={
                 <TooltipAction content={t('workbench.primarySidebar.actions.createGroup')}>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    className="text-muted-foreground"
+                  <button
+                    type="button"
+                    className="flex size-5 shrink-0 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-all hover:bg-[var(--workbench-hover)] hover:text-foreground"
                     aria-label={t('workbench.primarySidebar.actions.createGroup')}
                     onClick={() => openEntityQuickInput({ entityType: 'group', mode: 'create' })}
                   >
                     <Plus className="size-3.5" />
-                  </Button>
+                  </button>
                 </TooltipAction>
               }
             />
             {!collapsedSections.groups ? (
               <div className="space-y-0.5">
+                <div className="space-y-0.5">
+                  <TreeRow
+                    active={selectedExplorerNode === `group:${UNGROUPED_GROUP_ID}`}
+                    depth={1}
+                    onClick={() => setSelectedExplorerNode(`group:${UNGROUPED_GROUP_ID}`)}
+                    dropTarget={dropTargetGroupId === UNGROUPED_GROUP_ID}
+                    onDragLeave={handleGroupDragLeave(null)}
+                    onDragOver={handleGroupDragOver(null)}
+                    onDoubleClick={toggleUngrouped}
+                    onDrop={handleGroupDrop(null)}
+                  >
+                    <button
+                      type="button"
+                      className="flex size-4 items-center justify-center"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        toggleUngrouped()
+                      }}
+                    >
+                      {ungroupedExpanded ? (
+                        <CollapseIcon className="size-3.5" />
+                      ) : (
+                        <ExpandIcon className="size-3.5" />
+                      )}
+                    </button>
+                    <span className="size-2 rounded-full bg-muted-foreground/50" />
+                    <span className="flex-1 truncate">
+                      {t('workbench.primarySidebar.labels.ungrouped')}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{ungroupedServers.length}</span>
+                  </TreeRow>
+                  {ungroupedExpanded
+                    ? ungroupedServers.map((server) => (
+                        <ServerRow
+                          key={server.id}
+                          active={selectedExplorerNode === `server:${server.id}`}
+                          connected={connectedServerIds.has(server.id)}
+                          depth={2}
+                          dragging={draggedServerId === server.id}
+                          groups={groups}
+                          server={server}
+                          onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
+                          onConnect={() => void connectServer(server)}
+                          onDelete={() => setPendingDeleteServer(server)}
+                          onDragEnd={handleServerDragEnd}
+                          onDragStart={handleServerDragStart(server.id)}
+                          onEdit={() => openServerEditor(server.id)}
+                          onMoveToGroup={(currentServer, targetGroup) =>
+                            void handleMoveServerGroup(currentServer, targetGroup)
+                          }
+                          onToggleFavorite={() => void toggleFavorite(server.id)}
+                        />
+                      ))
+                    : null}
+                </div>
                 {groups.map((group) => {
                   const style = getColorStyle(group.color)
                   const active = selectedExplorerNode === `group:${group.id}`
@@ -547,8 +771,18 @@ export function WorkbenchPrimarySidebar() {
                     <div key={group.id} className="space-y-0.5">
                       <EntityNode
                         active={active}
-                        depth={0}
+                        depth={1}
+                        dropTarget={dropTargetGroupId === group.id}
                         onClick={() => setSelectedExplorerNode(`group:${group.id}`)}
+                        onDragLeave={handleGroupDragLeave(group.id)}
+                        onDragOver={handleGroupDragOver(group.id)}
+                        onDoubleClick={() =>
+                          setExpandedGroups((current) => ({
+                            ...current,
+                            [group.id]: !expanded
+                          }))
+                        }
+                        onDrop={handleGroupDrop(group.id)}
                         onDelete={() => void handleDeleteGroup(group)}
                         onRename={() =>
                           openEntityQuickInput({
@@ -572,9 +806,9 @@ export function WorkbenchPrimarySidebar() {
                           }}
                         >
                           {expanded ? (
-                            <ChevronDown className="size-3.5" />
+                            <CollapseIcon className="size-3.5" />
                           ) : (
-                            <ChevronRight className="size-3.5" />
+                            <ExpandIcon className="size-3.5" />
                           )}
                         </button>
                         <span className={`size-2 rounded-full ${style.dot}`} />
@@ -589,12 +823,19 @@ export function WorkbenchPrimarySidebar() {
                               key={server.id}
                               active={selectedExplorerNode === `server:${server.id}`}
                               connected={connectedServerIds.has(server.id)}
-                              depth={1}
+                              depth={2}
+                              dragging={draggedServerId === server.id}
+                              groups={groups}
                               server={server}
                               onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
                               onConnect={() => void connectServer(server)}
                               onDelete={() => setPendingDeleteServer(server)}
+                              onDragEnd={handleServerDragEnd}
+                              onDragStart={handleServerDragStart(server.id)}
                               onEdit={() => openServerEditor(server.id)}
+                              onMoveToGroup={(currentServer, targetGroup) =>
+                                void handleMoveServerGroup(currentServer, targetGroup)
+                              }
                               onToggleFavorite={() => void toggleFavorite(server.id)}
                             />
                           ))
@@ -608,20 +849,62 @@ export function WorkbenchPrimarySidebar() {
 
           <section className="space-y-1">
             <SectionHeader
+              title={t('workbench.primarySidebar.sections.favorites')}
+              icon={<Heart className="size-3.5" />}
+              count={favoriteServers.length}
+              active={selectedExplorerNode === 'favorites'}
+              collapsed={Boolean(collapsedSections.favorites)}
+              onDoubleClick={() => toggleSection('favorites')}
+              onSelect={() => setSelectedExplorerNode('favorites')}
+              onToggle={() => toggleSection('favorites')}
+            />
+            {!collapsedSections.favorites ? (
+              <div className="space-y-0.5">
+                {favoriteServers.map((server) => (
+                  <ServerRow
+                    key={server.id}
+                    active={selectedExplorerNode === `server:${server.id}`}
+                    connected={connectedServerIds.has(server.id)}
+                    depth={1}
+                    dragging={draggedServerId === server.id}
+                    groups={groups}
+                    server={server}
+                    onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
+                    onConnect={() => void connectServer(server)}
+                    onDelete={() => setPendingDeleteServer(server)}
+                    onDragEnd={handleServerDragEnd}
+                    onDragStart={handleServerDragStart(server.id)}
+                    onEdit={() => openServerEditor(server.id)}
+                    onMoveToGroup={(currentServer, targetGroup) =>
+                      void handleMoveServerGroup(currentServer, targetGroup)
+                    }
+                    onToggleFavorite={() => void toggleFavorite(server.id)}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="space-y-1">
+            <SectionHeader
               title={t('workbench.primarySidebar.sections.tags')}
+              icon={<TagIcon className="size-3.5" />}
+              count={tags.length}
+              active={selectedExplorerNode === 'tags'}
               collapsed={Boolean(collapsedSections.tags)}
+              onDoubleClick={() => toggleSection('tags')}
+              onSelect={() => setSelectedExplorerNode('tags')}
               onToggle={() => toggleSection('tags')}
               action={
                 <TooltipAction content={t('workbench.primarySidebar.actions.createTag')}>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    className="text-muted-foreground"
+                  <button
+                    type="button"
+                    className="flex size-5 shrink-0 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-all hover:bg-[var(--workbench-hover)] hover:text-foreground"
                     aria-label={t('workbench.primarySidebar.actions.createTag')}
                     onClick={() => openEntityQuickInput({ entityType: 'tag', mode: 'create' })}
                   >
                     <Plus className="size-3.5" />
-                  </Button>
+                  </button>
                 </TooltipAction>
               }
             />
@@ -639,8 +922,14 @@ export function WorkbenchPrimarySidebar() {
                     <div key={tag.id} className="space-y-0.5">
                       <EntityNode
                         active={active}
-                        depth={0}
+                        depth={1}
                         onClick={() => setSelectedExplorerNode(`tag:${tag.id}`)}
+                        onDoubleClick={() =>
+                          setExpandedTags((current) => ({
+                            ...current,
+                            [tag.id]: !expanded
+                          }))
+                        }
                         onDelete={() => void handleDeleteTag(tag)}
                         onRename={() =>
                           openEntityQuickInput({
@@ -664,9 +953,9 @@ export function WorkbenchPrimarySidebar() {
                           }}
                         >
                           {expanded ? (
-                            <ChevronDown className="size-3.5" />
+                            <CollapseIcon className="size-3.5" />
                           ) : (
-                            <ChevronRight className="size-3.5" />
+                            <ExpandIcon className="size-3.5" />
                           )}
                         </button>
                         <span className={`size-2 rounded-full ${style.dot}`} />
@@ -681,12 +970,19 @@ export function WorkbenchPrimarySidebar() {
                               key={server.id}
                               active={selectedExplorerNode === `server:${server.id}`}
                               connected={connectedServerIds.has(server.id)}
-                              depth={1}
+                              depth={2}
+                              dragging={draggedServerId === server.id}
+                              groups={groups}
                               server={server}
                               onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
                               onConnect={() => void connectServer(server)}
                               onDelete={() => setPendingDeleteServer(server)}
+                              onDragEnd={handleServerDragEnd}
+                              onDragStart={handleServerDragStart(server.id)}
                               onEdit={() => openServerEditor(server.id)}
+                              onMoveToGroup={(currentServer, targetGroup) =>
+                                void handleMoveServerGroup(currentServer, targetGroup)
+                              }
                               onToggleFavorite={() => void toggleFavorite(server.id)}
                             />
                           ))
@@ -701,46 +997,32 @@ export function WorkbenchPrimarySidebar() {
           <section className="space-y-1">
             <SectionHeader
               title={t('workbench.primarySidebar.sections.recent')}
+              icon={<FolderTree className="size-3.5" />}
+              count={recents.length}
+              active={selectedExplorerNode === 'recent'}
               collapsed={Boolean(collapsedSections.recent)}
+              onDoubleClick={() => toggleSection('recent')}
+              onSelect={() => setSelectedExplorerNode('recent')}
               onToggle={() => toggleSection('recent')}
+              action={
+                <TooltipAction
+                  content={t('workbench.primarySidebar.actions.clearRecent')}
+                  side="right"
+                >
+                  <button
+                    type="button"
+                    className="flex size-5 shrink-0 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--workbench-muted)]"
+                    aria-label={t('workbench.primarySidebar.actions.clearRecent')}
+                    disabled={recents.length === 0}
+                    onClick={() => void handleClearRecent()}
+                  >
+                    <ClearIcon className="size-3.5" />
+                  </button>
+                </TooltipAction>
+              }
             />
             {!collapsedSections.recent ? (
               <div className="space-y-0.5">
-                <TreeRow
-                  active={selectedExplorerNode === 'recent'}
-                  onClick={() => setSelectedExplorerNode('recent')}
-                >
-                  <FolderTree className="size-4" />
-                  <span className="flex-1 truncate">
-                    {t('workbench.primarySidebar.sections.recent')}
-                  </span>
-                  <TooltipAction
-                    content={t('workbench.primarySidebar.actions.clearRecent')}
-                    side="right"
-                  >
-                    <button
-                      type="button"
-                      className="flex size-5 shrink-0 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--workbench-muted)]"
-                      aria-label={t('workbench.primarySidebar.actions.clearRecent')}
-                      disabled={recents.length === 0}
-                      onMouseDown={(event) => {
-                        event.stopPropagation()
-                      }}
-                      onDoubleClick={(event) => {
-                        event.preventDefault()
-                        event.stopPropagation()
-                      }}
-                      onClick={(event) => {
-                        event.preventDefault()
-                        event.stopPropagation()
-                        void handleClearRecent()
-                      }}
-                    >
-                      <ClearIcon className="size-3.5" />
-                    </button>
-                  </TooltipAction>
-                  <span className="text-xs text-muted-foreground">{recents.length}</span>
-                </TreeRow>
                 {recents.map((recent) => {
                   const server = servers.find((item) => item.id === recent.serverId)
                   if (!server) {
@@ -752,10 +1034,17 @@ export function WorkbenchPrimarySidebar() {
                       key={recent.id}
                       active={false}
                       depth={1}
+                      dragging={draggedServerId === server.id}
+                      groups={groups}
                       server={server}
                       onConnect={() => void connectServer(server)}
                       onDelete={() => setPendingDeleteServer(server)}
+                      onDragEnd={handleServerDragEnd}
+                      onDragStart={handleServerDragStart(server.id)}
                       onEdit={() => openServerEditor(server.id)}
+                      onMoveToGroup={(currentServer, targetGroup) =>
+                        void handleMoveServerGroup(currentServer, targetGroup)
+                      }
                       onToggleFavorite={() => void toggleFavorite(server.id)}
                     />
                   )

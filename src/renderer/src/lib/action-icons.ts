@@ -1,4 +1,6 @@
 import {
+  ChevronDown,
+  ChevronRight,
   Play,
   Command,
   Copy,
@@ -35,6 +37,7 @@ export const actionIcons = {
   clear: Trash2,
   clone: Copy,
   close: X,
+  collapse: ChevronDown,
   commandPalette: Command,
   connect: Link2,
   delete: Trash2,
@@ -42,6 +45,7 @@ export const actionIcons = {
   disconnect: Unplug,
   download: Download,
   edit: PencilLine,
+  expand: ChevronRight,
   maximizeWindow: Square,
   minimizeWindow: Minus,
   newConnection: Plus,

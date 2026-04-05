@@ -10,7 +10,9 @@ export type WorkbenchExplorerSectionId = 'favorites' | 'recent' | 'groups' | 'ta
 export type WorkbenchExplorerNodeId =
   | 'home'
   | 'favorites'
+  | 'groups'
   | 'recent'
+  | 'tags'
   | 'all-servers'
   | `group:${string}`
   | `tag:${string}`

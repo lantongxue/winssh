@@ -131,12 +131,14 @@ const workbench = {
         createGroup: '新建分组',
         createTag: '新建标签',
         edit: '编辑',
+        moveToGroup: '移动到分组',
         removeFromFavorites: '取消收藏',
         rename: '重命名'
       },
       description: '单击打开编辑器，双击建立 SSH 会话。',
       labels: {
-        connected: '已连接'
+        connected: '已连接',
+        ungrouped: '未分组'
       },
       dialogs: {
         deleteServer: {
@@ -148,7 +150,7 @@ const workbench = {
       sections: {
         allServers: '全部服务器',
         favorites: '收藏',
-        groups: '分组',
+        groups: '服务器管理',
         recent: '最近',
         tags: '标签'
       },
@@ -157,6 +159,8 @@ const workbench = {
         groupDeleted: '分组已删除。',
         recentCleared: '最近连接已清除。',
         serverDeleteFailed: '删除服务器失败。',
+        serverMoveFailed: '移动服务器失败。',
+        serverMoved: '已将“{{name}}”移动到“{{group}}”。',
         tagDeleted: '标签已删除。'
       }
     },
