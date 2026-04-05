@@ -67,7 +67,7 @@ const jumpServerSchema = z
     passphrase: z.string().optional(),
     password: z.string().optional(),
     port: z.coerce
-      .number()
+      .number<string | number>()
       .int()
       .min(1, 'validation.server.port.min')
       .max(65535, 'validation.server.port.max'),
@@ -90,9 +90,12 @@ const jumpServerSchema = z
     }
   })
 
-type JumpServerFormValues = z.infer<typeof jumpServerSchema>
+type JumpServerFormValues = z.output<typeof jumpServerSchema>
+type JumpServerFormInputValues = z.input<typeof jumpServerSchema>
 
-function createJumpServerDefaultValues(credentialStorageAvailable: boolean): JumpServerFormValues {
+function createJumpServerDefaultValues(
+  credentialStorageAvailable: boolean
+): JumpServerFormInputValues {
   return {
     authType: 'password',
     host: '',
@@ -367,7 +370,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
       { initialGroupId: document.initialGroupId }
     )
   })
-  const jumpServerForm = useForm<JumpServerFormValues>({
+  const jumpServerForm = useForm<JumpServerFormInputValues, unknown, JumpServerFormValues>({
     resolver: zodResolver(jumpServerSchema),
     defaultValues: createJumpServerDefaultValues(credentialStorageAvailable)
   })
