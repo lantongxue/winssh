@@ -639,6 +639,15 @@ button,
     var(--glass-glow);
 }
 
+.theme-liquid-glass .liquid-glass-search-shell [data-slot='input'],
+.theme-liquid-glass .liquid-glass-search-shell [data-slot='input']:hover,
+.theme-liquid-glass .liquid-glass-search-shell [data-slot='input']:focus-visible {
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 .theme-liquid-glass [data-slot='switch'] {
   border-color: var(--glass-border);
   background: linear-gradient(

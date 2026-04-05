@@ -766,7 +766,7 @@ export function WorkbenchPrimarySidebar() {
             <label className="sr-only" htmlFor="workbench-primary-sidebar-search">
               {t('workbench.primarySidebar.search.label')}
             </label>
-            <div className="liquid-glass-chip flex items-center gap-2 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2.5 text-[var(--workbench-muted)] shadow-xs transition-colors focus-within:border-[var(--workbench-active)]/50 focus-within:text-foreground">
+            <div className="liquid-glass-chip liquid-glass-search-shell flex items-center gap-2 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2.5 text-[var(--workbench-muted)] shadow-xs transition-colors focus-within:border-[var(--workbench-active)]/50 focus-within:text-foreground">
               <Search className="size-3.5 shrink-0" />
               <Input
                 id="workbench-primary-sidebar-search"
@@ -780,7 +780,7 @@ export function WorkbenchPrimarySidebar() {
                 }}
                 placeholder={t('workbench.primarySidebar.search.placeholder')}
                 aria-label={t('workbench.primarySidebar.search.label')}
-                className="h-8 border-0 bg-transparent px-0 text-[13px] shadow-none placeholder:text-[var(--workbench-muted)] focus-visible:border-0 focus-visible:ring-0 dark:bg-transparent"
+                className="liquid-glass-search-input h-8 border-0 bg-transparent px-0 text-[13px] shadow-none placeholder:text-[var(--workbench-muted)] focus-visible:border-0 focus-visible:ring-0 dark:bg-transparent"
               />
               {serverSearchQuery ? (
                 <TooltipAction content={t('workbench.primarySidebar.search.clear')} side="right">

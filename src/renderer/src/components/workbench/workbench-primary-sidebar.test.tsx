@@ -477,8 +477,11 @@ describe('WorkbenchPrimarySidebar', () => {
       expect(document.querySelector('[data-slot="context-menu-sub-content"]')).toBeTruthy()
     })
 
+    const mainMenu = document.querySelector('[data-slot="context-menu-content"]')
     const groupMenu = document.querySelector('[data-slot="context-menu-sub-content"]')
+    expect(mainMenu).toBeTruthy()
     expect(groupMenu).toBeTruthy()
+    expect(mainMenu?.contains(groupMenu as Node)).toBe(false)
 
     fireEvent.click(within(groupMenu as HTMLElement).getByText('AA'))
 
