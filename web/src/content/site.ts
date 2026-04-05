@@ -25,6 +25,10 @@ export const SITE_COPY = {
       docsLabel: 'Docs',
       githubLabel: 'GitHub',
       sectionLabel: 'Sections',
+      themeLabel: 'Theme',
+      themeSystemLabel: 'System',
+      themeLightLabel: 'Light+',
+      themeDarkLabel: 'Dark+',
       languageLabel: 'Language',
       tagline: 'The SSH workbench with a knowing wink.',
       statusVersionLabel: 'Version',
@@ -92,9 +96,10 @@ export const SITE_COPY = {
           description: 'Terminal, explorer, tabs, panel, settings, and session side tools live in one composed shell.'
         },
         {
-          value: '0',
-          label: 'Dark-theme detours',
-          description: 'The public site stays on Light+ on purpose, so the first impression lands cleanly.'
+          value: '2',
+          label: 'Public themes',
+          description:
+            'The website can follow the system appearance and also switch manually between Light+ and Dark+.'
         }
       ],
       features: {
@@ -152,7 +157,7 @@ export const SITE_COPY = {
         title: 'The homepage borrows the product’s own desk manners.',
         subtitle:
           'The site wears the same titlebar, activity rail, sidebar, editor, and status bar grammar that gives WinSSH its shape.',
-        quickLabels: ['Quick Open', 'Command Palette', 'Light+', 'Wink Enabled'],
+        quickLabels: ['Quick Open', 'Command Palette', 'Theme', 'Wink Enabled'],
         sidebarTitle: 'Connection Shelf',
         sidebarItems: ['prod-eu-1', 'stage-us-2', 'pixel-lab', 'quick connect'],
         sessionTitle: 'session-editor: prod-eu-1',
@@ -208,9 +213,9 @@ export const SITE_COPY = {
               'WinSSH is a cross-platform desktop SSH client with a workbench layout, SFTP tooling, session-level port forwarding, a credential vault, theming, and settings surfaces.'
           },
           {
-            question: 'Why does the site only use Light+?',
+            question: 'How does website theme switching work?',
             answer:
-              'The desktop product has multiple themes, but the public site keeps Light+ as the cleanest handshake and the most recognizable first impression.'
+              'By default, the website follows the system appearance and resolves to Light+ or Dark+. The titlebar also lets you switch manually between those two built-in themes.'
           },
           {
             question: 'Are public installers available today?',
@@ -307,12 +312,12 @@ export const SITE_COPY = {
                 title: 'Current theme system overview',
                 paragraphs: [
                   'The desktop application loads themes through `ThemeRegistry`. It scans `themes/builtin` and `<userData>/themes`, validates plugin `package.json` files and theme documents, produces normalized `ThemeDefinition` objects, and exposes them to the renderer.',
-                  'The website does not load arbitrary themes at runtime. `web/src/home-main.tsx` and `web/src/docs-main.tsx` call `applyLightPlusTheme()`, which imports `themes/builtin/winssh-default-themes/themes/light-plus.json` and applies that document to the site root.'
+                  'The website does not load arbitrary themes at runtime. `web/src/home-main.tsx` and `web/src/docs-main.tsx` call `initializeSiteTheme()` before rendering, then the React layer applies Light+ or Dark+ according to system appearance or the persisted manual selection.'
                 ],
                 bullets: [
                   '`themes/builtin` is the built-in theme root.',
                   '`<userData>/themes` is the user theme root.',
-                  'Editing `light-plus.json` changes the website palette.'
+                  'Editing `light-plus.json` or `dark-plus.json` changes the website palette.'
                 ]
               },
               {
@@ -465,7 +470,7 @@ export const SITE_COPY = {
                 ],
                 bullets: [
                   '`npm run dev` verifies desktop loading, settings integration, and terminal rendering.',
-                  '`npm run web:dev` only verifies the fixed Light+ website shell.',
+                  '`npm run web:dev` verifies the system-aware website shell and manual Light+/Dark+ switching.',
                   'Restart the desktop application after editing a user theme package.'
                 ]
               }
@@ -501,6 +506,10 @@ export const SITE_COPY = {
       docsLabel: '文档',
       githubLabel: 'GitHub',
       sectionLabel: '分区',
+      themeLabel: '主题',
+      themeSystemLabel: '系统',
+      themeLightLabel: 'Light+',
+      themeDarkLabel: 'Dark+',
       languageLabel: '语言',
       tagline: '认真做 SSH，顺手眨一下眼。',
       statusVersionLabel: '版本',
@@ -568,9 +577,9 @@ export const SITE_COPY = {
           description: '终端、资源区、标签、面板、设置和会话辅助能力，终于住进同一张桌子。'
         },
         {
-          value: '0',
-          label: '品牌站暗色分支',
-          description: '官网刻意锁定 Light+，让第一次见面先干净落地。'
+          value: '2',
+          label: '公开主题',
+          description: '官网默认跟随系统外观，同时也支持在 Light+ 和 Dark+ 之间手动切换。'
         }
       ],
       features: {
@@ -627,7 +636,7 @@ export const SITE_COPY = {
         title: '官网借用了产品自己的桌面腔调。',
         subtitle:
           '这个品牌站穿上了和 WinSSH 本体同一套 titlebar、activity rail、sidebar、editor 与 status bar 语法。',
-        quickLabels: ['快速打开', '命令面板', 'Light+', '已就绪'],
+        quickLabels: ['快速打开', '命令面板', '主题', '已就绪'],
         sidebarTitle: '连接架',
         sidebarItems: ['prod-eu-1', 'stage-us-2', 'pixel-lab', 'quick connect'],
         sessionTitle: 'session-editor: prod-eu-1',
@@ -683,9 +692,9 @@ export const SITE_COPY = {
               'WinSSH 是一款跨平台桌面 SSH 客户端，已经具备 workbench 布局、SFTP、会话级端口转发、凭据库、主题系统和设置中心。'
           },
           {
-            question: '为什么官网只使用 Light+？',
+            question: '官网主题切换是怎么工作的？',
             answer:
-              '桌面端已有多个主题，但官网把 Light+ 作为最干净的一次握手，也作为最容易被记住的第一印象。'
+              '官网默认跟随系统外观，并解析到 Light+ 或 Dark+。标题栏也提供了手动切换入口，但当前只支持这两个内置主题。'
           },
           {
             question: '现在能直接下载正式安装包吗？',
@@ -778,12 +787,12 @@ export const SITE_COPY = {
                 title: '当前主题系统概览',
                 paragraphs: [
                   '桌面应用通过 `ThemeRegistry` 加载主题。它会扫描 `themes/builtin` 和 `<userData>/themes`，校验插件 `package.json` 与主题文档，生成标准化后的 `ThemeDefinition`，再提供给渲染层。',
-                  '官网不会在运行时加载任意主题。`web/src/home-main.tsx` 与 `web/src/docs-main.tsx` 会调用 `applyLightPlusTheme()`，直接导入 `themes/builtin/winssh-default-themes/themes/light-plus.json` 并应用到站点根节点。'
+                  '官网不会在运行时加载任意主题。`web/src/home-main.tsx` 与 `web/src/docs-main.tsx` 会先调用 `initializeSiteTheme()`，然后在 React 层根据系统外观或已持久化的手动选择应用 Light+ 或 Dark+。'
                 ],
                 bullets: [
                   '`themes/builtin` 是内置主题根目录。',
                   '`<userData>/themes` 是用户主题根目录。',
-                  '修改 `light-plus.json` 会直接影响官网配色。'
+                  '修改 `light-plus.json` 或 `dark-plus.json` 会直接影响官网配色。'
                 ]
               },
               {
@@ -936,7 +945,7 @@ export const SITE_COPY = {
                 ],
                 bullets: [
                   '`npm run dev` 用于验证桌面端主题加载、设置页集成和终端渲染。',
-                  '`npm run web:dev` 只用于验证固定 Light+ 的官网壳层。',
+                  '`npm run web:dev` 用于验证跟随系统的官网壳层，以及 Light+/Dark+ 手动切换。',
                   '修改用户主题包后需要重启桌面应用。'
                 ]
               }

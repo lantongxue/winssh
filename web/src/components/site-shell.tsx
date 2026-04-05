@@ -11,6 +11,8 @@ import {
 import { BrandLogo } from '@/components/brand-logo'
 import { LanguageToggle } from '@/components/language-toggle'
 import { useSiteLanguage } from '@/components/site-language'
+import { SiteThemeProvider, useSiteTheme } from '@/components/site-theme'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { type SitePage } from '@/content/site'
 import { withBasePath } from '@/lib/paths'
 
@@ -81,7 +83,38 @@ export function SiteShell({
   pageKeywords: readonly string[]
   sectionLinks: readonly SectionLink[]
 }) {
+  return (
+    <SiteThemeProvider>
+      <SiteShellContent
+        activePage={activePage}
+        pageTitle={pageTitle}
+        pageDescription={pageDescription}
+        pageKeywords={pageKeywords}
+        sectionLinks={sectionLinks}
+      >
+        {children}
+      </SiteShellContent>
+    </SiteThemeProvider>
+  )
+}
+
+function SiteShellContent({
+  activePage,
+  children,
+  pageTitle,
+  pageDescription,
+  pageKeywords,
+  sectionLinks
+}: {
+  activePage: SitePage
+  children: React.ReactNode
+  pageTitle: string
+  pageDescription: string
+  pageKeywords: readonly string[]
+  sectionLinks: readonly SectionLink[]
+}) {
   const { copy, locale, setLocale } = useSiteLanguage()
+  const { selection, setSelection } = useSiteTheme()
   const docsHref = withBasePath('docs/')
   const homeHref = withBasePath('')
   const [activeRailId, setActiveRailId] = useState<RailLinkId>(() =>
@@ -230,6 +263,14 @@ export function SiteShell({
             <BookOpenText className="size-3.5" />
             {copy.shell.docsLabel}
           </a>
+          <ThemeToggle
+            currentSelection={selection}
+            label={copy.shell.themeLabel}
+            systemLabel={copy.shell.themeSystemLabel}
+            lightLabel={copy.shell.themeLightLabel}
+            darkLabel={copy.shell.themeDarkLabel}
+            onChange={setSelection}
+          />
           <LanguageToggle
             currentLocale={locale}
             label={copy.shell.languageLabel}

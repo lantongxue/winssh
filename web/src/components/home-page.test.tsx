@@ -1,10 +1,26 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { HomePage } from '@/components/home-page'
 import { SiteLanguageProvider } from '@/components/site-language'
+import { SITE_THEME_STORAGE_KEY } from '@/lib/theme'
+
+function mockMatchMedia(matches: boolean) {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: vi.fn().mockImplementation(() => ({
+      matches,
+      media: '(prefers-color-scheme: dark)',
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    }))
+  })
+}
 
 describe('HomePage', () => {
   beforeEach(() => {
     window.history.replaceState(null, '', '/')
+    window.localStorage.clear()
+    mockMatchMedia(false)
   })
 
   it('renders the major homepage sections in English', () => {
@@ -46,5 +62,27 @@ describe('HomePage', () => {
     })
 
     expect(screen.getByLabelText('Overview')).not.toHaveAttribute('aria-current')
+  })
+
+  it('follows the system theme by default and supports manual switching', async () => {
+    mockMatchMedia(true)
+
+    render(
+      <SiteLanguageProvider initialLocale="en-US">
+        <HomePage />
+      </SiteLanguageProvider>
+    )
+
+    expect(document.documentElement.dataset.theme).toBe('winssh.dark-plus')
+    expect(document.documentElement.dataset.themeSelection).toBe('system')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Light+' }))
+
+    await waitFor(() => {
+      expect(document.documentElement.dataset.theme).toBe('winssh.light-plus')
+    })
+
+    expect(document.documentElement.dataset.themeSelection).toBe('winssh.light-plus')
+    expect(window.localStorage.getItem(SITE_THEME_STORAGE_KEY)).toBe('winssh.light-plus')
   })
 })

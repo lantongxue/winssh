@@ -1,11 +1,16 @@
 import { BookOpenText, FolderTree, PanelLeft, Search, TerminalSquare } from 'lucide-react'
 import { BrandLogo } from '@/components/brand-logo'
 import { useSiteLanguage } from '@/components/site-language'
+import { useSiteTheme } from '@/components/site-theme'
+import { SITE_DARK_THEME_ID } from '@/lib/theme'
 
 export function WorkbenchPreview() {
   const { copy } = useSiteLanguage()
+  const { resolvedThemeId } = useSiteTheme()
   const preview = copy.home.preview
   const railIcons = [PanelLeft, TerminalSquare, FolderTree, BookOpenText]
+  const resolvedThemeLabel =
+    resolvedThemeId === SITE_DARK_THEME_ID ? copy.shell.themeDarkLabel : copy.shell.themeLightLabel
 
   return (
     <div className="site-preview-stage overflow-hidden rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] shadow-[0_24px_80px_rgba(15,23,42,0.12)]">
@@ -101,7 +106,7 @@ export function WorkbenchPreview() {
                 ))}
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                {preview.quickLabels.slice(2).map((label) => (
+                {[resolvedThemeLabel, preview.quickLabels[3]].map((label) => (
                   <span
                     key={label}
                     className="rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2 py-1 text-xs text-[var(--workbench-muted)]"
