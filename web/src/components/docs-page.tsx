@@ -15,7 +15,7 @@ export function DocsPage() {
       pageKeywords={copy.docs.seoKeywords}
       sectionLinks={copy.docs.sections}
     >
-      <section className="rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-6">
+      <section className="site-entrance site-entrance-1 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-6">
         <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--workbench-muted)]">
           {copy.docs.hero.eyebrow}
         </div>
@@ -36,12 +36,12 @@ export function DocsPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <section className="site-card-grid site-entrance site-entrance-2 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {copy.docs.cards.map((card) => (
           <a
             key={card.id}
             href={`#${card.id}`}
-            className="rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-sidebar)] p-5 transition-colors hover:bg-[var(--workbench-hover)]"
+            className="site-card-hover rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-sidebar)] p-5 transition-colors hover:bg-[var(--workbench-hover)]"
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex size-10 items-center justify-center rounded-sm bg-[var(--workbench-input)] text-[var(--workbench-active)]">
@@ -61,12 +61,12 @@ export function DocsPage() {
         ))}
       </section>
 
-      <section className="grid gap-4">
+      <section className="site-entrance site-entrance-3 grid gap-4">
         {copy.docs.cards.map((card) => (
           <article
             key={card.id}
             id={card.id}
-            className="scroll-mt-6 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-6"
+            className="site-card-hover scroll-mt-6 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-6"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -86,14 +86,14 @@ export function DocsPage() {
               {card.bullets.map((bullet) => (
                 <div
                   key={bullet}
-                  className="rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] px-4 py-3 text-sm"
+                  className="site-card-hover rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] px-4 py-3 text-sm"
                 >
                   {bullet}
                 </div>
               ))}
             </div>
             {'details' in card && card.details ? (
-              <div className="mt-6 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] p-5">
+              <div className="site-card-hover mt-6 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] p-5">
                 <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--workbench-muted)]">
                   {card.details.eyebrow}
                 </div>
@@ -112,7 +112,7 @@ export function DocsPage() {
                     return (
                       <section
                         key={section.title}
-                        className="rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-4"
+                        className="site-card-hover rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-4"
                       >
                         <h4 className="text-base font-semibold tracking-[-0.01em]">{section.title}</h4>
                         {section.paragraphs?.map((paragraph) => (
@@ -128,7 +128,7 @@ export function DocsPage() {
                             {bullets.map((bullet) => (
                               <li
                                 key={bullet}
-                                className="rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] px-3 py-2"
+                                className="site-card-hover rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] px-3 py-2"
                               >
                                 {bullet}
                               </li>
@@ -160,7 +160,7 @@ export function DocsPage() {
         ))}
       </section>
 
-      <section className="rounded-sm border border-dashed border-[var(--workbench-border)] bg-[var(--workbench-bg)] p-6">
+      <section className="site-entrance site-entrance-4 rounded-sm border border-dashed border-[var(--workbench-border)] bg-[var(--workbench-bg)] p-6">
         <div className="text-sm leading-7 text-[var(--workbench-muted)]">{copy.docs.footerNote}</div>
       </section>
     </SiteShell>

@@ -294,30 +294,44 @@ export const SITE_COPY = {
           id: 'themes',
           title: 'Themes',
           summary:
-            'Covers the desktop theme registry, plugin manifest shape, theme JSON structure, token sources, and how the website keeps Light+ as its public shell.',
-          status: 'Guide live',
-          bullets: ['Plugin manifest', 'Theme JSON', 'Preview workflow'],
+            'Summarizes the current desktop theme implementation defined in `docs/theme-dev.md`: selection and resolution, `package.json` format, theme JSON format, renderer application details, and merge and fallback rules.',
+          status: 'Technical summary',
+          bullets: ['Selection and resolution', '`package.json` and theme JSON', 'Renderer and fallback'],
           details: {
             eyebrow: 'Theme Development',
-            title: 'Build desktop themes against the registry, not the marketing-site runtime.',
+            title: 'Theme development summary',
             lead:
-              'WinSSH desktop themes are plugin packages loaded by `ThemeRegistry`. The web project does not host arbitrary themes at runtime: `web/src/lib/theme.ts` imports `themes/builtin/winssh-default-themes/themes/light-plus.json` and applies that document as CSS variables for the public site.',
+              'This section is derived from `docs/theme-dev.md` and describes current repository behavior. It does not define a separate web-only theme runtime.',
             sections: [
               {
-                title: 'Know the two theme surfaces',
+                title: 'Current theme system overview',
                 paragraphs: [
-                  'Desktop app: the main process scans `themes/builtin` and `<userData>/themes`, validates plugin manifests and theme documents, then exposes normalized `ThemeDefinition` objects to the renderer.',
-                  'Website: `web/src/home-main.tsx` and `web/src/docs-main.tsx` both call `applyLightPlusTheme()`. That makes the site a Light+ snapshot for public branding, not a theme picker or a plugin host.'
+                  'The desktop application loads themes through `ThemeRegistry`. It scans `themes/builtin` and `<userData>/themes`, validates plugin `package.json` files and theme documents, produces normalized `ThemeDefinition` objects, and exposes them to the renderer.',
+                  'The website does not load arbitrary themes at runtime. `web/src/home-main.tsx` and `web/src/docs-main.tsx` call `applyLightPlusTheme()`, which imports `themes/builtin/winssh-default-themes/themes/light-plus.json` and applies that document to the site root.'
                 ],
                 bullets: [
-                  'Editing `light-plus.json` updates the website palette.',
-                  'Adding a new desktop theme does not make the website switch themes automatically.'
+                  '`themes/builtin` is the built-in theme root.',
+                  '`<userData>/themes` is the user theme root.',
+                  'Editing `light-plus.json` changes the website palette.'
                 ]
               },
               {
-                title: 'Create a plugin package',
+                title: 'Selection and resolution rules',
                 paragraphs: [
-                  'For repository development, start from an existing built-in package under `themes/builtin`. For a user-installed theme, place a plugin folder under `<userData>/themes`.'
+                  'The saved `theme` setting contains either a valid theme id or the special value `system`. `system` is not a theme document. It resolves to `winssh.light-plus` or `winssh.dark-plus` according to the current OS appearance.',
+                  'Each contribution declares `uiTheme: "vs"` or `uiTheme: "vs-dark"`. The runtime maps them to `appearance = "light"` or `appearance = "dark"`. This choice determines the base token set, the root `.dark` class, and `color-scheme`.'
+                ],
+                bullets: [
+                  'Invalid selections are normalized back to `system`.',
+                  '`DEFAULT_LIGHT_THEME_ID = "winssh.light-plus"`.',
+                  '`DEFAULT_DARK_THEME_ID = "winssh.dark-plus"`.'
+                ]
+              },
+              {
+                title: 'Theme package layout',
+                paragraphs: [
+                  'A theme package contains a `package.json` and one or more JSON files under `themes/`. User themes must be placed under `<userData>/themes/<plugin-folder>`.',
+                  'The plugin id is derived from `publisher.name`. The folder name affects scan order only.'
                 ],
                 code: {
                   language: 'text',
@@ -333,12 +347,15 @@ export const SITE_COPY = {
     package.json
     themes/
       nebula.json`
-                }
+                },
+                note:
+                  'After adding, removing, or editing a user theme package, restart WinSSH to reload themes.'
               },
               {
-                title: 'Declare the manifest',
+                title: '`package.json` format',
                 paragraphs: [
-                  'The plugin `package.json` contributes one or more themes. `publisher` + `name` becomes the plugin id, while each contributed theme keeps its own unique theme id.'
+                  'The plugin `package.json` declares themes through `contributes.themes[]`. Required fields are `name`, `publisher`, `version`, and, for each theme contribution, `id`, `label`, `uiTheme`, and `path`.',
+                  'Each theme id must be globally unique. Reusing a built-in theme id does not override the built-in definition.'
                 ],
                 code: {
                   language: 'json',
@@ -362,14 +379,16 @@ export const SITE_COPY = {
                 }
               },
               {
-                title: 'Write the theme document',
+                title: 'Theme JSON format',
                 paragraphs: [
-                  'The theme JSON uses `colors`, `terminal`, and optional `terminalDefaults`. Develop against the shared token lists in `src/shared/themes.ts`; unknown tokens are ignored with a warning.'
+                  'A theme JSON document uses three top-level fields: `colors`, `terminal`, and optional `terminalDefaults`.',
+                  '`colors` keys are defined by `THEME_COLOR_KEYS` in `src/shared/themes.ts`. They cover base UI tokens, sidebar tokens, workbench tokens, toast tokens, glass tokens, terminal overlay tokens, and scanline tokens.',
+                  '`terminal` keys are defined by `TERMINAL_COLOR_KEYS` in `src/shared/themes.ts` and map to the xterm.js palette. `terminalDefaults` provides recommended terminal font settings only when the user still uses the application defaults.'
                 ],
                 bullets: [
-                  '`uiTheme: "vs"` maps to the light base tokens.',
-                  '`uiTheme: "vs-dark"` maps to the dark base tokens.',
-                  '`terminalDefaults` only suggests defaults; user terminal settings still win.'
+                  'Unknown top-level fields are ignored.',
+                  'Unknown token names are ignored and logged as warnings.',
+                  'An invalid theme document causes that theme to be skipped.'
                 ],
                 code: {
                   language: 'json',
@@ -377,19 +396,30 @@ export const SITE_COPY = {
   "colors": {
     "background": "#0c1220",
     "foreground": "#d9e7ff",
+    "primary": "#73c2fb",
+    "primary-foreground": "#07111d",
+    "border": "#1b2940",
     "workbench-bg": "#0c1220",
     "workbench-sidebar": "#11192c",
     "workbench-editor": "#0c1220",
     "workbench-panel": "#0a101b",
     "workbench-border": "#1b2940",
     "workbench-active": "#73c2fb",
-    "workbench-statusbar": "#11233b"
+    "workbench-logo": "#73c2fb",
+    "workbench-statusbar": "#11233b",
+    "workbench-statusbar-foreground": "#d9e7ff",
+    "terminal-surface-bg": "#070c16",
+    "terminal-overlay-panel": "rgba(9, 14, 24, 0.96)",
+    "terminal-overlay-accent": "#9dd9ff",
+    "terminal-overlay-accent-strong": "#73c2fb"
   },
   "terminal": {
     "background": "#070c16",
     "foreground": "#d9e7ff",
     "cursor": "#73c2fb",
-    "selectionBackground": "rgba(115, 194, 251, 0.2)"
+    "selectionBackground": "rgba(115, 194, 251, 0.2)",
+    "blue": "#73c2fb",
+    "brightBlue": "#a7dbff"
   },
   "terminalDefaults": {
     "fontFamily": "Cascadia Mono, Consolas, monospace",
@@ -400,17 +430,44 @@ export const SITE_COPY = {
                 }
               },
               {
-                title: 'Preview and verify',
+                title: 'Renderer application details',
                 paragraphs: [
-                  'Use the desktop app to validate the full registry flow, settings integration, and terminal rendering. Use the web site only to confirm how the current Light+ document presents the public shell.'
+                  'When the renderer applies a theme, it writes all UI tokens to CSS variables on `document.documentElement`, toggles `.dark` based on `appearance`, sets `color-scheme`, and updates `data-theme`, `data-theme-appearance`, `data-theme-plugin`, and `data-theme-selection`.',
+                  'The class `.theme-liquid-glass` is not a general theme-package feature. It is added only when `resolvedTheme.pluginId === "winssh.liquid-glass-themes"`.'
                 ],
                 bullets: [
-                  '`npm run dev` for the Electron app and runtime theme loading.',
-                  '`npm run web:dev` for the marketing/docs site with the fixed Light+ theme.',
-                  'Restart the desktop app after adding or editing a user theme package.'
+                  'Third-party themes can use glass tokens without receiving `.theme-liquid-glass`.',
+                  '`data-theme` stores the resolved theme id.',
+                  '`data-theme-selection` stores the saved selection value.'
                 ],
                 note:
-                  'If you expect Liquid Glass-specific chrome, note that the renderer still special-cases `pluginId === "winssh.liquid-glass-themes"`.'
+                  'Extending Liquid Glass behavior to third-party themes requires renderer changes in addition to theme JSON changes.'
+              },
+              {
+                title: 'Merge, priority, and fallback rules',
+                paragraphs: [
+                  'Theme generation uses the appearance-specific base UI tokens, then overlays `colors`, overlays `terminal`, and retains `terminalDefaults`.',
+                  'If a theme id is missing, the selection is normalized to `system`. If no valid theme can be loaded, the runtime synthesizes a fallback theme.'
+                ],
+                bullets: [
+                  'Built-in theme roots load before user theme roots.',
+                  'Within each root, plugin folders are loaded in sorted order.',
+                  'When two themes share an id, the first loaded definition wins.'
+                ],
+                note:
+                  '`contributes.themes[].path` cannot escape the plugin package root. Invalid paths are ignored.'
+              },
+              {
+                title: 'Suggested development flow',
+                paragraphs: [
+                  'For a new theme, start from `themes/builtin/winssh-default-themes` for conventional light or dark work, or `themes/builtin/winssh-liquid-glass` when studying the built-in glass visual language.',
+                  'First cover the primary workbench and terminal tokens, then refine overlay, toast, radius, scanline, and `terminalDefaults`.'
+                ],
+                bullets: [
+                  '`npm run dev` verifies desktop loading, settings integration, and terminal rendering.',
+                  '`npm run web:dev` only verifies the fixed Light+ website shell.',
+                  'Restart the desktop application after editing a user theme package.'
+                ]
               }
             ]
           }
@@ -708,30 +765,44 @@ export const SITE_COPY = {
           id: 'themes',
           title: '主题',
           summary:
-            '覆盖桌面端 theme registry、插件 manifest、主题 JSON 结构、token 来源，以及官网如何把 Light+ 固定成公开壳层。',
-          status: '开发文档已上线',
-          bullets: ['插件 manifest', '主题 JSON', '预览流程'],
+            '根据 `docs/theme-dev.md` 汇总当前桌面端主题实现，覆盖主题选择与解析、`package.json` 格式、主题 JSON 格式、渲染层应用细节，以及合并与回退规则。',
+          status: '技术摘要',
+          bullets: ['选择与解析', '`package.json` 与主题 JSON', '渲染与回退'],
           details: {
             eyebrow: '主题开发',
-            title: '主题要对着桌面端 registry 开发，而不是把官网站点当成运行时宿主。',
+            title: '主题开发摘要',
             lead:
-              'WinSSH 的桌面主题是由 `ThemeRegistry` 扫描的插件包。`web` 项目当前不会在运行时加载任意主题：`web/src/lib/theme.ts` 直接导入 `themes/builtin/winssh-default-themes/themes/light-plus.json`，并把这个文档写成官网根节点 CSS 变量。',
+              '本节直接依据 `docs/theme-dev.md`，描述当前仓库的实际行为，不定义独立的 web 主题运行时。',
             sections: [
               {
-                title: '先分清两个主题表面',
+                title: '当前主题系统概览',
                 paragraphs: [
-                  '桌面应用会扫描 `themes/builtin` 和 `<userData>/themes`，校验 manifest 与主题文档，然后把标准化后的 `ThemeDefinition` 提供给渲染层。',
-                  '官网首页和文档页都在 `web/src/home-main.tsx`、`web/src/docs-main.tsx` 里调用 `applyLightPlusTheme()`。它只是公开站点的 Light+ 快照，不是主题切换器，也不是插件宿主。'
+                  '桌面应用通过 `ThemeRegistry` 加载主题。它会扫描 `themes/builtin` 和 `<userData>/themes`，校验插件 `package.json` 与主题文档，生成标准化后的 `ThemeDefinition`，再提供给渲染层。',
+                  '官网不会在运行时加载任意主题。`web/src/home-main.tsx` 与 `web/src/docs-main.tsx` 会调用 `applyLightPlusTheme()`，直接导入 `themes/builtin/winssh-default-themes/themes/light-plus.json` 并应用到站点根节点。'
                 ],
                 bullets: [
-                  '改动 `light-plus.json` 会直接影响 web 站点配色。',
-                  '新增桌面主题并不会让官网自动切到那个主题。'
+                  '`themes/builtin` 是内置主题根目录。',
+                  '`<userData>/themes` 是用户主题根目录。',
+                  '修改 `light-plus.json` 会直接影响官网配色。'
                 ]
               },
               {
-                title: '创建主题插件包',
+                title: '主题选择与解析规则',
                 paragraphs: [
-                  '仓库内开发内置主题时，直接参考 `themes/builtin` 下现有包。做用户主题时，把插件文件夹放到 `<userData>/themes`。'
+                  '设置里的 `theme` 保存的是有效主题 id，或者特殊值 `system`。`system` 不是主题文档，它会根据当前系统深浅色偏好解析到 `winssh.light-plus` 或 `winssh.dark-plus`。',
+                  '每个 theme contribution 都要声明 `uiTheme: "vs"` 或 `uiTheme: "vs-dark"`。运行时会把它映射为 `appearance = "light"` 或 `appearance = "dark"`，并据此决定基础 token、根节点 `.dark` class 以及 `color-scheme`。'
+                ],
+                bullets: [
+                  '非法主题选择会被归一化回 `system`。',
+                  '`DEFAULT_LIGHT_THEME_ID = "winssh.light-plus"`。',
+                  '`DEFAULT_DARK_THEME_ID = "winssh.dark-plus"`。'
+                ]
+              },
+              {
+                title: '主题插件包目录',
+                paragraphs: [
+                  '主题插件包包含一个 `package.json`，以及 `themes/` 目录下的一个或多个 JSON 文件。用户主题必须放在 `<userData>/themes/<plugin-folder>` 下。',
+                  '插件 id 由 `publisher.name` 推导得到。文件夹名只影响扫描顺序，不决定插件 id。'
                 ],
                 code: {
                   language: 'text',
@@ -747,12 +818,15 @@ export const SITE_COPY = {
     package.json
     themes/
       nebula.json`
-                }
+                },
+                note:
+                  '新增、删除或修改用户主题包后，需要重启 WinSSH 才会重新加载主题。'
               },
               {
-                title: '声明 manifest',
+                title: '`package.json` 格式',
                 paragraphs: [
-                  '插件 `package.json` 通过 `contributes.themes` 声明一个或多个主题。`publisher` 与 `name` 会组合成插件 id，而每个 theme contribution 仍然需要自己的唯一主题 id。'
+                  '插件 `package.json` 通过 `contributes.themes[]` 声明主题。必填字段包括 `name`、`publisher`、`version`，以及每个 theme contribution 的 `id`、`label`、`uiTheme`、`path`。',
+                  '主题 id 必须全局唯一。复用内置主题 id 不会覆盖内置定义。'
                 ],
                 code: {
                   language: 'json',
@@ -776,14 +850,16 @@ export const SITE_COPY = {
                 }
               },
               {
-                title: '编写主题 JSON',
+                title: '主题 JSON 格式',
                 paragraphs: [
-                  '主题文件只使用 `colors`、`terminal` 和可选的 `terminalDefaults`。开发时以 `src/shared/themes.ts` 里的 token 清单为准，未知 token 会被忽略并输出 warning。'
+                  '主题 JSON 只使用三个顶层字段：`colors`、`terminal` 和可选的 `terminalDefaults`。',
+                  '`colors` 的键集合由 `src/shared/themes.ts` 中的 `THEME_COLOR_KEYS` 定义，覆盖基础界面、sidebar、workbench、toast、glass、terminal overlay 和 scanline 这些 token。',
+                  '`terminal` 的键集合由 `src/shared/themes.ts` 中的 `TERMINAL_COLOR_KEYS` 定义，对应 xterm.js 调色板。`terminalDefaults` 只会在用户仍使用应用默认字体族与字号时提供建议默认值。'
                 ],
                 bullets: [
-                  '`uiTheme: "vs"` 会走浅色基础 token。',
-                  '`uiTheme: "vs-dark"` 会走深色基础 token。',
-                  '`terminalDefaults` 只是建议默认值，用户自定义终端设置仍然优先。'
+                  '未知顶层字段会被忽略。',
+                  '未知 token 会被忽略并输出 warning。',
+                  '非法主题文档会导致该主题被整体跳过。'
                 ],
                 code: {
                   language: 'json',
@@ -791,19 +867,30 @@ export const SITE_COPY = {
   "colors": {
     "background": "#0c1220",
     "foreground": "#d9e7ff",
+    "primary": "#73c2fb",
+    "primary-foreground": "#07111d",
+    "border": "#1b2940",
     "workbench-bg": "#0c1220",
     "workbench-sidebar": "#11192c",
     "workbench-editor": "#0c1220",
     "workbench-panel": "#0a101b",
     "workbench-border": "#1b2940",
     "workbench-active": "#73c2fb",
-    "workbench-statusbar": "#11233b"
+    "workbench-logo": "#73c2fb",
+    "workbench-statusbar": "#11233b",
+    "workbench-statusbar-foreground": "#d9e7ff",
+    "terminal-surface-bg": "#070c16",
+    "terminal-overlay-panel": "rgba(9, 14, 24, 0.96)",
+    "terminal-overlay-accent": "#9dd9ff",
+    "terminal-overlay-accent-strong": "#73c2fb"
   },
   "terminal": {
     "background": "#070c16",
     "foreground": "#d9e7ff",
     "cursor": "#73c2fb",
-    "selectionBackground": "rgba(115, 194, 251, 0.2)"
+    "selectionBackground": "rgba(115, 194, 251, 0.2)",
+    "blue": "#73c2fb",
+    "brightBlue": "#a7dbff"
   },
   "terminalDefaults": {
     "fontFamily": "Cascadia Mono, Consolas, monospace",
@@ -814,17 +901,44 @@ export const SITE_COPY = {
                 }
               },
               {
-                title: '预览与校验',
+                title: '渲染层应用细节',
                 paragraphs: [
-                  '真正的主题回归要在桌面应用里看 registry 加载、设置页集成和终端渲染。web 站点只适合确认当前 Light+ 文档如何映射到公开品牌壳层。'
+                  '渲染层应用主题时，会把全部 UI token 写到 `document.documentElement` 的 CSS 变量上，根据 `appearance` 切换 `.dark`，设置 `color-scheme`，并更新 `data-theme`、`data-theme-appearance`、`data-theme-plugin`、`data-theme-selection`。',
+                  '`.theme-liquid-glass` 不是通用主题包能力。只有当 `resolvedTheme.pluginId === "winssh.liquid-glass-themes"` 时，渲染层才会添加这个 class。'
                 ],
                 bullets: [
-                  '`npm run dev` 运行 Electron 应用，验证真实主题加载链路。',
-                  '`npm run web:dev` 运行官网与 docs 站点，验证固定 Light+ 外观。',
-                  '新增或修改用户主题包后，当前建议重启桌面应用再看结果。'
+                  '第三方主题可以使用 glass token，但不会自动获得 `.theme-liquid-glass`。',
+                  '`data-theme` 保存解析后的主题 id。',
+                  '`data-theme-selection` 保存设置里的选择值。'
                 ],
                 note:
-                  '如果你期待 Liquid Glass 那类额外 chrome，当前渲染层仍然对 `pluginId === "winssh.liquid-glass-themes"` 做了特殊分支。'
+                  '如果要把 Liquid Glass 的额外行为扩展到第三方主题，必须同时修改渲染层代码。'
+              },
+              {
+                title: '合并、优先级与回退规则',
+                paragraphs: [
+                  '主题定义的生成顺序是：先按 `appearance` 选择基础 UI token，再用主题文档的 `colors` 覆盖 UI token，用 `terminal` 覆盖终端调色板，并保留 `terminalDefaults`。',
+                  '当主题 id 不存在时，选择值会被归一化为 `system`。如果运行时完全没有可加载主题，会创建一个合成 fallback theme。'
+                ],
+                bullets: [
+                  '内置主题根目录先于用户主题根目录加载。',
+                  '每个根目录内部按插件文件夹名排序加载。',
+                  '两个主题使用相同 id 时，先加载到的定义生效。'
+                ],
+                note:
+                  '`contributes.themes[].path` 不能跳出插件包根目录。非法路径会被忽略。'
+              },
+              {
+                title: '开发新主题的建议流程',
+                paragraphs: [
+                  '开发新主题时，常规浅色或深色主题建议从 `themes/builtin/winssh-default-themes` 开始；需要研究内置玻璃视觉语言时，再参考 `themes/builtin/winssh-liquid-glass`。',
+                  '第一轮应先覆盖核心 workbench 和 terminal token，再处理 overlay、toast、radius、scanline 和 `terminalDefaults`。'
+                ],
+                bullets: [
+                  '`npm run dev` 用于验证桌面端主题加载、设置页集成和终端渲染。',
+                  '`npm run web:dev` 只用于验证固定 Light+ 的官网壳层。',
+                  '修改用户主题包后需要重启桌面应用。'
+                ]
               }
             ]
           }

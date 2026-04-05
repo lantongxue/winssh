@@ -8,7 +8,7 @@ export function WorkbenchPreview() {
   const railIcons = [PanelLeft, TerminalSquare, FolderTree, BookOpenText]
 
   return (
-    <div className="overflow-hidden rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] shadow-[0_24px_80px_rgba(15,23,42,0.12)]">
+    <div className="site-preview-stage overflow-hidden rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] shadow-[0_24px_80px_rgba(15,23,42,0.12)]">
       <div className="flex items-center justify-between border-b border-[var(--workbench-border)] bg-[var(--workbench-titlebar)] px-3 py-2">
         <div className="flex items-center gap-2 text-[var(--workbench-logo)]">
           <BrandLogo className="size-5" />

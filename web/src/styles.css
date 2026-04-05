@@ -52,6 +52,18 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--workbench-active) 10%, transparent) 0, transparent 32%),
+    radial-gradient(circle at 12% 14%, color-mix(in srgb, var(--workbench-active) 7%, white) 0, transparent 28%);
+  opacity: 0.9;
+  z-index: -1;
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -66,9 +78,106 @@ a {
   isolation: isolate;
 }
 
+@keyframes site-fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes site-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(0, -6px, 0);
+  }
+}
+
+.site-entrance {
+  opacity: 0;
+  animation: site-fade-up 520ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation-delay: var(--site-delay, 0ms);
+}
+
+.site-entrance-1 {
+  --site-delay: 40ms;
+}
+
+.site-entrance-2 {
+  --site-delay: 110ms;
+}
+
+.site-entrance-3 {
+  --site-delay: 180ms;
+}
+
+.site-entrance-4 {
+  --site-delay: 250ms;
+}
+
+.site-entrance-5 {
+  --site-delay: 320ms;
+}
+
+.site-card-hover {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+.site-card-hover:hover {
+  transform: translate3d(0, -4px, 0);
+  box-shadow: 0 16px 36px color-mix(in srgb, var(--workbench-active) 10%, rgba(15, 23, 42, 0.1));
+}
+
+.site-card-grid > * {
+  opacity: 0;
+  animation: site-fade-up 480ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.site-card-grid > *:nth-child(1) {
+  animation-delay: 80ms;
+}
+
+.site-card-grid > *:nth-child(2) {
+  animation-delay: 130ms;
+}
+
+.site-card-grid > *:nth-child(3) {
+  animation-delay: 180ms;
+}
+
+.site-card-grid > *:nth-child(4) {
+  animation-delay: 230ms;
+}
+
+.site-card-grid > *:nth-child(5) {
+  animation-delay: 280ms;
+}
+
+.site-card-grid > *:nth-child(6) {
+  animation-delay: 330ms;
+}
+
+.site-preview-stage {
+  animation: site-float 6.8s ease-in-out infinite;
+  transform-origin: center top;
+}
+
 .site-titlebar {
   position: relative;
   z-index: 5;
+  backdrop-filter: saturate(1.08) blur(10px);
 }
 
 .site-toolbar-link {
@@ -84,13 +193,18 @@ a {
   transition:
     background-color 160ms ease,
     color 160ms ease,
-    border-color 160ms ease;
+    border-color 160ms ease,
+    transform 160ms ease;
 }
 
 .site-toolbar-link:hover,
 .site-toolbar-link--active {
   background: var(--workbench-hover);
   color: var(--foreground);
+}
+
+.site-toolbar-link:hover {
+  transform: translate3d(0, -1px, 0);
 }
 
 .site-activity-link {
@@ -104,13 +218,18 @@ a {
   color: var(--workbench-muted);
   transition:
     background-color 160ms ease,
-    color 160ms ease;
+    color 160ms ease,
+    transform 160ms ease;
 }
 
 .site-activity-link:hover,
 .site-activity-link--active {
   background: var(--workbench-hover);
   color: var(--foreground);
+}
+
+.site-activity-link:hover {
+  transform: translate3d(0, -2px, 0);
 }
 
 .site-mobile-chip {
@@ -121,6 +240,17 @@ a {
   padding: 0.55rem 0.85rem;
   font-size: 0.75rem;
   color: var(--workbench-muted);
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease;
+}
+
+.site-mobile-chip:hover {
+  transform: translate3d(0, -2px, 0);
+  background: var(--workbench-hover);
+  color: var(--foreground);
 }
 
 .site-marker-title {
@@ -157,7 +287,9 @@ a {
   transition:
     background-color 160ms ease,
     color 160ms ease,
-    border-color 160ms ease;
+    border-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .site-primary-button {
@@ -168,6 +300,8 @@ a {
 
 .site-primary-button:hover {
   background: color-mix(in srgb, var(--workbench-active) 92%, #ffffff 8%);
+  transform: translate3d(0, -2px, 0);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--workbench-active) 20%, rgba(15, 23, 42, 0.08));
 }
 
 .site-secondary-button {
@@ -178,6 +312,28 @@ a {
 .site-secondary-button:hover {
   background: var(--workbench-hover);
   color: var(--foreground);
+  transform: translate3d(0, -2px, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+  }
+
+  .site-entrance,
+  .site-card-grid > *,
+  .site-preview-stage {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @media (max-width: 767px) {

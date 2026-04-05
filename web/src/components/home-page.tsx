@@ -36,7 +36,7 @@ export function HomePage() {
     >
       <section
         id="overview"
-        className="grid scroll-mt-6 gap-4 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]"
+        className="site-entrance site-entrance-1 grid scroll-mt-6 gap-4 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]"
       >
         <div>
           <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--workbench-muted)]">
@@ -71,7 +71,7 @@ export function HomePage() {
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] p-5">
+          <div className="site-card-hover rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] p-5">
             <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--workbench-muted)]">
               {copy.meta.winkMeaning}
             </div>
@@ -80,7 +80,7 @@ export function HomePage() {
               {copy.home.hero.winkCardBody}
             </p>
           </div>
-          <div className="rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] p-5">
+          <div className="site-card-hover rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] p-5">
             <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--workbench-muted)]">
               {copy.home.hero.signalsLabel}
             </div>
@@ -96,11 +96,11 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="site-card-grid site-entrance site-entrance-2 grid gap-4 md:grid-cols-3">
         {copy.home.metrics.map((metric) => (
           <article
             key={metric.label}
-            className="rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-sidebar)] p-5"
+            className="site-card-hover rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-sidebar)] p-5"
           >
             <div className="text-3xl font-semibold tracking-[-0.04em] text-[var(--foreground)]">
               {metric.value}
@@ -113,7 +113,10 @@ export function HomePage() {
         ))}
       </section>
 
-      <section id="features" className="scroll-mt-6 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-6">
+      <section
+        id="features"
+        className="site-entrance site-entrance-3 scroll-mt-6 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-6"
+      >
         <div className="max-w-2xl">
           <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--workbench-muted)]">
             {copy.home.features.eyebrow}
@@ -125,14 +128,14 @@ export function HomePage() {
             {copy.home.features.subtitle}
           </p>
         </div>
-        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="site-card-grid mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {copy.home.features.items.map((feature) => {
             const Icon = featureIcons[feature.id]
 
             return (
               <article
                 key={feature.id}
-                className="rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] p-5"
+                className="site-card-hover rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] p-5"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex size-10 items-center justify-center rounded-sm bg-[var(--workbench-hover)] text-[var(--workbench-active)]">
@@ -152,7 +155,10 @@ export function HomePage() {
         </div>
       </section>
 
-      <section id="preview" className="scroll-mt-6 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-6">
+      <section
+        id="preview"
+        className="site-entrance site-entrance-4 scroll-mt-6 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-6"
+      >
         <div className="max-w-2xl">
           <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--workbench-muted)]">
             {copy.home.preview.eyebrow}
@@ -169,7 +175,10 @@ export function HomePage() {
         </div>
       </section>
 
-      <section id="download" className="scroll-mt-6 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-6">
+      <section
+        id="download"
+        className="site-entrance site-entrance-5 scroll-mt-6 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-6"
+      >
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_340px]">
           <div>
             <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--workbench-muted)]">
@@ -181,11 +190,11 @@ export function HomePage() {
             <p className="mt-3 max-w-3xl text-base leading-7 text-[var(--workbench-muted)]">
               {copy.home.download.subtitle}
             </p>
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <div className="site-card-grid mt-6 grid gap-4 md:grid-cols-3">
               {copy.home.download.cards.map((card) => (
                 <article
                   key={card.id}
-                  className="rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] p-5"
+                  className="site-card-hover rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] p-5"
                 >
                   <div className="text-lg font-semibold">{card.title}</div>
                   <div className="mt-2 text-sm text-[var(--workbench-muted)]">{card.status}</div>
@@ -206,7 +215,7 @@ export function HomePage() {
             </div>
           </div>
 
-          <aside className="rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-sidebar)] p-5">
+          <aside className="site-card-hover rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-sidebar)] p-5">
             <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--workbench-muted)]">
               {copy.home.download.noteEyebrow}
             </div>
@@ -222,7 +231,10 @@ export function HomePage() {
         </div>
       </section>
 
-      <section id="faq" className="scroll-mt-6 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-6">
+      <section
+        id="faq"
+        className="site-entrance site-entrance-5 scroll-mt-6 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-6"
+      >
         <div className="max-w-2xl">
           <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--workbench-muted)]">
             {copy.home.faq.eyebrow}
@@ -231,11 +243,11 @@ export function HomePage() {
             {copy.home.faq.title}
           </h2>
         </div>
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <div className="site-card-grid mt-6 grid gap-4 lg:grid-cols-2">
           {copy.home.faq.items.map((item) => (
             <article
               key={item.question}
-              className="rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] p-5"
+              className="site-card-hover rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] p-5"
             >
               <h3 className="text-lg font-semibold">{item.question}</h3>
               <p className="mt-3 text-sm leading-6 text-[var(--workbench-muted)]">
