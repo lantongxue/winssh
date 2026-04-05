@@ -6,6 +6,7 @@ import i18n from '@/i18n'
 import { WorkbenchCommandCenter } from '@/components/workbench/workbench-command-center'
 import { WorkbenchProvider } from '@/components/workbench/workbench-context'
 import { createWinsshApiMock } from '@/test/create-winssh-api'
+import { useLocalTerminalsStore } from '@/store/local-terminals-store'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 
@@ -31,9 +32,39 @@ beforeEach(async () => {
   await i18n.changeLanguage('en-US')
   useWorkbenchStore.getState().reset()
   useSessionsStore.getState().clear()
+  useLocalTerminalsStore.getState().clear()
 })
 
 describe('WorkbenchCommandCenter quick connect', () => {
+  it('opens a local terminal from the command palette workbench group', async () => {
+    const createLocalTerminal = vi.fn().mockResolvedValue({
+      cwd: '/Users/tester',
+      shell: 'zsh',
+      startedAt: new Date().toISOString(),
+      status: 'running' as const,
+      terminalId: 'local-terminal-1',
+      title: 'zsh'
+    })
+
+    window.winsshApi = createWinsshApiMock({
+      localTerminals: {
+        create: createLocalTerminal
+      }
+    })
+
+    useWorkbenchStore.getState().setCommandPaletteOpen(true)
+    renderCommandCenter()
+
+    fireEvent.click(await screen.findByText('Open Local Terminal'))
+
+    await waitFor(() => {
+      expect(createLocalTerminal).toHaveBeenCalledTimes(1)
+    })
+    expect(useWorkbenchStore.getState().activeDocumentId).toBe(
+      'local-terminal-editor:local-terminal-1'
+    )
+  })
+
   it('shows a synthetic quick-connect action for a valid ssh user@host input', async () => {
     window.winsshApi = createWinsshApiMock({
       servers: {

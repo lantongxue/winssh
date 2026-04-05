@@ -49,6 +49,16 @@ const api: WinsshApi = {
     onStateChange: (callback) => subscribe('sessions:state', callback),
     onError: (callback) => subscribe('sessions:error', callback)
   },
+  localTerminals: {
+    create: () => ipcRenderer.invoke('localTerminals:create'),
+    close: (terminalId) => ipcRenderer.invoke('localTerminals:close', terminalId),
+    write: (terminalId, data) => ipcRenderer.invoke('localTerminals:write', terminalId, data),
+    resize: (terminalId, columns, rows) =>
+      ipcRenderer.invoke('localTerminals:resize', terminalId, columns, rows),
+    onData: (callback) => subscribe('localTerminals:data', callback),
+    onExit: (callback) => subscribe('localTerminals:exit', callback),
+    onStateChange: (callback) => subscribe('localTerminals:state', callback)
+  },
   sftp: {
     list: (sessionId, remotePath) => ipcRenderer.invoke('sftp:list', sessionId, remotePath),
     createFile: (sessionId, remotePath, name) =>
@@ -78,7 +88,9 @@ const api: WinsshApi = {
     update: (input) => ipcRenderer.invoke('settings:update', input)
   },
   themes: {
-    list: () => ipcRenderer.invoke('themes:list')
+    list: () => ipcRenderer.invoke('themes:list'),
+    importArchive: () => ipcRenderer.invoke('themes:importArchive'),
+    deletePlugin: (pluginId) => ipcRenderer.invoke('themes:deletePlugin', pluginId)
   },
   system: {
     pickPrivateKey: () => ipcRenderer.invoke('system:pickPrivateKey'),

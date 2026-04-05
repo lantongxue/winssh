@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { DEFAULT_DARK_THEME_ID, DEFAULT_PIXEL_THEME_ID } from '@shared/themes'
+import {
+  createThemeDefinition,
+  DEFAULT_DARK_THEME_ID,
+  DEFAULT_PIXEL_THEME_ID
+} from '@shared/themes'
 import type { AppSettings } from '@shared/types'
 import i18n from '@/i18n'
 import { WorkbenchSettingsEditor } from '@/components/workbench/workbench-settings-editor'
@@ -44,6 +48,16 @@ const persistedDarkSettings: AppSettings = {
   theme: DEFAULT_DARK_THEME_ID,
   windowTitleBarStyle: 'custom'
 }
+
+const importedTheme = createThemeDefinition({
+  appearance: 'dark',
+  id: 'acme.nebula',
+  label: 'Nebula',
+  pluginDisplayName: 'Nebula Pack',
+  pluginId: 'acme.nebula-pack',
+  source: 'user',
+  version: '1.2.0'
+})
 
 beforeEach(async () => {
   await i18n.changeLanguage('en-US')
@@ -170,6 +184,94 @@ describe('WorkbenchSettingsEditor theme selection', () => {
           theme: DEFAULT_PIXEL_THEME_ID
         })
       )
+    })
+  })
+
+  it('imports a ZIP theme pack and refreshes the available theme list', async () => {
+    const baseApi = createWinsshApiMock()
+    const initialThemes = await baseApi.themes.list()
+    const listThemes = vi
+      .fn()
+      .mockResolvedValueOnce(initialThemes)
+      .mockResolvedValue([...initialThemes, importedTheme])
+    const importArchive = vi.fn().mockResolvedValue({
+      pluginDisplayName: 'Nebula Pack',
+      pluginId: 'acme.nebula-pack',
+      themes: [
+        {
+          id: importedTheme.id,
+          label: importedTheme.label
+        }
+      ]
+    })
+
+    window.winsshApi = createWinsshApiMock({
+      themes: {
+        importArchive,
+        list: listThemes
+      }
+    })
+
+    renderSettingsEditor()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Import' }))
+
+    await waitFor(() => {
+      expect(importArchive).toHaveBeenCalledTimes(1)
+    })
+    expect(await screen.findByText('Nebula Pack')).toBeInTheDocument()
+    expect((await screen.findAllByText('Nebula')).length).toBeGreaterThan(0)
+  })
+
+  it('deletes an imported theme pack and refreshes the selected theme', async () => {
+    const baseApi = createWinsshApiMock()
+    const initialThemes = [...(await baseApi.themes.list()), importedTheme]
+    const listThemes = vi
+      .fn()
+      .mockResolvedValueOnce(initialThemes)
+      .mockResolvedValue(initialThemes.filter((theme) => theme.id !== importedTheme.id))
+    const getSettings = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ...persistedDarkSettings,
+        theme: importedTheme.id
+      })
+      .mockResolvedValue({
+        ...persistedDarkSettings,
+        theme: DEFAULT_DARK_THEME_ID
+      })
+    const deletePlugin = vi.fn().mockResolvedValue({
+      deletedThemeIds: [importedTheme.id],
+      nextThemeSelection: DEFAULT_DARK_THEME_ID,
+      pluginDisplayName: 'Nebula Pack',
+      pluginId: 'acme.nebula-pack'
+    })
+
+    window.winsshApi = createWinsshApiMock({
+      settings: {
+        get: getSettings
+      },
+      themes: {
+        deletePlugin,
+        list: listThemes
+      }
+    })
+
+    renderSettingsEditor()
+
+    expect(await screen.findByText('Nebula Pack')).toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0] as HTMLElement)
+    expect(await screen.findByText('Delete Imported Theme Pack')).toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Delete' }).at(-1) as HTMLElement)
+
+    await waitFor(() => {
+      expect(deletePlugin).toHaveBeenCalledWith('acme.nebula-pack')
+    })
+    await waitFor(() => {
+      expect(screen.queryByText('Nebula Pack')).not.toBeInTheDocument()
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Theme mode' })).toHaveTextContent('Dark+')
     })
   })
 

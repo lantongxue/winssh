@@ -5,13 +5,22 @@ import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { WorkbenchShell } from '@/components/workbench/workbench-shell'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { createServerEditorDocument, createSessionEditorDocument } from '@/lib/workbench'
+import {
+  createLocalTerminalEditorDocument,
+  createServerEditorDocument,
+  createSessionEditorDocument
+} from '@/lib/workbench'
 import { createWinsshApiMock } from '@/test/create-winssh-api'
+import { useLocalTerminalsStore } from '@/store/local-terminals-store'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 
 vi.mock('@/components/workbench/workbench-session-editor', () => ({
   WorkbenchSessionEditor: () => <div data-testid="session-editor" />
+}))
+
+vi.mock('@/components/workbench/workbench-local-terminal-editor', () => ({
+  WorkbenchLocalTerminalEditor: () => <div data-testid="local-terminal-editor" />
 }))
 
 function renderWorkbenchShell(initialEntry = '/servers') {
@@ -71,6 +80,7 @@ beforeEach(async () => {
   await i18n.changeLanguage('en-US')
   useWorkbenchStore.getState().reset()
   useSessionsStore.getState().clear()
+  useLocalTerminalsStore.getState().clear()
 })
 
 describe('WorkbenchShell shortcuts', () => {
@@ -168,6 +178,38 @@ describe('WorkbenchShell shortcuts', () => {
     await waitFor(() => {
       expect(disconnect).toHaveBeenCalledWith(activeSession.sessionId)
       expect(useSessionsStore.getState().tabs).toEqual([])
+      expect(useWorkbenchStore.getState().openDocuments).toEqual([])
+    })
+  })
+
+  it('closes the active local terminal with Cmd+W', async () => {
+    const closeLocalTerminal = vi.fn().mockResolvedValue(undefined)
+
+    window.winsshApi = createWinsshApiMock({
+      localTerminals: {
+        close: closeLocalTerminal
+      },
+      servers: {
+        list: vi.fn().mockResolvedValue([])
+      }
+    })
+
+    useLocalTerminalsStore.getState().addTerminal({
+      cwd: '/Users/tester',
+      shell: 'zsh',
+      startedAt: new Date().toISOString(),
+      status: 'running',
+      terminalId: 'local-terminal-1',
+      title: 'zsh'
+    })
+    useWorkbenchStore.getState().openDocument(createLocalTerminalEditorDocument('local-terminal-1'))
+    renderWorkbenchShell('/sessions')
+
+    fireEvent.keyDown(window, { key: 'w', metaKey: true })
+
+    await waitFor(() => {
+      expect(closeLocalTerminal).toHaveBeenCalledWith('local-terminal-1')
+      expect(useLocalTerminalsStore.getState().tabs).toEqual([])
       expect(useWorkbenchStore.getState().openDocuments).toEqual([])
     })
   })

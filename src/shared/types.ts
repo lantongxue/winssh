@@ -15,6 +15,7 @@ export type WindowTitleBarStyle = 'native' | 'custom'
 export type PortForwardKind = 'local' | 'remote'
 export type PortForwardStatus = 'starting' | 'active' | 'stopped' | 'error'
 export type SessionConnectFailureCode = 'secret_required' | 'auth_failed' | 'connection_failed'
+export type LocalTerminalStatus = 'running' | 'exited' | 'error'
 
 export interface ServerGroup {
   id: string
@@ -206,6 +207,33 @@ export interface SessionExitEvent {
 export interface SessionErrorEvent {
   sessionId: string
   message: string
+}
+
+export interface LocalTerminalSummary {
+  terminalId: string
+  title: string
+  shell: string
+  cwd: string
+  startedAt: string
+  status: LocalTerminalStatus
+  lastMessage?: string
+}
+
+export interface LocalTerminalStateEvent {
+  terminalId: string
+  status: LocalTerminalStatus
+  message?: string
+}
+
+export interface LocalTerminalDataEvent {
+  terminalId: string
+  data: string
+}
+
+export interface LocalTerminalExitEvent {
+  terminalId: string
+  exitCode: number
+  signal?: number
 }
 
 export interface RemoteEntryPermissions {

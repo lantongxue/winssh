@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
-import { SYSTEM_THEME_ID } from '@shared/themes'
+import { SYSTEM_THEME_ID, type ThemeDefinition } from '@shared/themes'
 import {
   Check,
   ChevronsUpDown,
@@ -21,6 +21,7 @@ import { actionIcons } from '@/lib/action-icons'
 import { cn } from '@/lib/utils'
 import { useWorkbenchStore } from '@/store/workbench-store'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   Command,
   CommandEmpty,
@@ -28,6 +29,14 @@ import {
   CommandItem,
   CommandList
 } from '@/components/ui/command'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
 import {
   Form,
   FormControl,
@@ -76,6 +85,48 @@ function getTerminalFontOptions(fonts: string[] | undefined, currentValue: strin
   return [...new Set([currentValue.trim(), ...(fonts ?? []).map((font) => font.trim())])]
     .filter(Boolean)
     .map((font) => ({ label: font, value: font }))
+}
+
+type UserThemePack = {
+  pluginDisplayName: string
+  pluginId: string
+  themes: Array<{ id: string; label: string }>
+  version: string
+}
+
+function getUserThemePacks(themes: ThemeDefinition[] | undefined): UserThemePack[] {
+  const packs = new Map<string, UserThemePack>()
+
+  for (const theme of themes ?? []) {
+    if (theme.source !== 'user') {
+      continue
+    }
+
+    const existingPack = packs.get(theme.pluginId)
+    if (existingPack) {
+      existingPack.themes.push({
+        id: theme.id,
+        label: theme.label
+      })
+      continue
+    }
+
+    packs.set(theme.pluginId, {
+      pluginDisplayName: theme.pluginDisplayName,
+      pluginId: theme.pluginId,
+      themes: [
+        {
+          id: theme.id,
+          label: theme.label
+        }
+      ],
+      version: theme.version
+    })
+  }
+
+  return [...packs.values()].sort((left, right) =>
+    left.pluginDisplayName.localeCompare(right.pluginDisplayName)
+  )
 }
 
 type TerminalFontFamilyComboboxProps = {
@@ -171,8 +222,10 @@ export function WorkbenchSettingsEditor() {
   const pushProblem = useWorkbenchStore((state) => state.pushProblem)
   const [selectedSection, setSelectedSection] =
     useState<(typeof settingsSections)[number]['id']>('appearance')
+  const [themePackPendingDelete, setThemePackPendingDelete] = useState<UserThemePack | null>(null)
   const DeleteIcon = actionIcons.delete
   const SaveIcon = actionIcons.save
+  const UploadIcon = actionIcons.upload
   const showSaveAction = selectedSection !== 'credentialVault'
 
   const settingsQuery = useQuery({
@@ -195,6 +248,7 @@ export function WorkbenchSettingsEditor() {
     queryKey: ['system-fonts'],
     queryFn: () => window.winsshApi.system.listFonts()
   })
+  const userThemePacks = getUserThemePacks(themesQuery.data)
 
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema as never),
@@ -226,6 +280,49 @@ export function WorkbenchSettingsEditor() {
       } else {
         toast.success(t('workbench.settings.toasts.saved'))
       }
+    }
+  })
+  const importThemePack = useMutation({
+    mutationFn: () => window.winsshApi.themes.importArchive(),
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : t('workbench.settings.toasts.themeImportFailed')
+      )
+    },
+    onSuccess: async (result) => {
+      if (!result) {
+        return
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['themes'] }),
+        queryClient.invalidateQueries({ queryKey: ['settings'] })
+      ])
+      toast.success(
+        t('workbench.settings.toasts.themeImported', {
+          name: result.pluginDisplayName
+        })
+      )
+    }
+  })
+  const deleteThemePack = useMutation({
+    mutationFn: (pluginId: string) => window.winsshApi.themes.deletePlugin(pluginId),
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : t('workbench.settings.toasts.themeDeleteFailed')
+      )
+    },
+    onSuccess: async (result) => {
+      setThemePackPendingDelete(null)
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['themes'] }),
+        queryClient.invalidateQueries({ queryKey: ['settings'] })
+      ])
+      toast.success(
+        t('workbench.settings.toasts.themeDeleted', {
+          name: result.pluginDisplayName
+        })
+      )
     }
   })
   const removeKnownHost = useMutation({
@@ -399,6 +496,80 @@ export function WorkbenchSettingsEditor() {
                       </FormItem>
                     )}
                   />
+                </div>
+                <div className="space-y-4 rounded-sm border border-[var(--workbench-border)] px-4 py-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-1">
+                      <div className="text-sm font-medium">
+                        {t('workbench.settings.themeManagement.title')}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {t('workbench.settings.themeManagement.importDescription')}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      className="lg:self-start"
+                      disabled={importThemePack.isPending}
+                      onClick={() => importThemePack.mutate()}
+                    >
+                      <UploadIcon className="size-4" />
+                      {t('common.actions.import')}
+                    </Button>
+                  </div>
+
+                  {userThemePacks.length > 0 ? (
+                    <div className="space-y-3">
+                      {userThemePacks.map((pack) => {
+                        const deletingCurrentPack =
+                          deleteThemePack.isPending && deleteThemePack.variables === pack.pluginId
+
+                        return (
+                          <div
+                            key={pack.pluginId}
+                            className="rounded-sm border border-[var(--workbench-border)] px-4 py-3"
+                          >
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                              <div className="space-y-2">
+                                <div>
+                                  <div className="font-medium">{pack.pluginDisplayName}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {pack.pluginId} · v{pack.version}
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <div className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                                    {t('workbench.settings.themeManagement.importedThemes')}
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {pack.themes.map((theme) => (
+                                      <Badge key={theme.id} variant="secondary">
+                                        {theme.label}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                disabled={deletingCurrentPack}
+                                onClick={() => setThemePackPendingDelete(pack)}
+                              >
+                                <DeleteIcon className="size-4" />
+                                {t('common.actions.delete')}
+                              </Button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-sm border border-dashed border-[var(--workbench-border)] px-4 py-6 text-sm text-muted-foreground">
+                      {t('workbench.settings.themeManagement.empty')}
+                    </div>
+                  )}
                 </div>
               </section>
             ) : null}
@@ -646,6 +817,50 @@ export function WorkbenchSettingsEditor() {
             ) : null}
           </form>
         </Form>
+
+        <Dialog
+          open={themePackPendingDelete !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setThemePackPendingDelete(null)
+            }
+          }}
+        >
+          <DialogContent className="max-w-sm border-[var(--workbench-border)] bg-[var(--workbench-editor)]">
+            <DialogHeader>
+              <DialogTitle>{t('workbench.settings.themeManagement.deleteTitle')}</DialogTitle>
+              <DialogDescription>
+                {t('workbench.settings.themeManagement.deleteDescription', {
+                  name: themePackPendingDelete?.pluginDisplayName ?? ''
+                })}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setThemePackPendingDelete(null)}
+              >
+                {t('common.actions.cancel')}
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={!themePackPendingDelete || deleteThemePack.isPending}
+                onClick={() => {
+                  if (!themePackPendingDelete) {
+                    return
+                  }
+
+                  deleteThemePack.mutate(themePackPendingDelete.pluginId)
+                }}
+              >
+                <DeleteIcon className="size-4" />
+                {t('common.actions.delete')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )

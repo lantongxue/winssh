@@ -45,6 +45,7 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
   const [quickConnectQuery, setQuickConnectQuery] = useState('')
   const {
     beginQuickConnect,
+    openLocalTerminal,
     focusActivity,
     openServerEditor,
     openSettingsEditor,
@@ -130,6 +131,15 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
             >
               <ServerCog className="size-4" />
               {t('workbench.activity.explorer.title')}
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                setCommandPaletteOpen(false)
+                void openLocalTerminal()
+              }}
+            >
+              <TerminalSquare className="size-4" />
+              {t('common.actions.openTerminal')}
             </CommandItem>
             <CommandItem
               onSelect={() => {

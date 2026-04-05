@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { actionIcons } from '@/lib/action-icons'
 import { isMacPlatform } from '@/lib/platform'
 import {
+  createLocalTerminalEditorDocument,
   createSessionEditorDocument,
   createSettingsEditorDocument,
   createTerminalWelcomeDocument,
@@ -13,6 +14,7 @@ import {
   getLegacyPathForDocument
 } from '@/lib/workbench'
 import { resolveWorkbenchShortcutAction } from '@/lib/workbench-shortcuts'
+import { useLocalTerminalsStore } from '@/store/local-terminals-store'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
@@ -25,6 +27,7 @@ import { WorkbenchPanel } from '@/components/workbench/workbench-panel'
 import { WorkbenchPrimarySidebar } from '@/components/workbench/workbench-primary-sidebar'
 import { WorkbenchProvider, useWorkbenchContext } from '@/components/workbench/workbench-context'
 import { WorkbenchQuickInput } from '@/components/workbench/workbench-quick-input'
+import { WorkbenchLocalTerminalEditor } from '@/components/workbench/workbench-local-terminal-editor'
 import { WorkbenchServerEditor } from '@/components/workbench/workbench-server-editor'
 import { WorkbenchSessionEditor } from '@/components/workbench/workbench-session-editor'
 import { WorkbenchSettingsEditor } from '@/components/workbench/workbench-settings-editor'
@@ -48,8 +51,9 @@ function submitServerEditorForm(documentId: `server-editor:${string}`) {
 
 function WorkbenchTerminalWelcome() {
   const { t } = useTranslation()
-  const { openServerEditor, focusActivity } = useWorkbenchContext()
+  const { openLocalTerminal, openServerEditor, focusActivity } = useWorkbenchContext()
   const NewConnectionIcon = actionIcons.newConnection
+  const OpenTerminalIcon = actionIcons.openTerminal
 
   return (
     <div className="liquid-glass-page flex h-full items-center justify-center bg-[var(--workbench-editor)] px-6">
@@ -64,6 +68,10 @@ function WorkbenchTerminalWelcome() {
           {t('workbench.shell.terminalWelcome.description')}
         </div>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+          <Button variant="outline" onClick={() => void openLocalTerminal()}>
+            <OpenTerminalIcon className="size-4" />
+            {t('common.actions.openTerminal')}
+          </Button>
           <Button onClick={() => openServerEditor()}>
             <NewConnectionIcon className="size-4" />
             {t('common.actions.newConnection')}
@@ -79,7 +87,8 @@ function WorkbenchTerminalWelcome() {
 }
 
 function WorkbenchShellContent() {
-  const { disconnectSession, openServerEditor, openSettingsEditor } = useWorkbenchContext()
+  const { closeLocalTerminal, disconnectSession, openServerEditor, openSettingsEditor } =
+    useWorkbenchContext()
   const location = useLocation()
   const navigate = useNavigate()
   const activeDocumentId = useWorkbenchStore((state) => state.activeDocumentId)
@@ -94,6 +103,7 @@ function WorkbenchShellContent() {
   const setQuickOpenOpen = useWorkbenchStore((state) => state.setQuickOpenOpen)
   const togglePanel = useWorkbenchStore((state) => state.togglePanel)
   const toggleSidebar = useWorkbenchStore((state) => state.toggleSidebar)
+  const setActiveLocalTerminal = useLocalTerminalsStore((state) => state.setActiveTerminal)
   const isMac = isMacPlatform()
 
   const activeDocument = openDocuments.find((document) => document.id === activeDocumentId) ?? null
@@ -122,6 +132,7 @@ function WorkbenchShellContent() {
 
     if (
       currentActiveDocument?.kind === 'session-editor' ||
+      currentActiveDocument?.kind === 'local-terminal-editor' ||
       currentActiveDocument?.kind === 'terminal-welcome'
     ) {
       setActiveActivity('terminal')
@@ -131,15 +142,32 @@ function WorkbenchShellContent() {
     if (location.pathname === '/sessions') {
       const { activeSessionId: currentActiveSessionId, tabs: currentTabs } =
         useSessionsStore.getState()
+      const { activeTerminalId: currentActiveLocalTerminalId, tabs: currentLocalTerminalTabs } =
+        useLocalTerminalsStore.getState()
       const preferredSessionId = currentActiveSessionId ?? currentTabs.at(-1)?.sessionId
+      const preferredLocalTerminalId =
+        currentActiveLocalTerminalId ?? currentLocalTerminalTabs.at(-1)?.terminalId
       openDocument(
         preferredSessionId
           ? createSessionEditorDocument(preferredSessionId)
-          : createTerminalWelcomeDocument()
+          : preferredLocalTerminalId
+            ? createLocalTerminalEditorDocument(preferredLocalTerminalId)
+            : createTerminalWelcomeDocument()
       )
       return
     }
   }, [location.pathname, openDocument, setActiveActivity])
+
+  useEffect(() => {
+    if (activeDocument?.kind === 'session-editor') {
+      useSessionsStore.getState().setActiveSession(activeDocument.sessionId)
+      return
+    }
+
+    if (activeDocument?.kind === 'local-terminal-editor') {
+      setActiveLocalTerminal(activeDocument.terminalId)
+    }
+  }, [activeDocument, setActiveLocalTerminal])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -165,6 +193,11 @@ function WorkbenchShellContent() {
 
         if (activeDocument.kind === 'session-editor') {
           void disconnectSession(activeDocument.sessionId)
+          return
+        }
+
+        if (activeDocument.kind === 'local-terminal-editor') {
+          void closeLocalTerminal(activeDocument.terminalId)
           return
         }
 
@@ -210,6 +243,7 @@ function WorkbenchShellContent() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [
     activeDocument,
+    closeLocalTerminal,
     closeDocument,
     disconnectSession,
     isMac,
@@ -254,6 +288,9 @@ function WorkbenchShellContent() {
                   {document.kind === 'session-editor' ? (
                     <WorkbenchSessionEditor sessionId={document.sessionId} />
                   ) : null}
+                  {document.kind === 'local-terminal-editor' ? (
+                    <WorkbenchLocalTerminalEditor terminalId={document.terminalId} />
+                  ) : null}
                   {document.kind === 'settings-editor' ? <WorkbenchSettingsEditor /> : null}
                 </div>
               ))}
@@ -278,6 +315,9 @@ function WorkbenchShellContent() {
               ) : null}
               {document.kind === 'session-editor' ? (
                 <WorkbenchSessionEditor sessionId={document.sessionId} />
+              ) : null}
+              {document.kind === 'local-terminal-editor' ? (
+                <WorkbenchLocalTerminalEditor terminalId={document.terminalId} />
               ) : null}
               {document.kind === 'settings-editor' ? <WorkbenchSettingsEditor /> : null}
             </div>

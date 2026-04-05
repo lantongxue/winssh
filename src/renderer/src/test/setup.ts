@@ -16,6 +16,6 @@ if (!globalThis.ResizeObserver) {
   }
 }
 
-if (!HTMLElement.prototype.scrollIntoView) {
+if (typeof HTMLElement !== 'undefined' && !HTMLElement.prototype.scrollIntoView) {
   HTMLElement.prototype.scrollIntoView = () => undefined
 }

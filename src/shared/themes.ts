@@ -170,6 +170,24 @@ export interface ThemeDefinition {
   version: string
 }
 
+export interface ThemeImportEntry {
+  id: string
+  label: string
+}
+
+export interface ThemeImportResult {
+  pluginId: string
+  pluginDisplayName: string
+  themes: ThemeImportEntry[]
+}
+
+export interface ThemeDeleteResult {
+  pluginId: string
+  pluginDisplayName: string
+  deletedThemeIds: string[]
+  nextThemeSelection: ThemeSelection | null
+}
+
 export interface ThemePluginContribution {
   id: string
   label: string

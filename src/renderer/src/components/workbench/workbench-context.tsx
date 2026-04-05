@@ -15,11 +15,13 @@ import type {
 } from '@shared/types'
 import type { WorkbenchActivityId } from '@/lib/workbench'
 import {
+  createLocalTerminalEditorDocument,
   createServerEditorDocument,
   createSessionEditorDocument,
   createSettingsEditorDocument,
   createTerminalWelcomeDocument
 } from '@/lib/workbench'
+import { useLocalTerminalsStore } from '@/store/local-terminals-store'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 
@@ -105,6 +107,7 @@ interface WorkbenchContextValue {
   focusActivity: (activityId: WorkbenchActivityId) => void
   focusExplorerHome: () => void
   moveServerToGroup: (server: Server, groupId: string | null, groupName?: string) => Promise<void>
+  openLocalTerminal: () => Promise<void>
   openEntityQuickInput: (input: EntityQuickInputState) => void
   openServerEditor: (serverId?: string | null, options?: OpenServerEditorOptions) => void
   openSettingsEditor: () => void
@@ -115,6 +118,7 @@ interface WorkbenchContextValue {
     server: Server,
     options?: ConnectionSecretsRequestOptions
   ) => Promise<void>
+  closeLocalTerminal: (terminalId: string) => Promise<void>
   submitConnectionSecret: (
     rootServerId: string,
     serverId: string,
@@ -202,6 +206,10 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const [pendingConnections, setPendingConnections] = useState<
     Record<string, PendingConnectionState>
   >({})
+  const localTerminalTabs = useLocalTerminalsStore((state) => state.tabs)
+  const activeLocalTerminalId = useLocalTerminalsStore((state) => state.activeTerminalId)
+  const addLocalTerminal = useLocalTerminalsStore((state) => state.addTerminal)
+  const removeLocalTerminal = useLocalTerminalsStore((state) => state.removeTerminal)
   const tabs = useSessionsStore((state) => state.tabs)
   const activeSessionId = useSessionsStore((state) => state.activeSessionId)
   const addPendingSession = useSessionsStore((state) => state.addPendingSession)
@@ -283,6 +291,32 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     openDocument(createServerEditorDocument(serverId, options))
   }
 
+  const openLocalTerminal = async () => {
+    try {
+      const terminal = await window.winsshApi.localTerminals.create()
+      addLocalTerminal(terminal)
+      setActiveActivity('terminal')
+      openDocument(createLocalTerminalEditorDocument(terminal.terminalId))
+      closeDocument('terminal-welcome')
+      appendOutput({
+        detail: `${terminal.shell} · ${terminal.cwd}`,
+        level: 'success',
+        message: t('workbench.output.localTerminalOpened', { name: terminal.title })
+      })
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : t('workbench.toasts.localTerminalOpenFailed')
+      pushProblem({
+        detail: t('common.actions.openTerminal'),
+        documentId: 'terminal-welcome',
+        id: `local-terminal:create:${Date.now()}`,
+        severity: 'error',
+        title: message
+      })
+      toast.error(message)
+    }
+  }
+
   const focusActivity = (activityId: WorkbenchActivityId) => {
     setActiveActivity(activityId)
 
@@ -293,9 +327,16 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 
     if (activityId === 'terminal') {
       const preferredSessionId = activeSessionId ?? tabs.at(-1)?.sessionId
+      const preferredLocalTerminalId = activeLocalTerminalId ?? localTerminalTabs.at(-1)?.terminalId
 
       if (preferredSessionId) {
         openDocument(createSessionEditorDocument(preferredSessionId))
+        closeDocument('terminal-welcome')
+        return
+      }
+
+      if (preferredLocalTerminalId) {
+        openDocument(createLocalTerminalEditorDocument(preferredLocalTerminalId))
         closeDocument('terminal-welcome')
         return
       }
@@ -312,7 +353,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     options?: ConnectionSecretsRequestOptions
   ) => {
     const canRemember = await getCredentialStorageAvailable()
-    const secretKind = options?.secretKind ?? (server.authType === 'password' ? 'password' : 'passphrase')
+    const secretKind =
+      options?.secretKind ?? (server.authType === 'password' ? 'password' : 'passphrase')
     setQuickInput({
       canRemember,
       kind: 'credentials',
@@ -395,7 +437,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     request?: ConnectionRequest,
     options: ConnectServerOptions = {}
   ) => {
-    const pendingSessionId = options.pendingSessionId ?? request?.sessionId ?? createClientSessionId(server.id)
+    const pendingSessionId =
+      options.pendingSessionId ?? request?.sessionId ?? createClientSessionId(server.id)
     const nextRequest = buildConnectionRequest(server.id, pendingSessionId, request)
 
     setPendingConnections((current) => ({
@@ -467,8 +510,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         lastErrorMessage: result.message,
         pendingSessionId,
         rememberByDefault:
-          getRememberPreference(nextRequest, failingServer.id, recoverableSecretKind) ??
-          undefined,
+          getRememberPreference(nextRequest, failingServer.id, recoverableSecretKind) ?? undefined,
         rootServerId: server.id,
         secretKind: recoverableSecretKind
       })
@@ -560,15 +602,19 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
             rememberPassphrase: remember
           }
 
-    await startConnection(rootServer, {
-      ...baseRequest,
-      secrets: {
-        ...(baseRequest.secrets ?? {}),
-        [serverId]: nextSecret
+    await startConnection(
+      rootServer,
+      {
+        ...baseRequest,
+        secrets: {
+          ...(baseRequest.secrets ?? {}),
+          [serverId]: nextSecret
+        }
+      },
+      {
+        pendingSessionId: nextSessionId
       }
-    }, {
-      pendingSessionId: nextSessionId
-    })
+    )
   }
 
   const connectServer = async (
@@ -606,6 +652,22 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     })
 
     await refreshWorkspaceData()
+  }
+
+  const closeLocalTerminal = async (terminalId: string) => {
+    const terminal = useLocalTerminalsStore
+      .getState()
+      .tabs.find((tab) => tab.terminalId === terminalId)
+
+    await window.winsshApi.localTerminals.close(terminalId)
+    removeLocalTerminal(terminalId)
+    closeDocument(`local-terminal-editor:${terminalId}`)
+
+    appendOutput({
+      detail: terminal ? `${terminal.title} · ${terminal.cwd}` : terminalId,
+      level: 'info',
+      message: t('workbench.output.localTerminalClosed')
+    })
   }
 
   const reconnectSession = async (sessionId: string) => {
@@ -679,11 +741,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     toast.success(t('workbench.toasts.serverDeleted'))
   }
 
-  const moveServerToGroup = async (
-    server: Server,
-    groupId: string | null,
-    groupName?: string
-  ) => {
+  const moveServerToGroup = async (server: Server, groupId: string | null, groupName?: string) => {
     const currentServer = (await getServerById(server.id)) ?? server
     if (currentServer.groupId === groupId) {
       return
@@ -714,7 +772,9 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       )
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : t('workbench.primarySidebar.toasts.serverMoveFailed')
+        error instanceof Error
+          ? error.message
+          : t('workbench.primarySidebar.toasts.serverMoveFailed')
       toast.error(message)
       throw error
     }
@@ -738,11 +798,13 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         closeQuickInput,
         connectQuickConnectTarget,
         connectServer,
+        closeLocalTerminal,
         deleteServer,
         disconnectSession,
         focusActivity,
         focusExplorerHome,
         moveServerToGroup,
+        openLocalTerminal,
         openEntityQuickInput,
         openServerEditor,
         openSettingsEditor,

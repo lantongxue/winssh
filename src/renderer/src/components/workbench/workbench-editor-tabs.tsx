@@ -26,15 +26,21 @@ import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { WorkbenchDocument, WorkbenchDocumentId } from '@/lib/workbench'
 import { cn } from '@/lib/utils'
+import { useLocalTerminalsStore } from '@/store/local-terminals-store'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 
 function getBaseDocumentTitle(
   document: WorkbenchDocument,
+  localTerminalTitleMap: Map<string, string>,
   sessionNameMap: Map<string, string>,
   serverNameMap: Map<string, string>,
   t: ReturnType<typeof useTranslation>['t']
 ) {
+  if (document.kind === 'local-terminal-editor') {
+    return localTerminalTitleMap.get(document.terminalId) ?? t('workbench.documents.localTerminal')
+  }
+
   if (document.kind === 'session-editor') {
     return sessionNameMap.get(document.sessionId) ?? t('workbench.documents.terminal')
   }
@@ -56,6 +62,7 @@ function getBaseDocumentTitle(
 
 function getDocumentTitle(
   document: WorkbenchDocument,
+  localTerminalTitleMap: Map<string, string>,
   sessionNameMap: Map<string, string>,
   serverNameMap: Map<string, string>,
   documentTitleOverrides: Partial<Record<WorkbenchDocumentId, string>>,
@@ -63,13 +70,13 @@ function getDocumentTitle(
 ) {
   return (
     documentTitleOverrides[document.id] ??
-    getBaseDocumentTitle(document, sessionNameMap, serverNameMap, t)
+    getBaseDocumentTitle(document, localTerminalTitleMap, sessionNameMap, serverNameMap, t)
   )
 }
 
 export function WorkbenchEditorTabs() {
   const { t } = useTranslation()
-  const { connectServer, disconnectSession } = useWorkbenchContext()
+  const { closeLocalTerminal, connectServer, disconnectSession } = useWorkbenchContext()
   const activeDocumentId = useWorkbenchStore((state) => state.activeDocumentId)
   const documentTitleOverrides = useWorkbenchStore((state) => state.documentTitleOverrides)
   const moveDocument = useWorkbenchStore((state) => state.moveDocument)
@@ -78,6 +85,7 @@ export function WorkbenchEditorTabs() {
   const clearDocumentTitleOverride = useWorkbenchStore((state) => state.clearDocumentTitleOverride)
   const setActiveDocument = useWorkbenchStore((state) => state.setActiveDocument)
   const setDocumentTitleOverride = useWorkbenchStore((state) => state.setDocumentTitleOverride)
+  const localTerminalTabs = useLocalTerminalsStore((state) => state.tabs)
   const sessions = useSessionsStore((state) => state.tabs)
   const [draggedDocumentId, setDraggedDocumentId] = useState<WorkbenchDocumentId | null>(null)
   const [dropIndicatorIndex, setDropIndicatorIndex] = useState<number | null>(null)
@@ -99,6 +107,10 @@ export function WorkbenchEditorTabs() {
     () => new Map(sessions.map((session) => [session.sessionId, session.serverName])),
     [sessions]
   )
+  const localTerminalTitleMap = useMemo(
+    () => new Map(localTerminalTabs.map((terminal) => [terminal.terminalId, terminal.title])),
+    [localTerminalTabs]
+  )
   const sessionServerIdMap = useMemo(
     () => new Map(sessions.map((session) => [session.sessionId, session.serverId])),
     [sessions]
@@ -117,19 +129,26 @@ export function WorkbenchEditorTabs() {
   )
 
   const getTitle = (document: WorkbenchDocument) =>
-    getDocumentTitle(document, sessionNameMap, serverNameMap, documentTitleOverrides, t)
+    getDocumentTitle(
+      document,
+      localTerminalTitleMap,
+      sessionNameMap,
+      serverNameMap,
+      documentTitleOverrides,
+      t
+    )
 
   const getBaseTitle = (document: WorkbenchDocument) =>
-    getBaseDocumentTitle(document, sessionNameMap, serverNameMap, t)
+    getBaseDocumentTitle(document, localTerminalTitleMap, sessionNameMap, serverNameMap, t)
 
   const getDocumentServer = (document: WorkbenchDocument): Server | null => {
     if (document.kind === 'server-editor') {
-      return document.serverId ? serverMap.get(document.serverId) ?? null : null
+      return document.serverId ? (serverMap.get(document.serverId) ?? null) : null
     }
 
     if (document.kind === 'session-editor') {
       const serverId = sessionServerIdMap.get(document.sessionId)
-      return serverId ? serverMap.get(serverId) ?? null : null
+      return serverId ? (serverMap.get(serverId) ?? null) : null
     }
 
     return null
@@ -148,6 +167,11 @@ export function WorkbenchEditorTabs() {
   const handleCloseDocument = async (document: WorkbenchDocument) => {
     if (document.kind === 'session-editor') {
       await disconnectSession(document.sessionId)
+      return
+    }
+
+    if (document.kind === 'local-terminal-editor') {
+      await closeLocalTerminal(document.terminalId)
       return
     }
 

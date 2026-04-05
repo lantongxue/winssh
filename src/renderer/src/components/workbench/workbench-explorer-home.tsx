@@ -46,7 +46,7 @@ function ServerShortcut({
 
 export function WorkbenchExplorerHome() {
   const { t } = useTranslation()
-  const { focusActivity, openServerEditor, openSettingsEditor, connectServer } =
+  const { focusActivity, openLocalTerminal, openServerEditor, openSettingsEditor, connectServer } =
     useWorkbenchContext()
   const queryClient = useQueryClient()
   const sessions = useSessionsStore((state) => state.tabs)
@@ -93,7 +93,7 @@ export function WorkbenchExplorerHome() {
               <NewConnectionIcon className="size-4" />
               {t('common.actions.newConnection')}
             </Button>
-            <Button variant="outline" size="sm" onClick={() => focusActivity('terminal')}>
+            <Button variant="outline" size="sm" onClick={() => void openLocalTerminal()}>
               <OpenTerminalIcon className="size-4" />
               {t('common.actions.openTerminal')}
             </Button>

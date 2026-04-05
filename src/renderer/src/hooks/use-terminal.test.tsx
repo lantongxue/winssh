@@ -3,11 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, waitFor } from '@testing-library/react'
 import { createThemeDefinition } from '@shared/themes'
 import type { AppSettings } from '@shared/types'
-import { createWinsshApiMock } from '@/test/create-winssh-api'
 import i18n from '@/i18n'
 import type {
   TerminalSearchController,
-  TerminalSearchResultsState
+  TerminalSearchResultsState,
+  TerminalTransport
 } from '@/hooks/use-terminal'
 
 const terminalInstances: MockTerminal[] = []
@@ -24,6 +24,11 @@ const clipboard = {
 }
 const openWindow = vi.fn()
 let lastSearchController: TerminalSearchController | null = null
+const testTransport: TerminalTransport = {
+  onData: () => () => undefined,
+  resize: async () => undefined,
+  write: async () => undefined
+}
 
 class MockTerminal {
   cols = 80
@@ -177,11 +182,13 @@ function TestTerminal({
 }: {
   settings: AppSettings
   theme: ReturnType<typeof createThemeDefinition>
-  onLinkTooltipChange?: (state: import('@/hooks/use-terminal').TerminalLinkTooltipState | null) => void
+  onLinkTooltipChange?: (
+    state: import('@/hooks/use-terminal').TerminalLinkTooltipState | null
+  ) => void
   onSearchResultsChange?: (state: TerminalSearchResultsState | null) => void
 }) {
   const { containerRef, search } = useTerminal(
-    'session-1',
+    testTransport,
     settings,
     theme,
     true,
@@ -271,17 +278,19 @@ describe('useTerminal', () => {
       return instance
     })
     webLinksAddonConstructor.mockReset()
-    webLinksAddonConstructor.mockImplementation((
-      handler?: (event: MouseEvent, uri: string) => void,
-      options?: {
-        hover?: (event: MouseEvent, text: string, location: unknown) => void
-        leave?: (event: MouseEvent, text: string) => void
+    webLinksAddonConstructor.mockImplementation(
+      (
+        handler?: (event: MouseEvent, uri: string) => void,
+        options?: {
+          hover?: (event: MouseEvent, text: string, location: unknown) => void
+          leave?: (event: MouseEvent, text: string) => void
+        }
+      ) => {
+        const instance = new MockWebLinksAddon(handler, options)
+        webLinksAddonInstances.push(instance)
+        return instance
       }
-    ) => {
-      const instance = new MockWebLinksAddon(handler, options)
-      webLinksAddonInstances.push(instance)
-      return instance
-    })
+    )
     webglAddonConstructor.mockReset()
     webglAddonConstructor.mockImplementation(() => {
       const instance = new MockWebglAddon()
@@ -297,7 +306,6 @@ describe('useTerminal', () => {
       value: openWindow
     })
     openWindow.mockReset()
-    window.winsshApi = createWinsshApiMock()
   })
 
   it('updates terminal theme without recreating the instance', () => {
@@ -336,10 +344,7 @@ describe('useTerminal', () => {
     expect(webglAddonInstances).toHaveLength(0)
 
     rerender(
-      <TestTerminal
-        settings={{ ...settings, experimentalTerminalWebgl: true }}
-        theme={darkTheme}
-      />
+      <TestTerminal settings={{ ...settings, experimentalTerminalWebgl: true }} theme={darkTheme} />
     )
 
     expect(terminalInstances).toHaveLength(2)
@@ -358,10 +363,7 @@ describe('useTerminal', () => {
     })
 
     render(
-      <TestTerminal
-        settings={{ ...settings, experimentalTerminalWebgl: true }}
-        theme={darkTheme}
-      />
+      <TestTerminal settings={{ ...settings, experimentalTerminalWebgl: true }} theme={darkTheme} />
     )
 
     expect(terminalInstances).toHaveLength(1)
@@ -441,11 +443,7 @@ describe('useTerminal', () => {
     webLinksAddon?.handler?.(cmdClick, 'https://example.com')
 
     expect(cmdClick.defaultPrevented).toBe(true)
-    expect(openWindow).toHaveBeenCalledWith(
-      'https://example.com',
-      '_blank',
-      'noopener,noreferrer'
-    )
+    expect(openWindow).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer')
 
     const leaveEvent = new MouseEvent('mouseleave', { bubbles: true })
     webLinksAddon?.options?.leave?.(leaveEvent, 'https://example.com')

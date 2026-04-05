@@ -2,14 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
+import { WorkbenchExplorerHome } from '@/components/workbench/workbench-explorer-home'
 import { WorkbenchProvider } from '@/components/workbench/workbench-context'
-import { WorkbenchTitlebar } from '@/components/workbench/workbench-titlebar'
-import { TooltipProvider } from '@/components/ui/tooltip'
 import { createWinsshApiMock } from '@/test/create-winssh-api'
 import { useLocalTerminalsStore } from '@/store/local-terminals-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 
-function renderTitlebar() {
+function renderExplorerHome() {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -21,31 +20,20 @@ function renderTitlebar() {
   return render(
     <QueryClientProvider client={queryClient}>
       <WorkbenchProvider>
-        <TooltipProvider>
-          <WorkbenchTitlebar />
-        </TooltipProvider>
+        <WorkbenchExplorerHome />
       </WorkbenchProvider>
     </QueryClientProvider>
   )
 }
 
-beforeEach(async () => {
-  await i18n.changeLanguage('en-US')
-  useWorkbenchStore.getState().reset()
-  useLocalTerminalsStore.getState().clear()
-  window.winsshApi = createWinsshApiMock()
-})
-
-describe('WorkbenchTitlebar', () => {
-  it('renders the app logo on the left side of the title bar with theme-driven color', () => {
-    renderTitlebar()
-
-    expect(screen.getByRole('img', { name: 'WinSSH' })).toHaveStyle('color: var(--workbench-logo)')
-    expect(screen.getByRole('button', { name: 'Quick Connect' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Open Local Terminal' })).toBeInTheDocument()
+describe('WorkbenchExplorerHome', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('en-US')
+    useLocalTerminalsStore.getState().clear()
+    useWorkbenchStore.getState().reset()
   })
 
-  it('opens a local terminal from the title bar button', async () => {
+  it('opens a real local terminal tab from the hero action', async () => {
     const createLocalTerminal = vi.fn().mockResolvedValue({
       cwd: '/Users/tester',
       shell: 'zsh',
@@ -61,14 +49,14 @@ describe('WorkbenchTitlebar', () => {
       }
     })
 
-    renderTitlebar()
+    renderExplorerHome()
     fireEvent.click(screen.getByRole('button', { name: 'Open Local Terminal' }))
 
     await waitFor(() => {
       expect(createLocalTerminal).toHaveBeenCalledTimes(1)
-      expect(useWorkbenchStore.getState().activeDocumentId).toBe(
-        'local-terminal-editor:local-terminal-1'
-      )
     })
+    expect(useWorkbenchStore.getState().activeDocumentId).toBe(
+      'local-terminal-editor:local-terminal-1'
+    )
   })
 })

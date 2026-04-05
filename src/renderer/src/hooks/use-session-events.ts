@@ -2,12 +2,14 @@ import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { useLocalTerminalsStore } from '@/store/local-terminals-store'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 
 export function useSessionEvents() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const updateLocalTerminalState = useLocalTerminalsStore((state) => state.updateTerminalState)
   const updateSessionState = useSessionsStore((state) => state.updateSessionState)
   const appendOutput = useWorkbenchStore((state) => state.appendOutput)
   const pushProblem = useWorkbenchStore((state) => state.pushProblem)
@@ -146,12 +148,56 @@ export function useSessionEvents() {
       }
     })
 
+    const unsubscribeLocalTerminalState = window.winsshApi.localTerminals.onStateChange((event) => {
+      updateLocalTerminalState(event)
+
+      if (event.status === 'exited') {
+        return
+      }
+
+      appendOutput({
+        detail: event.terminalId,
+        level: event.status === 'error' ? 'error' : 'info',
+        message:
+          event.message ?? t('workbench.output.localTerminalStateChanged', { status: event.status })
+      })
+
+      if (event.status === 'error' && event.message) {
+        pushProblem({
+          detail: event.terminalId,
+          documentId: `local-terminal-editor:${event.terminalId}`,
+          id: `local-terminal-state:${event.terminalId}:${Date.now()}`,
+          severity: 'error',
+          title: event.message
+        })
+        toast.error(event.message)
+      }
+    })
+
+    const unsubscribeLocalTerminalExit = window.winsshApi.localTerminals.onExit((event) => {
+      appendOutput({
+        detail: `${event.exitCode}${event.signal === undefined ? '' : ` · ${event.signal}`}`,
+        level: 'warning',
+        message: t('workbench.output.localTerminalExited', { terminalId: event.terminalId })
+      })
+    })
+
     return () => {
       unsubscribeState()
       unsubscribeError()
       unsubscribeExit()
       unsubscribeTransfer()
       unsubscribePortForward()
+      unsubscribeLocalTerminalState()
+      unsubscribeLocalTerminalExit()
     }
-  }, [appendOutput, pushProblem, queryClient, t, updateSessionState, upsertTransfer])
+  }, [
+    appendOutput,
+    pushProblem,
+    queryClient,
+    t,
+    updateLocalTerminalState,
+    updateSessionState,
+    upsertTransfer
+  ])
 }

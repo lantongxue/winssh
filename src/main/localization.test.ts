@@ -17,6 +17,8 @@ describe('main localization', () => {
     expect(en('dialogs.pickPrivateKey.title')).toBe('Choose SSH Private Key')
     expect(zh('dialogs.pickServerIcon.title')).toBe('选择服务器图标')
     expect(en('dialogs.pickServerIcon.title')).toBe('Choose Server Icon')
+    expect(zh('dialogs.importThemeArchive.title')).toBe('导入主题包')
+    expect(en('dialogs.importThemeArchive.filters.zip')).toBe('ZIP Archives')
     expect(
       zh('dialogs.hostFirstSeen.detail', {
         fingerprint: 'SHA256:demo',
@@ -29,5 +31,11 @@ describe('main localization', () => {
         serverName: 'prod-bastion'
       })
     ).toContain('prod-bastion')
+    expect(en('errors.themePluginDeleteBuiltin')).toBe('Built-in themes cannot be deleted.')
+    expect(
+      zh('errors.themeBuiltinConflict', {
+        value: 'winssh.dark-plus'
+      })
+    ).toContain('winssh.dark-plus')
   })
 })

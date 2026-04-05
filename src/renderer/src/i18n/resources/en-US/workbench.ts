@@ -45,6 +45,7 @@ const workbench = {
       }
     },
     documents: {
+      localTerminal: 'Local Terminal',
       serverEditor: {
         newConnection: 'Untitled Connection'
       },
@@ -448,7 +449,21 @@ const workbench = {
         restartDescription: 'Changing the window title bar mode requires restarting the app.',
         restartTitle: 'Title bar mode saved'
       },
+      themeManagement: {
+        deleteDescription:
+          'This removes the imported theme pack "{{name}}" and all themes it contains. Built-in themes are not affected.',
+        deleteTitle: 'Delete Imported Theme Pack',
+        empty: 'No imported theme packs yet. Import a ZIP theme pack to add more themes.',
+        importDescription:
+          'Import WinSSH theme packs as ZIP archives. Imported themes appear in the theme list immediately.',
+        importedThemes: 'Imported themes',
+        title: 'Theme Packs'
+      },
       toasts: {
+        themeDeleteFailed: 'Failed to delete the imported theme pack.',
+        themeDeleted: 'Theme pack "{{name}}" deleted.',
+        themeImportFailed: 'Failed to import the theme pack.',
+        themeImported: 'Theme pack "{{name}}" imported.',
         knownHostDeleted: 'Trusted host {{host}} deleted.',
         knownHostDeleteFailed: 'Failed to delete the trusted host.',
         saved: 'Settings saved.'
@@ -461,6 +476,21 @@ const workbench = {
       terminalWelcome: {
         description: 'Select a server in Explorer or create a new connection and start from there.',
         title: 'No active sessions yet'
+      }
+    },
+    localTerminal: {
+      closed: {
+        description: 'This local terminal tab has already been closed.',
+        title: 'Local terminal closed'
+      },
+      exited: {
+        description: 'The shell has exited. You can keep this tab open to review its output.',
+        title: 'Shell exited'
+      },
+      status: {
+        error: 'Error',
+        exited: 'Exited',
+        running: 'Running'
       }
     },
     sftp: {
@@ -547,11 +577,13 @@ const workbench = {
       closeWindow: 'Close Window',
       maximizeWindow: 'Maximize Window',
       minimizeWindow: 'Minimize Window',
+      openTerminalTitle: 'Open Local Terminal',
       quickOpenTitle: 'Quick Connect',
       restoreWindow: 'Restore Window'
     },
     toasts: {
       connectionFailed: 'Connection failed.',
+      localTerminalOpenFailed: 'Failed to open a local terminal.',
       reconnected: 'Reconnected to {{name}}.',
       reconnectFailed: 'Reconnect failed.',
       serverDeleted: 'Server deleted.',
@@ -562,6 +594,10 @@ const workbench = {
       connectedTo: 'Connected to {{name}}',
       connectingTo: 'Connecting to {{name}}',
       downloadCompleted: 'Download completed: {{fileName}}',
+      localTerminalClosed: 'Local terminal closed',
+      localTerminalExited: 'Local terminal exited: {{terminalId}}',
+      localTerminalOpened: 'Opened local terminal {{name}}',
+      localTerminalStateChanged: 'Local terminal state changed to {{status}}',
       portForwardActive: 'Port forward active',
       portForwardStopped: 'Port forward stopped',
       reconnecting: 'Reconnecting {{name}}',

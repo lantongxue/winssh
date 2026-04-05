@@ -9,6 +9,9 @@ export type MainTranslationKey =
   | 'dialogs.pickServerIcon.title'
   | 'dialogs.pickServerIcon.filters.images'
   | 'dialogs.pickServerIcon.filters.allFiles'
+  | 'dialogs.importThemeArchive.title'
+  | 'dialogs.importThemeArchive.filters.zip'
+  | 'dialogs.importThemeArchive.filters.allFiles'
   | 'dialogs.uploadFiles.title'
   | 'dialogs.downloadFile.title'
   | 'dialogs.hostChanged.buttons.cancel'
@@ -31,6 +34,11 @@ export type MainTranslationKey =
   | 'errors.reconnectUnavailable'
   | 'errors.sessionUnavailable'
   | 'errors.portForwardNotFound'
+  | 'errors.themeImportFailed'
+  | 'errors.themeArchiveLayoutInvalid'
+  | 'errors.themeBuiltinConflict'
+  | 'errors.themePluginDeleteBuiltin'
+  | 'errors.themePluginNotFound'
   | 'session.connecting'
   | 'session.connected'
   | 'session.closed'
@@ -59,6 +67,13 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
         title: 'Choose Server Icon',
         filters: {
           images: 'Images',
+          allFiles: 'All Files'
+        }
+      },
+      importThemeArchive: {
+        title: 'Import Theme Pack',
+        filters: {
+          zip: 'ZIP Archives',
           allFiles: 'All Files'
         }
       },
@@ -98,7 +113,14 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
       connectionFailed: 'Connection failed.',
       reconnectUnavailable: 'This tab does not have reusable connection parameters.',
       sessionUnavailable: 'This session does not exist or has already closed.',
-      portForwardNotFound: 'The selected port forwarding rule could not be found.'
+      portForwardNotFound: 'The selected port forwarding rule could not be found.',
+      themeImportFailed: 'The selected ZIP file is not a valid WinSSH theme pack.',
+      themeArchiveLayoutInvalid:
+        'The ZIP file must contain a WinSSH theme plugin folder with a package.json manifest.',
+      themeBuiltinConflict:
+        'The imported theme pack conflicts with the built-in theme "{{value}}" and cannot be installed.',
+      themePluginDeleteBuiltin: 'Built-in themes cannot be deleted.',
+      themePluginNotFound: 'The selected theme pack could not be found.'
     },
     session: {
       connecting: 'Establishing connection',
@@ -120,6 +142,13 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
         title: '选择服务器图标',
         filters: {
           images: '图片文件',
+          allFiles: '所有文件'
+        }
+      },
+      importThemeArchive: {
+        title: '导入主题包',
+        filters: {
+          zip: 'ZIP 压缩包',
           allFiles: '所有文件'
         }
       },
@@ -159,7 +188,12 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
       connectionFailed: '连接失败',
       reconnectUnavailable: '当前标签缺少可复用的连接参数',
       sessionUnavailable: '当前会话不存在或已经关闭',
-      portForwardNotFound: '目标端口转发规则不存在'
+      portForwardNotFound: '目标端口转发规则不存在',
+      themeImportFailed: '所选 ZIP 文件不是有效的 WinSSH 主题包',
+      themeArchiveLayoutInvalid: 'ZIP 文件中必须包含带有 package.json 的 WinSSH 主题插件目录',
+      themeBuiltinConflict: '导入的主题包与内置主题 "{{value}}" 冲突，无法安装',
+      themePluginDeleteBuiltin: '内置主题不能删除',
+      themePluginNotFound: '找不到所选主题包'
     },
     session: {
       connecting: '正在建立连接',

@@ -45,6 +45,7 @@ const workbench = {
       }
     },
     documents: {
+      localTerminal: '本地终端',
       serverEditor: {
         newConnection: '未命名连接'
       },
@@ -434,7 +435,20 @@ const workbench = {
         restartDescription: '切换窗口标题栏模式需要重启应用。',
         restartTitle: '标题栏模式已保存'
       },
+      themeManagement: {
+        deleteDescription: '这会删除导入的主题包“{{name}}”及其中包含的所有主题，不会影响内置主题。',
+        deleteTitle: '删除导入主题包',
+        empty: '还没有导入主题包。导入 ZIP 主题包后，新的主题会出现在列表中。',
+        importDescription:
+          '以 ZIP 压缩包形式导入 WinSSH 主题包，导入成功后会立即出现在主题列表中。',
+        importedThemes: '包含的主题',
+        title: '主题包'
+      },
       toasts: {
+        themeDeleteFailed: '删除导入主题包失败。',
+        themeDeleted: '已删除主题包“{{name}}”。',
+        themeImportFailed: '导入主题包失败。',
+        themeImported: '已导入主题包“{{name}}”。',
         knownHostDeleted: '已删除已信任主机 {{host}}。',
         knownHostDeleteFailed: '删除已信任主机失败。',
         saved: '设置已保存。'
@@ -447,6 +461,21 @@ const workbench = {
       terminalWelcome: {
         description: '在资源管理器中选择一台服务器，或直接创建一个新的连接配置并发起连接。',
         title: '还没有活动会话'
+      }
+    },
+    localTerminal: {
+      closed: {
+        description: '这个本地终端标签已经被关闭。',
+        title: '本地终端已关闭'
+      },
+      exited: {
+        description: 'Shell 已退出，你仍然可以保留这个标签查看历史输出。',
+        title: 'Shell 已退出'
+      },
+      status: {
+        error: '错误',
+        exited: '已退出',
+        running: '运行中'
       }
     },
     sftp: {
@@ -531,11 +560,13 @@ const workbench = {
       closeWindow: '关闭窗口',
       maximizeWindow: '最大化窗口',
       minimizeWindow: '最小化窗口',
+      openTerminalTitle: '打开本地终端',
       restoreWindow: '还原窗口',
       quickOpenTitle: '快速连接'
     },
     toasts: {
       connectionFailed: '连接失败。',
+      localTerminalOpenFailed: '打开本地终端失败。',
       reconnected: '已重新连接 {{name}}。',
       reconnectFailed: '重新连接失败。',
       serverDeleted: '服务器已删除。',
@@ -546,6 +577,10 @@ const workbench = {
       connectedTo: '已连接到 {{name}}',
       connectingTo: '正在连接 {{name}}',
       downloadCompleted: '下载完成：{{fileName}}',
+      localTerminalClosed: '本地终端已关闭',
+      localTerminalExited: '本地终端已退出：{{terminalId}}',
+      localTerminalOpened: '已打开本地终端 {{name}}',
+      localTerminalStateChanged: '本地终端状态已变更为 {{status}}',
       portForwardActive: '端口转发已启动',
       portForwardStopped: '端口转发已停止',
       reconnecting: '正在重新连接 {{name}}',

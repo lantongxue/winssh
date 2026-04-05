@@ -6,6 +6,10 @@ import type {
   CredentialUpsertInput,
   GroupInput,
   KnownHost,
+  LocalTerminalDataEvent,
+  LocalTerminalExitEvent,
+  LocalTerminalStateEvent,
+  LocalTerminalSummary,
   PortForwardInput,
   PortForwardRule,
   PortForwardStateEvent,
@@ -28,7 +32,7 @@ import type {
   WindowState
 } from './types'
 import type { ServerIconMimeType } from './server-brands'
-import type { ThemeDefinition } from './themes'
+import type { ThemeDefinition, ThemeDeleteResult, ThemeImportResult } from './themes'
 
 export type Unsubscribe = () => void
 
@@ -73,6 +77,15 @@ export interface WinsshApi {
     onStateChange: (callback: (event: SessionStateEvent) => void) => Unsubscribe
     onError: (callback: (event: SessionErrorEvent) => void) => Unsubscribe
   }
+  localTerminals: {
+    create: () => Promise<LocalTerminalSummary>
+    close: (terminalId: string) => Promise<void>
+    write: (terminalId: string, data: string) => Promise<void>
+    resize: (terminalId: string, columns: number, rows: number) => Promise<void>
+    onData: (callback: (event: LocalTerminalDataEvent) => void) => Unsubscribe
+    onExit: (callback: (event: LocalTerminalExitEvent) => void) => Unsubscribe
+    onStateChange: (callback: (event: LocalTerminalStateEvent) => void) => Unsubscribe
+  }
   sftp: {
     list: (sessionId: string, path: string) => Promise<SftpListResult>
     createFile: (sessionId: string, path: string, name: string) => Promise<void>
@@ -98,6 +111,8 @@ export interface WinsshApi {
   }
   themes: {
     list: () => Promise<ThemeDefinition[]>
+    importArchive: () => Promise<ThemeImportResult | null>
+    deletePlugin: (pluginId: string) => Promise<ThemeDeleteResult>
   }
   system: {
     pickPrivateKey: () => Promise<string | null>

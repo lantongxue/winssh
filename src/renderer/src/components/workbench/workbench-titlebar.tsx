@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { actionIcons } from '@/lib/action-icons'
 import { getPlatform } from '@/lib/platform'
 import { cn } from '@/lib/utils'
+import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import { useWorkbenchStore } from '@/store/workbench-store'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -90,6 +91,7 @@ function WindowControlButton({
 
 export function WorkbenchTitlebar() {
   const { t } = useTranslation()
+  const { openLocalTerminal } = useWorkbenchContext()
   const togglePanel = useWorkbenchStore((state) => state.togglePanel)
   const toggleSidebar = useWorkbenchStore((state) => state.toggleSidebar)
   const setCommandPaletteOpen = useWorkbenchStore((state) => state.setCommandPaletteOpen)
@@ -104,6 +106,7 @@ export function WorkbenchTitlebar() {
   const platform = useMemo(() => getPlatform(), [])
   const isMac = platform.includes('mac')
   const QuickOpenIcon = actionIcons.quickOpen
+  const OpenTerminalIcon = actionIcons.openTerminal
   const CommandPaletteIcon = actionIcons.commandPalette
   const ToggleSidebarIcon = actionIcons.toggleSidebar
   const TogglePanelIcon = actionIcons.togglePanel
@@ -162,6 +165,14 @@ export function WorkbenchTitlebar() {
           <QuickOpenIcon className="size-3.5" />
           {t('common.actions.quickOpen')}
         </TitlebarButton>
+        <TitlebarButton
+          size="sm"
+          tooltip={t('workbench.titleBar.openTerminalTitle')}
+          onClick={() => void openLocalTerminal()}
+        >
+          <OpenTerminalIcon className="size-3.5" />
+          {t('common.actions.openTerminal')}
+        </TitlebarButton>
       </div>
 
       <div className="pointer-events-none absolute inset-x-0 flex justify-center">
@@ -179,10 +190,7 @@ export function WorkbenchTitlebar() {
       </div>
 
       <div className="ml-auto flex items-center gap-1">
-        <WindowControlButton
-          tooltip={t('common.actions.toggleSidebar')}
-          onClick={toggleSidebar}
-        >
+        <WindowControlButton tooltip={t('common.actions.toggleSidebar')} onClick={toggleSidebar}>
           <ToggleSidebarIcon className="size-4" />
         </WindowControlButton>
         <WindowControlButton tooltip={t('common.actions.togglePanel')} onClick={togglePanel}>
@@ -199,7 +207,9 @@ export function WorkbenchTitlebar() {
             </WindowControlButton>
             <WindowControlButton
               tooltip={t(
-                isMaximized ? 'workbench.titleBar.restoreWindow' : 'workbench.titleBar.maximizeWindow'
+                isMaximized
+                  ? 'workbench.titleBar.restoreWindow'
+                  : 'workbench.titleBar.maximizeWindow'
               )}
               onClick={() => void window.winsshApi.system.window.toggleMaximize()}
             >

@@ -13,6 +13,8 @@ import i18n from '@/i18n'
 import { resolveTerminalAppearance } from '@/lib/theme'
 
 type TerminalDisposable = { dispose: () => void }
+type Unsubscribe = () => void
+
 export interface TerminalLinkTooltipState {
   open: boolean
   text: string
@@ -30,6 +32,12 @@ export interface TerminalSearchController {
   clearActiveDecoration: () => void
   findNext: (term: string, searchOptions?: ISearchOptions) => boolean
   findPrevious: (term: string, searchOptions?: ISearchOptions) => boolean
+}
+
+export interface TerminalTransport {
+  onData: (callback: (data: string) => void) => Unsubscribe
+  resize: (columns: number, rows: number) => Promise<void>
+  write: (data: string) => Promise<void>
 }
 
 function enableExperimentalWebglRenderer(terminal: Terminal) {
@@ -106,26 +114,29 @@ function enableWebLinks(
   onLinkTooltipChange?: (state: TerminalLinkTooltipState | null) => void
 ) {
   const hint = i18n.t('workbench.terminal.linkHint')
-  const webLinksAddon = new WebLinksAddon((event, uri) => {
-    event.preventDefault()
-    if (!event.metaKey) {
-      return
-    }
-    window.open(uri, '_blank', 'noopener,noreferrer')
-  }, {
-    hover: (event) => {
-      const bounds = container.getBoundingClientRect()
-      onLinkTooltipChange?.({
-        open: true,
-        text: hint,
-        x: event.clientX - bounds.left,
-        y: event.clientY - bounds.top
-      })
+  const webLinksAddon = new WebLinksAddon(
+    (event, uri) => {
+      event.preventDefault()
+      if (!event.metaKey) {
+        return
+      }
+      window.open(uri, '_blank', 'noopener,noreferrer')
     },
-    leave: () => {
-      onLinkTooltipChange?.(null)
+    {
+      hover: (event) => {
+        const bounds = container.getBoundingClientRect()
+        onLinkTooltipChange?.({
+          open: true,
+          text: hint,
+          x: event.clientX - bounds.left,
+          y: event.clientY - bounds.top
+        })
+      },
+      leave: () => {
+        onLinkTooltipChange?.(null)
+      }
     }
-  })
+  )
   terminal.loadAddon(webLinksAddon)
 
   return () => {
@@ -145,7 +156,7 @@ function enableUnicode11Support(terminal: Terminal) {
 }
 
 export function useTerminal(
-  sessionId: string | null,
+  transport: TerminalTransport | null,
   settings: AppSettings,
   theme: ThemeDefinition | null,
   enabled = true,
@@ -206,7 +217,7 @@ export function useTerminal(
   useEffect(() => {
     const initialTerminalOptions = readTerminalOptions()
 
-    if (!enabled || !sessionId || !containerRef.current || !initialTerminalOptions) {
+    if (!enabled || !transport || !containerRef.current || !initialTerminalOptions) {
       return
     }
 
@@ -274,17 +285,15 @@ export function useTerminal(
 
     const resize = () => {
       fitAddon.fit()
-      void window.winsshApi.sessions.resize(sessionId, terminal.cols, terminal.rows)
+      void transport.resize(terminal.cols, terminal.rows)
     }
 
     const writeDisposable = terminal.onData((data) => {
-      void window.winsshApi.sessions.write(sessionId, data)
+      void transport.write(data)
     })
 
-    const unsubscribeData = window.winsshApi.sessions.onData((event) => {
-      if (event.sessionId === sessionId) {
-        terminal.write(event.data)
-      }
+    const unsubscribeData = transport.onData((data) => {
+      terminal.write(data)
     })
 
     const resizeObserver = new ResizeObserver(() => resize())
@@ -320,8 +329,8 @@ export function useTerminal(
     hasTheme,
     onLinkTooltipChange,
     onSearchResultsChange,
-    sessionId,
-    settings.experimentalTerminalWebgl
+    settings.experimentalTerminalWebgl,
+    transport
   ])
 
   useEffect(() => {
@@ -365,7 +374,7 @@ export function useTerminal(
       selectionDisposableRef.current?.dispose()
       selectionDisposableRef.current = null
     }
-  }, [enabled, hasTheme, sessionId, settings.copyOnSelect])
+  }, [enabled, hasTheme, settings.copyOnSelect, transport])
 
   return {
     containerRef,

@@ -206,6 +206,23 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       write: async () => undefined,
       ...overrides.sessions
     },
+    localTerminals: {
+      close: async () => undefined,
+      create: async () => ({
+        cwd: '/Users/tester',
+        shell: 'zsh',
+        startedAt: new Date().toISOString(),
+        status: 'running',
+        terminalId: 'local-terminal-1',
+        title: 'zsh'
+      }),
+      onData: () => noopUnsubscribe,
+      onExit: () => noopUnsubscribe,
+      onStateChange: () => noopUnsubscribe,
+      resize: async () => undefined,
+      write: async () => undefined,
+      ...overrides.localTerminals
+    },
     sftp: {
       createFile: async () => undefined,
       downloadFile: async () => undefined,
@@ -275,6 +292,13 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       ...overrides.credentials
     },
     themes: {
+      deletePlugin: async () => ({
+        deletedThemeIds: [],
+        nextThemeSelection: null,
+        pluginDisplayName: 'Imported Theme Pack',
+        pluginId: 'example.imported-theme-pack'
+      }),
+      importArchive: async () => null,
       list: async () => defaultThemes,
       ...overrides.themes
     },

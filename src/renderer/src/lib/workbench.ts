@@ -24,6 +24,7 @@ export type WorkbenchDocumentId =
   | 'terminal-welcome'
   | `server-editor:${string}`
   | `session-editor:${string}`
+  | `local-terminal-editor:${string}`
 
 export interface SettingsEditorDocument {
   id: 'settings-editor'
@@ -48,11 +49,18 @@ export interface SessionEditorDocument {
   sessionId: string
 }
 
+export interface LocalTerminalEditorDocument {
+  id: `local-terminal-editor:${string}`
+  kind: 'local-terminal-editor'
+  terminalId: string
+}
+
 export type WorkbenchDocument =
   | SettingsEditorDocument
   | TerminalWelcomeDocument
   | ServerEditorDocument
   | SessionEditorDocument
+  | LocalTerminalEditorDocument
 
 export interface WorkbenchActivityMeta {
   activityId: WorkbenchActivityId
@@ -144,6 +152,14 @@ export function createSessionEditorDocument(sessionId: string): SessionEditorDoc
   }
 }
 
+export function createLocalTerminalEditorDocument(terminalId: string): LocalTerminalEditorDocument {
+  return {
+    id: `local-terminal-editor:${terminalId}`,
+    kind: 'local-terminal-editor',
+    terminalId
+  }
+}
+
 export function getWorkbenchActivity(activityId: WorkbenchActivityId): WorkbenchActivityMeta {
   return (
     workbenchActivities.find((activity) => activity.activityId === activityId) ??
@@ -160,7 +176,11 @@ export function getDocumentActivity(document: WorkbenchDocument | null): Workben
     return 'settings'
   }
 
-  if (document.kind === 'session-editor' || document.kind === 'terminal-welcome') {
+  if (
+    document.kind === 'session-editor' ||
+    document.kind === 'local-terminal-editor' ||
+    document.kind === 'terminal-welcome'
+  ) {
     return 'terminal'
   }
 
@@ -193,6 +213,8 @@ export function getDocumentFallbackTitle(document: WorkbenchDocument): string {
       return document.serverId ? 'Connection' : 'Untitled Connection'
     case 'session-editor':
       return 'Terminal'
+    case 'local-terminal-editor':
+      return 'Local Terminal'
     default:
       return 'Workbench'
   }
@@ -208,6 +230,8 @@ export function getDocumentDescription(document: WorkbenchDocument): string {
       return document.serverId ? 'Edit saved SSH connection.' : 'Create a new SSH connection.'
     case 'session-editor':
       return 'Interactive SSH terminal.'
+    case 'local-terminal-editor':
+      return 'Interactive local terminal.'
     default:
       return ''
   }
