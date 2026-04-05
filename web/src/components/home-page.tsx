@@ -29,7 +29,9 @@ export function HomePage() {
   return (
     <SiteShell
       activePage="home"
-      pageTitle={copy.home.hero.title}
+      pageTitle={copy.home.seoTitle}
+      pageDescription={copy.home.seoDescription}
+      pageKeywords={copy.home.seoKeywords}
       sectionLinks={copy.home.sections}
     >
       <section
@@ -80,7 +82,7 @@ export function HomePage() {
           </div>
           <div className="rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-bg)] p-5">
             <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--workbench-muted)]">
-              Workbench Signals
+              {copy.home.hero.signalsLabel}
             </div>
             <div className="mt-4 space-y-3">
               {copy.home.hero.bullets.map((bullet) => (
@@ -206,7 +208,7 @@ export function HomePage() {
 
           <aside className="rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-sidebar)] p-5">
             <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--workbench-muted)]">
-              Docs
+              {copy.home.download.noteEyebrow}
             </div>
             <div className="mt-3 text-xl font-semibold">{copy.home.download.noteTitle}</div>
             <p className="mt-3 text-sm leading-6 text-[var(--workbench-muted)]">

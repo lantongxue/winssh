@@ -14,10 +14,17 @@ describe('HomePage', () => {
       </SiteLanguageProvider>
     )
 
-    expect(screen.getByRole('heading', { level: 1, name: /ssh workbench with a wink/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 2, name: /everything important stays inside the session flow/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 2, name: /beta channels are defined/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 2, name: /what the first public site should set clearly/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: /knowing wink/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: /serious tooling, less ceremony/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: /installer parade comes next/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: /plainly and with a wink/i })).toBeInTheDocument()
+    expect(document.title).toBe('WinSSH')
+    expect(document.head.querySelector('meta[name="description"]')?.getAttribute('content')).toMatch(
+      /cross-platform desktop SSH client/i
+    )
+    expect(document.head.querySelector('meta[name="keywords"]')?.getAttribute('content')).toMatch(
+      /SSH client/i
+    )
   })
 
   it('updates the left rail active state when the home hash changes', async () => {

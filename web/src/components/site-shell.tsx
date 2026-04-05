@@ -38,6 +38,18 @@ const railIcons = {
 
 type RailLinkId = keyof typeof railIcons
 
+function upsertNamedMetaTag(name: string, content: string) {
+  let tag = document.head.querySelector(`meta[name="${name}"]`)
+
+  if (!tag) {
+    tag = document.createElement('meta')
+    tag.setAttribute('name', name)
+    document.head.appendChild(tag)
+  }
+
+  tag.setAttribute('content', content)
+}
+
 function resolveActiveRailLink(activePage: SitePage, hash: string): RailLinkId {
   if (activePage === 'docs') {
     return 'docs'
@@ -58,11 +70,15 @@ export function SiteShell({
   activePage,
   children,
   pageTitle,
+  pageDescription,
+  pageKeywords,
   sectionLinks
 }: {
   activePage: SitePage
   children: React.ReactNode
   pageTitle: string
+  pageDescription: string
+  pageKeywords: readonly string[]
   sectionLinks: readonly SectionLink[]
 }) {
   const { copy, locale, setLocale } = useSiteLanguage()
@@ -92,6 +108,12 @@ export function SiteShell({
       window.removeEventListener('popstate', syncActiveRail)
     }
   }, [activePage])
+
+  useEffect(() => {
+    document.title = pageTitle
+    upsertNamedMetaTag('description', pageDescription)
+    upsertNamedMetaTag('keywords', pageKeywords.join(', '))
+  }, [pageDescription, pageKeywords, pageTitle])
 
   const toolbarLinks: ToolbarLink[] = [
     {

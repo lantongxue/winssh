@@ -10,9 +10,19 @@ describe('DocsPage', () => {
       </SiteLanguageProvider>
     )
 
-    expect(screen.getByRole('heading', { level: 1, name: /先把产品地图立起来/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: /先把产品地图摊开/ })).toBeInTheDocument()
     expect(screen.getAllByText('快速开始').length).toBeGreaterThan(0)
     expect(screen.getAllByText('安全模型').length).toBeGreaterThan(0)
-    expect(screen.getByText(/Docs 首版不是空白页/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 3, name: /主题要对着桌面端 registry 开发/ })).toBeInTheDocument()
+    expect(screen.getByText(/不会在运行时加载任意主题/)).toBeInTheDocument()
+    expect(screen.getByText(/npm run web:dev/)).toBeInTheDocument()
+    expect(screen.getByText(/Docs 首版先做有用的前门/)).toBeInTheDocument()
+    expect(document.title).toBe('WinSSH 文档')
+    expect(document.head.querySelector('meta[name="description"]')?.getAttribute('content')).toMatch(
+      /WinSSH 文档入口/
+    )
+    expect(document.head.querySelector('meta[name="keywords"]')?.getAttribute('content')).toMatch(
+      /主题开发/
+    )
   })
 })
