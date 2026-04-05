@@ -69,6 +69,8 @@ function createWindow(settings: AppSettings, themeRegistry: ThemeRegistry): Brow
     }
   })
 
+  window.webContents.openDevTools()
+
   window.on('ready-to-show', () => {
     window.show()
   })

@@ -83,6 +83,7 @@ export interface AppSettings {
   theme: ThemeMode
   terminalFontSize: number
   terminalFontFamily: string
+  experimentalTerminalWebgl: boolean
   cursorStyle: CursorStyle
   cursorBlink: boolean
   copyOnSelect: boolean

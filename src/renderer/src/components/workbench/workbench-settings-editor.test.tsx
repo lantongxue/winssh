@@ -37,6 +37,7 @@ const persistedDarkSettings: AppSettings = {
   copyOnSelect: true,
   cursorBlink: true,
   cursorStyle: 'block',
+  experimentalTerminalWebgl: false,
   language: 'system',
   terminalFontFamily: 'JetBrains Mono, Consolas, monospace',
   terminalFontSize: 14,
@@ -74,6 +75,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
           copyOnSelect: true,
           cursorBlink: true,
           cursorStyle: 'block',
+          experimentalTerminalWebgl: false,
           language: 'system',
           terminalFontFamily: 'JetBrains Mono, Consolas, monospace',
           terminalFontSize: 14,
@@ -101,6 +103,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
           copyOnSelect: true,
           cursorBlink: true,
           cursorStyle: 'block',
+          experimentalTerminalWebgl: false,
           language: 'en-US',
           terminalFontFamily: 'Consolas',
           terminalFontSize: 14,
@@ -128,6 +131,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
       copyOnSelect: true,
       cursorBlink: true,
       cursorStyle: 'block',
+      experimentalTerminalWebgl: false,
       language: 'en-US',
       terminalFontFamily: 'Consolas',
       terminalFontSize: 14,
@@ -141,6 +145,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
           copyOnSelect: true,
           cursorBlink: true,
           cursorStyle: 'block',
+          experimentalTerminalWebgl: false,
           language: 'en-US',
           terminalFontFamily: 'Consolas',
           terminalFontSize: 14,
@@ -173,6 +178,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
       copyOnSelect: true,
       cursorBlink: true,
       cursorStyle: 'block',
+      experimentalTerminalWebgl: false,
       language: 'en-US',
       terminalFontFamily: 'IBM Plex Mono',
       terminalFontSize: 14,
@@ -186,6 +192,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
           copyOnSelect: true,
           cursorBlink: true,
           cursorStyle: 'block',
+          experimentalTerminalWebgl: false,
           language: 'en-US',
           terminalFontFamily: 'Consolas',
           terminalFontSize: 14,
@@ -215,6 +222,51 @@ describe('WorkbenchSettingsEditor theme selection', () => {
       expect(updateSettings).toHaveBeenCalledWith(
         expect.objectContaining({
           terminalFontFamily: 'IBM Plex Mono'
+        })
+      )
+    })
+  })
+
+  it('saves the experimental WebGL renderer toggle from the terminal settings section', async () => {
+    const updateSettings = vi.fn().mockResolvedValue({
+      copyOnSelect: true,
+      cursorBlink: true,
+      cursorStyle: 'block',
+      experimentalTerminalWebgl: true,
+      language: 'en-US',
+      terminalFontFamily: 'Consolas',
+      terminalFontSize: 14,
+      theme: DEFAULT_DARK_THEME_ID,
+      windowTitleBarStyle: 'custom'
+    })
+
+    window.winsshApi = createWinsshApiMock({
+      settings: {
+        get: vi.fn().mockResolvedValue({
+          copyOnSelect: true,
+          cursorBlink: true,
+          cursorStyle: 'block',
+          experimentalTerminalWebgl: false,
+          language: 'en-US',
+          terminalFontFamily: 'Consolas',
+          terminalFontSize: 14,
+          theme: DEFAULT_DARK_THEME_ID,
+          windowTitleBarStyle: 'custom'
+        }),
+        update: updateSettings
+      }
+    })
+
+    renderSettingsEditor()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Terminal' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Experimental WebGL renderer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(updateSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          experimentalTerminalWebgl: true
         })
       )
     })

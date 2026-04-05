@@ -381,7 +381,7 @@ const workbench = {
         appearance: '调整语言、主题和窗口标题栏模式。',
         credentialVault: '集中管理可复用的密码、私钥与口令记录。',
         security: '查看凭据存储能力与已信任主机列表。',
-        terminal: '调整终端字体、光标和复制行为。'
+        terminal: '调整终端字体、光标、复制行为与实验性渲染选项。'
       },
       form: {
         copyOnSelect: {
@@ -391,6 +391,10 @@ const workbench = {
         cursorBlink: {
           description: '更容易定位当前输入位置。',
           title: '光标闪烁'
+        },
+        experimentalTerminalWebgl: {
+          description: '实验性支持。需要可用 GPU 加速；不受支持时会自动回退到默认渲染器。',
+          title: '实验性 WebGL 渲染'
         },
         cursorStyle: '光标样式',
         language: '界面语言',
@@ -491,6 +495,17 @@ const workbench = {
       theme: '主题 {{value}}'
     },
     terminal: {
+      linkHint: '按 Cmd+点击打开链接',
+      search: {
+        close: '关闭终端搜索',
+        label: '搜索终端输出',
+        next: '查找下一个结果',
+        noMatches: '没有匹配结果',
+        placeholder: '在终端中查找',
+        previous: '查找上一个结果',
+        results: '{{current}} / {{total}}',
+        shortcut: 'Cmd/Ctrl+F'
+      },
       connected: {
         defaultMessage: 'SSH 会话已准备就绪，正在把焦点切换到终端。',
         title: '已连接到 {{name}}'

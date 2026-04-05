@@ -486,7 +486,11 @@ export function WorkbenchSettingsEditor() {
                           </div>
                         </div>
                         <FormControl>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                          <Switch
+                            aria-label={t('workbench.settings.form.cursorBlink.title')}
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
                         </FormControl>
                       </FormItem>
                     )}
@@ -505,7 +509,36 @@ export function WorkbenchSettingsEditor() {
                           </div>
                         </div>
                         <FormControl>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                          <Switch
+                            aria-label={t('workbench.settings.form.copyOnSelect.title')}
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="experimentalTerminalWebgl"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-sm border border-[var(--workbench-border)] px-4 py-3">
+                        <div>
+                          <div className="font-medium">
+                            {t('workbench.settings.form.experimentalTerminalWebgl.title')}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {t('workbench.settings.form.experimentalTerminalWebgl.description')}
+                          </div>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            aria-label={t(
+                              'workbench.settings.form.experimentalTerminalWebgl.title'
+                            )}
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
                         </FormControl>
                       </FormItem>
                     )}

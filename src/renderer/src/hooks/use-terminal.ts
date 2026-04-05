@@ -1,20 +1,189 @@
 import { useEffect, useEffectEvent, useMemo, useRef } from 'react'
 import { FitAddon } from '@xterm/addon-fit'
+import { ImageAddon } from '@xterm/addon-image'
+import { ProgressAddon } from '@xterm/addon-progress'
+import { SearchAddon, type ISearchOptions } from '@xterm/addon-search'
+import { Unicode11Addon } from '@xterm/addon-unicode11'
+import { WebLinksAddon } from '@xterm/addon-web-links'
+import { WebglAddon } from '@xterm/addon-webgl'
 import { Terminal } from '@xterm/xterm'
 import type { ThemeDefinition } from '@shared/themes'
 import type { AppSettings } from '@shared/types'
+import i18n from '@/i18n'
 import { resolveTerminalAppearance } from '@/lib/theme'
+
+type TerminalDisposable = { dispose: () => void }
+export interface TerminalLinkTooltipState {
+  open: boolean
+  text: string
+  x: number
+  y: number
+}
+
+export interface TerminalSearchResultsState {
+  resultCount: number
+  resultIndex: number
+}
+
+export interface TerminalSearchController {
+  clear: () => void
+  clearActiveDecoration: () => void
+  findNext: (term: string, searchOptions?: ISearchOptions) => boolean
+  findPrevious: (term: string, searchOptions?: ISearchOptions) => boolean
+}
+
+function enableExperimentalWebglRenderer(terminal: Terminal) {
+  let webglAddon: WebglAddon | null = null
+  let contextLossDisposable: TerminalDisposable | null = null
+
+  try {
+    webglAddon = new WebglAddon()
+    contextLossDisposable = webglAddon.onContextLoss(() => {
+      webglAddon?.dispose()
+      webglAddon = null
+      contextLossDisposable?.dispose()
+      contextLossDisposable = null
+    })
+    terminal.loadAddon(webglAddon)
+  } catch {
+    // WebGL is experimental, so unsupported environments quietly keep the default renderer.
+    contextLossDisposable?.dispose()
+    webglAddon?.dispose()
+  }
+
+  return () => {
+    contextLossDisposable?.dispose()
+    webglAddon?.dispose()
+  }
+}
+
+function enableOscProgressTracking(terminal: Terminal) {
+  const progressAddon = new ProgressAddon()
+  terminal.loadAddon(progressAddon)
+
+  return () => {
+    progressAddon.dispose()
+  }
+}
+
+function enableInlineImageRendering(terminal: Terminal) {
+  const imageAddon = new ImageAddon()
+  terminal.loadAddon(imageAddon)
+
+  return () => {
+    imageAddon.dispose()
+  }
+}
+
+function enableTerminalSearch(
+  terminal: Terminal,
+  onSearchResultsChange?: (state: TerminalSearchResultsState | null) => void
+) {
+  const searchAddon = new SearchAddon()
+  const searchResultsDisposable = onSearchResultsChange
+    ? searchAddon.onDidChangeResults((event) => {
+        onSearchResultsChange({
+          resultCount: event.resultCount,
+          resultIndex: event.resultIndex
+        })
+      })
+    : null
+  terminal.loadAddon(searchAddon)
+
+  return {
+    searchAddon,
+    dispose: () => {
+      onSearchResultsChange?.(null)
+      searchResultsDisposable?.dispose()
+      searchAddon.dispose()
+    }
+  }
+}
+
+function enableWebLinks(
+  terminal: Terminal,
+  container: HTMLDivElement,
+  onLinkTooltipChange?: (state: TerminalLinkTooltipState | null) => void
+) {
+  const hint = i18n.t('workbench.terminal.linkHint')
+  const webLinksAddon = new WebLinksAddon((event, uri) => {
+    event.preventDefault()
+    if (!event.metaKey) {
+      return
+    }
+    window.open(uri, '_blank', 'noopener,noreferrer')
+  }, {
+    hover: (event) => {
+      const bounds = container.getBoundingClientRect()
+      onLinkTooltipChange?.({
+        open: true,
+        text: hint,
+        x: event.clientX - bounds.left,
+        y: event.clientY - bounds.top
+      })
+    },
+    leave: () => {
+      onLinkTooltipChange?.(null)
+    }
+  })
+  terminal.loadAddon(webLinksAddon)
+
+  return () => {
+    onLinkTooltipChange?.(null)
+    webLinksAddon.dispose()
+  }
+}
+
+function enableUnicode11Support(terminal: Terminal) {
+  const unicode11Addon = new Unicode11Addon()
+  terminal.loadAddon(unicode11Addon)
+  terminal.unicode.activeVersion = '11'
+
+  return () => {
+    unicode11Addon.dispose()
+  }
+}
 
 export function useTerminal(
   sessionId: string | null,
   settings: AppSettings,
   theme: ThemeDefinition | null,
-  enabled = true
+  enabled = true,
+  onLinkTooltipChange?: (state: TerminalLinkTooltipState | null) => void,
+  onSearchResultsChange?: (state: TerminalSearchResultsState | null) => void
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
-  const selectionDisposableRef = useRef<{ dispose: () => void } | null>(null)
+  const searchAddonRef = useRef<SearchAddon | null>(null)
+  const selectionDisposableRef = useRef<TerminalDisposable | null>(null)
+  const searchController = useMemo<TerminalSearchController>(
+    () => ({
+      clear: () => {
+        searchAddonRef.current?.clearDecorations()
+      },
+      clearActiveDecoration: () => {
+        searchAddonRef.current?.clearActiveDecoration()
+      },
+      findNext: (term, searchOptions) => {
+        if (!term) {
+          searchAddonRef.current?.clearDecorations()
+          return false
+        }
+
+        return searchAddonRef.current?.findNext(term, searchOptions) ?? false
+      },
+      findPrevious: (term, searchOptions) => {
+        if (!term) {
+          searchAddonRef.current?.clearDecorations()
+          return false
+        }
+
+        return searchAddonRef.current?.findPrevious(term, searchOptions) ?? false
+      }
+    }),
+    []
+  )
   const hasTheme = Boolean(theme)
   const terminalOptions = useMemo(() => {
     if (!theme) {
@@ -43,6 +212,7 @@ export function useTerminal(
 
     const container = containerRef.current
     const terminal = new Terminal({
+      allowProposedApi: true,
       allowTransparency: true,
       convertEol: true,
       scrollback: 5000,
@@ -53,7 +223,19 @@ export function useTerminal(
     terminalRef.current = terminal
     fitAddonRef.current = fitAddon
     terminal.loadAddon(fitAddon)
+    const disposeProgressAddon = enableOscProgressTracking(terminal)
+    const disposeImageAddon = enableInlineImageRendering(terminal)
+    const { searchAddon, dispose: disposeSearchAddon } = enableTerminalSearch(
+      terminal,
+      onSearchResultsChange
+    )
+    searchAddonRef.current = searchAddon
+    const disposeWebLinksAddon = enableWebLinks(terminal, container, onLinkTooltipChange)
+    const disposeUnicode11Addon = enableUnicode11Support(terminal)
     terminal.open(container)
+    const disposeWebglRenderer = settings.experimentalTerminalWebgl
+      ? enableExperimentalWebglRenderer(terminal)
+      : () => undefined
     fitAddon.fit()
 
     const handleContextMenu = (event: MouseEvent) => {
@@ -116,6 +298,12 @@ export function useTerminal(
       selectionDisposableRef.current?.dispose()
       selectionDisposableRef.current = null
       writeDisposable.dispose()
+      disposeWebglRenderer()
+      disposeUnicode11Addon()
+      disposeWebLinksAddon()
+      disposeSearchAddon()
+      disposeImageAddon()
+      disposeProgressAddon()
       terminal.dispose()
       if (terminalRef.current === terminal) {
         terminalRef.current = null
@@ -123,8 +311,18 @@ export function useTerminal(
       if (fitAddonRef.current === fitAddon) {
         fitAddonRef.current = null
       }
+      if (searchAddonRef.current === searchAddon) {
+        searchAddonRef.current = null
+      }
     }
-  }, [enabled, hasTheme, sessionId])
+  }, [
+    enabled,
+    hasTheme,
+    onLinkTooltipChange,
+    onSearchResultsChange,
+    sessionId,
+    settings.experimentalTerminalWebgl
+  ])
 
   useEffect(() => {
     if (!terminalOptions) {
@@ -169,5 +367,8 @@ export function useTerminal(
     }
   }, [enabled, hasTheme, sessionId, settings.copyOnSelect])
 
-  return containerRef
+  return {
+    containerRef,
+    search: searchController
+  }
 }

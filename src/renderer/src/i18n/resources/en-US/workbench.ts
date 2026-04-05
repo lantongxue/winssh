@@ -390,7 +390,7 @@ const workbench = {
         appearance: 'Adjust language, theme, and window title bar mode.',
         credentialVault: 'Manage reusable passwords, private keys, and passphrases.',
         security: 'Review credential storage support and trusted hosts.',
-        terminal: 'Adjust terminal font, cursor, and copy behavior.'
+        terminal: 'Adjust terminal font, cursor, copy behavior, and experimental rendering.'
       },
       form: {
         copyOnSelect: {
@@ -400,6 +400,11 @@ const workbench = {
         cursorBlink: {
           description: 'Makes it easier to find the current input position.',
           title: 'Blinking cursor'
+        },
+        experimentalTerminalWebgl: {
+          description:
+            'Experimental support. Requires available GPU acceleration and falls back to the default renderer when unsupported.',
+          title: 'Experimental WebGL renderer'
         },
         cursorStyle: 'Cursor style',
         language: 'Display language',
@@ -505,6 +510,17 @@ const workbench = {
       theme: 'theme {{value}}'
     },
     terminal: {
+      linkHint: 'Cmd+click to open the link',
+      search: {
+        close: 'Close terminal search',
+        label: 'Search terminal output',
+        next: 'Find next result',
+        noMatches: 'No matches',
+        placeholder: 'Find in terminal',
+        previous: 'Find previous result',
+        results: '{{current}} / {{total}}',
+        shortcut: 'Cmd/Ctrl+F'
+      },
       connected: {
         defaultMessage: 'The SSH session is ready. Switching focus to the terminal.',
         title: 'Connected to {{name}}'

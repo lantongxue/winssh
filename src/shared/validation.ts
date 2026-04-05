@@ -183,6 +183,7 @@ export const settingsSchema = z.object({
   theme: z.string().trim().min(1).max(120),
   terminalFontSize: z.coerce.number().int().min(10).max(24),
   terminalFontFamily: z.string().trim().min(1).max(120),
+  experimentalTerminalWebgl: z.boolean(),
   cursorStyle: z.enum(['block', 'underline', 'bar']),
   cursorBlink: z.boolean(),
   copyOnSelect: z.boolean(),

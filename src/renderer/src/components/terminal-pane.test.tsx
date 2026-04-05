@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createThemeDefinition } from '@shared/themes'
 import type { AppSettings } from '@shared/types'
@@ -6,8 +6,18 @@ import i18n from '@/i18n'
 import type { SessionTab } from '@/store/sessions-store'
 import { TerminalPane } from '@/components/terminal-pane'
 
+const { searchControllerMock, useTerminalMock } = vi.hoisted(() => ({
+  searchControllerMock: {
+    clear: vi.fn(),
+    clearActiveDecoration: vi.fn(),
+    findNext: vi.fn(() => true),
+    findPrevious: vi.fn(() => true)
+  },
+  useTerminalMock: vi.fn()
+}))
+
 vi.mock('@/hooks/use-terminal', () => ({
-  useTerminal: vi.fn(() => ({ current: null }))
+  useTerminal: useTerminalMock
 }))
 
 describe('TerminalPane', () => {
@@ -15,6 +25,7 @@ describe('TerminalPane', () => {
     copyOnSelect: false,
     cursorBlink: true,
     cursorStyle: 'block',
+    experimentalTerminalWebgl: false,
     language: 'en-US',
     terminalFontFamily: 'Consolas',
     terminalFontSize: 14,
@@ -47,6 +58,17 @@ describe('TerminalPane', () => {
 
   beforeEach(async () => {
     await i18n.changeLanguage('en-US')
+    searchControllerMock.clear.mockReset()
+    searchControllerMock.clearActiveDecoration.mockReset()
+    searchControllerMock.findNext.mockReset()
+    searchControllerMock.findNext.mockReturnValue(true)
+    searchControllerMock.findPrevious.mockReset()
+    searchControllerMock.findPrevious.mockReturnValue(true)
+    useTerminalMock.mockReset()
+    useTerminalMock.mockReturnValue({
+      containerRef: { current: null },
+      search: searchControllerMock
+    })
   })
 
   afterEach(() => {
@@ -174,5 +196,46 @@ describe('TerminalPane', () => {
     const terminalMount = surface?.firstElementChild
     expect(terminalMount).toBeTruthy()
     expect(terminalMount?.className).not.toContain('p-2')
+  })
+
+  it('opens the terminal search panel with ctrl+f and sends incremental queries to the search addon', async () => {
+    const readySession: SessionTab = {
+      ...session,
+      connectionPhase: 'attach',
+      status: 'ready'
+    }
+
+    const { container } = render(
+      <TerminalPane
+        session={readySession}
+        settings={settings}
+        theme={theme}
+        onReconnect={async () => undefined}
+      />
+    )
+
+    fireEvent.keyDown(container.querySelector('.terminal-surface') as HTMLElement, {
+      ctrlKey: true,
+      key: 'f'
+    })
+
+    const searchInput = screen.getByRole('textbox', { name: 'Search terminal output' })
+    expect(searchInput).toBeInTheDocument()
+
+    fireEvent.change(searchInput, { target: { value: 'error' } })
+
+    await waitFor(() => {
+      expect(searchControllerMock.findNext).toHaveBeenCalledWith('error', {
+        incremental: true
+      })
+    })
+
+    fireEvent.keyDown(searchInput, { key: 'Escape' })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('textbox', { name: 'Search terminal output' })).not.toBeInTheDocument()
+    })
+
+    expect(searchControllerMock.clear).toHaveBeenCalled()
   })
 })
