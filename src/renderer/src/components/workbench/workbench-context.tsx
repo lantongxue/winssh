@@ -74,6 +74,10 @@ interface ConnectServerOptions {
   pendingSessionId?: string
 }
 
+interface OpenServerEditorOptions {
+  initialGroupId?: string | null
+}
+
 interface ConnectionSecretsRequestOptions {
   lastErrorMessage?: string
   pendingSessionId?: string
@@ -102,7 +106,7 @@ interface WorkbenchContextValue {
   focusExplorerHome: () => void
   moveServerToGroup: (server: Server, groupId: string | null, groupName?: string) => Promise<void>
   openEntityQuickInput: (input: EntityQuickInputState) => void
-  openServerEditor: (serverId?: string | null) => void
+  openServerEditor: (serverId?: string | null, options?: OpenServerEditorOptions) => void
   openSettingsEditor: () => void
   quickInput: WorkbenchQuickInputState | null
   reconnectSession: (sessionId: string) => Promise<void>
@@ -267,14 +271,16 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     openDocument(createSettingsEditorDocument())
   }
 
-  const openServerEditor = (serverId?: string | null) => {
+  const openServerEditor = (serverId?: string | null, options: OpenServerEditorOptions = {}) => {
     setActiveActivity('explorer')
 
     if (serverId) {
       setSelectedExplorerNode(`server:${serverId}`)
+    } else if (options.initialGroupId) {
+      setSelectedExplorerNode(`group:${options.initialGroupId}`)
     }
 
-    openDocument(createServerEditorDocument(serverId))
+    openDocument(createServerEditorDocument(serverId, options))
   }
 
   const focusActivity = (activityId: WorkbenchActivityId) => {

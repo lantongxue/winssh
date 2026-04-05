@@ -16,7 +16,7 @@ vi.mock('sonner', () => ({
   }
 }))
 
-function renderServerEditor() {
+function renderServerEditor(document = createServerEditorDocument()) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -28,7 +28,7 @@ function renderServerEditor() {
   return render(
     <QueryClientProvider client={queryClient}>
       <WorkbenchProvider>
-        <WorkbenchServerEditor document={createServerEditorDocument()} />
+        <WorkbenchServerEditor document={document} />
       </WorkbenchProvider>
     </QueryClientProvider>
   )
@@ -329,6 +329,61 @@ describe('WorkbenchServerEditor credentials field', () => {
 
     expect(screen.getByText('root@10.0.0.9:22')).toBeInTheDocument()
     expect(screen.getAllByText('jumpserver').length).toBeGreaterThan(0)
+  })
+
+  it('persists the source group for a grouped new connection document', async () => {
+    const createServer = vi.fn().mockResolvedValue({
+      ...savedServer,
+      group: {
+        color: 'red',
+        createdAt: '',
+        id: 'group-1',
+        name: 'Production',
+        updatedAt: ''
+      },
+      groupId: 'group-1'
+    })
+
+    window.winsshApi = createWinsshApiMock({
+      groups: {
+        list: vi.fn().mockResolvedValue([
+          {
+            color: 'red',
+            createdAt: '',
+            id: 'group-1',
+            name: 'Production',
+            updatedAt: ''
+          }
+        ])
+      },
+      servers: {
+        create: createServer
+      }
+    })
+
+    renderServerEditor(createServerEditorDocument(null, { initialGroupId: 'group-1' }))
+
+    fireEvent.change(await screen.findByLabelText('Name'), {
+      target: { value: 'Grouped Draft' }
+    })
+    fireEvent.change(screen.getByLabelText('Host'), {
+      target: { value: '10.0.0.10' }
+    })
+    fireEvent.change(screen.getByLabelText('Username'), {
+      target: { value: 'root' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(createServer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          groupId: 'group-1',
+          host: '10.0.0.10',
+          name: 'Grouped Draft',
+          username: 'root'
+        })
+      )
+    })
   })
 
   it('creates a minimal jump server, tags it, and selects it in the form', async () => {

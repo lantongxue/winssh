@@ -38,6 +38,7 @@ export interface TerminalWelcomeDocument {
 export interface ServerEditorDocument {
   id: `server-editor:${string}`
   kind: 'server-editor'
+  initialGroupId?: string | null
   serverId: string | null
 }
 
@@ -113,9 +114,19 @@ export function createTerminalWelcomeDocument(): TerminalWelcomeDocument {
   return { id: 'terminal-welcome', kind: 'terminal-welcome' }
 }
 
-export function createServerEditorDocument(serverId?: string | null): ServerEditorDocument {
+function createNewServerEditorDocumentId(initialGroupId?: string | null) {
+  return `server-editor:${initialGroupId ? `new:${initialGroupId}` : 'new'}` as const
+}
+
+export function createServerEditorDocument(
+  serverId?: string | null,
+  options: { initialGroupId?: string | null } = {}
+): ServerEditorDocument {
+  const initialGroupId = serverId ? undefined : options.initialGroupId
+
   return {
-    id: `server-editor:${serverId ?? 'new'}`,
+    id: serverId ? `server-editor:${serverId}` : createNewServerEditorDocumentId(initialGroupId),
+    initialGroupId,
     kind: 'server-editor',
     serverId: serverId ?? null
   }

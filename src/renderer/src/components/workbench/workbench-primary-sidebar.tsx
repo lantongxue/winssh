@@ -427,6 +427,7 @@ function EntityNode({
   depth,
   dropTarget = false,
   onClick,
+  onCreateServer,
   onDragLeave,
   onDragOver,
   onDoubleClick,
@@ -439,6 +440,7 @@ function EntityNode({
   depth: number
   dropTarget?: boolean
   onClick: () => void
+  onCreateServer?: () => void
   onDragLeave?: (event: DragEvent<HTMLDivElement>) => void
   onDragOver?: (event: DragEvent<HTMLDivElement>) => void
   onDoubleClick?: () => void
@@ -447,6 +449,7 @@ function EntityNode({
   onRename: () => void
 }) {
   const { t } = useTranslation()
+  const NewConnectionIcon = actionIcons.newConnection
   const RenameIcon = actionIcons.rename
   const DeleteIcon = actionIcons.delete
 
@@ -467,6 +470,15 @@ function EntityNode({
         </TreeRow>
       </ContextMenuTrigger>
       <ContextMenuContent>
+        {onCreateServer ? (
+          <>
+            <ContextMenuItem onClick={onCreateServer}>
+              <NewConnectionIcon className="size-4" />
+              {t('common.actions.newConnection')}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+          </>
+        ) : null}
         <ContextMenuItem onClick={onRename}>
           <RenameIcon className="size-4" />
           {t('workbench.primarySidebar.actions.rename')}
@@ -942,6 +954,9 @@ export function WorkbenchPrimarySidebar() {
                             depth={1}
                             dropTarget={dropTargetGroupId === group.id}
                             onClick={() => setSelectedExplorerNode(`group:${group.id}`)}
+                            onCreateServer={() =>
+                              openServerEditor(null, { initialGroupId: group.id })
+                            }
                             onDragLeave={handleGroupDragLeave(group.id)}
                             onDragOver={handleGroupDragOver(group.id)}
                             onDoubleClick={() =>

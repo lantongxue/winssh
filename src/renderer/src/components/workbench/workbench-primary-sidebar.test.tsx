@@ -495,6 +495,49 @@ describe('WorkbenchPrimarySidebar', () => {
     })
   })
 
+  it('opens a grouped new connection from the group context menu', async () => {
+    window.winsshApi = createWinsshApiMock({
+      groups: {
+        list: vi.fn().mockResolvedValue([
+          {
+            color: 'red',
+            createdAt: '',
+            id: 'group-1',
+            name: 'AA',
+            updatedAt: ''
+          }
+        ])
+      },
+      servers: {
+        list: vi.fn().mockResolvedValue([]),
+        listRecent: vi.fn().mockResolvedValue([])
+      },
+      tags: {
+        list: vi.fn().mockResolvedValue([])
+      }
+    })
+
+    renderPrimarySidebar()
+
+    const groupRow = (await screen.findByText('AA')).closest('[role="button"]')
+    expect(groupRow).toBeTruthy()
+
+    fireEvent.contextMenu(groupRow as HTMLElement)
+    fireEvent.click(await screen.findByText('New Connection'))
+
+    const state = useWorkbenchStore.getState()
+    expect(state.activeDocumentId).toBe('server-editor:new:group-1')
+    expect(state.openDocuments).toEqual([
+      expect.objectContaining({
+        id: 'server-editor:new:group-1',
+        initialGroupId: 'group-1',
+        kind: 'server-editor',
+        serverId: null
+      })
+    ])
+    expect(state.selectedExplorerNode).toBe('group:group-1')
+  })
+
   it('filters servers by name and host from the quick search input', async () => {
     window.winsshApi = createWinsshApiMock({
       groups: {

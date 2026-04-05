@@ -110,13 +110,14 @@ function createJumpServerDefaultValues(credentialStorageAvailable: boolean): Jum
 function toDefaultValues(
   server: Server | null,
   credentialStorageAvailable: boolean,
-  secrets?: ServerSecrets
+  secrets?: ServerSecrets,
+  options: { initialGroupId?: string | null } = {}
 ): ServerFormValues {
   if (!server) {
     return {
       authType: 'password',
       favorite: false,
-      groupId: null,
+      groupId: options.initialGroupId ?? null,
       jumpServerId: null,
       host: '',
       name: '',
@@ -359,7 +360,12 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
 
   const form = useForm<ServerFormValues>({
     resolver: zodResolver(serverSchema as never),
-    defaultValues: toDefaultValues(server, credentialStorageAvailable, serverSecretsQuery.data)
+    defaultValues: toDefaultValues(
+      server,
+      credentialStorageAvailable,
+      serverSecretsQuery.data,
+      { initialGroupId: document.initialGroupId }
+    )
   })
   const jumpServerForm = useForm<JumpServerFormValues>({
     resolver: zodResolver(jumpServerSchema),
@@ -367,8 +373,10 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   })
 
   useEffect(() => {
-    form.reset(toDefaultValues(server, credentialStorageAvailable))
-  }, [credentialStorageAvailable, document.id, form, server])
+    form.reset(toDefaultValues(server, credentialStorageAvailable, undefined, {
+      initialGroupId: document.initialGroupId
+    }))
+  }, [credentialStorageAvailable, document.id, document.initialGroupId, form, server])
 
   useEffect(() => {
     jumpServerForm.reset(createJumpServerDefaultValues(credentialStorageAvailable))
@@ -545,7 +553,11 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   }
 
   const resetEditor = () => {
-    form.reset(toDefaultValues(server, credentialStorageAvailable, serverSecretsQuery.data))
+    form.reset(
+      toDefaultValues(server, credentialStorageAvailable, serverSecretsQuery.data, {
+        initialGroupId: document.initialGroupId
+      })
+    )
     setCustomIconDraft(createDefaultCustomIconDraft())
   }
 
