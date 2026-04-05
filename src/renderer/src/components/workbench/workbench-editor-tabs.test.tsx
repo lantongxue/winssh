@@ -5,7 +5,11 @@ import i18n from '@/i18n'
 import { WorkbenchEditorTabs } from '@/components/workbench/workbench-editor-tabs'
 import { WorkbenchProvider } from '@/components/workbench/workbench-context'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { createServerEditorDocument, createSessionEditorDocument } from '@/lib/workbench'
+import {
+  createServerEditorDocument,
+  createSessionEditorDocument,
+  createSettingsEditorDocument
+} from '@/lib/workbench'
 import { createWinsshApiMock } from '@/test/create-winssh-api'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
@@ -50,6 +54,33 @@ const sessionSummary = {
   serverName: 'alpha',
   sessionId: 'session-1',
   status: 'ready' as const
+}
+
+function createDragDataTransfer() {
+  const store = new Map<string, string>()
+
+  return {
+    dropEffect: 'move',
+    effectAllowed: 'move',
+    getData: (type: string) => store.get(type) ?? '',
+    setData: (type: string, value: string) => {
+      store.set(type, value)
+    }
+  }
+}
+
+function createRect(left: number, width: number): DOMRect {
+  return {
+    bottom: 36,
+    height: 36,
+    left,
+    right: left + width,
+    top: 0,
+    width,
+    x: left,
+    y: 0,
+    toJSON: () => ({})
+  } as DOMRect
 }
 
 function renderEditorTabs() {
@@ -196,5 +227,38 @@ describe('WorkbenchEditorTabs session context menu', () => {
     await waitFor(() => {
       expect(container.querySelectorAll('svg[data-icon="ubuntu"]')).toHaveLength(2)
     })
+  })
+
+  it('moves the left tab to the right when dropped on the trailing half of the target tab', async () => {
+    window.winsshApi = createWinsshApiMock({
+      servers: {
+        list: vi.fn().mockResolvedValue([savedServer])
+      }
+    })
+
+    useWorkbenchStore.getState().openDocument(createSettingsEditorDocument())
+    useWorkbenchStore.getState().openDocument(createServerEditorDocument(savedServer.id))
+    renderEditorTabs()
+
+    const settingsTab = (await screen.findByText('Settings')).closest('button')
+    const serverTab = (await screen.findByText('alpha')).closest('button')
+
+    expect(settingsTab).toBeTruthy()
+    expect(serverTab).toBeTruthy()
+
+    Object.defineProperty(serverTab as HTMLElement, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => createRect(100, 100)
+    })
+
+    const dataTransfer = createDragDataTransfer()
+
+    fireEvent.dragStart(settingsTab as HTMLElement, { dataTransfer })
+    fireEvent.drop(serverTab as HTMLElement, { clientX: 190, dataTransfer })
+
+    expect(useWorkbenchStore.getState().openDocuments.map((document) => document.id)).toEqual([
+      'server-editor:server-1',
+      'settings-editor'
+    ])
   })
 })

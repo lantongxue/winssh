@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import type { DragEvent } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -74,6 +75,10 @@ function getDocumentTitle(
   )
 }
 
+function getDropIndexForTab(clientX: number, left: number, width: number, index: number) {
+  return clientX < left + width / 2 ? index : index + 1
+}
+
 export function WorkbenchEditorTabs() {
   const { t } = useTranslation()
   const { closeLocalTerminal, connectServer, disconnectSession } = useWorkbenchContext()
@@ -87,8 +92,8 @@ export function WorkbenchEditorTabs() {
   const setDocumentTitleOverride = useWorkbenchStore((state) => state.setDocumentTitleOverride)
   const localTerminalTabs = useLocalTerminalsStore((state) => state.tabs)
   const sessions = useSessionsStore((state) => state.tabs)
-  const [draggedDocumentId, setDraggedDocumentId] = useState<WorkbenchDocumentId | null>(null)
   const [dropIndicatorIndex, setDropIndicatorIndex] = useState<number | null>(null)
+  const draggedDocumentIdRef = useRef<WorkbenchDocumentId | null>(null)
   const [renameTargetDocumentId, setRenameTargetDocumentId] = useState<WorkbenchDocumentId | null>(
     null
   )
@@ -154,8 +159,13 @@ export function WorkbenchEditorTabs() {
     return null
   }
 
+  const getDropIndexFromEvent = (event: DragEvent<HTMLButtonElement>, index: number) => {
+    const bounds = event.currentTarget.getBoundingClientRect()
+    return getDropIndexForTab(event.clientX, bounds.left, bounds.width, index)
+  }
+
   const resetDragState = () => {
-    setDraggedDocumentId(null)
+    draggedDocumentIdRef.current = null
     setDropIndicatorIndex(null)
   }
 
@@ -251,13 +261,10 @@ export function WorkbenchEditorTabs() {
                 onDragEnd={resetDragState}
                 onDragOver={(event) => {
                   event.preventDefault()
-                  const bounds = event.currentTarget.getBoundingClientRect()
-                  const nextIndex =
-                    event.clientX < bounds.left + bounds.width / 2 ? index : index + 1
-                  setDropIndicatorIndex(nextIndex)
+                  setDropIndicatorIndex(getDropIndexFromEvent(event, index))
                 }}
                 onDragStart={(event) => {
-                  setDraggedDocumentId(document.id)
+                  draggedDocumentIdRef.current = document.id
                   setDropIndicatorIndex(index)
                   event.dataTransfer.effectAllowed = 'move'
                   event.dataTransfer.setData('text/plain', document.id)
@@ -265,12 +272,17 @@ export function WorkbenchEditorTabs() {
                 onDrop={(event) => {
                   event.preventDefault()
 
-                  if (!draggedDocumentId || dropIndicatorIndex === null) {
+                  const nextDraggedDocumentId =
+                    draggedDocumentIdRef.current ??
+                    (event.dataTransfer.getData('text/plain') as WorkbenchDocumentId | '')
+                  const nextDropIndicatorIndex = getDropIndexFromEvent(event, index)
+
+                  if (!nextDraggedDocumentId || nextDropIndicatorIndex === null) {
                     resetDragState()
                     return
                   }
 
-                  moveDocument(draggedDocumentId, dropIndicatorIndex)
+                  moveDocument(nextDraggedDocumentId, nextDropIndicatorIndex)
                   resetDragState()
                 }}
               >
