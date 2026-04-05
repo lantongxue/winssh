@@ -198,6 +198,54 @@ describe('TerminalPane', () => {
     expect(terminalMount?.className).not.toContain('p-2')
   })
 
+  it('requests xterm focus when the connection cycle becomes ready', () => {
+    const { rerender } = render(
+      <TerminalPane
+        session={session}
+        settings={settings}
+        theme={theme}
+        onReconnect={async () => undefined}
+      />
+    )
+
+    expect(useTerminalMock).toHaveBeenLastCalledWith(
+      expect.anything(),
+      settings,
+      theme,
+      true,
+      expect.any(Function),
+      expect.any(Function),
+      true,
+      null
+    )
+
+    const readySession: SessionTab = {
+      ...session,
+      connectionPhase: 'attach',
+      status: 'ready'
+    }
+
+    rerender(
+      <TerminalPane
+        session={readySession}
+        settings={settings}
+        theme={theme}
+        onReconnect={async () => undefined}
+      />
+    )
+
+    expect(useTerminalMock).toHaveBeenLastCalledWith(
+      expect.anything(),
+      settings,
+      theme,
+      true,
+      expect.any(Function),
+      expect.any(Function),
+      true,
+      expect.stringMatching(/^ready:session-1:/)
+    )
+  })
+
   it('opens the terminal search panel with ctrl+f and sends incremental queries to the search addon', async () => {
     const readySession: SessionTab = {
       ...session,
@@ -233,7 +281,9 @@ describe('TerminalPane', () => {
     fireEvent.keyDown(searchInput, { key: 'Escape' })
 
     await waitFor(() => {
-      expect(screen.queryByRole('textbox', { name: 'Search terminal output' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('textbox', { name: 'Search terminal output' })
+      ).not.toBeInTheDocument()
     })
 
     expect(searchControllerMock.clear).toHaveBeenCalled()

@@ -161,13 +161,17 @@ export function useTerminal(
   theme: ThemeDefinition | null,
   enabled = true,
   onLinkTooltipChange?: (state: TerminalLinkTooltipState | null) => void,
-  onSearchResultsChange?: (state: TerminalSearchResultsState | null) => void
+  onSearchResultsChange?: (state: TerminalSearchResultsState | null) => void,
+  active = true,
+  focusKey: string | null = null
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const searchAddonRef = useRef<SearchAddon | null>(null)
   const selectionDisposableRef = useRef<TerminalDisposable | null>(null)
+  const lastSentGeometryRef = useRef<{ cols: number; rows: number } | null>(null)
+  const lastActiveRef = useRef(active)
   const searchController = useMemo<TerminalSearchController>(
     () => ({
       clear: () => {
@@ -213,6 +217,45 @@ export function useTerminal(
     }
   }, [settings, theme])
   const readTerminalOptions = useEffectEvent(() => terminalOptions)
+  const focusTerminal = useEffectEvent(() => {
+    const terminal = terminalRef.current
+
+    if (!active || !enabled || !terminal) {
+      return
+    }
+
+    terminal.focus()
+  })
+  const syncGeometry = useEffectEvent(() => {
+    const container = containerRef.current
+    const terminal = terminalRef.current
+    const fitAddon = fitAddonRef.current
+
+    if (!active || !transport || !container || !terminal || !fitAddon) {
+      return
+    }
+
+    if (container.clientWidth <= 0 || container.clientHeight <= 0) {
+      return
+    }
+
+    fitAddon.fit()
+
+    const nextGeometry = {
+      cols: terminal.cols,
+      rows: terminal.rows
+    }
+
+    if (
+      lastSentGeometryRef.current?.cols === nextGeometry.cols &&
+      lastSentGeometryRef.current?.rows === nextGeometry.rows
+    ) {
+      return
+    }
+
+    lastSentGeometryRef.current = nextGeometry
+    void transport.resize(nextGeometry.cols, nextGeometry.rows)
+  })
 
   useEffect(() => {
     const initialTerminalOptions = readTerminalOptions()
@@ -222,6 +265,7 @@ export function useTerminal(
     }
 
     const container = containerRef.current
+    const shouldFocusOnMount = active && focusKey === null
     const terminal = new Terminal({
       allowProposedApi: true,
       allowTransparency: true,
@@ -247,7 +291,6 @@ export function useTerminal(
     const disposeWebglRenderer = settings.experimentalTerminalWebgl
       ? enableExperimentalWebglRenderer(terminal)
       : () => undefined
-    fitAddon.fit()
 
     const handleContextMenu = (event: MouseEvent) => {
       event.preventDefault()
@@ -283,11 +326,6 @@ export function useTerminal(
 
     container.addEventListener('contextmenu', handleContextMenu, true)
 
-    const resize = () => {
-      fitAddon.fit()
-      void transport.resize(terminal.cols, terminal.rows)
-    }
-
     const writeDisposable = terminal.onData((data) => {
       void transport.write(data)
     })
@@ -296,9 +334,17 @@ export function useTerminal(
       terminal.write(data)
     })
 
-    const resizeObserver = new ResizeObserver(() => resize())
+    const resizeObserver = new ResizeObserver(() => {
+      syncGeometry()
+    })
     resizeObserver.observe(container)
-    queueMicrotask(resize)
+    queueMicrotask(() => {
+      syncGeometry()
+
+      if (shouldFocusOnMount) {
+        focusTerminal()
+      }
+    })
 
     return () => {
       resizeObserver.disconnect()
@@ -314,6 +360,7 @@ export function useTerminal(
       disposeImageAddon()
       disposeProgressAddon()
       terminal.dispose()
+      lastSentGeometryRef.current = null
       if (terminalRef.current === terminal) {
         terminalRef.current = null
       }
@@ -346,8 +393,25 @@ export function useTerminal(
 
     terminal.options = terminalOptions
 
-    fitAddonRef.current?.fit()
+    syncGeometry()
   }, [terminalOptions])
+
+  useEffect(() => {
+    if (active && !lastActiveRef.current) {
+      syncGeometry()
+      focusTerminal()
+    }
+
+    lastActiveRef.current = active
+  }, [active])
+
+  useEffect(() => {
+    if (focusKey === null) {
+      return
+    }
+
+    focusTerminal()
+  }, [focusKey])
 
   useEffect(() => {
     const terminal = terminalRef.current

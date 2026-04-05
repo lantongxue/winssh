@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, waitFor } from '@testing-library/react'
 import { createThemeDefinition } from '@shared/themes'
 import type { AppSettings } from '@shared/types'
@@ -24,11 +24,25 @@ const clipboard = {
 }
 const openWindow = vi.fn()
 let lastSearchController: TerminalSearchController | null = null
+const transportOnData = vi.fn(() => () => undefined)
+const transportResize = vi.fn(async () => undefined)
+const transportWrite = vi.fn(async () => undefined)
 const testTransport: TerminalTransport = {
-  onData: () => () => undefined,
-  resize: async () => undefined,
-  write: async () => undefined
+  onData: transportOnData,
+  resize: transportResize,
+  write: transportWrite
 }
+const originalResizeObserver = globalThis.ResizeObserver
+const originalClientWidthDescriptor = Object.getOwnPropertyDescriptor(
+  HTMLElement.prototype,
+  'clientWidth'
+)
+const originalClientHeightDescriptor = Object.getOwnPropertyDescriptor(
+  HTMLElement.prototype,
+  'clientHeight'
+)
+
+const resizeObserverInstances: MockResizeObserver[] = []
 
 class MockTerminal {
   cols = 80
@@ -116,6 +130,33 @@ class MockWebglAddon {
   onContextLoss = vi.fn(() => ({ dispose: vi.fn() }))
 }
 
+class MockResizeObserver {
+  private observedTargets: Element[] = []
+
+  constructor(private readonly callback: ResizeObserverCallback) {
+    resizeObserverInstances.push(this)
+  }
+
+  disconnect = vi.fn()
+
+  observe = vi.fn((target: Element) => {
+    this.observedTargets.push(target)
+  })
+
+  unobserve = vi.fn((target: Element) => {
+    this.observedTargets = this.observedTargets.filter((entry) => entry !== target)
+  })
+
+  emit() {
+    const entries = this.observedTargets.map((target) => ({
+      contentRect: target.getBoundingClientRect(),
+      target
+    }))
+
+    this.callback(entries as ResizeObserverEntry[], this as unknown as ResizeObserver)
+  }
+}
+
 const {
   imageAddonConstructor,
   progressAddonConstructor,
@@ -177,11 +218,15 @@ import { useTerminal } from '@/hooks/use-terminal'
 function TestTerminal({
   settings,
   theme,
+  active = true,
+  focusKey = null,
   onLinkTooltipChange,
   onSearchResultsChange
 }: {
   settings: AppSettings
   theme: ReturnType<typeof createThemeDefinition>
+  active?: boolean
+  focusKey?: string | null
   onLinkTooltipChange?: (
     state: import('@/hooks/use-terminal').TerminalLinkTooltipState | null
   ) => void
@@ -193,7 +238,9 @@ function TestTerminal({
     theme,
     true,
     onLinkTooltipChange,
-    onSearchResultsChange
+    onSearchResultsChange,
+    active,
+    focusKey
   )
 
   useEffect(() => {
@@ -248,6 +295,7 @@ describe('useTerminal', () => {
     unicode11AddonInstances.length = 0
     webLinksAddonInstances.length = 0
     webglAddonInstances.length = 0
+    resizeObserverInstances.length = 0
     lastSearchController = null
     clipboard.readText.mockReset()
     clipboard.writeText.mockReset()
@@ -306,6 +354,43 @@ describe('useTerminal', () => {
       value: openWindow
     })
     openWindow.mockReset()
+    transportOnData.mockReset()
+    transportOnData.mockImplementation(() => () => undefined)
+    transportResize.mockReset()
+    transportResize.mockResolvedValue(undefined)
+    transportWrite.mockReset()
+    transportWrite.mockResolvedValue(undefined)
+    Object.defineProperty(globalThis, 'ResizeObserver', {
+      configurable: true,
+      value: MockResizeObserver
+    })
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+      configurable: true,
+      get() {
+        return 960
+      }
+    })
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+      configurable: true,
+      get() {
+        return 540
+      }
+    })
+  })
+
+  afterAll(() => {
+    Object.defineProperty(globalThis, 'ResizeObserver', {
+      configurable: true,
+      value: originalResizeObserver
+    })
+
+    if (originalClientWidthDescriptor) {
+      Object.defineProperty(HTMLElement.prototype, 'clientWidth', originalClientWidthDescriptor)
+    }
+
+    if (originalClientHeightDescriptor) {
+      Object.defineProperty(HTMLElement.prototype, 'clientHeight', originalClientHeightDescriptor)
+    }
   })
 
   it('updates terminal theme without recreating the instance', () => {
@@ -355,6 +440,50 @@ describe('useTerminal', () => {
     expect(webLinksAddonInstances).toHaveLength(2)
     expect(webglAddonInstances).toHaveLength(1)
     expect(terminalInstances[1]?.loadAddon).toHaveBeenCalledWith(webglAddonInstances[0])
+  })
+
+  it('skips geometry sync while inactive and resumes it once when reactivated', async () => {
+    const { rerender } = render(
+      <TestTerminal active={false} settings={settings} theme={darkTheme} />
+    )
+
+    expect(terminalInstances).toHaveLength(1)
+    expect(resizeObserverInstances).toHaveLength(1)
+
+    resizeObserverInstances[0]?.emit()
+    expect(transportResize).not.toHaveBeenCalled()
+
+    rerender(<TestTerminal active settings={settings} theme={darkTheme} />)
+
+    await waitFor(() => {
+      expect(transportResize).toHaveBeenCalledTimes(1)
+    })
+
+    expect(terminalInstances).toHaveLength(1)
+    expect(terminalInstances[0]?.focus).toHaveBeenCalledTimes(1)
+
+    resizeObserverInstances[0]?.emit()
+
+    await waitFor(() => {
+      expect(transportResize).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('focuses the existing terminal when a ready-state focus key is requested', async () => {
+    const { rerender } = render(<TestTerminal settings={settings} theme={darkTheme} />)
+
+    expect(terminalInstances).toHaveLength(1)
+    terminalInstances[0]?.focus.mockClear()
+
+    rerender(
+      <TestTerminal focusKey="ready:session-1:cycle-1" settings={settings} theme={darkTheme} />
+    )
+
+    await waitFor(() => {
+      expect(terminalInstances[0]?.focus).toHaveBeenCalledTimes(1)
+    })
+
+    expect(terminalInstances).toHaveLength(1)
   })
 
   it('keeps the default renderer when the experimental WebGL addon cannot be initialized', () => {

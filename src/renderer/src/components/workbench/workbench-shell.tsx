@@ -267,6 +267,32 @@ function WorkbenchShellContent() {
   }, [activeActivityId, activeDocument, location.pathname, navigate])
 
   const hasActiveDocument = Boolean(activeDocument)
+  const documentLayers = openDocuments.map((document) => {
+    const active = document.id === activeDocumentId
+    const keepMountedWhenInactive =
+      document.kind === 'session-editor' || document.kind === 'local-terminal-editor'
+    const className = keepMountedWhenInactive
+      ? active
+        ? 'relative h-full'
+        : 'absolute inset-0 h-full invisible pointer-events-none'
+      : active
+        ? 'h-full'
+        : 'hidden h-full'
+
+    return (
+      <div key={document.id} aria-hidden={!active} className={className}>
+        {document.kind === 'terminal-welcome' ? <WorkbenchTerminalWelcome /> : null}
+        {document.kind === 'server-editor' ? <WorkbenchServerEditor document={document} /> : null}
+        {document.kind === 'session-editor' ? (
+          <WorkbenchSessionEditor active={active} sessionId={document.sessionId} />
+        ) : null}
+        {document.kind === 'local-terminal-editor' ? (
+          <WorkbenchLocalTerminalEditor active={active} terminalId={document.terminalId} />
+        ) : null}
+        {document.kind === 'settings-editor' ? <WorkbenchSettingsEditor /> : null}
+      </div>
+    )
+  })
 
   const editorHost = (
     <div className="flex h-full min-h-0 flex-1 flex-col">
@@ -276,24 +302,7 @@ function WorkbenchShellContent() {
           <ResizablePanel defaultSize="74%" minSize="10%">
             <div className="relative h-full min-h-0 overflow-hidden bg-[var(--workbench-editor)]">
               {!hasActiveDocument ? <WorkbenchExplorerHome /> : null}
-              {openDocuments.map((document) => (
-                <div
-                  key={document.id}
-                  className={document.id === activeDocumentId ? 'h-full' : 'hidden h-full'}
-                >
-                  {document.kind === 'terminal-welcome' ? <WorkbenchTerminalWelcome /> : null}
-                  {document.kind === 'server-editor' ? (
-                    <WorkbenchServerEditor document={document} />
-                  ) : null}
-                  {document.kind === 'session-editor' ? (
-                    <WorkbenchSessionEditor sessionId={document.sessionId} />
-                  ) : null}
-                  {document.kind === 'local-terminal-editor' ? (
-                    <WorkbenchLocalTerminalEditor terminalId={document.terminalId} />
-                  ) : null}
-                  {document.kind === 'settings-editor' ? <WorkbenchSettingsEditor /> : null}
-                </div>
-              ))}
+              {documentLayers}
             </div>
           </ResizablePanel>
           <ResizableHandle />
@@ -304,24 +313,7 @@ function WorkbenchShellContent() {
       ) : (
         <div className="relative min-h-0 flex-1 overflow-hidden bg-[var(--workbench-editor)]">
           {!hasActiveDocument ? <WorkbenchExplorerHome /> : null}
-          {openDocuments.map((document) => (
-            <div
-              key={document.id}
-              className={document.id === activeDocumentId ? 'h-full' : 'hidden h-full'}
-            >
-              {document.kind === 'terminal-welcome' ? <WorkbenchTerminalWelcome /> : null}
-              {document.kind === 'server-editor' ? (
-                <WorkbenchServerEditor document={document} />
-              ) : null}
-              {document.kind === 'session-editor' ? (
-                <WorkbenchSessionEditor sessionId={document.sessionId} />
-              ) : null}
-              {document.kind === 'local-terminal-editor' ? (
-                <WorkbenchLocalTerminalEditor terminalId={document.terminalId} />
-              ) : null}
-              {document.kind === 'settings-editor' ? <WorkbenchSettingsEditor /> : null}
-            </div>
-          ))}
+          {documentLayers}
         </div>
       )}
     </div>

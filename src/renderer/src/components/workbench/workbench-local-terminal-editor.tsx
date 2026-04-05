@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
@@ -10,7 +10,15 @@ import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import { Button } from '@/components/ui/button'
 import { useLocalTerminalsStore } from '@/store/local-terminals-store'
 
-export function WorkbenchLocalTerminalEditor({ terminalId }: { terminalId: string }) {
+interface WorkbenchLocalTerminalEditorProps {
+  terminalId: string
+  active?: boolean
+}
+
+function WorkbenchLocalTerminalEditorImpl({
+  terminalId,
+  active = true
+}: WorkbenchLocalTerminalEditorProps) {
   const { t } = useTranslation()
   const prefersDark = usePrefersDark()
   const { closeLocalTerminal } = useWorkbenchContext()
@@ -97,6 +105,7 @@ export function WorkbenchLocalTerminalEditor({ terminalId }: { terminalId: strin
 
       <div className="min-h-0 flex-1 p-3">
         <TerminalSurface
+          active={active}
           settings={settingsQuery.data}
           theme={resolvedTheme}
           transport={transport}
@@ -105,3 +114,6 @@ export function WorkbenchLocalTerminalEditor({ terminalId }: { terminalId: strin
     </div>
   )
 }
+
+export const WorkbenchLocalTerminalEditor = memo(WorkbenchLocalTerminalEditorImpl)
+WorkbenchLocalTerminalEditor.displayName = 'WorkbenchLocalTerminalEditor'

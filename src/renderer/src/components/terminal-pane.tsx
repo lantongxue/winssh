@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircle2, LoaderCircle, RotateCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { ThemeDefinition } from '@shared/themes'
@@ -17,6 +17,7 @@ interface TerminalPaneProps {
   settings: AppSettings
   theme: ThemeDefinition | null
   onReconnect: (sessionId: string) => Promise<void>
+  active?: boolean
 }
 
 interface ConnectingOverlayProps {
@@ -121,7 +122,13 @@ function ConnectingOverlay({
   )
 }
 
-export function TerminalPane({ session, settings, theme, onReconnect }: TerminalPaneProps) {
+function TerminalPaneImpl({
+  session,
+  settings,
+  theme,
+  onReconnect,
+  active = true
+}: TerminalPaneProps) {
   const { t } = useTranslation()
   const connectionCycleKey = `${session.sessionId}:${session.connectionStartedAt ?? ''}`
   const activeConnectionCycleRef = useRef(connectionCycleKey)
@@ -235,9 +242,12 @@ export function TerminalPane({ session, settings, theme, onReconnect }: Terminal
     session.status === 'connecting' ||
     replayingCompletedConnection ||
     (session.status === 'ready' && showConnectedOverlay)
+  const focusKey = session.status === 'ready' ? `ready:${connectionCycleKey}` : null
   return (
     <TerminalSurface
+      active={active}
       enabled={!session.provisional}
+      focusKey={focusKey}
       settings={settings}
       theme={theme}
       transport={transport}
@@ -293,3 +303,6 @@ export function TerminalPane({ session, settings, theme, onReconnect }: Terminal
     </TerminalSurface>
   )
 }
+
+export const TerminalPane = memo(TerminalPaneImpl)
+TerminalPane.displayName = 'TerminalPane'

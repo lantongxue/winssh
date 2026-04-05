@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
@@ -17,7 +18,12 @@ const AUX_PANEL_DEFAULT_SIZE = '360px'
 const AUX_PANEL_MIN_SIZE = '280px'
 const AUX_PANEL_MAX_SIZE = '55%'
 
-export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
+interface WorkbenchSessionEditorProps {
+  sessionId: string
+  active?: boolean
+}
+
+function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessionEditorProps) {
   const { t } = useTranslation()
   const prefersDark = usePrefersDark()
   const { reconnectSession, disconnectSession } = useWorkbenchContext()
@@ -63,6 +69,7 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
   const terminalView = (
     <div className="h-full min-w-0 p-3">
       <TerminalPane
+        active={active}
         session={session}
         settings={settingsQuery.data}
         theme={resolvedTheme}
@@ -154,3 +161,6 @@ export function WorkbenchSessionEditor({ sessionId }: { sessionId: string }) {
     </div>
   )
 }
+
+export const WorkbenchSessionEditor = memo(WorkbenchSessionEditorImpl)
+WorkbenchSessionEditor.displayName = 'WorkbenchSessionEditor'

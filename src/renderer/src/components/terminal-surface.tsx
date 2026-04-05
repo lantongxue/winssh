@@ -24,6 +24,8 @@ interface TerminalSurfaceProps {
   settings: AppSettings
   theme: ThemeDefinition | null
   enabled?: boolean
+  active?: boolean
+  focusKey?: string | null
   children?: ReactNode
 }
 
@@ -32,6 +34,8 @@ export function TerminalSurface({
   settings,
   theme,
   enabled = true,
+  active = true,
+  focusKey = null,
   children
 }: TerminalSurfaceProps) {
   const { t } = useTranslation()
@@ -46,7 +50,9 @@ export function TerminalSurface({
     theme,
     enabled,
     setLinkTooltip,
-    setSearchResults
+    setSearchResults,
+    active,
+    focusKey
   )
   const searchResultSummary =
     searchQuery.length === 0

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { WorkbenchShell } from '@/components/workbench/workbench-shell'
@@ -15,12 +15,33 @@ import { useLocalTerminalsStore } from '@/store/local-terminals-store'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 
+const { localTerminalEditorSpy, sessionEditorSpy } = vi.hoisted(() => ({
+  localTerminalEditorSpy: vi.fn(),
+  sessionEditorSpy: vi.fn()
+}))
+
 vi.mock('@/components/workbench/workbench-session-editor', () => ({
-  WorkbenchSessionEditor: () => <div data-testid="session-editor" />
+  WorkbenchSessionEditor: (props: { active?: boolean; sessionId: string }) => {
+    sessionEditorSpy(props)
+    return (
+      <div
+        data-active={String(Boolean(props.active))}
+        data-testid={`session-editor:${props.sessionId}`}
+      />
+    )
+  }
 }))
 
 vi.mock('@/components/workbench/workbench-local-terminal-editor', () => ({
-  WorkbenchLocalTerminalEditor: () => <div data-testid="local-terminal-editor" />
+  WorkbenchLocalTerminalEditor: (props: { active?: boolean; terminalId: string }) => {
+    localTerminalEditorSpy(props)
+    return (
+      <div
+        data-active={String(Boolean(props.active))}
+        data-testid={`local-terminal-editor:${props.terminalId}`}
+      />
+    )
+  }
 }))
 
 function renderWorkbenchShell(initialEntry = '/servers') {
@@ -81,6 +102,8 @@ beforeEach(async () => {
   useWorkbenchStore.getState().reset()
   useSessionsStore.getState().clear()
   useLocalTerminalsStore.getState().clear()
+  sessionEditorSpy.mockReset()
+  localTerminalEditorSpy.mockReset()
 })
 
 describe('WorkbenchShell shortcuts', () => {
@@ -212,5 +235,66 @@ describe('WorkbenchShell shortcuts', () => {
       expect(useLocalTerminalsStore.getState().tabs).toEqual([])
       expect(useWorkbenchStore.getState().openDocuments).toEqual([])
     })
+  })
+})
+
+describe('WorkbenchShell terminal document visibility', () => {
+  it('keeps inactive terminal documents mounted and updates their active state', async () => {
+    window.winsshApi = createWinsshApiMock({
+      servers: {
+        list: vi.fn().mockResolvedValue([createdServer])
+      }
+    })
+
+    useSessionsStore.getState().addSession(activeSession)
+    useLocalTerminalsStore.getState().addTerminal({
+      cwd: '/Users/tester',
+      shell: 'zsh',
+      startedAt: new Date().toISOString(),
+      status: 'running',
+      terminalId: 'local-terminal-1',
+      title: 'zsh'
+    })
+
+    useWorkbenchStore.getState().openDocument(createSessionEditorDocument(activeSession.sessionId))
+    useWorkbenchStore.getState().openDocument(createLocalTerminalEditorDocument('local-terminal-1'))
+    useWorkbenchStore.getState().setActiveDocument(`session-editor:${activeSession.sessionId}`)
+
+    renderWorkbenchShell('/sessions')
+
+    const sessionEditor = await screen.findByTestId(`session-editor:${activeSession.sessionId}`)
+    const localTerminalEditor = await screen.findByTestId('local-terminal-editor:local-terminal-1')
+
+    expect(sessionEditor).toHaveAttribute('data-active', 'true')
+    expect(localTerminalEditor).toHaveAttribute('data-active', 'false')
+    expect(sessionEditorSpy).toHaveBeenCalledWith({
+      active: true,
+      sessionId: activeSession.sessionId
+    })
+    expect(localTerminalEditorSpy).toHaveBeenCalledWith({
+      active: false,
+      terminalId: 'local-terminal-1'
+    })
+
+    const sessionWrapper = sessionEditor.parentElement
+    const localTerminalWrapper = localTerminalEditor.parentElement
+    expect(sessionWrapper).toHaveClass('relative')
+    expect(sessionWrapper).not.toHaveClass('hidden')
+    expect(localTerminalWrapper).toHaveClass('absolute')
+    expect(localTerminalWrapper).toHaveClass('invisible')
+    expect(localTerminalWrapper).not.toHaveClass('hidden')
+
+    act(() => {
+      useWorkbenchStore.getState().setActiveDocument('local-terminal-editor:local-terminal-1')
+    })
+
+    await waitFor(() => {
+      expect(sessionEditor).toHaveAttribute('data-active', 'false')
+      expect(localTerminalEditor).toHaveAttribute('data-active', 'true')
+    })
+
+    expect(sessionEditor.parentElement).toHaveClass('absolute')
+    expect(sessionEditor.parentElement).toHaveClass('invisible')
+    expect(localTerminalEditor.parentElement).toHaveClass('relative')
   })
 })
