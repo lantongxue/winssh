@@ -142,6 +142,13 @@ const workbench = {
         connected: 'Connected',
         ungrouped: 'Ungrouped'
       },
+      search: {
+        clear: 'Clear search',
+        empty: 'No servers match "{{query}}".',
+        label: 'Quick server search',
+        placeholder: 'Search by server name or IP',
+        results: 'Search Results'
+      },
       dialogs: {
         deleteServer: {
           description:

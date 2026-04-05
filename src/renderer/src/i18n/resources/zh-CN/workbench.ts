@@ -140,6 +140,13 @@ const workbench = {
         connected: '已连接',
         ungrouped: '未分组'
       },
+      search: {
+        clear: '清除搜索',
+        empty: '未找到与“{{query}}”匹配的服务器。',
+        label: '快捷搜索服务器',
+        placeholder: '搜索服务器名称或 IP',
+        results: '匹配结果'
+      },
       dialogs: {
         deleteServer: {
           description:

@@ -197,9 +197,10 @@ describe('WorkbenchPrimarySidebar', () => {
     expect(await screen.findAllByText('103.205.241.248')).toHaveLength(2)
     expect(await screen.findAllByText('Connected')).toHaveLength(2)
 
-    expect(
-      screen.getAllByText('103.205.241.248')[0]?.closest('[data-active]')
-    ).toHaveAttribute('data-active', 'false')
+    expect(screen.getAllByText('103.205.241.248')[0]?.closest('[data-active]')).toHaveAttribute(
+      'data-active',
+      'false'
+    )
     expect(screen.getAllByText('42.193.138.67')[0]?.closest('[data-active]')).toHaveAttribute(
       'data-active',
       'false'
@@ -489,5 +490,59 @@ describe('WorkbenchPrimarySidebar', () => {
         })
       )
     })
+  })
+
+  it('filters servers by name and host from the quick search input', async () => {
+    window.winsshApi = createWinsshApiMock({
+      groups: {
+        list: vi.fn().mockResolvedValue([])
+      },
+      servers: {
+        list: vi.fn().mockResolvedValue([
+          {
+            ...servers[0],
+            host: '10.0.0.5',
+            name: 'Hong Kong Prod'
+          },
+          {
+            ...servers[1],
+            host: '192.168.1.10',
+            name: 'Tokyo Jump'
+          }
+        ]),
+        listRecent: vi.fn().mockResolvedValue([])
+      },
+      tags: {
+        list: vi.fn().mockResolvedValue([])
+      }
+    })
+
+    renderPrimarySidebar()
+
+    const searchInput = await screen.findByRole('textbox', { name: 'Quick server search' })
+
+    fireEvent.change(searchInput, { target: { value: 'hong' } })
+
+    expect(await screen.findByText('Search Results')).toBeInTheDocument()
+    expect(screen.getByText('Hong Kong Prod')).toBeInTheDocument()
+    expect(screen.getByText('10.0.0.5')).toBeInTheDocument()
+    expect(screen.queryByText('Tokyo Jump')).not.toBeInTheDocument()
+
+    fireEvent.change(searchInput, { target: { value: '192.168' } })
+
+    expect(await screen.findByText('Tokyo Jump')).toBeInTheDocument()
+    expect(screen.getByText('192.168.1.10')).toBeInTheDocument()
+    expect(screen.queryByText('Hong Kong Prod')).not.toBeInTheDocument()
+  })
+
+  it('shows an empty search state when no server matches the query', async () => {
+    renderPrimarySidebar()
+
+    const searchInput = await screen.findByRole('textbox', { name: 'Quick server search' })
+    fireEvent.change(searchInput, { target: { value: 'missing-server' } })
+
+    expect(await screen.findByText('Search Results')).toBeInTheDocument()
+    expect(screen.getByText('No servers match "missing-server".')).toBeInTheDocument()
+    expect(screen.queryByText('Ungrouped')).not.toBeInTheDocument()
   })
 })
