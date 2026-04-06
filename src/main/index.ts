@@ -378,6 +378,9 @@ async function bootstrap(): Promise<void> {
   ipcMain.handle('sessions:reconnect', (_event, sessionId: string) =>
     sessionManager.reconnect(sessionId)
   )
+  ipcMain.handle('sessions:getResourceSnapshot', (_event, sessionId: string) =>
+    sessionManager.getResourceSnapshot(sessionId)
+  )
   ipcMain.handle('sessions:write', (_event, sessionId: string, data: string) =>
     sessionManager.write(sessionId, data)
   )

@@ -57,6 +57,7 @@ const workbench = {
       actions: {
         cloneSession: 'Clone Session',
         closeTab: 'Close Tab',
+        copyIp: 'Copy IP',
         renameTab: 'Rename Tab'
       },
       dialogs: {
@@ -331,11 +332,27 @@ const workbench = {
       }
     },
     sessionEditor: {
+      actions: {
+        copyIp: 'Copy IP'
+      },
       closed: {
         description: 'Reconnect to the server from Explorer to keep working.',
         title: 'This session has already closed'
       },
       portForwards: 'Port Forwards',
+      resourceMonitor: {
+        linuxOnly: 'Linux only',
+        metrics: {
+          cpu: 'CPU',
+          disk: 'Disk (/)',
+          memory: 'Memory',
+          network: 'Network'
+        },
+        title: 'Resource Monitor',
+        toggle: 'Toggle resource monitor',
+        unavailable: 'Unavailable',
+        usage: 'Usage'
+      },
       remoteFiles: 'Remote Files',
       cancel: 'Cancel'
     },
@@ -583,6 +600,8 @@ const workbench = {
     },
     toasts: {
       connectionFailed: 'Connection failed.',
+      ipCopied: 'IP copied.',
+      ipCopyFailed: 'Failed to copy IP.',
       localTerminalOpenFailed: 'Failed to open a local terminal.',
       reconnected: 'Reconnected to {{name}}.',
       reconnectFailed: 'Reconnect failed.',

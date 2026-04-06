@@ -41,6 +41,7 @@ const api: WinsshApi = {
     connect: (request) => ipcRenderer.invoke('sessions:connect', request),
     disconnect: (sessionId) => ipcRenderer.invoke('sessions:disconnect', sessionId),
     reconnect: (sessionId) => ipcRenderer.invoke('sessions:reconnect', sessionId),
+    getResourceSnapshot: (sessionId) => ipcRenderer.invoke('sessions:getResourceSnapshot', sessionId),
     write: (sessionId, data) => ipcRenderer.invoke('sessions:write', sessionId, data),
     resize: (sessionId, columns, rows) =>
       ipcRenderer.invoke('sessions:resize', sessionId, columns, rows),

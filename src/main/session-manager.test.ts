@@ -2,6 +2,10 @@ import { EventEmitter } from 'node:events'
 import net, { type AddressInfo } from 'node:net'
 import { PassThrough } from 'node:stream'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  SESSION_RESOURCE_MONITOR_LINUX_ONLY,
+  SESSION_RESOURCE_MONITOR_UNAVAILABLE
+} from '@shared/types'
 
 vi.mock('electron', () => ({
   dialog: {
@@ -14,6 +18,40 @@ vi.mock('electron', () => ({
 import { formatRemoteEntryPermissions, SessionManager } from './session-manager'
 
 class MockClient extends EventEmitter {
+  exec = vi.fn(
+    (
+      _command: string,
+      callback?: (
+        error: Error | undefined,
+        channel: PassThrough & { stderr: PassThrough }
+      ) => void
+    ) => {
+      const behavior = execBehaviors.shift() ?? { error: new Error('missing exec behavior') }
+      if ('error' in behavior) {
+        callback?.(behavior.error, undefined as never)
+        return this
+      }
+
+      const channel = new PassThrough() as PassThrough & { stderr: PassThrough }
+      channel.stderr = new PassThrough()
+      callback?.(undefined, channel)
+
+      queueMicrotask(() => {
+        if (behavior.stdout) {
+          channel.write(behavior.stdout)
+        }
+        if (behavior.stderr) {
+          channel.stderr.write(behavior.stderr)
+        }
+
+        channel.emit('close', behavior.code ?? 0)
+        channel.end()
+        channel.stderr.end()
+      })
+
+      return this
+    }
+  )
   end = vi.fn()
   forwardIn = vi.fn(
     (
@@ -42,6 +80,18 @@ class MockClient extends EventEmitter {
     }
   )
 }
+
+type ExecBehavior =
+  | {
+      code?: number
+      stderr?: string
+      stdout: string
+    }
+  | {
+      error: Error
+    }
+
+const execBehaviors: ExecBehavior[] = []
 
 function createManager() {
   return new SessionManager(
@@ -99,6 +149,14 @@ function getHistoryMap(manager: SessionManager) {
   return Reflect.get(manager as object, 'history') as Map<string, { serverId: string }>
 }
 
+function getCpuBaselinesMap(manager: SessionManager) {
+  return Reflect.get(manager as object, 'resourceCpuBaselines') as Map<string, unknown>
+}
+
+function getNetworkBaselinesMap(manager: SessionManager) {
+  return Reflect.get(manager as object, 'resourceNetworkBaselines') as Map<string, unknown>
+}
+
 async function finalizeManagedSession(manager: SessionManager, sessionId: string) {
   const finalizeSession = Reflect.get(manager as object, 'finalizeSession') as (
     targetSessionId: string
@@ -137,8 +195,48 @@ async function expectConnectionFailure(port: number) {
   })
 }
 
+function createResourceMonitorOutput({
+  cpuLine,
+  memAvailableKb = 4_096_000,
+  memTotalKb = 8_192_000,
+  networkInterfaces = [
+    '  lo: 100 0 0 0 0 0 0 0 100 0 0 0 0 0 0 0',
+    'eth0: 1000 0 0 0 0 0 0 0 2000 0 0 0 0 0 0 0'
+  ],
+  platform = 'Linux'
+}: {
+  cpuLine?: string
+  memAvailableKb?: number
+  memTotalKb?: number
+  networkInterfaces?: string[]
+  platform?: string
+}) {
+  const sections = ['__WINSSH_PLATFORM__', platform]
+
+  if (platform === 'Linux') {
+    sections.push(
+      '__WINSSH_PROC_STAT__',
+      cpuLine ?? 'cpu  100 0 100 900 0 0 0 0 0 0',
+      '__WINSSH_PROC_MEMINFO__',
+      `MemTotal:       ${memTotalKb} kB`,
+      `MemAvailable:   ${memAvailableKb} kB`,
+      '__WINSSH_PROC_NET_DEV__',
+      'Inter-|   Receive                                                |  Transmit',
+      ' face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed',
+      ...networkInterfaces,
+      '__WINSSH_DF__',
+      'Filesystem     1B-blocks        Used   Available Use% Mounted on',
+      '/dev/root      1073741824   268435456   805306368  25% /'
+    )
+  }
+
+  return `${sections.join('\n')}\n`
+}
+
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.useRealTimers()
+  execBehaviors.length = 0
 })
 
 describe('SessionManager port forwarding', () => {
@@ -367,5 +465,116 @@ describe('SessionManager port forwarding', () => {
     expect(getSessionsMap(manager).has('session-1')).toBe(true)
 
     manager.dispose()
+  })
+
+  it('returns Linux resource metrics and computes CPU and network rates from the second sample onward', async () => {
+    const manager = createManager()
+    const client = new MockClient()
+    const runtime = createRuntime('session-1', client)
+    getSessionsMap(manager).set('session-1', runtime)
+
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-06T00:00:00.000Z'))
+
+    execBehaviors.push(
+      {
+        stdout: createResourceMonitorOutput({
+          cpuLine: 'cpu  100 0 100 900 0 0 0 0 0 0',
+          networkInterfaces: ['eth0: 1000 0 0 0 0 0 0 0 2000 0 0 0 0 0 0 0']
+        })
+      },
+      {
+        stdout: createResourceMonitorOutput({
+          cpuLine: 'cpu  150 0 200 950 0 0 0 0 0 0',
+          networkInterfaces: ['eth0: 5000 0 0 0 0 0 0 0 8000 0 0 0 0 0 0 0']
+        })
+      }
+    )
+
+    const firstSnapshot = await manager.getResourceSnapshot('session-1')
+    expect(firstSnapshot.cpu.usagePercent).toBeNull()
+    expect(firstSnapshot.memory.usagePercent).toBe(50)
+    expect(firstSnapshot.disk.usagePercent).toBe(25)
+    expect(firstSnapshot.network).toEqual({
+      rxBytesPerSecond: null,
+      txBytesPerSecond: null
+    })
+
+    vi.setSystemTime(new Date('2026-04-06T00:00:02.000Z'))
+    const secondSnapshot = await manager.getResourceSnapshot('session-1')
+    expect(secondSnapshot.cpu.usagePercent).toBe(75)
+    expect(secondSnapshot.network).toEqual({
+      rxBytesPerSecond: 2000,
+      txBytesPerSecond: 3000
+    })
+  })
+
+  it('clears CPU and network baselines when the session disconnects', async () => {
+    const manager = createManager()
+    const client = new MockClient()
+    const runtime = createRuntime('session-1', client)
+    getSessionsMap(manager).set('session-1', runtime)
+
+    execBehaviors.push({
+      stdout: createResourceMonitorOutput({
+        cpuLine: 'cpu  100 0 100 900 0 0 0 0 0 0'
+      })
+    })
+
+    await manager.getResourceSnapshot('session-1')
+    expect(getCpuBaselinesMap(manager).has('session-1')).toBe(true)
+    expect(getNetworkBaselinesMap(manager).has('session-1')).toBe(true)
+
+    await manager.disconnect('session-1')
+    expect(getCpuBaselinesMap(manager).has('session-1')).toBe(false)
+    expect(getNetworkBaselinesMap(manager).has('session-1')).toBe(false)
+  })
+
+  it('reports Linux-only availability when the remote host is not Linux', async () => {
+    const manager = createManager()
+    const client = new MockClient()
+    const runtime = createRuntime('session-1', client)
+    getSessionsMap(manager).set('session-1', runtime)
+
+    execBehaviors.push({
+      stdout: createResourceMonitorOutput({
+        platform: 'Darwin'
+      })
+    })
+
+    await expect(manager.getResourceSnapshot('session-1')).rejects.toThrow(
+      SESSION_RESOURCE_MONITOR_LINUX_ONLY
+    )
+  })
+
+  it('returns unavailable when the session is missing, not ready, or remote sampling fails', async () => {
+    const manager = createManager()
+
+    await expect(manager.getResourceSnapshot('missing-session')).rejects.toThrow(
+      'errors.sessionUnavailable'
+    )
+
+    const client = new MockClient()
+    const runtime = createRuntime('session-1', client)
+    const runtimeSummary = runtime.summary as { status: 'connecting' | 'ready' }
+    runtimeSummary.status = 'connecting'
+    getSessionsMap(manager).set('session-1', runtime)
+
+    await expect(manager.getResourceSnapshot('session-1')).rejects.toThrow(
+      SESSION_RESOURCE_MONITOR_UNAVAILABLE
+    )
+
+    runtime.summary.status = 'ready'
+    execBehaviors.push({
+      code: 1,
+      stderr: 'cat: /proc/stat: No such file or directory',
+      stdout: createResourceMonitorOutput({
+        platform: 'Linux'
+      })
+    })
+
+    await expect(manager.getResourceSnapshot('session-1')).rejects.toThrow(
+      SESSION_RESOURCE_MONITOR_UNAVAILABLE
+    )
   })
 })

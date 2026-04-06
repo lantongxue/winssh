@@ -57,6 +57,7 @@ const workbench = {
       actions: {
         cloneSession: '会话克隆',
         closeTab: '关闭标签',
+        copyIp: '复制 IP',
         renameTab: '重命名标签'
       },
       dialogs: {
@@ -325,11 +326,27 @@ const workbench = {
       }
     },
     sessionEditor: {
+      actions: {
+        copyIp: '复制 IP'
+      },
       closed: {
         description: '如果需要继续工作，请在资源管理器中重新连接对应服务器。',
         title: '该会话已经关闭'
       },
       portForwards: '端口转发',
+      resourceMonitor: {
+        linuxOnly: '仅支持 Linux',
+        metrics: {
+          cpu: 'CPU',
+          disk: '磁盘(/)',
+          memory: '内存',
+          network: '网络'
+        },
+        title: '资源监控',
+        toggle: '切换资源监控',
+        unavailable: '不可用',
+        usage: '使用率'
+      },
       remoteFiles: '远程文件',
       cancel: '取消连接'
     },
@@ -566,6 +583,8 @@ const workbench = {
     },
     toasts: {
       connectionFailed: '连接失败。',
+      ipCopied: 'IP 已复制。',
+      ipCopyFailed: '复制 IP 失败。',
       localTerminalOpenFailed: '打开本地终端失败。',
       reconnected: '已重新连接 {{name}}。',
       reconnectFailed: '重新连接失败。',

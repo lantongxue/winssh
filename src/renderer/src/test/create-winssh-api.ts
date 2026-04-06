@@ -195,6 +195,29 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
     sessions: {
       connect: async () => ({ code: 'connection_failed', message: 'not implemented', ok: false }),
       disconnect: async () => undefined,
+      getResourceSnapshot: async () => ({
+        cpu: {
+          usagePercent: 42.5
+        },
+        disk: {
+          mountPath: '/',
+          totalBytes: 512 * 1024 * 1024 * 1024,
+          usedBytes: 256 * 1024 * 1024 * 1024,
+          usagePercent: 50
+        },
+        memory: {
+          totalBytes: 8 * 1024 * 1024 * 1024,
+          usedBytes: 3 * 1024 * 1024 * 1024,
+          usagePercent: 37.5
+        },
+        network: {
+          rxBytesPerSecond: 128 * 1024,
+          txBytesPerSecond: 64 * 1024
+        },
+        platform: 'linux',
+        sampledAt: new Date().toISOString(),
+        sessionId: 'session-1'
+      }),
       onData: () => noopUnsubscribe,
       onError: () => noopUnsubscribe,
       onExit: () => noopUnsubscribe,

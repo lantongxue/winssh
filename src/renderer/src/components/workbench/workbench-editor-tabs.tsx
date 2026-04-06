@@ -105,6 +105,7 @@ export function WorkbenchEditorTabs() {
   const CancelIcon = actionIcons.cancel
   const CloneIcon = actionIcons.clone
   const CloseIcon = actionIcons.close
+  const CopyIcon = actionIcons.clone
   const RenameIcon = actionIcons.rename
   const closeLabel = t('common.actions.close')
 
@@ -118,6 +119,10 @@ export function WorkbenchEditorTabs() {
   )
   const sessionServerIdMap = useMemo(
     () => new Map(sessions.map((session) => [session.sessionId, session.serverId])),
+    [sessions]
+  )
+  const sessionHostMap = useMemo(
+    () => new Map(sessions.map((session) => [session.sessionId, session.host])),
     [sessions]
   )
   const serverNameMap = useMemo(
@@ -204,6 +209,20 @@ export function WorkbenchEditorTabs() {
     }
 
     await connectServer(server)
+  }
+
+  const copySessionIp = async (sessionId: string) => {
+    const host = sessionHostMap.get(sessionId)
+    if (!host) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(host)
+      toast.success(t('workbench.toasts.ipCopied'))
+    } catch {
+      toast.error(t('workbench.toasts.ipCopyFailed'))
+    }
   }
 
   const openRenameDialog = (document: WorkbenchDocument) => {
@@ -339,6 +358,10 @@ export function WorkbenchEditorTabs() {
                       <ContextMenuItem onClick={() => void handleCloneSession(document.sessionId)}>
                         <CloneIcon className="size-4" />
                         {t('workbench.editorTabs.actions.cloneSession')}
+                      </ContextMenuItem>
+                      <ContextMenuItem onClick={() => void copySessionIp(document.sessionId)}>
+                        <CopyIcon className="size-4" />
+                        {t('workbench.editorTabs.actions.copyIp')}
                       </ContextMenuItem>
                       <ContextMenuItem onClick={() => openRenameDialog(document)}>
                         <RenameIcon className="size-4" />

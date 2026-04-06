@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { toast } from 'sonner'
 import i18n from '@/i18n'
 import { WorkbenchEditorTabs } from '@/components/workbench/workbench-editor-tabs'
 import { WorkbenchProvider } from '@/components/workbench/workbench-context'
@@ -20,6 +21,10 @@ vi.mock('sonner', () => ({
     success: vi.fn()
   }
 }))
+
+const clipboard = {
+  writeText: vi.fn()
+}
 
 const savedServer = {
   authType: 'password' as const,
@@ -113,6 +118,14 @@ beforeEach(async () => {
   localStorage.clear()
   useWorkbenchStore.getState().reset()
   useSessionsStore.getState().clear()
+  clipboard.writeText.mockReset()
+  clipboard.writeText.mockResolvedValue(undefined)
+  vi.mocked(toast.error).mockReset()
+  vi.mocked(toast.success).mockReset()
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: clipboard
+  })
 })
 
 describe('WorkbenchEditorTabs session context menu', () => {
@@ -186,6 +199,25 @@ describe('WorkbenchEditorTabs session context menu', () => {
     expect(useWorkbenchStore.getState().documentTitleOverrides['session-editor:session-1']).toBe(
       'Prod Shell'
     )
+  })
+
+  it('copies the current session host through the context menu', async () => {
+    window.winsshApi = createWinsshApiMock({
+      servers: {
+        list: vi.fn().mockResolvedValue([savedServer])
+      }
+    })
+
+    seedSessionTab()
+    renderEditorTabs()
+
+    fireEvent.contextMenu(screen.getByText('alpha'))
+    fireEvent.click(await screen.findByText('Copy IP'))
+
+    await waitFor(() => {
+      expect(clipboard.writeText).toHaveBeenCalledWith('127.0.0.1')
+    })
+    expect(toast.success).toHaveBeenCalledWith('IP copied.')
   })
 
   it('closes a session tab through the context menu', async () => {

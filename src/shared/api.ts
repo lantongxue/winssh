@@ -24,6 +24,7 @@ import type {
   SessionErrorEvent,
   SessionExitEvent,
   SessionStateEvent,
+  SessionResourceSnapshot,
   SessionSummary,
   SftpListResult,
   Tag,
@@ -70,6 +71,7 @@ export interface WinsshApi {
     connect: (request: ConnectionRequest) => Promise<SessionConnectResult>
     disconnect: (sessionId: string) => Promise<void>
     reconnect: (sessionId: string) => Promise<SessionSummary>
+    getResourceSnapshot: (sessionId: string) => Promise<SessionResourceSnapshot>
     write: (sessionId: string, data: string) => Promise<void>
     resize: (sessionId: string, columns: number, rows: number) => Promise<void>
     onData: (callback: (event: SessionDataEvent) => void) => Unsubscribe

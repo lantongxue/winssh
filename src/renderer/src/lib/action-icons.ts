@@ -1,4 +1,5 @@
 import {
+  Activity,
   ChevronDown,
   ChevronRight,
   Play,
@@ -52,6 +53,7 @@ export const actionIcons = {
   newFile: FilePlus,
   newFolder: FolderPlus,
   openRemoteFiles: FolderTree,
+  openResourceMonitor: Activity,
   openSettings: Settings2,
   openTerminal: Terminal,
   quickOpen: Link2,

@@ -1,16 +1,19 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import { actionIcons } from '@/lib/action-icons'
 import { usePrefersDark } from '@/hooks/use-prefers-dark'
 import { resolveThemeDefinition } from '@/lib/theme'
 import { PortForwardPanel } from '@/components/port-forward-panel'
+import { SessionResourceMonitor } from '@/components/session-resource-monitor'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import { SftpPanel } from '@/components/sftp-panel'
 import { TerminalPane } from '@/components/terminal-pane'
 import { Button } from '@/components/ui/button'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
+import { Switch } from '@/components/ui/switch'
 import { useSessionsStore } from '@/store/sessions-store'
 
 const TERMINAL_PANEL_MIN_SIZE = '320px'
@@ -27,6 +30,7 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
   const { t } = useTranslation()
   const prefersDark = usePrefersDark()
   const { reconnectSession, disconnectSession } = useWorkbenchContext()
+  const [monitorExpanded, setMonitorExpanded] = useState(true)
   const session = useSessionsStore(
     (state) => state.tabs.find((tab) => tab.sessionId === sessionId) ?? null
   )
@@ -90,17 +94,45 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
       />
     ) : null
   const showAuxPanel = Boolean(auxPanelContent && !session.provisional)
+  const copyServerIp = async () => {
+    try {
+      await navigator.clipboard.writeText(session.host)
+      toast.success(t('workbench.toasts.ipCopied'))
+    } catch {
+      toast.error(t('workbench.toasts.ipCopyFailed'))
+    }
+  }
 
   return (
     <div className="liquid-glass-page flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
-      <div className="liquid-glass-toolbar flex h-10 shrink-0 items-center justify-between border-b border-[var(--workbench-border)] px-3">
-        <div className="min-w-0">
+      <div className="liquid-glass-toolbar flex min-h-[56px] shrink-0 items-center gap-3 border-b border-[var(--workbench-border)] px-3 py-2">
+        <button
+          type="button"
+          className="min-w-0 shrink-0 rounded-md px-2 py-1 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--workbench-hover)_72%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--workbench-active)]"
+          aria-label={t('workbench.sessionEditor.actions.copyIp')}
+          title={t('workbench.sessionEditor.actions.copyIp')}
+          onClick={() => void copyServerIp()}
+        >
           <div className="truncate text-sm font-medium text-foreground">{session.serverName}</div>
           <div className="truncate text-[11px] text-muted-foreground">
             {session.host}:{session.port}
           </div>
-        </div>
-        <div className="flex items-center gap-2">
+        </button>
+        <SessionResourceMonitor
+          active={active}
+          expanded={monitorExpanded}
+          session={session}
+        />
+        <div className="flex shrink-0 items-center gap-2">
+          <label className="flex shrink-0 items-center gap-2 rounded-md border border-[var(--workbench-border)] bg-[color-mix(in_srgb,var(--workbench-sidebar)_72%,transparent)] px-2.5 py-1.5 text-xs text-muted-foreground">
+            <span>{t('workbench.sessionEditor.resourceMonitor.title')}</span>
+            <Switch
+              aria-label={t('workbench.sessionEditor.resourceMonitor.toggle')}
+              checked={monitorExpanded}
+              onCheckedChange={setMonitorExpanded}
+              size="sm"
+            />
+          </label>
           <Button
             variant={auxView === 'sftp' ? 'secondary' : 'ghost'}
             size="sm"

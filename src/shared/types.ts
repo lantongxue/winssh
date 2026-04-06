@@ -16,6 +16,8 @@ export type PortForwardKind = 'local' | 'remote'
 export type PortForwardStatus = 'starting' | 'active' | 'stopped' | 'error'
 export type SessionConnectFailureCode = 'secret_required' | 'auth_failed' | 'connection_failed'
 export type LocalTerminalStatus = 'running' | 'exited' | 'error'
+export const SESSION_RESOURCE_MONITOR_LINUX_ONLY = 'session_resource_linux_only'
+export const SESSION_RESOURCE_MONITOR_UNAVAILABLE = 'session_resource_unavailable'
 
 export interface ServerGroup {
   id: string
@@ -207,6 +209,30 @@ export interface SessionExitEvent {
 export interface SessionErrorEvent {
   sessionId: string
   message: string
+}
+
+export interface SessionResourceSnapshot {
+  sessionId: string
+  sampledAt: string
+  platform: 'linux'
+  cpu: {
+    usagePercent: number | null
+  }
+  memory: {
+    usedBytes: number
+    totalBytes: number
+    usagePercent: number
+  }
+  network: {
+    rxBytesPerSecond: number | null
+    txBytesPerSecond: number | null
+  }
+  disk: {
+    mountPath: '/'
+    usedBytes: number
+    totalBytes: number
+    usagePercent: number
+  }
 }
 
 export interface LocalTerminalSummary {
