@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { formatDateTime } from '@/i18n/format'
 import { actionIcons } from '@/lib/action-icons'
+import { cn } from '@/lib/utils'
 import { ServerBrandIcon } from '@/components/server-brand-icon'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import { useSingleOrDoubleClick } from '@/hooks/use-single-or-double-click'
@@ -11,12 +12,14 @@ import { useSessionsStore } from '@/store/sessions-store'
 import { Button } from '@/components/ui/button'
 
 function ServerShortcut({
+  disabled = false,
   icon,
   metadata,
   onConnect,
   onOpen,
   title
 }: {
+  disabled?: boolean
   icon: React.ReactNode
   metadata: string
   onConnect?: () => void
@@ -31,7 +34,13 @@ function ServerShortcut({
   return (
     <button
       type="button"
-      className="liquid-glass-list-item flex w-full items-center justify-between gap-3 border border-transparent px-3 py-3 text-left transition-colors hover:border-[var(--workbench-border)] hover:bg-[var(--workbench-hover)]"
+      className={cn(
+        'liquid-glass-list-item flex w-full items-center justify-between gap-3 border border-transparent px-3 py-3 text-left transition-colors',
+        disabled
+          ? 'cursor-not-allowed opacity-60'
+          : 'hover:border-[var(--workbench-border)] hover:bg-[var(--workbench-hover)]'
+      )}
+      disabled={disabled}
       onClick={clickIntent.onClick}
       onDoubleClick={clickIntent.onDoubleClick}
     >
@@ -134,20 +143,22 @@ export function WorkbenchExplorerHome() {
                   const server = (serversQuery.data ?? []).find(
                     (item) => item.id === recent.serverId
                   )
+                  const canConnect = Boolean(server)
 
                   return (
                     <ServerShortcut
                       key={recent.id}
+                      disabled={!canConnect}
                       title={recent.serverName}
                       metadata={`${recent.host} · ${formatDateTime(recent.connectedAt)}`}
                       icon={
                         <ServerBrandIcon
-                          brandId={server.brandId}
-                          customIconDataUrl={server.customIconDataUrl}
+                          brandId={server?.brandId}
+                          customIconDataUrl={server?.customIconDataUrl}
                           className="size-4 shrink-0 text-[var(--workbench-active)]"
                         />
                       }
-                      onConnect={() => (server ? void connectServer(server) : undefined)}
+                      onConnect={server ? () => void connectServer(server) : undefined}
                     />
                   )
                 })

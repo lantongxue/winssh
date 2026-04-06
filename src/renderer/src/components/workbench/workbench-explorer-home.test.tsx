@@ -59,4 +59,37 @@ describe('WorkbenchExplorerHome', () => {
       'local-terminal-editor:local-terminal-1'
     )
   })
+
+  it('renders stale recent sessions as disabled shortcuts when the server is missing', async () => {
+    const connect = vi.fn()
+
+    window.winsshApi = createWinsshApiMock({
+      servers: {
+        list: vi.fn().mockResolvedValue([]),
+        listRecent: vi.fn().mockResolvedValue([
+          {
+            connectedAt: new Date().toISOString(),
+            host: '192.168.0.10',
+            id: 'recent-1',
+            serverId: 'server-missing',
+            serverName: 'Deleted Server'
+          }
+        ])
+      },
+      sessions: {
+        connect
+      }
+    })
+
+    renderExplorerHome()
+
+    const staleShortcutLabel = await screen.findByText('Deleted Server')
+    const staleShortcut = staleShortcutLabel.closest('button')
+
+    expect(staleShortcut).not.toBeNull()
+    expect((staleShortcut as HTMLButtonElement).disabled).toBe(true)
+
+    fireEvent.doubleClick(staleShortcut as HTMLButtonElement)
+    expect(connect).not.toHaveBeenCalled()
+  })
 })

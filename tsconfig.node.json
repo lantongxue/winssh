@@ -10,7 +10,6 @@
   "compilerOptions": {
     "composite": true,
     "types": ["electron-vite/node", "vitest/globals"],
-    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
       "@main/*": ["src/main/*"],
