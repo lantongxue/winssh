@@ -82,9 +82,9 @@ describe('LocalTerminalManager', () => {
 
     expect(summary).toMatchObject({
       cwd: expect.any(String),
-      shell: process.platform === 'win32' ? 'cmd.exe' : 'zsh',
+      shell: process.platform === 'win32' ? 'cmd' : 'zsh',
       status: 'running',
-      title: process.platform === 'win32' ? 'cmd.exe' : 'zsh'
+      title: process.platform === 'win32' ? 'cmd' : 'zsh'
     })
     expect(spawnMock).toHaveBeenCalledWith(
       process.platform === 'win32' ? 'C:\\Windows\\System32\\cmd.exe' : '/bin/zsh',
@@ -102,6 +102,23 @@ describe('LocalTerminalManager', () => {
     )
   })
 
+  it('prefers the shell configured in settings when it is supported on the current platform', () => {
+    const manager = new LocalTerminalManager(vi.fn(), () => ({
+      localTerminalShell: process.platform === 'win32' ? 'powershell' : 'bash'
+    }))
+
+    const summary = manager.create()
+
+    expect(summary.shell).toBe(process.platform === 'win32' ? 'powershell' : 'bash')
+    expect(spawnMock).toHaveBeenCalledWith(
+      process.platform === 'win32'
+        ? 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe'
+        : '/bin/bash',
+      [],
+      expect.any(Object)
+    )
+  })
+
   it('increments duplicate shell titles and keeps exited terminals until explicitly closed', () => {
     const manager = new LocalTerminalManager(vi.fn())
 
@@ -109,8 +126,8 @@ describe('LocalTerminalManager', () => {
     createdPtys[0]?.emitExit({ exitCode: 0 })
     const second = manager.create()
 
-    expect(first.title).toBe(process.platform === 'win32' ? 'cmd.exe' : 'zsh')
-    expect(second.title).toBe(`${process.platform === 'win32' ? 'cmd.exe' : 'zsh'} 2`)
+    expect(first.title).toBe(process.platform === 'win32' ? 'cmd' : 'zsh')
+    expect(second.title).toBe(`${process.platform === 'win32' ? 'cmd' : 'zsh'} 2`)
   })
 
   it('forwards data, write, and resize events to the correct PTY', () => {

@@ -399,7 +399,7 @@ const workbench = {
         appearance: '调整语言、主题和窗口标题栏模式。',
         credentialVault: '集中管理可复用的密码、私钥与口令记录。',
         security: '查看凭据存储能力与已信任主机列表。',
-        terminal: '调整终端字体、光标、复制行为与实验性渲染选项。'
+        terminal: '调整本地终端 shell、终端字体、光标、复制行为与实验性渲染选项。'
       },
       form: {
         copyOnSelect: {
@@ -416,6 +416,8 @@ const workbench = {
         },
         cursorStyle: '光标样式',
         language: '界面语言',
+        localTerminalShell: '本地终端 shell',
+        localTerminalShellDescription: '仅对新打开的本地终端标签生效。',
         terminalFontFamilyError: '系统字体加载失败，但你仍然可以手动输入自定义字体栈。',
         terminalFontFamilyEmpty: '没有匹配的系统字体。',
         terminalFontFamilyHint: '已检测到 {{count}} 个系统字体，也可以直接输入自定义字体栈。',
@@ -426,6 +428,12 @@ const workbench = {
         terminalFontSize: '终端字号',
         theme: '主题模式',
         titleBarStyle: '窗口标题栏'
+      },
+      localTerminalShells: {
+        bash: 'Bash',
+        cmd: '命令提示符 (cmd)',
+        powershell: 'PowerShell',
+        zsh: 'Zsh'
       },
       knownHosts: {
         actions: '操作',

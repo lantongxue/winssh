@@ -17,6 +17,7 @@ import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { settingsSchema, type SettingsFormValues } from '@shared/validation'
 import { formatDateTime } from '@/i18n/format'
+import { getPlatform, isWindowsPlatform } from '@/lib/platform'
 import { actionIcons } from '@/lib/action-icons'
 import { cn } from '@/lib/utils'
 import { useWorkbenchStore } from '@/store/workbench-store'
@@ -40,6 +41,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -218,6 +220,16 @@ function TerminalFontFamilyCombobox({ value, onChange, options }: TerminalFontFa
 
 export function WorkbenchSettingsEditor() {
   const { t } = useTranslation()
+  const platform = getPlatform()
+  const localTerminalShellOptions = isWindowsPlatform(platform)
+    ? [
+        { label: t('workbench.settings.localTerminalShells.cmd'), value: 'cmd' },
+        { label: t('workbench.settings.localTerminalShells.powershell'), value: 'powershell' }
+      ]
+    : [
+        { label: t('workbench.settings.localTerminalShells.bash'), value: 'bash' },
+        { label: t('workbench.settings.localTerminalShells.zsh'), value: 'zsh' }
+      ]
   const queryClient = useQueryClient()
   const pushProblem = useWorkbenchStore((state) => state.pushProblem)
   const [selectedSection, setSelectedSection] =
@@ -612,6 +624,33 @@ export function WorkbenchSettingsEditor() {
                         </FormItem>
                       )
                     }}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="localTerminalShell"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('workbench.settings.form.localTerminalShell')}</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {localTerminalShellOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          {t('workbench.settings.form.localTerminalShellDescription')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                   <FormField
                     control={form.control}

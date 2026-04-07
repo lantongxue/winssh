@@ -43,6 +43,7 @@ const persistedDarkSettings: AppSettings = {
   cursorStyle: 'block',
   experimentalTerminalWebgl: false,
   language: 'system',
+  localTerminalShell: 'zsh',
   terminalFontFamily: 'JetBrains Mono, Consolas, monospace',
   terminalFontSize: 14,
   theme: DEFAULT_DARK_THEME_ID,
@@ -62,6 +63,10 @@ const importedTheme = createThemeDefinition({
 beforeEach(async () => {
   await i18n.changeLanguage('en-US')
   useWorkbenchStore.getState().reset()
+  Object.defineProperty(window.navigator, 'platform', {
+    configurable: true,
+    value: 'Linux x86_64'
+  })
 })
 
 describe('WorkbenchSettingsEditor theme selection', () => {
@@ -91,6 +96,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
           cursorStyle: 'block',
           experimentalTerminalWebgl: false,
           language: 'system',
+          localTerminalShell: 'zsh',
           terminalFontFamily: 'JetBrains Mono, Consolas, monospace',
           terminalFontSize: 14,
           theme: DEFAULT_DARK_THEME_ID,
@@ -119,6 +125,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
           cursorStyle: 'block',
           experimentalTerminalWebgl: false,
           language: 'en-US',
+          localTerminalShell: 'zsh',
           terminalFontFamily: 'Consolas',
           terminalFontSize: 14,
           theme: DEFAULT_PIXEL_THEME_ID,
@@ -147,6 +154,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
       cursorStyle: 'block',
       experimentalTerminalWebgl: false,
       language: 'en-US',
+      localTerminalShell: 'zsh',
       terminalFontFamily: 'Consolas',
       terminalFontSize: 14,
       theme: DEFAULT_PIXEL_THEME_ID,
@@ -161,6 +169,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
           cursorStyle: 'block',
           experimentalTerminalWebgl: false,
           language: 'en-US',
+          localTerminalShell: 'zsh',
           terminalFontFamily: 'Consolas',
           terminalFontSize: 14,
           theme: 'system',
@@ -282,6 +291,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
       cursorStyle: 'block',
       experimentalTerminalWebgl: false,
       language: 'en-US',
+      localTerminalShell: 'zsh',
       terminalFontFamily: 'IBM Plex Mono',
       terminalFontSize: 14,
       theme: DEFAULT_DARK_THEME_ID,
@@ -296,6 +306,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
           cursorStyle: 'block',
           experimentalTerminalWebgl: false,
           language: 'en-US',
+          localTerminalShell: 'zsh',
           terminalFontFamily: 'Consolas',
           terminalFontSize: 14,
           theme: DEFAULT_DARK_THEME_ID,
@@ -329,13 +340,19 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     })
   })
 
-  it('saves the experimental WebGL renderer toggle from the terminal settings section', async () => {
+  it('shows Windows shell options and saves the selected local terminal shell', async () => {
+    Object.defineProperty(window.navigator, 'platform', {
+      configurable: true,
+      value: 'Win32'
+    })
+
     const updateSettings = vi.fn().mockResolvedValue({
       copyOnSelect: true,
       cursorBlink: true,
       cursorStyle: 'block',
-      experimentalTerminalWebgl: true,
+      experimentalTerminalWebgl: false,
       language: 'en-US',
+      localTerminalShell: 'powershell',
       terminalFontFamily: 'Consolas',
       terminalFontSize: 14,
       theme: DEFAULT_DARK_THEME_ID,
@@ -350,6 +367,62 @@ describe('WorkbenchSettingsEditor theme selection', () => {
           cursorStyle: 'block',
           experimentalTerminalWebgl: false,
           language: 'en-US',
+          localTerminalShell: 'cmd',
+          terminalFontFamily: 'Consolas',
+          terminalFontSize: 14,
+          theme: DEFAULT_DARK_THEME_ID,
+          windowTitleBarStyle: 'custom'
+        }),
+        update: updateSettings
+      }
+    })
+
+    renderSettingsEditor()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Terminal' }))
+
+    const shellSelect = screen.getByRole('combobox', { name: 'Local terminal shell' })
+    fireEvent.click(shellSelect)
+    expect((await screen.findAllByText('Command Prompt (cmd)')).length).toBeGreaterThan(0)
+    expect(screen.getAllByText('PowerShell').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Bash')).not.toBeInTheDocument()
+    expect(screen.queryByText('Zsh')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getAllByText('PowerShell').at(-1) as HTMLElement)
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(updateSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          localTerminalShell: 'powershell'
+        })
+      )
+    })
+  })
+
+  it('saves the experimental WebGL renderer toggle from the terminal settings section', async () => {
+    const updateSettings = vi.fn().mockResolvedValue({
+      copyOnSelect: true,
+      cursorBlink: true,
+      cursorStyle: 'block',
+      experimentalTerminalWebgl: true,
+      language: 'en-US',
+      localTerminalShell: 'zsh',
+      terminalFontFamily: 'Consolas',
+      terminalFontSize: 14,
+      theme: DEFAULT_DARK_THEME_ID,
+      windowTitleBarStyle: 'custom'
+    })
+
+    window.winsshApi = createWinsshApiMock({
+      settings: {
+        get: vi.fn().mockResolvedValue({
+          copyOnSelect: true,
+          cursorBlink: true,
+          cursorStyle: 'block',
+          experimentalTerminalWebgl: false,
+          language: 'en-US',
+          localTerminalShell: 'zsh',
           terminalFontFamily: 'Consolas',
           terminalFontSize: 14,
           theme: DEFAULT_DARK_THEME_ID,

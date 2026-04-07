@@ -257,6 +257,7 @@ describe('useTerminal', () => {
     cursorStyle: 'block',
     experimentalTerminalWebgl: false,
     language: 'en-US',
+    localTerminalShell: 'zsh',
     terminalFontFamily: 'Consolas',
     terminalFontSize: 14,
     theme: 'system',

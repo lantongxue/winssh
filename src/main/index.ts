@@ -12,6 +12,7 @@ import {
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { APP_ID } from '@shared/constants'
+import { normalizeLocalTerminalShell } from '@shared/local-terminal-shells'
 import { isServerIconMimeType, type ServerIconMimeType } from '@shared/server-brands'
 import { getDefaultThemeId, SYSTEM_THEME_ID, type ThemeAppearance } from '@shared/themes'
 import type {
@@ -113,6 +114,17 @@ function getServerIconMimeType(filePath: string): ServerIconMimeType | null {
   return mimeType && isServerIconMimeType(mimeType) ? mimeType : null
 }
 
+function normalizeAppSettingsForPlatform(settings: AppSettings): AppSettings {
+  return {
+    ...settings,
+    localTerminalShell: normalizeLocalTerminalShell(
+      settings.localTerminalShell,
+      process.platform,
+      process.platform === 'win32' ? process.env['ComSpec'] : process.env['SHELL']
+    )
+  }
+}
+
 async function bootstrap(): Promise<void> {
   electronApp.setAppUserModelId(APP_ID)
 
@@ -137,7 +149,7 @@ async function bootstrap(): Promise<void> {
   )
   const localTerminalManager = new LocalTerminalManager((channel, payload) => {
     mainWindow?.webContents.send(channel, payload)
-  })
+  }, () => database.getSettings())
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
@@ -497,10 +509,12 @@ async function bootstrap(): Promise<void> {
       throw new Error(formatThemeRegistryError(error))
     }
   })
-  ipcMain.handle('settings:get', () => themeRegistry.normalizeSettings(database.getSettings()))
+  ipcMain.handle('settings:get', () =>
+    themeRegistry.normalizeSettings(normalizeAppSettingsForPlatform(database.getSettings()))
+  )
   ipcMain.handle('settings:update', (_event, input: Partial<AppSettings>) => {
     const merged = parseInput(settingsSchema, {
-      ...themeRegistry.normalizeSettings(database.getSettings()),
+      ...themeRegistry.normalizeSettings(normalizeAppSettingsForPlatform(database.getSettings())),
       ...input
     })
 
@@ -508,7 +522,9 @@ async function bootstrap(): Promise<void> {
       throw new Error(`unknown theme "${merged.theme}"`)
     }
 
-    return themeRegistry.normalizeSettings(database.updateSettings(merged))
+    return themeRegistry.normalizeSettings(
+      database.updateSettings(normalizeAppSettingsForPlatform(merged))
+    )
   })
 
   ipcMain.handle('system:pickPrivateKey', async () => {

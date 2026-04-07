@@ -187,6 +187,7 @@ export const settingsSchema = z.object({
   cursorStyle: z.enum(['block', 'underline', 'bar']),
   cursorBlink: z.boolean(),
   copyOnSelect: z.boolean(),
+  localTerminalShell: z.enum(['cmd', 'powershell', 'bash', 'zsh']),
   windowTitleBarStyle: z.enum(['native', 'custom'])
 })
 

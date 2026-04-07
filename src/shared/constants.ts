@@ -34,5 +34,6 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   cursorStyle: 'block',
   cursorBlink: true,
   copyOnSelect: true,
+  localTerminalShell: 'zsh',
   windowTitleBarStyle: 'native'
 }

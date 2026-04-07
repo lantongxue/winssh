@@ -408,7 +408,8 @@ const workbench = {
         appearance: 'Adjust language, theme, and window title bar mode.',
         credentialVault: 'Manage reusable passwords, private keys, and passphrases.',
         security: 'Review credential storage support and trusted hosts.',
-        terminal: 'Adjust terminal font, cursor, copy behavior, and experimental rendering.'
+        terminal:
+          'Adjust the local shell, terminal font, cursor, copy behavior, and experimental rendering.'
       },
       form: {
         copyOnSelect: {
@@ -426,6 +427,8 @@ const workbench = {
         },
         cursorStyle: 'Cursor style',
         language: 'Display language',
+        localTerminalShell: 'Local terminal shell',
+        localTerminalShellDescription: 'Applies to newly opened local terminal tabs.',
         terminalFontFamilyError:
           'Failed to load system fonts. You can still enter a custom font stack.',
         terminalFontFamilyEmpty: 'No matching system fonts.',
@@ -438,6 +441,12 @@ const workbench = {
         terminalFontSize: 'Terminal font size',
         theme: 'Theme mode',
         titleBarStyle: 'Window title bar'
+      },
+      localTerminalShells: {
+        bash: 'Bash',
+        cmd: 'Command Prompt (cmd)',
+        powershell: 'PowerShell',
+        zsh: 'Zsh'
       },
       knownHosts: {
         actions: 'Actions',

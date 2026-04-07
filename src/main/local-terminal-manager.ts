@@ -4,7 +4,10 @@ import { createRequire } from 'node:module'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import { spawn, type IPty } from 'node-pty'
+import { normalizeLocalTerminalShell, getSupportedLocalTerminalShells } from '@shared/local-terminal-shells'
+import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import type {
+  AppSettings,
   LocalTerminalDataEvent,
   LocalTerminalExitEvent,
   LocalTerminalStateEvent,
@@ -49,13 +52,14 @@ export class LocalTerminalManager {
     private readonly emitToRenderer: <K extends keyof EventMap>(
       channel: K,
       payload: EventMap[K]
-    ) => void
+    ) => void,
+    private readonly getSettings: () => Pick<AppSettings, 'localTerminalShell'> = () =>
+      DEFAULT_APP_SETTINGS
   ) {}
 
   create(): LocalTerminalSummary {
     this.ensureNodePtyHelperExecutable()
-    const shellPath = this.resolveShellPath()
-    const shell = this.resolveShellName(shellPath)
+    const { shell, shellPath } = this.resolveShellRuntime()
     const title = this.buildTitle(shell)
     const terminalId = randomUUID()
     const cwd = this.resolveWorkingDirectory()
@@ -195,32 +199,6 @@ export class LocalTerminalManager {
     }
   }
 
-  private resolveShellPath() {
-    const candidates =
-      process.platform === 'win32'
-        ? [process.env['ComSpec']?.trim(), 'C:\\Windows\\System32\\cmd.exe', 'cmd.exe']
-        : [process.env['SHELL']?.trim(), '/bin/zsh', '/bin/bash', '/bin/sh']
-
-    for (const candidate of candidates) {
-      if (!candidate) {
-        continue
-      }
-
-      if (!path.isAbsolute(candidate)) {
-        return candidate
-      }
-
-      try {
-        accessSync(candidate, fsConstants.X_OK)
-        return candidate
-      } catch {
-        continue
-      }
-    }
-
-    return process.platform === 'win32' ? 'cmd.exe' : '/bin/sh'
-  }
-
   private resolveWorkingDirectory() {
     const candidates =
       process.platform === 'win32' ? [homedir(), process.cwd()] : [homedir(), process.cwd(), '/']
@@ -244,6 +222,84 @@ export class LocalTerminalManager {
   private resolveShellName(shellPath: string) {
     const name = path.basename(shellPath)
     return name || shellPath
+  }
+
+  private resolveShellRuntime() {
+    const preferredShell = normalizeLocalTerminalShell(
+      this.getSettings().localTerminalShell,
+      process.platform,
+      process.platform === 'win32' ? process.env['ComSpec'] : process.env['SHELL']
+    )
+    const supportedShells = getSupportedLocalTerminalShells(process.platform)
+    const fallbackShells = supportedShells.filter((shell) => shell !== preferredShell)
+
+    for (const shell of [preferredShell, ...fallbackShells]) {
+      const shellPath = this.resolveShellPath(shell)
+      if (shellPath) {
+        return {
+          shell,
+          shellPath
+        }
+      }
+    }
+
+    const fallbackShellPath = process.platform === 'win32' ? 'cmd.exe' : '/bin/sh'
+    return {
+      shell: this.resolveShellName(fallbackShellPath),
+      shellPath: fallbackShellPath
+    }
+  }
+
+  private resolveShellPath(shell: string) {
+    const candidates = this.getShellCandidates(shell)
+
+    for (const candidate of candidates) {
+      if (!candidate) {
+        continue
+      }
+
+      if (!path.isAbsolute(candidate)) {
+        return candidate
+      }
+
+      try {
+        accessSync(candidate, fsConstants.X_OK)
+        return candidate
+      } catch {
+        continue
+      }
+    }
+
+    return null
+  }
+
+  private getShellCandidates(shell: string) {
+    if (process.platform === 'win32') {
+      if (shell === 'powershell') {
+        return [
+          'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+          'powershell.exe'
+        ]
+      }
+
+      const comSpec = process.env['ComSpec']?.trim()
+      const comSpecName = comSpec ? path.basename(comSpec).toLowerCase() : ''
+
+      return [
+        comSpecName === 'cmd.exe' ? comSpec : null,
+        'C:\\Windows\\System32\\cmd.exe',
+        'cmd.exe'
+      ]
+    }
+
+    const envShell = process.env['SHELL']?.trim()
+    const envShellName = envShell ? this.resolveShellName(envShell).toLowerCase() : ''
+
+    if (shell === 'zsh') {
+      return [envShellName === 'zsh' ? envShell : null, '/bin/zsh', '/usr/bin/zsh', 'zsh']
+    }
+
+    return [envShellName === 'bash' ? envShell : null, '/bin/bash', '/usr/bin/bash', 'bash']
   }
 
   private buildTitle(shell: string) {

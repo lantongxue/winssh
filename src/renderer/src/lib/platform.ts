@@ -11,6 +11,10 @@ export function getPlatform() {
   return platform.toLowerCase()
 }
 
+export function isWindowsPlatform(platform = getPlatform()) {
+  return platform.includes('win')
+}
+
 export function isMacPlatform(platform = getPlatform()) {
   return platform.includes('mac')
 }

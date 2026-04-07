@@ -16,6 +16,7 @@ export type PortForwardKind = 'local' | 'remote'
 export type PortForwardStatus = 'starting' | 'active' | 'stopped' | 'error'
 export type SessionConnectFailureCode = 'secret_required' | 'auth_failed' | 'connection_failed'
 export type LocalTerminalStatus = 'running' | 'exited' | 'error'
+export type LocalTerminalShell = 'cmd' | 'powershell' | 'bash' | 'zsh'
 export const SESSION_RESOURCE_MONITOR_LINUX_ONLY = 'session_resource_linux_only'
 export const SESSION_RESOURCE_MONITOR_UNAVAILABLE = 'session_resource_unavailable'
 
@@ -90,6 +91,7 @@ export interface AppSettings {
   cursorStyle: CursorStyle
   cursorBlink: boolean
   copyOnSelect: boolean
+  localTerminalShell: LocalTerminalShell
   windowTitleBarStyle: WindowTitleBarStyle
 }
 
