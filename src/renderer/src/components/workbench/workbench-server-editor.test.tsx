@@ -34,6 +34,11 @@ function renderServerEditor(document = createServerEditorDocument()) {
   )
 }
 
+async function openTagsCombobox() {
+  fireEvent.click(await screen.findByRole('combobox', { name: 'Tags' }))
+  return screen.findByRole('textbox', { name: 'Tags' })
+}
+
 const savedServer = {
   authType: 'password' as const,
   brandId: null,
@@ -116,6 +121,20 @@ describe('WorkbenchServerEditor credentials field', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Hide secret' }))
     expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password')
+  })
+
+  it('keeps authentication and credential policy in the same section', async () => {
+    renderServerEditor()
+
+    const credentialsSection = (await screen.findByText('Credentials')).closest('section')
+
+    expect(credentialsSection).not.toBeNull()
+    expect(
+      within(credentialsSection as HTMLElement).getByRole('combobox', { name: 'Authentication' })
+    ).toBeInTheDocument()
+    expect(
+      within(credentialsSection as HTMLElement).getByRole('combobox', { name: 'Use Credential' })
+    ).toBeInTheDocument()
   })
 
   it('prefills the stored password when editing an existing server', async () => {
@@ -318,9 +337,8 @@ describe('WorkbenchServerEditor credentials field', () => {
 
     renderServerEditor()
 
-    const jumpServerSelect = (await screen.findAllByRole('combobox'))[2]
-    expect(jumpServerSelect).toBeDefined()
-    fireEvent.click(jumpServerSelect as HTMLElement)
+    const jumpServerSelect = await screen.findByRole('combobox', { name: 'Jump Server' })
+    fireEvent.click(jumpServerSelect)
 
     const jumpServerOption = await screen.findByRole('option', { name: /Existing Jump/i })
     expect(within(jumpServerOption).getByText('jumpserver')).toBeInTheDocument()
@@ -446,7 +464,7 @@ describe('WorkbenchServerEditor credentials field', () => {
     )
   })
 
-  it('creates a new tag directly from the inline tag input and selects it', async () => {
+  it('creates a new tag from the tags combobox and selects it', async () => {
     const createTag = vi.fn().mockResolvedValue(databaseTag)
 
     window.winsshApi = createWinsshApiMock({
@@ -458,21 +476,49 @@ describe('WorkbenchServerEditor credentials field', () => {
 
     renderServerEditor()
 
-    const tagInput = await screen.findByLabelText('Add Tag')
+    const tagInput = await openTagsCombobox()
     fireEvent.change(tagInput, {
       target: { value: 'Database' }
     })
-    fireEvent.keyDown(tagInput, { code: 'Enter', key: 'Enter' })
+    fireEvent.click(await screen.findByRole('option', { name: 'Create "Database"' }))
 
     await waitFor(() => {
       expect(createTag).toHaveBeenCalledWith({ color: 'slate', name: 'Database' })
     })
 
-    expect(screen.getByText('1 selected')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Database' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove Database' })).toBeInTheDocument()
   })
 
-  it('selects an existing tag from the inline input without creating a duplicate', async () => {
+  it('creates a new tag from the tags combobox when pressing Enter', async () => {
+    const createTag = vi.fn().mockResolvedValue(databaseTag)
+
+    window.winsshApi = createWinsshApiMock({
+      tags: {
+        create: createTag,
+        list: vi.fn().mockResolvedValue([])
+      }
+    })
+
+    renderServerEditor()
+
+    const tagInput = await openTagsCombobox()
+    fireEvent.change(tagInput, {
+      target: { value: 'Database' }
+    })
+    fireEvent.keyDown(tagInput, { key: 'Enter', code: 'Enter', charCode: 13 })
+
+    await waitFor(() => {
+      expect(createTag).toHaveBeenCalledWith({ color: 'slate', name: 'Database' })
+    })
+
+    await waitFor(() => {
+      expect(tagInput).toHaveValue('')
+    })
+
+    expect(screen.getByRole('button', { name: 'Remove Database' })).toBeInTheDocument()
+  })
+
+  it('selects an existing tag from the tags combobox without creating a duplicate', async () => {
     const createTag = vi.fn()
 
     window.winsshApi = createWinsshApiMock({
@@ -484,21 +530,20 @@ describe('WorkbenchServerEditor credentials field', () => {
 
     renderServerEditor()
 
-    await screen.findByRole('button', { name: 'Database' })
-    const tagInput = await screen.findByLabelText('Add Tag')
+    const tagInput = await openTagsCombobox()
     fireEvent.change(tagInput, {
       target: { value: 'database' }
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Add Tag' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Database' }))
 
     await waitFor(() => {
-      expect(screen.getByText('1 selected')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Remove Database' })).toBeInTheDocument()
     })
 
     expect(createTag).not.toHaveBeenCalled()
   })
 
-  it('deletes a tag from the hover action button', async () => {
+  it('deletes a tag from the tags combobox option action', async () => {
     const deleteTag = vi.fn().mockResolvedValue(undefined)
     const listTags = vi.fn().mockResolvedValueOnce([databaseTag]).mockResolvedValue([])
 
@@ -511,19 +556,23 @@ describe('WorkbenchServerEditor credentials field', () => {
 
     renderServerEditor()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Database' }))
+    const tagInput = await openTagsCombobox()
+    fireEvent.change(tagInput, {
+      target: { value: 'database' }
+    })
+    fireEvent.click(await screen.findByRole('option', { name: 'Database' }))
 
     await waitFor(() => {
-      expect(screen.getByText('1 selected')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Remove Database' })).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Database' }))
 
     await waitFor(() => {
-      expect(screen.getByText('0 selected')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Remove Database' })).not.toBeInTheDocument()
     })
 
     expect(deleteTag).toHaveBeenCalledWith('tag-db')
-    expect(screen.queryByRole('button', { name: 'Database' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Database')).not.toBeInTheDocument()
   })
 })

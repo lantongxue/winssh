@@ -1,8 +1,8 @@
-import { useEffect, useState, type KeyboardEvent } from 'react'
+import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { type ServerIconMimeType } from '@shared/server-brands'
-import { Eye, EyeOff, KeyRound, LoaderCircle, LockKeyhole, ShieldCheck, X } from 'lucide-react'
+import { Eye, EyeOff, KeyRound, LockKeyhole, ShieldCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -23,6 +23,8 @@ import {
 import { useWorkbenchStore } from '@/store/workbench-store'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Combobox } from '@/components/ui/combobox'
+import { ComboboxChips } from '@/components/ui/combobox-chips'
 import {
   Form,
   FormControl,
@@ -353,7 +355,6 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   })
   const serverSecrets = serverSecretsQuery.data
   const [secretVisible, setSecretVisible] = useState(false)
-  const [tagDraft, setTagDraft] = useState('')
   const [tagDraftError, setTagDraftError] = useState<string | null>(null)
   const [tagDraftSubmitting, setTagDraftSubmitting] = useState(false)
   const [deletingTagId, setDeletingTagId] = useState<string | null>(null)
@@ -411,17 +412,34 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   const authType = form.watch('authType')
   const credentialId = form.watch('credentialId')
   const jumpServerId = form.watch('jumpServerId')
-  const selectedTagIds = form.watch('tagIds')
   const tags = tagsQuery.data ?? []
-  const matchingTag = tagDraft.trim()
-    ? (tags.find((tag) => normalizeTagName(tag.name) === normalizeTagName(tagDraft)) ?? null)
-    : null
-  const matchingTagAlreadySelected = matchingTag ? selectedTagIds.includes(matchingTag.id) : false
   const isPrivateKeyAuth = authType === 'privateKey'
   const availableJumpServers = (serversQuery.data ?? []).filter(
     (item) => item.id !== document.serverId
   )
   const selectedJumpServer = availableJumpServers.find((item) => item.id === jumpServerId) ?? null
+  const groupOptions = [
+    {
+      label: t('workbench.serverEditor.placeholders.ungrouped'),
+      value: '__none__'
+    },
+    ...(groupsQuery.data ?? []).map((group) => ({
+      label: group.name,
+      value: group.id
+    }))
+  ]
+  const tagOptions = tags.map((tag) => {
+    const style = getColorStyle(tag.color)
+
+    return {
+      chipClassName: style.badge,
+      chipDotClassName: style.dot,
+      deleteLabel: t('workbench.serverEditor.actions.deleteTag', { name: tag.name }),
+      keywords: [tag.color],
+      label: tag.name,
+      value: tag.id
+    }
+  })
 
   // Derive selected credential object
   const credentials = credentialsQuery.data ?? []
@@ -487,7 +505,6 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   }, [jumpAuthType])
 
   useEffect(() => {
-    setTagDraft('')
     setTagDraftError(null)
     setTagDraftSubmitting(false)
   }, [document.id])
@@ -605,15 +622,6 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     setSelectedTags(form.getValues('tagIds').filter((currentTagId) => currentTagId !== tagId))
   }
 
-  const toggleSelectedTag = (tagId: string) => {
-    const currentTagIds = form.getValues('tagIds')
-    setSelectedTags(
-      currentTagIds.includes(tagId)
-        ? currentTagIds.filter((currentTagId) => currentTagId !== tagId)
-        : [...currentTagIds, tagId]
-    )
-  }
-
   const handleDeleteTag = async (tag: Tag) => {
     setDeletingTagId(tag.id)
 
@@ -640,8 +648,8 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     }
   }
 
-  const handleTagDraftSubmit = async () => {
-    const tagName = tagDraft.trim()
+  const handleCreateTag = async (input: string) => {
+    const tagName = input.trim()
     if (!tagName) {
       return
     }
@@ -668,7 +676,6 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
       )
       if (existing) {
         selectTag(existing.id)
-        setTagDraft('')
         setTagDraftError(null)
         return
       }
@@ -676,7 +683,6 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
       const created = await window.winsshApi.tags.create(parsed.data)
       syncTagsQueryData([...availableTags, created])
       selectTag(created.id)
-      setTagDraft('')
       setTagDraftError(null)
     } catch (error) {
       try {
@@ -687,7 +693,6 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
         )
         if (matched) {
           selectTag(matched.id)
-          setTagDraft('')
           setTagDraftError(null)
           return
         }
@@ -702,15 +707,6 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     } finally {
       setTagDraftSubmitting(false)
     }
-  }
-
-  const handleTagDraftKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== 'Enter') {
-      return
-    }
-
-    event.preventDefault()
-    void handleTagDraftSubmit()
   }
 
   const persistServer = async (
@@ -951,13 +947,106 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="groupId"
+                render={({ field }) => (
+                  <FormItem className="content-start">
+                    <FormLabel>{t('workbench.serverEditor.fields.group')}</FormLabel>
+                    <FormControl>
+                      <Combobox
+                        aria-label={t('workbench.serverEditor.fields.group')}
+                        className="h-9 bg-[var(--workbench-editor)] shadow-xs"
+                        value={field.value ?? '__none__'}
+                        options={groupOptions}
+                        placeholder={t('workbench.serverEditor.placeholders.ungrouped')}
+                        searchPlaceholder={t('workbench.serverEditor.fields.group')}
+                        emptyText={t('workbench.serverEditor.placeholders.ungrouped')}
+                        onValueChange={(value) =>
+                          field.onChange(value === '__none__' ? null : value)
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="tagIds"
+                render={({ field }) => (
+                  <FormItem className="content-start">
+                    <FormLabel>{t('workbench.serverEditor.fields.tags')}</FormLabel>
+                    <FormControl>
+                      <ComboboxChips
+                        aria-label={t('workbench.serverEditor.fields.tags')}
+                        className="bg-[var(--workbench-editor)]"
+                        value={field.value}
+                        options={tagOptions}
+                        placeholder={t('workbench.serverEditor.placeholders.tag')}
+                        searchPlaceholder={t('workbench.serverEditor.fields.tagInput')}
+                        emptyText={t('workbench.serverEditor.empty.tags')}
+                        creating={tagDraftSubmitting}
+                        deletingOptionValue={deletingTagId}
+                        createOptionLabel={(query) => `${t('common.actions.create')} "${query}"`}
+                        onValueChange={(value) => {
+                          setSelectedTags(value)
+                          if (tagDraftError) {
+                            setTagDraftError(null)
+                          }
+                        }}
+                        onQueryChange={(query) => {
+                          if (query && tagDraftError) {
+                            setTagDraftError(null)
+                          }
+                        }}
+                        onCreateOption={(query) => void handleCreateTag(query)}
+                        onDeleteOption={(option) => {
+                          const tag = tags.find((item) => item.id === option.value)
+                          if (!tag) {
+                            return
+                          }
+                          void handleDeleteTag(tag)
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage>{tagDraftError}</FormMessage>
+                  </FormItem>
+                )}
+              />
             </div>
+            <FormField
+              control={form.control}
+              name="favorite"
+              render={({ field }) => (
+                <FormItem className="mt-5 flex items-center justify-between rounded-sm border border-[var(--workbench-border)] px-4 py-3">
+                  <div>
+                    <div className="flex items-center gap-2 font-medium">
+                      <FavoriteIcon className="size-4 text-amber-400" />
+                      {t('workbench.serverEditor.fields.favoriteTitle')}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {t('workbench.serverEditor.fields.favoriteDescription')}
+                    </div>
+                  </div>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
           </section>
 
           <section className="liquid-glass-card border border-[var(--workbench-border)] px-6 py-5">
-            <div className="mb-4 text-base font-semibold">
-              {t('workbench.serverEditor.sections.strategy')}
+            <div className="mb-4 flex items-center gap-2 text-base font-semibold">
+              {isPrivateKeyAuth ? (
+                <KeyRound className="size-4 text-primary" />
+              ) : (
+                <LockKeyhole className="size-4 text-primary" />
+              )}
+              {t('workbench.serverEditor.sections.credentials')}
             </div>
+
             <div className="grid gap-4 lg:grid-cols-2">
               <FormField
                 control={form.control}
@@ -984,244 +1073,6 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="groupId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('workbench.serverEditor.fields.group')}</FormLabel>
-                    <Select
-                      value={field.value ?? '__none__'}
-                      onValueChange={(value) => field.onChange(value === '__none__' ? null : value)}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue
-                            placeholder={t('workbench.serverEditor.placeholders.ungrouped')}
-                          />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="__none__">
-                          {t('workbench.serverEditor.placeholders.ungrouped')}
-                        </SelectItem>
-                        {(groupsQuery.data ?? []).map((group) => (
-                          <SelectItem key={group.id} value={group.id}>
-                            {group.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <div className="mt-5 rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-input)]/35 p-4">
-              <FormField
-                control={form.control}
-                name="jumpServerId"
-                render={({ field }) => (
-                  <FormItem className="gap-3">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="space-y-1">
-                        <FormLabel>{t('workbench.serverEditor.fields.jumpServer')}</FormLabel>
-                        <FormDescription>
-                          {t('workbench.serverEditor.descriptions.jumpServer')}
-                        </FormDescription>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="w-full lg:w-auto lg:self-start"
-                        onClick={openJumpServerDialog}
-                      >
-                        <ShieldCheck className="size-4" />
-                        {t('workbench.serverEditor.actions.createJumpServer')}
-                      </Button>
-                    </div>
-                    <Select
-                      value={field.value ?? '__none__'}
-                      onValueChange={(value) => field.onChange(value === '__none__' ? null : value)}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="bg-[var(--workbench-editor)]">
-                          <SelectValue
-                            placeholder={t('workbench.serverEditor.placeholders.jumpServer')}
-                          />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="__none__">
-                          {t('workbench.serverEditor.placeholders.jumpServer')}
-                        </SelectItem>
-                        {availableJumpServers.map((jumpServer) => (
-                          <SelectItem
-                            key={jumpServer.id}
-                            value={jumpServer.id}
-                            textValue={`${jumpServer.name} ${jumpServer.tags.map((tag) => tag.name).join(' ')}`.trim()}
-                          >
-                            <div className="flex w-full min-w-0 items-center gap-2">
-                              <span className="truncate">{jumpServer.name}</span>
-                              <ServerTagBadges tags={jumpServer.tags} />
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {selectedJumpServer ? (
-                      <div className="flex flex-wrap items-center gap-2 rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-editor)] px-3 py-2 text-sm">
-                        <ShieldCheck className="size-4 text-amber-500" />
-                        <span className="font-medium text-foreground">
-                          {selectedJumpServer.name}
-                        </span>
-                        <ServerTagBadges tags={selectedJumpServer.tags} />
-                        <span className="text-muted-foreground">
-                          {t('workbench.serverEditor.descriptions.existing', {
-                            host: selectedJumpServer.host,
-                            port: selectedJumpServer.port,
-                            username: selectedJumpServer.username
-                          })}
-                        </span>
-                      </div>
-                    ) : null}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
-              name="favorite"
-              render={({ field }) => (
-                <FormItem className="mt-4 flex items-center justify-between rounded-sm border border-[var(--workbench-border)] px-4 py-3">
-                  <div>
-                    <div className="flex items-center gap-2 font-medium">
-                      <FavoriteIcon className="size-4 text-amber-400" />
-                      {t('workbench.serverEditor.fields.favoriteTitle')}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {t('workbench.serverEditor.fields.favoriteDescription')}
-                    </div>
-                  </div>
-                  <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          </section>
-
-          <section className="liquid-glass-card border border-[var(--workbench-border)] px-6 py-5">
-            <div className="mb-4 text-base font-semibold">
-              {t('workbench.serverEditor.sections.brand')}
-            </div>
-            <div className="rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-panel)]/35 p-4">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex min-w-0 items-center gap-4">
-                  <div className="flex size-14 shrink-0 items-center justify-center rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-editor)]">
-                    <ServerBrandIcon
-                      brandId={server?.brandId}
-                      customIconDataUrl={visibleCustomIconDataUrl}
-                      className="size-8 text-[var(--workbench-active)]"
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-medium text-foreground">
-                      {t('workbench.serverEditor.fields.brand')}
-                    </div>
-                    <div className="mt-1 truncate text-sm text-foreground">{brandLabel}</div>
-                    <div className="mt-1 text-sm text-muted-foreground">{brandDescription}</div>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => void handleUploadCustomIcon()}
-                  >
-                    <UploadIcon className="size-4" />
-                    {t('common.actions.upload')}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={!hasVisibleCustomIcon}
-                    onClick={() => setCustomIconDraft({ kind: 'removed' })}
-                  >
-                    <RemoveIcon className="size-4" />
-                    {t('workbench.serverEditor.actions.removeCustomIcon')}
-                  </Button>
-                </div>
-              </div>
-              <FormDescription className="mt-4">
-                {t('workbench.serverEditor.descriptions.brand')}
-              </FormDescription>
-            </div>
-          </section>
-
-          {isPrivateKeyAuth ? (
-            <section className="liquid-glass-card border border-[var(--workbench-border)] px-6 py-5">
-              <div className="mb-4 text-base font-semibold">
-                {t('workbench.serverEditor.sections.privateKey')}
-              </div>
-              <FormField
-                control={form.control}
-                name="privateKey"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <FormLabel className="leading-none">
-                        {t('workbench.serverEditor.fields.privateKeyFile')}
-                      </FormLabel>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                        onClick={async () => {
-                          const privateKey = await window.winsshApi.system.pickPrivateKey()
-                          if (privateKey) {
-                            form.setValue('privateKey', privateKey, {
-                              shouldDirty: true,
-                              shouldValidate: true
-                            })
-                          }
-                        }}
-                      >
-                        <BrowseIcon className="size-4" />
-                        {t('common.actions.browse')}
-                      </Button>
-                    </div>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        value={field.value ?? ''}
-                        rows={6}
-                        className="field-sizing-fixed min-h-[8rem] resize-y font-mono text-xs leading-5"
-                        placeholder={t('workbench.serverEditor.placeholders.privateKeyFile')}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </section>
-          ) : null}
-
-          <section className="liquid-glass-card border border-[var(--workbench-border)] px-6 py-5">
-            <div className="mb-4 flex items-center gap-2 text-base font-semibold">
-              {isPrivateKeyAuth ? (
-                <KeyRound className="size-4 text-primary" />
-              ) : (
-                <LockKeyhole className="size-4 text-primary" />
-              )}
-              {t('workbench.serverEditor.fields.credentials')}
-            </div>
-
-            {/* Credential vault selector */}
-            <div className="mb-4">
               <FormField
                 control={form.control}
                 name="credentialId"
@@ -1273,7 +1124,50 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
               />
             </div>
 
-            <div className="space-y-4">
+            <div className="mt-4 space-y-4">
+              {isPrivateKeyAuth ? (
+                <FormField
+                  control={form.control}
+                  name="privateKey"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <FormLabel className="leading-none">
+                          {t('workbench.serverEditor.fields.privateKeyFile')}
+                        </FormLabel>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full sm:w-auto"
+                          onClick={async () => {
+                            const privateKey = await window.winsshApi.system.pickPrivateKey()
+                            if (privateKey) {
+                              form.setValue('privateKey', privateKey, {
+                                shouldDirty: true,
+                                shouldValidate: true
+                              })
+                            }
+                          }}
+                        >
+                          <BrowseIcon className="size-4" />
+                          {t('common.actions.browse')}
+                        </Button>
+                      </div>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          value={field.value ?? ''}
+                          rows={6}
+                          className="field-sizing-fixed min-h-[8rem] resize-y font-mono text-xs leading-5"
+                          placeholder={t('workbench.serverEditor.placeholders.privateKeyFile')}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
               <FormField
                 control={form.control}
                 name={isPrivateKeyAuth ? 'passphrase' : 'password'}
@@ -1341,116 +1235,123 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
           <section className="liquid-glass-card border border-[var(--workbench-border)] px-6 py-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="text-base font-semibold">
-                {t('workbench.serverEditor.sections.tags')}
+                {t('workbench.serverEditor.fields.jumpServer')}
               </div>
-              <Badge variant="secondary">
-                {t('common.labels.selectedCount', { count: selectedTagIds.length })}
-              </Badge>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={openJumpServerDialog}
+              >
+                <ShieldCheck className="size-4" />
+                {t('workbench.serverEditor.actions.createJumpServer')}
+              </Button>
             </div>
             <FormField
               control={form.control}
-              name="tagIds"
+              name="jumpServerId"
               render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <div className="space-y-3">
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <Input
-                          value={tagDraft}
-                          aria-label={t('workbench.serverEditor.fields.tagInput')}
-                          placeholder={t('workbench.serverEditor.placeholders.tag')}
-                          disabled={form.formState.isSubmitting || tagDraftSubmitting}
-                          onChange={(event) => {
-                            setTagDraft(event.target.value)
-                            if (tagDraftError) {
-                              setTagDraftError(null)
-                            }
-                          }}
-                          onKeyDown={handleTagDraftKeyDown}
+                <FormItem className="gap-3">
+                  <FormLabel className="sr-only">
+                    {t('workbench.serverEditor.fields.jumpServer')}
+                  </FormLabel>
+                  <FormDescription>{t('workbench.serverEditor.descriptions.jumpServer')}</FormDescription>
+                  <Select
+                    value={field.value ?? '__none__'}
+                    onValueChange={(value) => field.onChange(value === '__none__' ? null : value)}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="bg-[var(--workbench-editor)]">
+                        <SelectValue
+                          placeholder={t('workbench.serverEditor.placeholders.jumpServer')}
                         />
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="sm:self-start"
-                          disabled={
-                            form.formState.isSubmitting ||
-                            tagDraftSubmitting ||
-                            !tagDraft.trim() ||
-                            matchingTagAlreadySelected
-                          }
-                          onClick={() => void handleTagDraftSubmit()}
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="__none__">
+                        {t('workbench.serverEditor.placeholders.jumpServer')}
+                      </SelectItem>
+                      {availableJumpServers.map((jumpServer) => (
+                        <SelectItem
+                          key={jumpServer.id}
+                          value={jumpServer.id}
+                          textValue={`${jumpServer.name} ${jumpServer.tags.map((tag) => tag.name).join(' ')}`.trim()}
                         >
-                          {tagDraftSubmitting ? (
-                            <LoaderCircle className="size-4 animate-spin" />
-                          ) : null}
-                          {matchingTag
-                            ? t('workbench.serverEditor.actions.addTag')
-                            : t('common.actions.create')}
-                        </Button>
-                      </div>
-                      <FormDescription>
-                        {t('workbench.serverEditor.descriptions.tagsInput')}
-                      </FormDescription>
-                      {tagDraftError ? (
-                        <div className="text-sm font-medium text-destructive">{tagDraftError}</div>
-                      ) : null}
-                      <div className="flex flex-wrap gap-2">
-                        {tags.map((tag) => {
-                          const active = field.value.includes(tag.id)
-                          const style = getColorStyle(tag.color)
-                          const isDeleting = deletingTagId === tag.id
-
-                          return (
-                            <div key={tag.id} className="group/tag relative">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className={cn(
-                                  'h-auto rounded-full px-3 py-2 pr-7',
-                                  active ? `${style.badge} ${style.ring} ring-1` : 'bg-transparent'
-                                )}
-                                disabled={isDeleting}
-                                onClick={() => toggleSelectedTag(tag.id)}
-                              >
-                                {tag.name}
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon-xs"
-                                disabled={isDeleting}
-                                className="absolute -top-1 -right-1 z-10 rounded-full border border-[var(--workbench-border)] bg-[var(--workbench-editor)] text-[var(--workbench-muted)] opacity-0 shadow-sm transition-all pointer-events-none group-hover/tag:opacity-100 group-hover/tag:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto hover:bg-destructive hover:text-destructive-foreground"
-                                aria-label={t('workbench.serverEditor.actions.deleteTag', {
-                                  name: tag.name
-                                })}
-                                onClick={(event) => {
-                                  event.preventDefault()
-                                  event.stopPropagation()
-                                  void handleDeleteTag(tag)
-                                }}
-                              >
-                                {isDeleting ? (
-                                  <LoaderCircle className="size-3 animate-spin" />
-                                ) : (
-                                  <X className="size-3" />
-                                )}
-                              </Button>
-                            </div>
-                          )
-                        })}
-                        {tags.length === 0 ? (
-                          <div className="rounded-sm border border-dashed border-[var(--workbench-border)] px-3 py-4 text-sm text-muted-foreground">
-                            {t('workbench.serverEditor.empty.tags')}
+                          <div className="flex w-full min-w-0 items-center gap-2">
+                            <span className="truncate">{jumpServer.name}</span>
+                            <ServerTagBadges tags={jumpServer.tags} />
                           </div>
-                        ) : null}
-                      </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedJumpServer ? (
+                    <div className="flex flex-wrap items-center gap-2 rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-editor)] px-3 py-2 text-sm">
+                      <ShieldCheck className="size-4 text-amber-500" />
+                      <span className="font-medium text-foreground">{selectedJumpServer.name}</span>
+                      <ServerTagBadges tags={selectedJumpServer.tags} />
+                      <span className="text-muted-foreground">
+                        {t('workbench.serverEditor.descriptions.existing', {
+                          host: selectedJumpServer.host,
+                          port: selectedJumpServer.port,
+                          username: selectedJumpServer.username
+                        })}
+                      </span>
                     </div>
-                  </FormControl>
+                  ) : null}
                   <FormMessage />
                 </FormItem>
               )}
             />
+          </section>
+
+          <section className="liquid-glass-card border border-[var(--workbench-border)] px-6 py-5">
+            <div className="mb-4 text-base font-semibold">
+              {t('workbench.serverEditor.sections.brand')}
+            </div>
+            <div className="rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-panel)]/35 p-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex min-w-0 items-center gap-4">
+                  <div className="flex size-14 shrink-0 items-center justify-center rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-editor)]">
+                    <ServerBrandIcon
+                      brandId={server?.brandId}
+                      customIconDataUrl={visibleCustomIconDataUrl}
+                      className="size-8 text-[var(--workbench-active)]"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-medium text-foreground">
+                      {t('workbench.serverEditor.fields.brand')}
+                    </div>
+                    <div className="mt-1 truncate text-sm text-foreground">{brandLabel}</div>
+                    <div className="mt-1 text-sm text-muted-foreground">{brandDescription}</div>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void handleUploadCustomIcon()}
+                  >
+                    <UploadIcon className="size-4" />
+                    {t('common.actions.upload')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!hasVisibleCustomIcon}
+                    onClick={() => setCustomIconDraft({ kind: 'removed' })}
+                  >
+                    <RemoveIcon className="size-4" />
+                    {t('workbench.serverEditor.actions.removeCustomIcon')}
+                  </Button>
+                </div>
+              </div>
+              <FormDescription className="mt-4">
+                {t('workbench.serverEditor.descriptions.brand')}
+              </FormDescription>
+            </div>
           </section>
 
           <section className="liquid-glass-card border border-[var(--workbench-border)] px-6 py-5">
