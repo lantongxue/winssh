@@ -14,12 +14,6 @@ files:
 asarUnpack:
   - 'node_modules/better-sqlite3/**'
   - 'node_modules/keytar/**'
-extraResources:
-  - from: resources/bin
-    to: bin
-    filter:
-      - 'macos-list-fonts'
-      - 'macos-list-fonts.*'
 extraMetadata:
   main: ./out/main/index.js
 win:
@@ -47,6 +41,12 @@ mac:
   notarize: false
   entitlementsInherit: build/entitlements.mac.plist
   artifactName: ${productName}-Mac-${version}-${arch}.${ext}
+  extraResources:
+    - from: resources/bin
+      to: bin
+      filter:
+        - 'macos-list-fonts'
+        - 'macos-list-fonts.*'
 dmg:
   artifactName: ${productName}-Mac-${version}-${arch}.${ext}
 linux:
