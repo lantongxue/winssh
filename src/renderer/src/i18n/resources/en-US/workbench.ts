@@ -517,6 +517,10 @@ const workbench = {
         copyPathToTerminal: 'Send Path to Terminal',
         openDirectory: 'Open Directory'
       },
+      dropzone: {
+        description: 'Upload them into {{path}}.',
+        title: 'Drop files or folders to upload'
+      },
       dialogs: {
         createFile: 'New File',
         createFolder: 'New Folder',
@@ -545,7 +549,8 @@ const workbench = {
         pathCopied: 'Path copied.',
         pathCopyFailed: 'Failed to copy the path.',
         pathSendToTerminalFailed: 'Failed to send the path to the terminal.',
-        pathSentToTerminal: 'Path sent to the terminal.'
+        pathSentToTerminal: 'Path sent to the terminal.',
+        uploadFailed: 'Failed to upload the selected items.'
       }
     },
     statusBar: {

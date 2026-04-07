@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { WinsshApi } from '@shared/api'
 
 function subscribe<T>(channel: string, callback: (payload: T) => void) {
@@ -71,6 +71,8 @@ const api: WinsshApi = {
     remove: (sessionId, remotePath) => ipcRenderer.invoke('sftp:remove', sessionId, remotePath),
     uploadFiles: (sessionId, targetPath) =>
       ipcRenderer.invoke('sftp:uploadFiles', sessionId, targetPath),
+    uploadPaths: (sessionId, targetPath, localPaths) =>
+      ipcRenderer.invoke('sftp:uploadPaths', sessionId, targetPath, localPaths),
     downloadFile: (sessionId, remotePath) =>
       ipcRenderer.invoke('sftp:downloadFile', sessionId, remotePath),
     refresh: (sessionId, remotePath) => ipcRenderer.invoke('sftp:refresh', sessionId, remotePath),
@@ -94,6 +96,14 @@ const api: WinsshApi = {
     deletePlugin: (pluginId) => ipcRenderer.invoke('themes:deletePlugin', pluginId)
   },
   system: {
+    getPathForFile: (file) => {
+      try {
+        const localPath = webUtils.getPathForFile(file)
+        return localPath.trim() ? localPath : null
+      } catch {
+        return null
+      }
+    },
     pickPrivateKey: () => ipcRenderer.invoke('system:pickPrivateKey'),
     pickServerIcon: () => ipcRenderer.invoke('system:pickServerIcon'),
     listFonts: () => ipcRenderer.invoke('system:listFonts'),

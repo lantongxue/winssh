@@ -95,6 +95,7 @@ export interface WinsshApi {
     rename: (sessionId: string, path: string, newName: string) => Promise<void>
     remove: (sessionId: string, path: string) => Promise<void>
     uploadFiles: (sessionId: string, targetPath: string) => Promise<void>
+    uploadPaths: (sessionId: string, targetPath: string, localPaths: string[]) => Promise<void>
     downloadFile: (sessionId: string, remotePath: string) => Promise<void>
     refresh: (sessionId: string, path: string) => Promise<SftpListResult>
     onTransferProgress: (callback: (event: TransferProgressEvent) => void) => Unsubscribe
@@ -117,6 +118,7 @@ export interface WinsshApi {
     deletePlugin: (pluginId: string) => Promise<ThemeDeleteResult>
   }
   system: {
+    getPathForFile: (file: File) => string | null
     pickPrivateKey: () => Promise<string | null>
     pickServerIcon: () => Promise<{ mimeType: ServerIconMimeType; data: Uint8Array } | null>
     listFonts: () => Promise<string[]>

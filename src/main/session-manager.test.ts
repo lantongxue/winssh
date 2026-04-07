@@ -1,5 +1,8 @@
 import { EventEmitter } from 'node:events'
+import { promises as fs } from 'node:fs'
 import net, { type AddressInfo } from 'node:net'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -92,6 +95,7 @@ type ExecBehavior =
     }
 
 const execBehaviors: ExecBehavior[] = []
+const temporaryPaths: string[] = []
 
 function createManager() {
   return new SessionManager(
@@ -233,10 +237,15 @@ function createResourceMonitorOutput({
   return `${sections.join('\n')}\n`
 }
 
-afterEach(() => {
+afterEach(async () => {
   vi.restoreAllMocks()
   vi.useRealTimers()
   execBehaviors.length = 0
+  await Promise.all(
+    temporaryPaths.splice(0).map((targetPath) =>
+      fs.rm(targetPath, { recursive: true, force: true }).catch(() => undefined)
+    )
+  )
 })
 
 describe('SessionManager port forwarding', () => {
@@ -367,6 +376,237 @@ describe('SessionManager port forwarding', () => {
     expect(newClient.forwardIn).toHaveBeenCalledTimes(1)
 
     manager.dispose()
+  })
+
+  it('uploads local directories recursively and preserves empty folders', async () => {
+    const manager = createManager()
+    const client = new MockClient()
+    const rootDir = await fs.mkdtemp(join(tmpdir(), 'winssh-sftp-upload-'))
+    const localProjectPath = join(rootDir, 'project')
+    temporaryPaths.push(rootDir)
+
+    await fs.mkdir(join(localProjectPath, 'nested', 'empty'), { recursive: true })
+    await fs.writeFile(join(localProjectPath, 'nested', 'config.json'), '{"ok":true}\n')
+    await fs.writeFile(join(localProjectPath, 'README.md'), '# demo\n')
+
+    const remoteDirectories = new Set(['/deploy'])
+    const uploadedFiles: Array<{ localPath: string; remotePath: string }> = []
+    const sftp = {
+      fastPut: vi.fn(
+        (
+          localPath: string,
+          remotePath: string,
+          options: { step?: (transferred: number, chunk: number, total: number) => void },
+          callback: (error?: Error) => void
+        ) => {
+          uploadedFiles.push({ localPath, remotePath })
+          options.step?.(1, 1, 1)
+          callback()
+        }
+      ),
+      mkdir: vi.fn((remotePath: string, callback: (error?: Error) => void) => {
+        if (remoteDirectories.has(remotePath)) {
+          callback(new Error('EEXIST'))
+          return
+        }
+
+        remoteDirectories.add(remotePath)
+        callback()
+      }),
+      stat: vi.fn(
+        (
+          remotePath: string,
+          callback: (error: Error | undefined, stats?: { isDirectory: () => boolean }) => void
+        ) => {
+          if (remoteDirectories.has(remotePath)) {
+            callback(undefined, { isDirectory: () => true })
+            return
+          }
+
+          if (uploadedFiles.some((entry) => entry.remotePath === remotePath)) {
+            callback(undefined, { isDirectory: () => false })
+            return
+          }
+
+          callback(new Error('ENOENT'))
+        }
+      )
+    } as never
+
+    const runtime = {
+      ...createRuntime('session-1', client),
+      sftp
+    }
+    getSessionsMap(manager).set('session-1', runtime)
+
+    await manager.uploadPaths('session-1', '/deploy', [localProjectPath])
+
+    expect(remoteDirectories).toEqual(
+      new Set(['/deploy', '/deploy/project', '/deploy/project/nested', '/deploy/project/nested/empty'])
+    )
+    expect(uploadedFiles.map((entry) => entry.remotePath).sort()).toEqual([
+      '/deploy/project/README.md',
+      '/deploy/project/nested/config.json'
+    ])
+  })
+
+  it('removes non-empty directories recursively', async () => {
+    const manager = createManager()
+    const client = new MockClient()
+    const removedFiles: string[] = []
+    const removedDirectories: string[] = []
+    const remoteDirectories = new Set(['/deploy/project', '/deploy/project/nested'])
+    const remoteFiles = new Set(['/deploy/project/README.md', '/deploy/project/nested/config.json'])
+
+    const createStats = (kind: 'directory' | 'file' | 'symlink') =>
+      ({
+        isDirectory: () => kind === 'directory',
+        isSymbolicLink: () => kind === 'symlink'
+      }) as {
+        isDirectory: () => boolean
+        isSymbolicLink: () => boolean
+      }
+
+    const sftp = {
+      lstat: vi.fn(
+        (
+          remotePath: string,
+          callback: (
+            error: Error | undefined,
+            stats?: {
+              isDirectory: () => boolean
+              isSymbolicLink: () => boolean
+            }
+          ) => void
+        ) => {
+          if (remoteDirectories.has(remotePath)) {
+            callback(undefined, createStats('directory'))
+            return
+          }
+
+          if (remoteFiles.has(remotePath)) {
+            callback(undefined, createStats('file'))
+            return
+          }
+
+          callback(new Error('ENOENT'))
+        }
+      ),
+      readdir: vi.fn((remotePath: string, callback: (error?: Error, entries?: unknown[]) => void) => {
+        if (remotePath === '/deploy/project') {
+          callback(undefined, [
+            {
+              attrs: {
+                isDirectory: () => false,
+                isSymbolicLink: () => false,
+                mtime: 0,
+                size: 7
+              },
+              filename: 'README.md'
+            },
+            {
+              attrs: {
+                isDirectory: () => true,
+                isSymbolicLink: () => false,
+                mtime: 0,
+                size: 0
+              },
+              filename: 'nested'
+            }
+          ])
+          return
+        }
+
+        if (remotePath === '/deploy/project/nested') {
+          callback(undefined, [
+            {
+              attrs: {
+                isDirectory: () => false,
+                isSymbolicLink: () => false,
+                mtime: 0,
+                size: 15
+              },
+              filename: 'config.json'
+            }
+          ])
+          return
+        }
+
+        callback(undefined, [])
+      }),
+      rmdir: vi.fn((remotePath: string, callback: (error?: Error) => void) => {
+        removedDirectories.push(remotePath)
+        remoteDirectories.delete(remotePath)
+        callback()
+      }),
+      unlink: vi.fn((remotePath: string, callback: (error?: Error) => void) => {
+        removedFiles.push(remotePath)
+        remoteFiles.delete(remotePath)
+        callback()
+      })
+    } as never
+
+    const runtime = {
+      ...createRuntime('session-1', client),
+      sftp
+    }
+    getSessionsMap(manager).set('session-1', runtime)
+
+    await manager.remove('session-1', '/deploy/project')
+
+    expect([...removedFiles].sort()).toEqual([
+      '/deploy/project/README.md',
+      '/deploy/project/nested/config.json'
+    ])
+    expect(removedDirectories).toEqual(['/deploy/project/nested', '/deploy/project'])
+  })
+
+  it('removes symlinks with unlink instead of recursing into their targets', async () => {
+    const manager = createManager()
+    const client = new MockClient()
+    const unlink = vi.fn((_remotePath: string, callback: (error?: Error) => void) => callback())
+    const readdir = vi.fn()
+    const rmdir = vi.fn()
+    const sftp = {
+      lstat: vi.fn(
+        (
+          remotePath: string,
+          callback: (
+            error: Error | undefined,
+            stats?: {
+              isDirectory: () => boolean
+              isSymbolicLink: () => boolean
+            }
+          ) => void
+        ) => {
+          if (remotePath === '/deploy/link-to-dir') {
+            callback(undefined, {
+              isDirectory: () => false,
+              isSymbolicLink: () => true
+            })
+            return
+          }
+
+          callback(new Error('ENOENT'))
+        }
+      ),
+      readdir,
+      stat: vi.fn(),
+      rmdir,
+      unlink
+    } as never
+
+    const runtime = {
+      ...createRuntime('session-1', client),
+      sftp
+    }
+    getSessionsMap(manager).set('session-1', runtime)
+
+    await manager.remove('session-1', '/deploy/link-to-dir')
+
+    expect(unlink).toHaveBeenCalledWith('/deploy/link-to-dir', expect.any(Function))
+    expect(readdir).not.toHaveBeenCalled()
+    expect(rmdir).not.toHaveBeenCalled()
   })
 
   it('does not auto-restore a manually stopped rule after reconnect', async () => {

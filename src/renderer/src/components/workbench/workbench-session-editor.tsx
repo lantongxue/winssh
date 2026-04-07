@@ -71,7 +71,7 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
     prefersDark
   )
   const terminalView = (
-    <div className="h-full min-w-0 p-3">
+    <div className="h-full min-w-0">
       <TerminalPane
         active={active}
         session={session}

@@ -137,6 +137,12 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
   const resolvedSystemApi: WinsshApi['system'] = {
     getCapabilities:
       systemOverrides?.getCapabilities ?? (async () => ({ credentialStorage: true })),
+    getPathForFile:
+      systemOverrides?.getPathForFile ??
+      ((file) => {
+        const maybePath = (file as { path?: string } | null | undefined)?.path
+        return maybePath?.trim() ? maybePath : null
+      }),
     getKnownHosts: systemOverrides?.getKnownHosts ?? (async () => []),
     listFonts:
       systemOverrides?.listFonts ??
@@ -256,6 +262,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       remove: async () => undefined,
       rename: async () => undefined,
       uploadFiles: async () => undefined,
+      uploadPaths: async () => undefined,
       ...overrides.sftp
     },
     portForwards: {

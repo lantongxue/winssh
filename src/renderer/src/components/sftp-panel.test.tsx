@@ -193,4 +193,88 @@ describe('SftpPanel', () => {
       expect(list).toHaveBeenLastCalledWith('session-1', '/etc/nginx/sites-enabled')
     })
   })
+
+  it('uploads dropped files and folders into the current directory', async () => {
+    const list = vi.fn().mockResolvedValue({
+      entries,
+      path: '/var/www'
+    })
+    const uploadPaths = vi.fn().mockResolvedValue(undefined)
+    const getPathForFile = vi.fn((file: File) => (file as { path?: string }).path ?? null)
+
+    window.winsshApi = createWinsshApiMock({
+      sftp: {
+        list,
+        uploadPaths
+      },
+      system: {
+        getPathForFile
+      }
+    })
+
+    renderSftpPanel(session)
+
+    const region = screen.getByRole('region', { name: 'SFTP Explorer' })
+    const droppedFile = { path: 'C:\\Users\\tester\\notes.txt' } as unknown as File
+    const droppedFolder = { path: 'C:\\Users\\tester\\project' } as unknown as File
+    const dataTransfer = {
+      dropEffect: 'none',
+      files: [droppedFile, droppedFolder],
+      items: [
+        {
+          getAsFile: () => droppedFile,
+          kind: 'file'
+        },
+        {
+          getAsFile: () => droppedFolder,
+          kind: 'file'
+        }
+      ],
+      types: ['Files']
+    }
+
+    fireEvent.dragEnter(region, { dataTransfer })
+    expect(screen.getByText('Drop files or folders to upload')).toBeInTheDocument()
+
+    fireEvent.drop(region, { dataTransfer })
+
+    await waitFor(() => {
+      expect(uploadPaths).toHaveBeenCalledWith('session-1', '/var/www', [
+        'C:\\Users\\tester\\notes.txt',
+        'C:\\Users\\tester\\project'
+      ])
+    })
+    expect(getPathForFile).toHaveBeenCalledTimes(4)
+    await waitFor(() => {
+      expect(screen.queryByText('Drop files or folders to upload')).not.toBeInTheDocument()
+    })
+  })
+
+  it('shows a removing transition state before deleting the entry', async () => {
+    const remove = vi.fn(() => new Promise<void>(() => undefined))
+
+    window.winsshApi = createWinsshApiMock({
+      sftp: {
+        list: vi.fn().mockResolvedValue({
+          entries,
+          path: '/var/www'
+        }),
+        remove
+      }
+    })
+
+    renderSftpPanel(session)
+
+    const entryLabel = await screen.findByText('config.json')
+    const entryButton = entryLabel.closest('button')
+
+    expect(entryButton).not.toBeNull()
+
+    fireEvent.contextMenu(entryLabel)
+    fireEvent.click(await screen.findByText('Delete'))
+
+    await waitFor(() => {
+      expect(entryButton).toHaveAttribute('data-removing', 'true')
+    })
+  })
 })

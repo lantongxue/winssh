@@ -502,6 +502,10 @@ const workbench = {
         copyPathToTerminal: '复制路径到终端',
         openDirectory: '打开目录'
       },
+      dropzone: {
+        description: '会上传到 {{path}}。',
+        title: '拖放文件或文件夹以上传'
+      },
       dialogs: {
         createFile: '新建文件',
         createFolder: '新建文件夹',
@@ -529,7 +533,8 @@ const workbench = {
         pathCopied: '路径已复制。',
         pathCopyFailed: '复制路径失败。',
         pathSendToTerminalFailed: '复制路径到终端失败。',
-        pathSentToTerminal: '路径已发送到终端。'
+        pathSentToTerminal: '路径已发送到终端。',
+        uploadFailed: '上传所选项目失败。'
       }
     },
     statusBar: {

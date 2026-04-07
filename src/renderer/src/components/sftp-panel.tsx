@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { File, Folder, Undo2, X } from 'lucide-react'
+import { File, Folder, LoaderCircle, Undo2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { getParentRemotePath } from '@shared/sftp'
@@ -36,6 +36,10 @@ interface SftpPanelProps {
   className?: string
 }
 
+type FileWithPath = File & {
+  path?: string
+}
+
 function TooltipIconButton({
   children,
   label,
@@ -57,6 +61,52 @@ function TooltipIconButton({
 
 // 每个文件条目的固定高度（px-3 py-2 两行文字，约 56px）
 const ENTRY_ITEM_HEIGHT = 56
+const REMOVE_EXIT_ANIMATION_MS = 180
+
+function hasLocalFileTransfer(dataTransfer: DataTransfer | null | undefined) {
+  return Array.from(dataTransfer?.types ?? []).includes('Files')
+}
+
+function resolveDroppedFilePath(file: File | null | undefined) {
+  if (!file) {
+    return null
+  }
+
+  const localPath =
+    window.winsshApi.system.getPathForFile(file) ??
+    (file as FileWithPath | null | undefined)?.path ??
+    null
+
+  if (!localPath?.trim()) {
+    return null
+  }
+
+  return localPath.trim()
+}
+
+function getDroppedLocalPaths(dataTransfer: DataTransfer | null | undefined) {
+  const localPaths = new Set<string>()
+
+  for (const item of Array.from(dataTransfer?.items ?? [])) {
+    if (item.kind !== 'file' || typeof item.getAsFile !== 'function') {
+      continue
+    }
+
+    const localPath = resolveDroppedFilePath(item.getAsFile())
+    if (localPath) {
+      localPaths.add(localPath)
+    }
+  }
+
+  for (const file of Array.from(dataTransfer?.files ?? [])) {
+    const localPath = resolveDroppedFilePath(file)
+    if (localPath) {
+      localPaths.add(localPath)
+    }
+  }
+
+  return [...localPaths]
+}
 
 export function SftpPanel({ session, className }: SftpPanelProps) {
   const { t } = useTranslation()
@@ -64,6 +114,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
   const setCurrentPath = useSessionsStore((state) => state.setCurrentPath)
   const setAuxView = useSessionsStore((state) => state.setAuxView)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const dragDepthRef = useRef(0)
   const [selectedEntryPaths, setSelectedEntryPaths] = useState<string[]>([])
   const [selectionAnchorPath, setSelectionAnchorPath] = useState<string | null>(null)
   const [newFileOpen, setNewFileOpen] = useState(false)
@@ -74,6 +125,8 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
   const [newFolderTargetPath, setNewFolderTargetPath] = useState<string | null>(null)
   const [renameTarget, setRenameTarget] = useState<RemoteEntry | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [isDragActive, setIsDragActive] = useState(false)
+  const [removingEntryPaths, setRemovingEntryPaths] = useState<string[]>([])
   const RefreshIcon = actionIcons.refresh
   const UploadIcon = actionIcons.upload
   const NewFileIcon = actionIcons.newFile
@@ -119,6 +172,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
 
   const entries = listingQuery.data?.entries ?? []
   const selectedEntrySet = useMemo(() => new Set(selectedEntryPaths), [selectedEntryPaths])
+  const removingEntrySet = useMemo(() => new Set(removingEntryPaths), [removingEntryPaths])
   const selectedEntries = useMemo(
     () => entries.filter((entry) => selectedEntrySet.has(entry.path)),
     [entries, selectedEntrySet]
@@ -130,6 +184,22 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
     estimateSize: () => ENTRY_ITEM_HEIGHT,
     overscan: 10
   })
+  const virtualItems = virtualizer.getVirtualItems()
+  const shouldFallbackToStaticRows =
+    entries.length > 0 &&
+    virtualItems.length === 0 &&
+    (scrollContainerRef.current?.clientHeight ?? 0) === 0
+  const renderedItems = shouldFallbackToStaticRows
+    ? entries.map((_, index) => ({
+        index,
+        key: index,
+        size: ENTRY_ITEM_HEIGHT,
+        start: index * ENTRY_ITEM_HEIGHT
+      }))
+    : virtualItems
+  const totalListHeight = shouldFallbackToStaticRows
+    ? entries.length * ENTRY_ITEM_HEIGHT
+    : virtualizer.getTotalSize()
 
   if (!session) {
     return (
@@ -163,6 +233,74 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ['sftp', session.sessionId] })
+  }
+
+  const resetDragState = () => {
+    dragDepthRef.current = 0
+    setIsDragActive(false)
+  }
+
+  const runUpload = async (uploadAction: () => Promise<void>) => {
+    try {
+      await uploadAction()
+      await refresh()
+    } catch {
+      toast.error(t('workbench.sftp.toasts.uploadFailed'))
+    }
+  }
+
+  const handleDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasLocalFileTransfer(event.dataTransfer)) {
+      return
+    }
+
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'copy'
+    dragDepthRef.current += 1
+    setIsDragActive(true)
+  }
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasLocalFileTransfer(event.dataTransfer)) {
+      return
+    }
+
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'copy'
+
+    if (!isDragActive) {
+      setIsDragActive(true)
+    }
+  }
+
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasLocalFileTransfer(event.dataTransfer)) {
+      return
+    }
+
+    event.preventDefault()
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1)
+
+    if (dragDepthRef.current === 0) {
+      setIsDragActive(false)
+    }
+  }
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasLocalFileTransfer(event.dataTransfer)) {
+      return
+    }
+
+    event.preventDefault()
+    const localPaths = getDroppedLocalPaths(event.dataTransfer)
+    resetDragState()
+
+    if (localPaths.length === 0) {
+      toast.error(t('workbench.sftp.toasts.uploadFailed'))
+      return
+    }
+
+    void runUpload(() => window.winsshApi.sftp.uploadPaths(session.sessionId, currentPath, localPaths))
   }
 
   const copyPath = async (path: string) => {
@@ -282,12 +420,27 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
   }
 
   const removeEntries = async (entriesToRemove: RemoteEntry[]) => {
-    for (const entry of entriesToRemove) {
-      await window.winsshApi.sftp.remove(session.sessionId, entry.path)
+    const targetPaths = [...new Set(entriesToRemove.map((entry) => entry.path))]
+    if (targetPaths.length === 0) {
+      return
     }
 
+    setRemovingEntryPaths((current) => [...new Set([...current, ...targetPaths])])
     clearSelection()
-    await refresh()
+
+    try {
+      await new Promise((resolve) => window.setTimeout(resolve, REMOVE_EXIT_ANIMATION_MS))
+
+      for (const targetPath of targetPaths) {
+        await window.winsshApi.sftp.remove(session.sessionId, targetPath)
+      }
+
+      await refresh()
+    } finally {
+      setRemovingEntryPaths((current) =>
+        current.filter((currentPath) => !targetPaths.includes(currentPath))
+      )
+    }
   }
 
   const getEntryMeta = (entry: RemoteEntry) => {
@@ -308,7 +461,15 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
 
   return (
     <>
-      <div className={cn('flex h-full flex-col bg-background', className)}>
+      <div
+        role="region"
+        aria-label={t('workbench.sftp.explorer')}
+        className={cn('relative flex h-full flex-col bg-background', className)}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
         <div className="border-b px-3 py-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -361,15 +522,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
             />
           </div>
 
-          <div className="mt-2 flex items-center gap-1 border-t pt-2">
-            <TooltipIconButton
-              variant="ghost"
-              size="icon-sm"
-              label={t('common.actions.refresh')}
-              onClick={() => void refresh()}
-            >
-              <RefreshIcon className="size-4" />
-            </TooltipIconButton>
+          <div className="mt-2 flex items-center gap-1 pt-2">
             <TooltipIconButton
               variant="ghost"
               size="icon-sm"
@@ -402,10 +555,18 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
               size="icon-sm"
               label={t('common.actions.upload')}
               onClick={() =>
-                void window.winsshApi.sftp.uploadFiles(session.sessionId, currentPath).then(refresh)
+                void runUpload(() => window.winsshApi.sftp.uploadFiles(session.sessionId, currentPath))
               }
             >
               <UploadIcon className="size-4" />
+            </TooltipIconButton>
+            <TooltipIconButton
+              variant="ghost"
+              size="icon-sm"
+              label={t('common.actions.refresh')}
+              onClick={() => void refresh()}
+            >
+              <RefreshIcon className="size-4" />
             </TooltipIconButton>
           </div>
         </div>
@@ -432,11 +593,12 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
               ) : null}
 
               {!listingQuery.isLoading && entries.length > 0 ? (
-                <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
-                  {virtualizer.getVirtualItems().map((virtualItem) => {
+                <div style={{ height: `${totalListHeight}px`, position: 'relative' }}>
+                  {renderedItems.map((virtualItem) => {
                     const entry = entries[virtualItem.index]
                     const contextMenuTargets = resolveContextMenuTargets(entry)
                     const isSelected = selectedEntrySet.has(entry.path)
+                    const isRemoving = removingEntrySet.has(entry.path)
                     const hasSingleContextTarget = contextMenuTargets.length === 1
                     const singleContextTarget = hasSingleContextTarget
                       ? contextMenuTargets[0]
@@ -462,11 +624,15 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                           <ContextMenuTrigger asChild>
                             <button
                               type="button"
+                              aria-busy={isRemoving || undefined}
+                              data-removing={isRemoving ? 'true' : 'false'}
+                              disabled={isRemoving}
                               className={cn(
-                                'flex h-full w-full items-start gap-3 border-b px-3 py-2 text-left transition-colors',
+                                'flex h-full w-full items-start gap-3 border-b px-3 py-2 text-left transition-[opacity,transform,background-color,color] duration-200 ease-out',
                                 isSelected
                                   ? 'bg-[var(--workbench-hover)] text-foreground'
-                                  : 'hover:bg-[var(--workbench-hover)] hover:text-foreground'
+                                  : 'hover:bg-[var(--workbench-hover)] hover:text-foreground',
+                                isRemoving && 'translate-x-1 scale-[0.985] opacity-35'
                               )}
                               onClick={(event) =>
                                 handleEntrySelection(entry.path, {
@@ -519,7 +685,9 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                                     : 'bg-muted text-muted-foreground'
                                 )}
                               >
-                                {entry.kind === 'directory' ? (
+                                {isRemoving ? (
+                                  <LoaderCircle className="size-3.5 animate-spin" />
+                                ) : entry.kind === 'directory' ? (
                                   <Folder className="size-3.5" />
                                 ) : (
                                   <File className="size-3.5" />
@@ -641,6 +809,19 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
             </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
+
+        {isDragActive ? (
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-[color-mix(in_srgb,var(--workbench-editor)_72%,transparent)] p-4 backdrop-blur-sm">
+            <div className="max-w-sm rounded-xl border border-dashed border-[var(--workbench-accent)] bg-[color-mix(in_srgb,var(--workbench-sidebar)_92%,transparent)] px-5 py-4 text-center shadow-xl">
+              <div className="text-sm font-semibold text-foreground">
+                {t('workbench.sftp.dropzone.title')}
+              </div>
+              <div className="mt-1 text-xs leading-5 text-muted-foreground">
+                {t('workbench.sftp.dropzone.description', { path: currentPath })}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <Dialog

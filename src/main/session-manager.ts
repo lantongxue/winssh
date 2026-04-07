@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { promises as fs } from 'node:fs'
+import { promises as fs, type Stats as FsStats } from 'node:fs'
 import net, { type Server as NetServer, type Socket } from 'node:net'
 import path, { basename, posix } from 'node:path'
 import {
@@ -350,6 +350,19 @@ function sftpRename(sftp: SFTPWrapper, fromPath: string, toPath: string): Promis
 function sftpStat(sftp: SFTPWrapper, remotePath: string): Promise<Stats> {
   return new Promise((resolve, reject) => {
     sftp.stat(remotePath, (error, stats) => {
+      if (error) {
+        reject(error)
+        return
+      }
+
+      resolve(stats)
+    })
+  })
+}
+
+function sftpLstat(sftp: SFTPWrapper, remotePath: string): Promise<Stats> {
+  return new Promise((resolve, reject) => {
+    sftp.lstat(remotePath, (error, stats) => {
       if (error) {
         reject(error)
         return
@@ -1029,17 +1042,10 @@ export class SessionManager {
   async remove(sessionId: string, remotePath: string): Promise<void> {
     const runtime = this.requireSession(sessionId)
     const normalized = normalizeRemotePath(remotePath)
-    const stats = await sftpStat(runtime.sftp, normalized)
-    if (stats.isDirectory()) {
-      await sftpRmdir(runtime.sftp, normalized)
-      return
-    }
-
-    await sftpUnlink(runtime.sftp, normalized)
+    await this.removeRemoteEntry(runtime.sftp, normalized)
   }
 
   async uploadFiles(sessionId: string, targetPath: string): Promise<void> {
-    const runtime = this.requireSession(sessionId)
     const window = this.getWindow()
     const openOptions: OpenDialogOptions = {
       title: this.t('dialogs.uploadFiles.title'),
@@ -1053,58 +1059,24 @@ export class SessionManager {
       return
     }
 
-    for (const localPath of selection.filePaths) {
-      const remotePath = posix.join(normalizeRemotePath(targetPath), basename(localPath))
-      const fileName = basename(localPath)
-      await new Promise<void>((resolve, reject) => {
-        runtime.sftp.fastPut(
-          localPath,
-          remotePath,
-          {
-            step: (transferred, _chunk, total) => {
-              this.emitToRenderer('sftp:transfer', {
-                sessionId,
-                direction: 'upload',
-                fileName,
-                localPath,
-                remotePath,
-                transferred,
-                total,
-                status: 'running'
-              })
-            }
-          },
-          (error) => {
-            if (error) {
-              this.emitToRenderer('sftp:transfer', {
-                sessionId,
-                direction: 'upload',
-                fileName,
-                localPath,
-                remotePath,
-                transferred: 0,
-                total: 0,
-                status: 'error',
-                error: error.message
-              })
-              reject(error)
-              return
-            }
+    await this.uploadPaths(sessionId, targetPath, selection.filePaths)
+  }
 
-            this.emitToRenderer('sftp:transfer', {
-              sessionId,
-              direction: 'upload',
-              fileName,
-              localPath,
-              remotePath,
-              transferred: 1,
-              total: 1,
-              status: 'completed'
-            })
-            resolve()
-          }
-        )
-      })
+  async uploadPaths(sessionId: string, targetPath: string, localPaths: string[]): Promise<void> {
+    const runtime = this.requireSession(sessionId)
+    const normalizedTargetPath = normalizeRemotePath(targetPath)
+    const uniqueLocalPaths = [
+      ...new Set(
+        localPaths
+          .filter((localPath): localPath is string => typeof localPath === 'string')
+          .map((localPath) => localPath.trim())
+          .filter(Boolean)
+      )
+    ]
+
+    for (const localPath of uniqueLocalPaths) {
+      const remotePath = posix.join(normalizedTargetPath, basename(localPath))
+      await this.uploadLocalEntry(sessionId, runtime.sftp, localPath, remotePath)
     }
   }
 
@@ -1560,6 +1532,158 @@ export class SessionManager {
     } else if (request.rememberPassphrase && request.passphrase) {
       await this.secureStore.setSecret(serverId, 'passphrase', request.passphrase)
     }
+  }
+
+  private async uploadLocalEntry(
+    sessionId: string,
+    sftp: SFTPWrapper,
+    localPath: string,
+    remotePath: string
+  ): Promise<void> {
+    const localStats = await fs.lstat(localPath)
+    const normalizedRemotePath = normalizeRemotePath(remotePath)
+
+    if (localStats.isDirectory()) {
+      await this.ensureRemoteDirectory(sftp, normalizedRemotePath)
+      const childNames = await fs.readdir(localPath)
+
+      for (const childName of childNames) {
+        await this.uploadLocalEntry(
+          sessionId,
+          sftp,
+          path.join(localPath, childName),
+          posix.join(normalizedRemotePath, childName)
+        )
+      }
+
+      return
+    }
+
+    if (!localStats.isFile()) {
+      throw new Error(`Unsupported local upload entry: ${localPath}`)
+    }
+
+    await this.uploadLocalFile(sessionId, sftp, localPath, normalizedRemotePath, localStats)
+  }
+
+  private async uploadLocalFile(
+    sessionId: string,
+    sftp: SFTPWrapper,
+    localPath: string,
+    remotePath: string,
+    localStats: FsStats
+  ): Promise<void> {
+    const fileName = basename(localPath)
+    let transferred = 0
+    let total = Math.max(localStats.size, 1)
+
+    await new Promise<void>((resolve, reject) => {
+      sftp.fastPut(
+        localPath,
+        remotePath,
+        {
+          step: (nextTransferred, _chunk, nextTotal) => {
+            transferred = nextTransferred
+            total = Math.max(nextTotal, 1)
+            this.emitToRenderer('sftp:transfer', {
+              sessionId,
+              direction: 'upload',
+              fileName,
+              localPath,
+              remotePath,
+              transferred,
+              total,
+              status: 'running'
+            })
+          }
+        },
+        (error) => {
+          if (error) {
+            this.emitToRenderer('sftp:transfer', {
+              sessionId,
+              direction: 'upload',
+              fileName,
+              localPath,
+              remotePath,
+              transferred,
+              total,
+              status: 'error',
+              error: error.message
+            })
+            reject(error)
+            return
+          }
+
+          this.emitToRenderer('sftp:transfer', {
+            sessionId,
+            direction: 'upload',
+            fileName,
+            localPath,
+            remotePath,
+            transferred: total,
+            total,
+            status: 'completed'
+          })
+          resolve()
+        }
+      )
+    })
+  }
+
+  private async ensureRemoteDirectory(sftp: SFTPWrapper, remotePath: string): Promise<void> {
+    const normalizedRemotePath = normalizeRemotePath(remotePath)
+    if (normalizedRemotePath === '/') {
+      return
+    }
+
+    const existingStats = await sftpStat(sftp, normalizedRemotePath).catch(() => null)
+    if (existingStats) {
+      if (existingStats.isDirectory()) {
+        return
+      }
+
+      throw new Error(`Remote path is not a directory: ${normalizedRemotePath}`)
+    }
+
+    const parentPath = posix.dirname(normalizedRemotePath)
+    if (parentPath !== normalizedRemotePath) {
+      await this.ensureRemoteDirectory(sftp, parentPath)
+    }
+
+    try {
+      await sftpMkdir(sftp, normalizedRemotePath)
+    } catch (error) {
+      const createdStats = await sftpStat(sftp, normalizedRemotePath).catch(() => null)
+      if (createdStats?.isDirectory()) {
+        return
+      }
+
+      throw error
+    }
+  }
+
+  private async removeRemoteEntry(sftp: SFTPWrapper, remotePath: string): Promise<void> {
+    const normalizedRemotePath = normalizeRemotePath(remotePath)
+    const stats = await sftpLstat(sftp, normalizedRemotePath).catch(() =>
+      sftpStat(sftp, normalizedRemotePath)
+    )
+
+    if (!stats.isDirectory()) {
+      await sftpUnlink(sftp, normalizedRemotePath)
+      return
+    }
+
+    const entries = await sftpReadDir(sftp, normalizedRemotePath)
+
+    for (const entry of entries) {
+      if (entry.name === '.' || entry.name === '..') {
+        continue
+      }
+
+      await this.removeRemoteEntry(sftp, entry.path)
+    }
+
+    await sftpRmdir(sftp, normalizedRemotePath)
   }
 
   private requireSession(sessionId: string): SessionRuntime {

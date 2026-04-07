@@ -297,4 +297,34 @@ describe('WorkbenchShell terminal document visibility', () => {
     expect(sessionEditor.parentElement).toHaveClass('invisible')
     expect(localTerminalEditor.parentElement).toHaveClass('relative')
   })
+
+  it('does not remount the active session editor when toggling the sidebar or panel', async () => {
+    window.winsshApi = createWinsshApiMock({
+      servers: {
+        list: vi.fn().mockResolvedValue([createdServer])
+      }
+    })
+
+    useSessionsStore.getState().addSession(activeSession)
+    useWorkbenchStore.getState().openDocument(createSessionEditorDocument(activeSession.sessionId))
+    renderWorkbenchShell('/sessions')
+
+    const initialEditor = await screen.findByTestId(`session-editor:${activeSession.sessionId}`)
+
+    act(() => {
+      useWorkbenchStore.getState().toggleSidebar()
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`session-editor:${activeSession.sessionId}`)).toBe(initialEditor)
+    })
+
+    act(() => {
+      useWorkbenchStore.getState().togglePanel()
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`session-editor:${activeSession.sessionId}`)).toBe(initialEditor)
+    })
+  })
 })

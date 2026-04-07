@@ -421,6 +421,11 @@ async function bootstrap(): Promise<void> {
   ipcMain.handle('sftp:uploadFiles', (_event, sessionId: string, targetPath: string) =>
     sessionManager.uploadFiles(sessionId, targetPath)
   )
+  ipcMain.handle(
+    'sftp:uploadPaths',
+    (_event, sessionId: string, targetPath: string, localPaths: string[]) =>
+      sessionManager.uploadPaths(sessionId, targetPath, localPaths)
+  )
   ipcMain.handle('sftp:downloadFile', (_event, sessionId: string, remotePath: string) =>
     sessionManager.downloadFile(sessionId, remotePath)
   )

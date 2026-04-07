@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect } from 'react'
 import { Files } from 'lucide-react'
+import { usePanelRef } from 'react-resizable-panels'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { actionIcons } from '@/lib/action-icons'
@@ -105,6 +106,8 @@ function WorkbenchShellContent() {
   const toggleSidebar = useWorkbenchStore((state) => state.toggleSidebar)
   const setActiveLocalTerminal = useLocalTerminalsStore((state) => state.setActiveTerminal)
   const isMac = isMacPlatform()
+  const sidebarPanelRef = usePanelRef()
+  const bottomPanelRef = usePanelRef()
 
   const activeDocument = openDocuments.find((document) => document.id === activeDocumentId) ?? null
 
@@ -266,6 +269,44 @@ function WorkbenchShellContent() {
     }
   }, [activeActivityId, activeDocument, location.pathname, navigate])
 
+  useLayoutEffect(() => {
+    const sidebarPanel = sidebarPanelRef.current
+
+    if (!sidebarPanel) {
+      return
+    }
+
+    if (sidebarOpen) {
+      if (sidebarPanel.isCollapsed()) {
+        sidebarPanel.expand()
+      }
+      return
+    }
+
+    if (!sidebarPanel.isCollapsed()) {
+      sidebarPanel.collapse()
+    }
+  }, [sidebarOpen, sidebarPanelRef])
+
+  useLayoutEffect(() => {
+    const bottomPanel = bottomPanelRef.current
+
+    if (!bottomPanel) {
+      return
+    }
+
+    if (panelOpen) {
+      if (bottomPanel.isCollapsed()) {
+        bottomPanel.expand()
+      }
+      return
+    }
+
+    if (!bottomPanel.isCollapsed()) {
+      bottomPanel.collapse()
+    }
+  }, [bottomPanelRef, panelOpen])
+
   const hasActiveDocument = Boolean(activeDocument)
   const documentLayers = openDocuments.map((document) => {
     const active = document.id === activeDocumentId
@@ -297,25 +338,35 @@ function WorkbenchShellContent() {
   const editorHost = (
     <div className="flex h-full min-h-0 flex-1 flex-col">
       {hasActiveDocument ? <WorkbenchEditorTabs /> : null}
-      {panelOpen ? (
-        <ResizablePanelGroup orientation="vertical">
-          <ResizablePanel defaultSize="74%" minSize="10%">
-            <div className="relative h-full min-h-0 overflow-hidden bg-[var(--workbench-editor)]">
-              {!hasActiveDocument ? <WorkbenchExplorerHome /> : null}
-              {documentLayers}
-            </div>
-          </ResizablePanel>
-          <ResizableHandle />
-          <ResizablePanel defaultSize="26%" minSize="10%">
+      <ResizablePanelGroup id="workbench-editor-layout" orientation="vertical">
+        <ResizablePanel id="workbench-editor-main" defaultSize="74%" minSize="10%">
+          <div className="relative h-full min-h-0 overflow-hidden bg-[var(--workbench-editor)]">
+            {!hasActiveDocument ? <WorkbenchExplorerHome /> : null}
+            {documentLayers}
+          </div>
+        </ResizablePanel>
+        <ResizableHandle
+          disabled={!panelOpen}
+          style={panelOpen ? undefined : { display: 'none' }}
+        />
+        <ResizablePanel
+          collapsedSize={0}
+          collapsible
+          defaultSize="26%"
+          id="workbench-bottom-panel"
+          minSize="10%"
+          panelRef={bottomPanelRef}
+        >
+          <div
+            aria-hidden={!panelOpen}
+            className={
+              panelOpen ? 'h-full min-h-0' : 'h-full min-h-0 invisible pointer-events-none'
+            }
+          >
             <WorkbenchPanel />
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      ) : (
-        <div className="relative min-h-0 flex-1 overflow-hidden bg-[var(--workbench-editor)]">
-          {!hasActiveDocument ? <WorkbenchExplorerHome /> : null}
-          {documentLayers}
-        </div>
-      )}
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   )
 
@@ -327,19 +378,33 @@ function WorkbenchShellContent() {
         <WorkbenchActivityBar />
 
         <div className="min-w-0 flex-1 overflow-hidden">
-          {sidebarOpen ? (
-            <ResizablePanelGroup orientation="horizontal">
-              <ResizablePanel defaultSize="22%" minSize="16%" maxSize="30%">
+          <ResizablePanelGroup id="workbench-shell-layout" orientation="horizontal">
+            <ResizablePanel
+              collapsedSize={0}
+              collapsible
+              defaultSize="22%"
+              id="workbench-primary-sidebar"
+              maxSize="30%"
+              minSize="16%"
+              panelRef={sidebarPanelRef}
+            >
+              <div
+                aria-hidden={!sidebarOpen}
+                className={
+                  sidebarOpen ? 'h-full min-w-0' : 'h-full min-w-0 invisible pointer-events-none'
+                }
+              >
                 <WorkbenchPrimarySidebar />
-              </ResizablePanel>
-              <ResizableHandle />
-              <ResizablePanel defaultSize="78%" minSize="40%">
-                {editorHost}
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          ) : (
-            editorHost
-          )}
+              </div>
+            </ResizablePanel>
+            <ResizableHandle
+              disabled={!sidebarOpen}
+              style={sidebarOpen ? undefined : { display: 'none' }}
+            />
+            <ResizablePanel defaultSize="78%" id="workbench-editor-host" minSize="40%">
+              {editorHost}
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </div>
       </div>
 
