@@ -4,7 +4,7 @@
 
 这份文件用于给后续协作者和代码代理提供当前项目快照。
 
-本次梳理时间为 `2026-04-06`。内容只基于当前仓库代码、目录结构和关键入口文件阅读完成，没有执行 `test`、`typecheck`、`lint`、`build`、`dist` 等校验命令，因此这里描述的是“代码现状”，不是“已验证结果”。
+本次梳理时间为 `2026-04-07`。内容只基于当前仓库代码、目录结构和关键入口文件阅读完成，没有执行 `test`、`typecheck`、`lint`、`build`、`dist` 等校验命令，因此这里描述的是“代码现状”，不是“已验证结果”。
 
 ## 这次梳理的关键结论
 
@@ -110,6 +110,8 @@
 - renderer 已有 `local-terminals-store`
 - workbench 已有 `local-terminal-editor`
 - `TerminalSurface` / `useTerminal()` 现在同时服务 SSH 会话和本地终端
+- 设置页现在已经支持 `localTerminalShell` 选择
+- `src/shared/local-terminal-shells.ts` 已抽出平台相关 shell 归一化逻辑
 
 当前终端能力已经明确包括：
 
@@ -124,6 +126,10 @@
 
 - 本地终端 runtime 依赖 `node-pty`
 - 非 Windows 平台会尝试为 `spawn-helper` 修正可执行权限
+- 本地终端 shell 当前按平台提供不同选项：
+  - Windows：`cmd` / `powershell`
+  - 非 Windows：`bash` / `zsh`
+- 主进程会对 `localTerminalShell` 做平台归一化，避免跨平台残留配置直接写坏本地终端启动
 - `experimentalTerminalWebgl` 当前是设置项控制的实验能力，不是默认硬开
 
 ### 6. 会话资源监控已经接进 session toolbar，但当前明确是 Linux-only best-effort
@@ -154,6 +160,7 @@
 - 重命名
 - 删除文件或目录
 - 上传文件
+- 拖拽上传本地文件 / 目录
 - 下载文件
 - 传输进度事件
 - 多选
@@ -171,9 +178,9 @@
 
 当前仍需注意的边界是：
 
-- 删除目录仍走 `rmdir`
-- 没有递归删除逻辑
-- 非空目录仍是需要额外处理的边界
+- 远端目录删除当前已经走递归删除，不再是“只删空目录”
+- 本地目录上传当前也已有递归上传逻辑
+- 批量删除当前仍是逐项串行调用，不是并发批处理
 
 ### 8. 端口转发已经是完整的会话级能力
 
@@ -317,6 +324,8 @@
 - editor tabs 支持重命名 title override
 - explorer home / terminal welcome 都已有本地终端入口
 
+另外，当前 `session-editor` / `local-terminal-editor` 在 inactive 时会保持 mounted，只通过可见性切换隐藏，目的是避免 xterm 因标签切换或面板收起而重新挂载。
+
 ### 12. 平台与交付层也已经有明确策略
 
 当前可以直接从代码确认：
@@ -326,6 +335,7 @@
 - 可通过环境变量 `WINSSH_HARDWARE_ACCELERATION` 覆盖
 - 标题栏样式支持 `native | custom`
 - 切换标题栏样式后，设置页会提示重启应用
+- `electron-builder.yml` 当前只在 mac 目标下注入 `resources/bin` 下的字体 helper，不再作为全平台 extra resource
 - 打包脚本已经拆出：
   - `dist:win`
   - `dist:mac`
@@ -335,8 +345,8 @@
 
 - 项目名：`winssh`
 - 版本：`0.1.0`
-- 形态：Electron 桌面应用
-- 目标：提供面向桌面的 SSH、SFTP、端口转发和工作台式连接管理
+- 形态：Electron 桌面应用 + `web/` 品牌站 / docs landing 子工程
+- 目标：提供面向桌面的 SSH、SFTP、端口转发和工作台式连接管理，并配套官网首页与文档入口页
 
 主要技术栈：
 
@@ -344,6 +354,7 @@
 - React 19
 - TypeScript 5
 - Vite 7
+- Tailwind CSS 4
 - TanStack Query
 - Zustand
 - xterm.js
@@ -407,6 +418,7 @@
 
 - `contextBridge`
 - 将主进程能力统一暴露为 `window.winsshApi`
+- 暴露基于 `webUtils.getPathForFile()` 的本地拖拽文件路径解析
 
 ### `src/shared/`
 
@@ -416,6 +428,7 @@
 - Zod 校验
 - SFTP 路径工具
 - quick connect 解析
+- 本地终端 shell 平台归一化
 - server brand / icon 定义
 - 主题定义与 schema
 - preload / renderer 共用 API 类型
@@ -433,6 +446,17 @@
 - 服务器品牌 / 自定义图标展示
 - 设置页
 - i18n 资源
+
+### `web/`
+
+负责：
+
+- 官网首页
+- docs landing 页面
+- 多入口 Vite 站点构建
+- 网站侧语言与主题状态
+- 复用根 `package.json` 的版本号和仓库地址
+- 复用内置 `light-plus` / `dark-plus` 主题 JSON
 
 ## 主进程现状
 
@@ -469,6 +493,7 @@
 - `sessions:getResourceSnapshot`
 - `localTerminals:*`
 - `sftp:createFile`
+- `sftp:uploadPaths`
 - `themes:list`
 - `themes:importArchive`
 - `themes:deletePlugin`
@@ -708,7 +733,16 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - 本地终端和 SSH terminal 共享 `TerminalSurface` / `useTerminal()` 渲染栈
 - 终端能力当前已统一覆盖 search / web-links / Unicode11 / image / progress / 可选 WebGL
 - 终端主题、字体、光标、copy-on-select 等设置会同时影响 SSH terminal 和 local terminal
+- 设置页当前已经允许用户选择本地终端 shell，且该设置只影响新打开的本地终端标签
+- shell 选项当前按平台区分：
+  - Windows：`cmd` / `powershell`
+  - 非 Windows：`bash` / `zsh`
+- `src/shared/local-terminal-shells.ts` 当前负责：
+  - 支持 shell 列表
+  - 默认 shell 解析
+  - 跨平台持久化值归一化
 - `LocalTerminalManager` 会按平台选择 shell，并在非 Windows 平台 best-effort 修正 `node-pty` 的 `spawn-helper` 可执行权限
+- 主进程 `settings:get` / `settings:update` 当前都会对 `localTerminalShell` 做平台归一化，避免把一台机器上的 shell 配置原样带到另一平台
 - 本地终端当前没有数据库持久化模型，生命周期绑定在本次应用运行期
 
 ## SFTP 现状
@@ -724,6 +758,7 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - 重命名
 - 删除文件或目录
 - 上传文件
+- 拖拽上传本地文件 / 目录
 - 下载文件
 - 传输进度事件
 - 多选
@@ -758,11 +793,14 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - 目录双击进入
 - 空白区域清除选择
 - header 关闭 aux panel
+- 当前路径拖拽 dropzone 上传
 
 仍需注意的边界：
 
-- 非空目录删除未做递归
+- 远端目录删除当前已经支持递归删除
+- 本地目录上传当前已经支持递归上传
 - 删除批量操作当前是逐项串行调用
+- 文件选择对话框当前仍偏向文件选择；目录上传更依赖拖拽路径进入 `uploadPaths()`
 
 ## 端口转发现状
 
@@ -972,6 +1010,8 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - terminal activity 在 session / local terminal / terminal welcome 之间切换
 - panel / sidebar resizable layout
 
+另外，当前 `session-editor` 和 `local-terminal-editor` 在 inactive 时会保持 mounted，仅通过可见性切换隐藏；这已经是为了避免 xterm / terminal runtime 因标签切换或面板收起而重挂载的显式策略。
+
 ## 会话编辑器现状
 
 `src/renderer/src/components/workbench/workbench-session-editor.tsx` 当前支持：
@@ -1111,6 +1151,7 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - 主题选择
 - 主题包导入 / 删除
 - 标题栏样式
+- 本地终端 shell
 - 终端字体大小
 - 终端字体族
 - experimental terminal WebGL
@@ -1135,6 +1176,12 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - known hosts 管理
 - 主机指纹变更 warning
 - 私钥内容回填与旧路径兼容
+
+另外，设置页里和本地终端 shell 相关的当前边界是：
+
+- renderer 只展示当前平台支持的 shell 选项
+- 描述文案当前已经明确说明该设置仅影响新打开的本地终端标签
+- 主进程会在 `settings:get` / `settings:update` 时再次归一化该值，不把 renderer 选项约束当成唯一防线
 
 ## 凭据库现状
 
@@ -1188,6 +1235,29 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - 常见连接错误
 - 会话状态文案
 
+## Web 站点现状
+
+仓库当前除了 Electron 桌面端，还包含独立的 `web/` 站点工程。
+
+当前已实现内容：
+
+- 首页 `web/src/home-main.tsx`
+- docs landing 页 `web/src/docs-main.tsx`
+- Vite 多入口构建：
+  - `web/index.html`
+  - `web/docs/index.html`
+- 网站侧 `zh-CN` / `en-US` 双语
+- 网站侧主题切换与 system theme 跟随
+- 站点文案集中在 `web/src/content/site.ts`
+- 版本号和仓库地址直接复用根 `package.json`
+- 网站主题直接复用内置 `winssh.light-plus` / `winssh.dark-plus` 主题 JSON
+
+当前需要注意的边界：
+
+- 这是独立站点工程，不是 Electron renderer 的另一路由
+- 网站主题当前只围绕 `light-plus` / `dark-plus` 两个内置主题，不直接接入完整 theme registry
+- docs 当前还是 landing / 导览页，不是完整产品手册集合
+
 ## 测试版图现状
 
 虽然本次没有执行测试，但从文件分布看，当前测试面已经覆盖这些方向：
@@ -1228,6 +1298,9 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - `workbench-store`
 - `workbench-shortcuts`
 - i18n format / index
+- web `home-page`
+- web `docs-page`
+- web `site-language`
 
 说明代码库已经在持续补充回归面，不再只是人工联调。
 
@@ -1269,10 +1342,13 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - `src/main/local-terminal-manager.ts`
 - `src/preload/index.ts`
 - `src/shared/types.ts`
+- `src/shared/local-terminal-shells.ts`
 - `src/shared/api.ts`
+- `src/shared/constants.ts`
 - `src/renderer/src/components/terminal-surface.tsx`
 - `src/renderer/src/hooks/use-terminal.ts`
 - `src/renderer/src/components/workbench/workbench-local-terminal-editor.tsx`
+- `src/renderer/src/components/workbench/workbench-settings-editor.tsx`
 - `src/renderer/src/store/local-terminals-store.ts`
 - `src/renderer/src/hooks/use-session-events.ts`
 
@@ -1285,6 +1361,16 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - `src/preload/index.ts`
 - `src/renderer/src/components/session-resource-monitor.tsx`
 - `src/renderer/src/components/workbench/workbench-session-editor.tsx`
+
+SFTP、拖拽上传和递归删除相关改动还会多牵涉：
+
+- `src/shared/api.ts`
+- `src/main/index.ts`
+- `src/main/session-manager.ts`
+- `src/preload/index.ts`
+- `src/renderer/src/components/sftp-panel.tsx`
+- `src/renderer/src/components/workbench/workbench-session-editor.tsx`
+- `src/renderer/src/test/create-winssh-api.ts`
 
 Jump Server、server brand、自定义图标相关改动还会多牵涉：
 
@@ -1300,6 +1386,17 @@ Jump Server、server brand、自定义图标相关改动还会多牵涉：
 - `src/renderer/src/components/workbench/workbench-primary-sidebar.tsx`
 - `src/renderer/src/components/workbench/workbench-command-center.tsx`
 - `src/renderer/src/components/workbench/workbench-explorer-home.tsx`
+
+官网 / docs landing 相关改动还会多牵涉：
+
+- `web/vite.config.ts`
+- `web/src/content/site.ts`
+- `web/src/lib/constants.ts`
+- `web/src/lib/language.ts`
+- `web/src/lib/theme.ts`
+- `web/src/components/site-shell.tsx`
+- `web/src/components/home-page.tsx`
+- `web/src/components/docs-page.tsx`
 
 如果要调整 `sessionId` / provisional session identity 链路，还必须同步改：
 
@@ -1330,6 +1427,7 @@ Jump Server、server brand、自定义图标相关改动还会多牵涉：
 - `src/shared/api.ts`
 - `src/shared/server-brands.ts`
 - `src/shared/themes.ts`
+- `src/shared/local-terminal-shells.ts`
 - `src/shared/quick-connect.ts`
 - `src/renderer/src/App.tsx`
 - `src/renderer/src/components/server-brand-icon.tsx`
@@ -1337,10 +1435,15 @@ Jump Server、server brand、自定义图标相关改动还会多牵涉：
 - `src/renderer/src/components/credential-vault.tsx`
 - `src/renderer/src/components/terminal-surface.tsx`
 - `src/renderer/src/lib/theme.ts`
+- `src/renderer/src/components/workbench/workbench-settings-editor.tsx`
 - `src/renderer/src/components/workbench/workbench-shell.tsx`
 - `src/renderer/src/components/workbench/workbench-context.tsx`
 - `src/renderer/src/store/sessions-store.ts`
 - `src/renderer/src/store/local-terminals-store.ts`
+- `web/vite.config.ts`
+- `web/src/content/site.ts`
+- `web/src/components/site-shell.tsx`
+- `web/src/lib/theme.ts`
 
 如果要改会话辅助能力，再看：
 
@@ -1380,16 +1483,23 @@ Jump Server、server brand、自定义图标相关改动还会多牵涉：
 - 连接结果当前依赖结构化失败码，以及 recoverable failure 上的 `serverId + secretKind`，不要随意改回纯异常流或丢掉这两个字段
 - jump server 当前只支持单跳，嵌套 jump server chain 是显式不支持的
 - 连接 phase 和资源监控现在都是真实主进程驱动的数据流，不要只改 terminal overlay 文案而忽略真实事件或采样链路
+- SFTP 远端目录删除当前已经支持递归删除，改删除策略时不要再按“只删空目录”假设推导
+- SFTP 本地目录上传当前已经支持递归上传，而拖拽上传链路还依赖 preload 里的 `webUtils.getPathForFile()` 桥接
+- `session-editor` / `local-terminal-editor` 当前依赖 keep-mounted 策略避免 xterm 重挂载，优化渲染时不要轻易改回条件卸载
 - 资源监控当前是 Linux-only best-effort，不要把它误当成全平台能力
 - 端口转发当前是 session 级内存状态，不要误以为已有数据库模型
 - quick connect 当前只支持严格的 `ssh user@host` 和密码认证
 - 本地终端当前依赖 `node-pty`，非 Windows 平台还依赖 `spawn-helper` 可执行权限修复链路
+- 本地终端 shell 当前已经是设置项，但它只影响新开的 local terminal；不要误以为修改设置会热切换已有 PTY
+- `localTerminalShell` 当前会在主进程按平台归一化；如果做设置迁移或跨平台同步，不要假设持久化值总是对当前平台有效
 - 主题系统当前是“theme id + theme registry + theme plugin document”的结构，不是简单 dark mode 开关
 - 用户主题包当前通过 ZIP 导入到 `app.getPath('userData')/themes`，built-in theme pack 不可删除
+- `web/` 站点当前直接复用根 `package.json` 的版本 / homepage，以及内置 `light-plus` / `dark-plus` 主题 JSON；修改这些源头会同时影响官网
 - `servers` 表现在已经带 `brand_id`、`custom_icon_*`、`jump_server_id`，修改 server payload 或 mapper 时要一起考虑
 - 标题栏样式切换当前要求重启应用生效
 - Windows 默认关闭硬件加速，如果遇到平台渲染问题，先确认这条策略和环境变量覆盖是否相关
 - 系统字体能力在 macOS 上依赖 helper + fallback 组合，改动前先确认脚本、资源和运行时搜索路径是否一起兼容
+- macOS 字体 helper 当前只在 `electron-builder.yml` 的 `mac.extraResources` 下打包，调整构建配置时不要误以为它仍是全平台资源
 
 ## 当前脚本
 
