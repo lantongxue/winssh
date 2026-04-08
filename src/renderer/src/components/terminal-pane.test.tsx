@@ -24,6 +24,7 @@ vi.mock('@/hooks/use-terminal', () => ({
 
 describe('TerminalPane', () => {
   const settings: AppSettings = {
+    autoUpdateCheckEnabled: true,
     copyOnSelect: false,
     cursorBlink: true,
     cursorStyle: 'block',

@@ -38,6 +38,7 @@ function renderSettingsEditor(queryClient = createTestQueryClient()) {
 }
 
 const persistedDarkSettings: AppSettings = {
+  autoUpdateCheckEnabled: true,
   copyOnSelect: true,
   cursorBlink: true,
   cursorStyle: 'block',
@@ -91,6 +92,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     window.winsshApi = createWinsshApiMock({
       settings: {
         get: vi.fn().mockResolvedValue({
+          autoUpdateCheckEnabled: true,
           copyOnSelect: true,
           cursorBlink: true,
           cursorStyle: 'block',
@@ -120,6 +122,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     window.winsshApi = createWinsshApiMock({
       settings: {
         get: vi.fn().mockResolvedValue({
+          autoUpdateCheckEnabled: true,
           copyOnSelect: true,
           cursorBlink: true,
           cursorStyle: 'block',
@@ -149,6 +152,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
 
   it('loads, allows selecting Pixel CRT, and saves the updated theme', async () => {
     const updateSettings = vi.fn().mockResolvedValue({
+      autoUpdateCheckEnabled: true,
       copyOnSelect: true,
       cursorBlink: true,
       cursorStyle: 'block',
@@ -164,6 +168,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     window.winsshApi = createWinsshApiMock({
       settings: {
         get: vi.fn().mockResolvedValue({
+          autoUpdateCheckEnabled: true,
           copyOnSelect: true,
           cursorBlink: true,
           cursorStyle: 'block',
@@ -286,6 +291,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
 
   it('uses a searchable combobox to save terminal font settings', async () => {
     const updateSettings = vi.fn().mockResolvedValue({
+      autoUpdateCheckEnabled: true,
       copyOnSelect: true,
       cursorBlink: true,
       cursorStyle: 'block',
@@ -301,6 +307,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     window.winsshApi = createWinsshApiMock({
       settings: {
         get: vi.fn().mockResolvedValue({
+          autoUpdateCheckEnabled: true,
           copyOnSelect: true,
           cursorBlink: true,
           cursorStyle: 'block',
@@ -347,6 +354,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     })
 
     const updateSettings = vi.fn().mockResolvedValue({
+      autoUpdateCheckEnabled: true,
       copyOnSelect: true,
       cursorBlink: true,
       cursorStyle: 'block',
@@ -362,6 +370,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     window.winsshApi = createWinsshApiMock({
       settings: {
         get: vi.fn().mockResolvedValue({
+          autoUpdateCheckEnabled: true,
           copyOnSelect: true,
           cursorBlink: true,
           cursorStyle: 'block',
@@ -402,6 +411,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
 
   it('saves the experimental WebGL renderer toggle from the terminal settings section', async () => {
     const updateSettings = vi.fn().mockResolvedValue({
+      autoUpdateCheckEnabled: true,
       copyOnSelect: true,
       cursorBlink: true,
       cursorStyle: 'block',
@@ -417,6 +427,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     window.winsshApi = createWinsshApiMock({
       settings: {
         get: vi.fn().mockResolvedValue({
+          autoUpdateCheckEnabled: true,
           copyOnSelect: true,
           cursorBlink: true,
           cursorStyle: 'block',
@@ -482,5 +493,35 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     await waitFor(() => {
       expect(screen.queryByText('alpha.example.com:22')).not.toBeInTheDocument()
     })
+  })
+
+  it('renders app version details in the about section', async () => {
+    window.winsshApi = createWinsshApiMock({
+      system: {
+        getAppInfo: vi.fn().mockResolvedValue({
+          name: 'WinSSH',
+          platform: 'win32',
+          releaseChannel: 'beta',
+          version: '0.2.0-beta.1'
+        })
+      }
+    })
+
+    renderSettingsEditor()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'About' }))
+
+    expect(await screen.findByText('0.2.0-beta.1')).toBeInTheDocument()
+    expect(screen.getByText('Windows')).toBeInTheDocument()
+    expect(screen.getByText('Beta')).toBeInTheDocument()
+  })
+
+  it('does not render an updates section in the settings navigation anymore', async () => {
+    window.winsshApi = createWinsshApiMock()
+
+    renderSettingsEditor()
+
+    expect(await screen.findByRole('button', { name: 'Appearance' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Updates' })).not.toBeInTheDocument()
   })
 })

@@ -50,6 +50,7 @@ const workbench = {
         newConnection: '未命名连接'
       },
       settings: '设置',
+      updates: '更新',
       terminal: '终端',
       terminalWelcome: '终端'
     },
@@ -396,9 +397,11 @@ const workbench = {
         underline: '下划线'
       },
       descriptions: {
+        about: '查看应用介绍和版本信息。',
         appearance: '调整语言、主题和窗口标题栏模式。',
         credentialVault: '集中管理可复用的密码、私钥与口令记录。',
         security: '查看凭据存储能力与已信任主机列表。',
+        updates: '查看当前更新状态，并决定何时下载或安装新版本。',
         terminal: '调整本地终端 shell、终端字体、光标、复制行为与实验性渲染选项。'
       },
       form: {
@@ -446,10 +449,62 @@ const workbench = {
         verified: '验证时间'
       },
       sections: {
+        about: '关于',
         appearance: '界面',
         credentialVault: '保险柜',
         security: '安全',
+        updates: '更新',
         terminal: '终端'
+      },
+      about: {
+        channels: {
+          alpha: 'Alpha',
+          beta: 'Beta',
+          latest: '正式通道'
+        },
+        intro: {
+          description:
+            'WinSSH 是一个围绕终端、文件、端口转发和连接管理构建的桌面 SSH 工作台。当前仍处于 Beta 跑道阶段，自动更新和平台覆盖会继续完善。',
+          title: '关于 WinSSH'
+        },
+        version: {
+          channelLabel: '发布通道',
+          nameLabel: '应用名称',
+          platformLabel: '平台',
+          title: '版本信息',
+          versionLabel: '版本号'
+        }
+      },
+      updates: {
+        actions: {
+          check: '立即检查更新',
+          download: '下载更新',
+          install: '重启并安装'
+        },
+        autoCheck: {
+          description: '应用启动时自动检查更新，但不会自动下载更新包。',
+          title: '自动检查更新'
+        },
+        description: 'Windows 构建会检查已配置的更新源，并由你决定何时下载和安装新版本。',
+        status: {
+          available: '发现新版本 {{version}}。',
+          buildUnsupported: '当前构建不支持自动更新。',
+          checking: '正在检查更新...',
+          downloaded: '更新已下载完成，等待安装。',
+          downloading: '正在下载更新... {{percent}}%',
+          error: '更新失败。',
+          feedMissing: '当前构建没有配置更新源。',
+          idle: '你可以随时手动检查更新。',
+          notAvailable: '当前已经是最新版本。',
+          platformUnsupported: '当前构建暂不支持在 {{platform}} 上自动更新。'
+        },
+        statusLabel: '更新状态',
+        title: '自动更新',
+        toasts: {
+          checkFailed: '检查更新失败。',
+          downloadFailed: '下载更新失败。',
+          installFailed: '启动安装失败。'
+        }
       },
       security: {
         available: '当前环境支持系统钥匙串，密码和私钥口令会优先写入系统安全存储。',
@@ -482,6 +537,35 @@ const workbench = {
       validation: {
         failed: '设置表单校验失败。'
       }
+    },
+    updateDialog: {
+      actions: {
+        download: '下载更新',
+        install: '重启并安装',
+        later: '稍后'
+      },
+      description: '发现新版本 WinSSH {{version}}。你可以现在下载，也可以稍后处理。',
+      descriptions: {
+        checking: '正在检查更新源。',
+        downloaded: '更新已下载完成，可以立即安装。',
+        downloading: '正在下载更新... {{percent}}%',
+        error: '检查或下载更新时发生错误。',
+        idle: '正在准备更新流程。',
+        notAvailable: '当前已经是最新版本。',
+        unsupported: '当前环境暂不支持自动更新。'
+      },
+      title: '发现可用更新',
+      titles: {
+        checking: '正在检查更新',
+        downloaded: '可以安装更新',
+        downloading: '正在下载更新',
+        error: '更新失败',
+        notAvailable: '当前已是最新版本',
+        unsupported: '当前无法更新'
+      }
+    },
+    updatesEditor: {
+      releaseDate: '发布日期'
     },
     shell: {
       terminalWelcome: {

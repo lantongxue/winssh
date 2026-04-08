@@ -22,6 +22,9 @@ win:
     - nsis
     - zip
   artifactName: ${productName}-Windows-${version}-${arch}.${ext}
+  publish:
+    - provider: generic
+      url: ${env.WINSSH_UPDATE_BASE_URL}
 nsis:
   include: build/installer.nsh
   artifactName: ${productName}-Windows-${version}-${arch}-Setup.${ext}
@@ -56,4 +59,5 @@ linux:
     - AppImage
     - deb
   artifactName: ${productName}-Linux-${version}-${arch}.${ext}
+electronUpdaterCompatibility: '>=2.16'
 npmRebuild: false

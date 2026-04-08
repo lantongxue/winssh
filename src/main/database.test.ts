@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import type { ServerUpsertInput } from '@shared/types'
 
 const betterSqliteModule = await import('better-sqlite3').catch(() => null)
@@ -202,5 +203,23 @@ describeDatabase('DatabaseService server persistence', () => {
       customIconDataUrl: null,
       name: 'Icon Host Updated'
     })
+  })
+
+  it('persists the automatic update check setting', () => {
+    if (!DatabaseService) {
+      return
+    }
+
+    const databasePath = createTempDatabasePath()
+    const service = new DatabaseService(databasePath)
+
+    expect(service.getSettings()).toEqual(DEFAULT_APP_SETTINGS)
+
+    const updated = service.updateSettings({
+      autoUpdateCheckEnabled: false
+    })
+
+    expect(updated.autoUpdateCheckEnabled).toBe(false)
+    expect(service.getSettings().autoUpdateCheckEnabled).toBe(false)
   })
 })

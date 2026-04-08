@@ -50,6 +50,7 @@ const workbench = {
         newConnection: 'Untitled Connection'
       },
       settings: 'Settings',
+      updates: 'Updates',
       terminal: 'Terminal',
       terminalWelcome: 'Terminal'
     },
@@ -405,9 +406,12 @@ const workbench = {
         underline: 'Underline'
       },
       descriptions: {
+        about: 'Review app details and version information.',
         appearance: 'Adjust language, theme, and window title bar mode.',
         credentialVault: 'Manage reusable passwords, private keys, and passphrases.',
         security: 'Review credential storage support and trusted hosts.',
+        updates:
+          'Check the current update status and decide when to download or install new versions.',
         terminal:
           'Adjust the local shell, terminal font, cursor, copy behavior, and experimental rendering.'
       },
@@ -458,10 +462,64 @@ const workbench = {
         verified: 'Verified'
       },
       sections: {
+        about: 'About',
         appearance: 'Appearance',
         credentialVault: 'Credential Vault',
         security: 'Security',
+        updates: 'Updates',
         terminal: 'Terminal'
+      },
+      about: {
+        channels: {
+          alpha: 'Alpha',
+          beta: 'Beta',
+          latest: 'Latest'
+        },
+        intro: {
+          description:
+            'WinSSH is a desktop SSH workspace focused on terminals, files, forwarding, and reusable connection management. This build is still in the beta runway, so update behavior and platform coverage are still being tightened.',
+          title: 'About WinSSH'
+        },
+        version: {
+          channelLabel: 'Release channel',
+          nameLabel: 'Application',
+          platformLabel: 'Platform',
+          title: 'Version Information',
+          versionLabel: 'Version'
+        }
+      },
+      updates: {
+        actions: {
+          check: 'Check for Updates',
+          download: 'Download Update',
+          install: 'Restart to Install'
+        },
+        autoCheck: {
+          description:
+            'Checks for updates when the app starts. This does not download updates automatically.',
+          title: 'Automatically check for updates'
+        },
+        description:
+          'Windows builds can check the configured update feed and let you choose when to download and install a new version.',
+        status: {
+          available: 'Update {{version}} is available.',
+          buildUnsupported: 'The current build does not support automatic updates.',
+          checking: 'Checking for updates...',
+          downloaded: 'Update downloaded and ready to install.',
+          downloading: 'Downloading update... {{percent}}%',
+          error: 'Update failed.',
+          feedMissing: 'This build was not configured with an update feed.',
+          idle: 'Automatic updates are ready when you want to check.',
+          notAvailable: 'You are already on the latest version.',
+          platformUnsupported: 'Automatic updates are not supported on {{platform}} in this build.'
+        },
+        statusLabel: 'Update status',
+        title: 'Automatic Updates',
+        toasts: {
+          checkFailed: 'Failed to check for updates.',
+          downloadFailed: 'Failed to download the update.',
+          installFailed: 'Failed to start the installer.'
+        }
       },
       security: {
         available:
@@ -497,6 +555,35 @@ const workbench = {
       validation: {
         failed: 'Settings form validation failed.'
       }
+    },
+    updateDialog: {
+      actions: {
+        download: 'Download Update',
+        install: 'Restart to Install',
+        later: 'Later'
+      },
+      description: 'WinSSH {{version}} is available. Download it now or come back to it later.',
+      descriptions: {
+        checking: 'Checking the update feed now.',
+        downloaded: 'The update has finished downloading and is ready to install.',
+        downloading: 'Downloading the update... {{percent}}%',
+        error: 'Something went wrong while checking or downloading updates.',
+        idle: 'Preparing the update workflow.',
+        notAvailable: 'You are already on the latest available version.',
+        unsupported: 'Automatic updates are unavailable in the current environment.'
+      },
+      title: 'Update Available',
+      titles: {
+        checking: 'Checking for Updates',
+        downloaded: 'Ready to Install',
+        downloading: 'Downloading Update',
+        error: 'Update Failed',
+        notAvailable: 'You Are Up to Date',
+        unsupported: 'Updates Unavailable'
+      }
+    },
+    updatesEditor: {
+      releaseDate: 'Release date'
     },
     shell: {
       terminalWelcome: {

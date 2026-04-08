@@ -1,63 +1,159 @@
+import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import type { UpdateState } from '@shared/types'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { actionIcons } from '@/lib/action-icons'
 import { workbenchActivities } from '@/lib/workbench'
 import { cn } from '@/lib/utils'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export function WorkbenchActivityBar() {
   const { t } = useTranslation()
-  const { focusActivity } = useWorkbenchContext()
+  const queryClient = useQueryClient()
+  const { focusActivity, openSettingsEditor, openUpdatesEditor } = useWorkbenchContext()
   const sessionCount = useSessionsStore((state) => state.tabs.length)
   const activeActivityId = useWorkbenchStore((state) => state.activeActivityId)
   const setSidebarOpen = useWorkbenchStore((state) => state.setSidebarOpen)
   const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen)
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
+  const SettingsIcon = actionIcons.openSettings
+  const RefreshIcon = actionIcons.refresh
+  const visibleActivities = workbenchActivities.filter(
+    (activity) => activity.activityId !== 'settings'
+  )
+  const settingsActive = activeActivityId === 'settings' || settingsMenuOpen
+  const settingsTitle = t('workbench.activity.settings.title')
+
+  const checkForUpdates = useMutation({
+    mutationFn: () => window.winsshApi.updates.check(),
+    onMutate: () => {
+      const currentState = queryClient.getQueryData<UpdateState>(['updates', 'state'])
+
+      if (!currentState) {
+        return
+      }
+
+      queryClient.setQueryData<UpdateState>(['updates', 'state'], {
+        ...currentState,
+        errorMessage: null,
+        phase: 'checking'
+      })
+    },
+    onSuccess: (state) => {
+      queryClient.setQueryData(['updates', 'state'], state)
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : t('workbench.settings.updates.toasts.checkFailed')
+      )
+    }
+  })
+
+  const handleCheckForUpdates = () => {
+    openUpdatesEditor()
+    checkForUpdates.mutate()
+  }
 
   return (
     <aside className="liquid-glass-pane flex w-12 shrink-0 flex-col items-center border-r border-[var(--workbench-border)] bg-[var(--workbench-activity-bar)] py-2">
-      <div className="flex flex-col items-center gap-1">
-        {workbenchActivities.map((activity) => {
-          const Icon = activity.icon
-          const active = activity.activityId === activeActivityId
-          const title = t(`workbench.activity.${activity.activityId}.title`)
+      <div className="flex min-h-0 flex-1 flex-col items-center">
+        <div className="flex flex-col items-center gap-1">
+          {visibleActivities.map((activity) => {
+            const Icon = activity.icon
+            const active = activity.activityId === activeActivityId
+            const title = t(`workbench.activity.${activity.activityId}.title`)
 
-          return (
-            <Tooltip key={activity.activityId}>
-              <TooltipTrigger asChild>
+            return (
+              <Tooltip key={activity.activityId}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    data-testid={`activity-${activity.activityId}`}
+                    data-active={active}
+                    aria-label={title}
+                    className={cn(
+                      'liquid-glass-chip relative flex size-10 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground',
+                      active && 'bg-[var(--workbench-hover)] text-foreground'
+                    )}
+                    onClick={() => {
+                      if (active) {
+                        setSidebarOpen(!sidebarOpen)
+                        return
+                      }
+
+                      setSidebarOpen(true)
+                      focusActivity(activity.activityId)
+                    }}
+                  >
+                    {active ? (
+                      <span className="absolute inset-y-1 left-0 w-0.5 rounded-r bg-[var(--workbench-active)]" />
+                    ) : null}
+                    <Icon className="size-5" />
+                    {activity.activityId === 'terminal' && sessionCount > 0 ? (
+                      <span className="absolute right-0.5 top-0.5 min-w-4 rounded-full bg-[var(--workbench-active)] px-1 text-[10px] font-semibold text-white">
+                        {sessionCount > 9 ? '9+' : sessionCount}
+                      </span>
+                    ) : null}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">{title}</TooltipContent>
+              </Tooltip>
+            )
+          })}
+        </div>
+
+        <DropdownMenu open={settingsMenuOpen} onOpenChange={setSettingsMenuOpen}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  data-active={active}
-                  aria-label={title}
+                  data-testid="activity-settings-menu"
+                  data-active={settingsActive}
+                  aria-label={settingsTitle}
                   className={cn(
-                    'liquid-glass-chip relative flex size-10 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground',
-                    active && 'bg-[var(--workbench-hover)] text-foreground'
+                    'liquid-glass-chip relative mt-auto flex size-10 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground',
+                    settingsActive && 'bg-[var(--workbench-hover)] text-foreground'
                   )}
-                  onClick={() => {
-                    if (active) {
-                      setSidebarOpen(!sidebarOpen)
-                      return
-                    }
-
-                    setSidebarOpen(true)
-                    focusActivity(activity.activityId)
-                  }}
                 >
-                  {active ? (
+                  {settingsActive ? (
                     <span className="absolute inset-y-1 left-0 w-0.5 rounded-r bg-[var(--workbench-active)]" />
                   ) : null}
-                  <Icon className="size-5" />
-                  {activity.activityId === 'terminal' && sessionCount > 0 ? (
-                    <span className="absolute right-0.5 top-0.5 min-w-4 rounded-full bg-[var(--workbench-active)] px-1 text-[10px] font-semibold text-white">
-                      {sessionCount > 9 ? '9+' : sessionCount}
-                    </span>
-                  ) : null}
+                  <SettingsIcon className="size-5" />
                 </button>
-              </TooltipTrigger>
-              <TooltipContent side="right">{title}</TooltipContent>
-            </Tooltip>
-          )
-        })}
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="right">{settingsTitle}</TooltipContent>
+          </Tooltip>
+
+          <DropdownMenuContent
+            align="end"
+            side="right"
+            className="min-w-40 border-[var(--workbench-border)] bg-[var(--workbench-editor)]"
+          >
+            <DropdownMenuItem onSelect={() => openSettingsEditor()}>
+              <SettingsIcon className="size-4" />
+              {settingsTitle}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={checkForUpdates.isPending}
+              onSelect={() => handleCheckForUpdates()}
+            >
+              <RefreshIcon className={cn('size-4', checkForUpdates.isPending && 'animate-spin')} />
+              {t('workbench.settings.updates.actions.check')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </aside>
   )

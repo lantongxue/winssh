@@ -19,6 +19,7 @@ import {
   createServerEditorDocument,
   createSessionEditorDocument,
   createSettingsEditorDocument,
+  createUpdatesEditorDocument,
   createTerminalWelcomeDocument
 } from '@/lib/workbench'
 import { useLocalTerminalsStore } from '@/store/local-terminals-store'
@@ -111,6 +112,7 @@ interface WorkbenchContextValue {
   openEntityQuickInput: (input: EntityQuickInputState) => void
   openServerEditor: (serverId?: string | null, options?: OpenServerEditorOptions) => void
   openSettingsEditor: () => void
+  openUpdatesEditor: () => void
   quickInput: WorkbenchQuickInputState | null
   reconnectSession: (sessionId: string) => Promise<void>
   refreshWorkspaceData: () => Promise<void>
@@ -277,6 +279,11 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const openSettingsEditor = () => {
     setActiveActivity('settings')
     openDocument(createSettingsEditorDocument())
+  }
+
+  const openUpdatesEditor = () => {
+    setActiveActivity('settings')
+    openDocument(createUpdatesEditorDocument())
   }
 
   const openServerEditor = (serverId?: string | null, options: OpenServerEditorOptions = {}) => {
@@ -808,6 +815,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         openEntityQuickInput,
         openServerEditor,
         openSettingsEditor,
+        openUpdatesEditor,
         quickInput,
         reconnectSession,
         refreshWorkspaceData,

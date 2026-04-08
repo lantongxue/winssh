@@ -17,6 +17,24 @@ export type PortForwardStatus = 'starting' | 'active' | 'stopped' | 'error'
 export type SessionConnectFailureCode = 'secret_required' | 'auth_failed' | 'connection_failed'
 export type LocalTerminalStatus = 'running' | 'exited' | 'error'
 export type LocalTerminalShell = 'cmd' | 'powershell' | 'bash' | 'zsh'
+export type ReleaseChannel = 'alpha' | 'beta' | 'latest'
+export const UPDATE_PHASES = [
+  'unsupported',
+  'idle',
+  'checking',
+  'available',
+  'not-available',
+  'downloading',
+  'downloaded',
+  'error'
+] as const
+export type UpdatePhase = (typeof UPDATE_PHASES)[number]
+export const UPDATE_UNSUPPORTED_REASONS = [
+  'platform_not_supported',
+  'app_not_packaged',
+  'feed_url_missing'
+] as const
+export type UpdateUnsupportedReason = (typeof UPDATE_UNSUPPORTED_REASONS)[number]
 export const SESSION_RESOURCE_MONITOR_LINUX_ONLY = 'session_resource_linux_only'
 export const SESSION_RESOURCE_MONITOR_UNAVAILABLE = 'session_resource_unavailable'
 
@@ -87,12 +105,38 @@ export interface AppSettings {
   theme: ThemeMode
   terminalFontSize: number
   terminalFontFamily: string
+  autoUpdateCheckEnabled: boolean
   experimentalTerminalWebgl: boolean
   cursorStyle: CursorStyle
   cursorBlink: boolean
   copyOnSelect: boolean
   localTerminalShell: LocalTerminalShell
   windowTitleBarStyle: WindowTitleBarStyle
+}
+
+export interface AppInfo {
+  name: string
+  version: string
+  platform: string
+  releaseChannel: ReleaseChannel
+}
+
+export interface UpdateVersionInfo {
+  version: string
+  releaseDate: string | null
+  releaseName: string | null
+  releaseNotes: string | null
+}
+
+export interface UpdateState {
+  phase: UpdatePhase
+  supported: boolean
+  currentVersion: string
+  autoCheckEnabled: boolean
+  availableUpdate: UpdateVersionInfo | null
+  downloadProgressPercent: number | null
+  errorMessage: string | null
+  unsupportedReason: UpdateUnsupportedReason | null
 }
 
 export interface GroupInput {

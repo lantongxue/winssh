@@ -58,6 +58,10 @@ function getBaseDocumentTitle(
     return t('workbench.documents.settings')
   }
 
+  if (document.kind === 'updates-editor') {
+    return t('workbench.documents.updates')
+  }
+
   return t('workbench.documents.terminalWelcome')
 }
 

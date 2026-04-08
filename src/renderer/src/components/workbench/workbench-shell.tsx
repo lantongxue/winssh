@@ -34,6 +34,7 @@ import { WorkbenchSessionEditor } from '@/components/workbench/workbench-session
 import { WorkbenchSettingsEditor } from '@/components/workbench/workbench-settings-editor'
 import { WorkbenchStatusBar } from '@/components/workbench/workbench-status-bar'
 import { WorkbenchTitlebar } from '@/components/workbench/workbench-titlebar'
+import { WorkbenchUpdatesEditor } from '@/components/workbench/workbench-updates-editor'
 
 function submitServerEditorForm(documentId: `server-editor:${string}`) {
   const form = document.getElementById(getServerEditorFormId(documentId))
@@ -125,6 +126,11 @@ function WorkbenchShellContent() {
 
     if (location.pathname === '/settings') {
       if (currentActiveDocument?.kind === 'settings-editor') {
+        setActiveActivity('settings')
+        return
+      }
+
+      if (currentActiveDocument?.kind === 'updates-editor') {
         setActiveActivity('settings')
         return
       }
@@ -331,6 +337,7 @@ function WorkbenchShellContent() {
           <WorkbenchLocalTerminalEditor active={active} terminalId={document.terminalId} />
         ) : null}
         {document.kind === 'settings-editor' ? <WorkbenchSettingsEditor /> : null}
+        {document.kind === 'updates-editor' ? <WorkbenchUpdatesEditor /> : null}
       </div>
     )
   })

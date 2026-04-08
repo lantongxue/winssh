@@ -165,6 +165,7 @@ describe('WorkbenchTitlebar', () => {
 
     await act(async () => {
       queryClient.setQueryData(['settings'], {
+        autoUpdateCheckEnabled: true,
         copyOnSelect: true,
         cursorBlink: true,
         cursorStyle: 'block',

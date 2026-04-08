@@ -12,7 +12,7 @@ import {
 } from 'electron'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { APP_ID } from '@shared/constants'
+import { APP_ID, APP_NAME } from '@shared/constants'
 import { normalizeLocalTerminalShell } from '@shared/local-terminal-shells'
 import { isServerIconMimeType, type ServerIconMimeType } from '@shared/server-brands'
 import { getDefaultThemeId, SYSTEM_THEME_ID, type ThemeAppearance } from '@shared/themes'
@@ -34,6 +34,7 @@ import {
   settingsSchema,
   tagSchema
 } from '@shared/validation'
+import { createAppInfo } from './app-info'
 import { DatabaseService } from './database'
 import { LocalTerminalManager } from './local-terminal-manager'
 import { createMainTranslator, resolveMainLanguage } from './localization'
@@ -41,6 +42,7 @@ import { SecureStoreService } from './secure-store'
 import { SessionManager } from './session-manager'
 import { SystemFontService } from './system-fonts'
 import { ThemeRegistry, ThemeRegistryError } from './theme-registry'
+import { UpdateService } from './update-service'
 import { getWindowChromeOptions } from './window-config'
 
 let mainWindow: BrowserWindow | null = null
@@ -154,6 +156,10 @@ function normalizeAppSettingsForPlatform(settings: AppSettings): AppSettings {
   }
 }
 
+function isEnabledEnvironmentFlag(value: string | undefined): boolean {
+  return value === '1' || value?.toLowerCase() === 'true'
+}
+
 async function bootstrap(): Promise<void> {
   electronApp.setAppUserModelId(APP_ID)
 
@@ -162,11 +168,28 @@ async function bootstrap(): Promise<void> {
     join(app.getAppPath(), 'themes', 'builtin'),
     join(app.getPath('userData'), 'themes')
   )
+  const getNormalizedSettings = () =>
+    themeRegistry.normalizeSettings(normalizeAppSettingsForPlatform(database.getSettings()))
   const secureStore = new SecureStoreService()
   const systemFontService = new SystemFontService()
   const translate = createMainTranslator(() =>
     resolveMainLanguage(database.getSettings().language, app.getLocale())
   )
+  const appInfo = createAppInfo({
+    name: APP_NAME,
+    platform: process.platform,
+    version: app.getVersion()
+  })
+  const allowDevUpdates = isEnabledEnvironmentFlag(process.env['WINSSH_ALLOW_DEV_UPDATES'])
+  const updateService = new UpdateService({
+    allowDevUpdates,
+    autoCheckEnabled: getNormalizedSettings().autoUpdateCheckEnabled,
+    currentVersion: appInfo.version,
+    devConfigPath: join(app.getAppPath(), 'dev-app-update.yml'),
+    feedUrl: process.env['WINSSH_UPDATE_BASE_URL']?.trim() || null,
+    isPackaged: app.isPackaged,
+    platform: process.platform
+  })
   const sessionManager = new SessionManager(
     database,
     secureStore,
@@ -182,6 +205,10 @@ async function bootstrap(): Promise<void> {
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
+  })
+
+  updateService.on('state-change', (state) => {
+    mainWindow?.webContents.send('updates:state', state)
   })
 
   const withServerSecrets = async () => {
@@ -547,11 +574,11 @@ async function bootstrap(): Promise<void> {
     }
   })
   ipcMain.handle('settings:get', () =>
-    themeRegistry.normalizeSettings(normalizeAppSettingsForPlatform(database.getSettings()))
+    getNormalizedSettings()
   )
   ipcMain.handle('settings:update', (_event, input: Partial<AppSettings>) => {
     const merged = parseInput(settingsSchema, {
-      ...themeRegistry.normalizeSettings(normalizeAppSettingsForPlatform(database.getSettings())),
+      ...getNormalizedSettings(),
       ...input
     })
 
@@ -562,10 +589,18 @@ async function bootstrap(): Promise<void> {
     const nextSettings = themeRegistry.normalizeSettings(
       database.updateSettings(normalizeAppSettingsForPlatform(merged))
     )
+    updateService.setAutoCheckEnabled(nextSettings.autoUpdateCheckEnabled)
     syncMainWindowTheme(nextSettings)
     return nextSettings
   })
+  ipcMain.handle('updates:getState', () => updateService.getState())
+  ipcMain.handle('updates:check', () => updateService.check())
+  ipcMain.handle('updates:download', () => updateService.download())
+  ipcMain.handle('updates:quitAndInstall', () => {
+    updateService.quitAndInstall()
+  })
 
+  ipcMain.handle('system:getAppInfo', () => appInfo)
   ipcMain.handle('system:pickPrivateKey', async () => {
     const options: OpenDialogOptions = {
       title: translate('dialogs.pickPrivateKey.title'),
@@ -661,18 +696,20 @@ async function bootstrap(): Promise<void> {
   })
   ipcMain.handle('system:window:isMaximized', () => mainWindow?.isMaximized() ?? false)
 
-  mainWindow = createWindow(themeRegistry.normalizeSettings(database.getSettings()), themeRegistry)
+  mainWindow = createWindow(getNormalizedSettings(), themeRegistry)
+  mainWindow.webContents.once('did-finish-load', () => {
+    if (updateService.getState().autoCheckEnabled) {
+      void updateService.check()
+    }
+  })
 
   nativeTheme.on('updated', () => {
-    syncMainWindowTheme(themeRegistry.normalizeSettings(database.getSettings()))
+    syncMainWindowTheme(getNormalizedSettings())
   })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      mainWindow = createWindow(
-        themeRegistry.normalizeSettings(database.getSettings()),
-        themeRegistry
-      )
+      mainWindow = createWindow(getNormalizedSettings(), themeRegistry)
     }
   })
 

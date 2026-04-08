@@ -254,6 +254,7 @@ function TestTerminal({
 
 describe('useTerminal', () => {
   const settings: AppSettings = {
+    autoUpdateCheckEnabled: true,
     copyOnSelect: false,
     cursorBlink: true,
     cursorStyle: 'block',

@@ -1,18 +1,186 @@
-import { useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ThemeDefinition } from '@shared/themes'
 import type { ThemeMode } from '@shared/types'
+import { useTranslation } from 'react-i18next'
 import { Toaster } from 'sonner'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
 import { WorkbenchShell } from '@/components/workbench/workbench-shell'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { usePrefersDark } from '@/hooks/use-prefers-dark'
 import { useSessionEvents } from '@/hooks/use-session-events'
 import i18n from '@/i18n'
 import { resolveAppLanguage } from '@/i18n/format'
+import { actionIcons } from '@/lib/action-icons'
 import { applyThemeToRoot } from '@/lib/theme'
+import { useUpdateDialogStore } from '@/store/update-dialog-store'
 
 function applyTheme(theme: ThemeMode, themes: ThemeDefinition[], prefersDark: boolean) {
   applyThemeToRoot(document.documentElement, theme, themes, prefersDark)
+}
+
+function UpdateDialog() {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const seenVersionsRef = useRef(new Set<string>())
+  const dialogMode = useUpdateDialogStore((state) => state.mode)
+  const closeDialog = useUpdateDialogStore((state) => state.close)
+  const openAutoDialog = useUpdateDialogStore((state) => state.openAuto)
+  const DownloadIcon = actionIcons.download
+  const RestartIcon = actionIcons.restart
+
+  const updatesQuery = useQuery({
+    queryKey: ['updates', 'state'],
+    queryFn: () => window.winsshApi.updates.getState()
+  })
+
+  useEffect(() => {
+    return window.winsshApi.updates.onStateChange((state) => {
+      queryClient.setQueryData(['updates', 'state'], state)
+    })
+  }, [queryClient])
+
+  const updateState = updatesQuery.data
+  const availableVersion = updateState?.phase === 'available' ? updateState.availableUpdate?.version : null
+  const releaseNotes =
+    typeof updateState?.availableUpdate?.releaseNotes === 'string' &&
+    updateState.availableUpdate.releaseNotes.trim()
+      ? updateState.availableUpdate.releaseNotes
+      : null
+
+  useEffect(() => {
+    if (!availableVersion) {
+      if (dialogMode === 'auto' && updateState?.phase !== 'available') {
+        closeDialog()
+      }
+      return
+    }
+
+    if (dialogMode !== 'manual' && !seenVersionsRef.current.has(availableVersion)) {
+      openAutoDialog()
+    }
+  }, [availableVersion, closeDialog, dialogMode, openAutoDialog, updateState?.phase])
+
+  const downloadUpdate = useMutation({
+    mutationFn: () => window.winsshApi.updates.download(),
+    onSuccess: (state) => {
+      queryClient.setQueryData(['updates', 'state'], state)
+    }
+  })
+  const installUpdate = useMutation({
+    mutationFn: () => window.winsshApi.updates.quitAndInstall()
+  })
+
+  const handleClose = () => {
+    if (availableVersion) {
+      seenVersionsRef.current.add(availableVersion)
+    }
+
+    closeDialog()
+  }
+
+  const dialogTitle =
+    updateState?.phase === 'checking'
+      ? t('workbench.updateDialog.titles.checking')
+      : updateState?.phase === 'not-available'
+        ? t('workbench.updateDialog.titles.notAvailable')
+        : updateState?.phase === 'downloading'
+          ? t('workbench.updateDialog.titles.downloading')
+          : updateState?.phase === 'downloaded'
+            ? t('workbench.updateDialog.titles.downloaded')
+            : updateState?.phase === 'error'
+              ? t('workbench.updateDialog.titles.error')
+              : updateState?.phase === 'unsupported'
+                ? t('workbench.updateDialog.titles.unsupported')
+                : t('workbench.updateDialog.title')
+
+  const dialogDescription =
+    updateState?.phase === 'checking'
+      ? t('workbench.updateDialog.descriptions.checking')
+      : updateState?.phase === 'not-available'
+        ? t('workbench.updateDialog.descriptions.notAvailable')
+        : updateState?.phase === 'available'
+          ? t('workbench.updateDialog.description', {
+              version: updateState.availableUpdate?.version ?? updateState.currentVersion
+            })
+          : updateState?.phase === 'downloading'
+            ? t('workbench.updateDialog.descriptions.downloading', {
+                percent: Math.round(updateState.downloadProgressPercent ?? 0)
+              })
+            : updateState?.phase === 'downloaded'
+              ? t('workbench.updateDialog.descriptions.downloaded')
+              : updateState?.phase === 'error'
+                ? updateState.errorMessage ?? t('workbench.updateDialog.descriptions.error')
+                : updateState?.phase === 'unsupported'
+                  ? t('workbench.updateDialog.descriptions.unsupported')
+                  : t('workbench.updateDialog.descriptions.idle')
+
+  const showDialog =
+    dialogMode === 'manual'
+      ? Boolean(updateState)
+      : dialogMode === 'auto' &&
+        updateState?.phase === 'available' &&
+        Boolean(updateState.availableUpdate)
+
+  if (!showDialog || !updateState) {
+    return null
+  }
+
+  const canDownload = updateState.phase === 'available'
+  const canInstall = updateState.phase === 'downloaded'
+  const closeLabel =
+    updateState.phase === 'available'
+      ? t('workbench.updateDialog.actions.later')
+      : t('common.actions.close')
+
+  return (
+    <Dialog open={showDialog} onOpenChange={(nextOpen) => !nextOpen && handleClose()}>
+      <DialogContent className="max-w-md border-[var(--workbench-border)] bg-[var(--workbench-editor)]">
+        <DialogHeader>
+          <DialogTitle>{dialogTitle}</DialogTitle>
+          <DialogDescription>{dialogDescription}</DialogDescription>
+        </DialogHeader>
+        {releaseNotes ? (
+          <div className="max-h-64 overflow-auto rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-sidebar)] px-3 py-3 text-sm text-muted-foreground whitespace-pre-wrap">
+            {releaseNotes}
+          </div>
+        ) : null}
+        <DialogFooter>
+          <Button type="button" variant="ghost" onClick={handleClose}>
+            {closeLabel}
+          </Button>
+          {canDownload ? (
+            <Button
+              type="button"
+              disabled={downloadUpdate.isPending}
+              onClick={() => downloadUpdate.mutate()}
+            >
+              <DownloadIcon className="size-4" />
+              {t('workbench.updateDialog.actions.download')}
+            </Button>
+          ) : null}
+          {canInstall ? (
+            <Button
+              type="button"
+              disabled={installUpdate.isPending}
+              onClick={() => installUpdate.mutate()}
+            >
+              <RestartIcon className="size-4" />
+              {t('workbench.updateDialog.actions.install')}
+            </Button>
+          ) : null}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
 }
 
 export default function App() {
@@ -68,6 +236,7 @@ export default function App() {
       <TooltipProvider>
         <WorkbenchShell />
       </TooltipProvider>
+      <UpdateDialog />
       <Toaster
         position="bottom-right"
         offset={16}

@@ -90,12 +90,20 @@ const api: WinsshApi = {
     get: () => ipcRenderer.invoke('settings:get'),
     update: (input) => ipcRenderer.invoke('settings:update', input)
   },
+  updates: {
+    getState: () => ipcRenderer.invoke('updates:getState'),
+    check: () => ipcRenderer.invoke('updates:check'),
+    download: () => ipcRenderer.invoke('updates:download'),
+    quitAndInstall: () => ipcRenderer.invoke('updates:quitAndInstall'),
+    onStateChange: (callback) => subscribe('updates:state', callback)
+  },
   themes: {
     list: () => ipcRenderer.invoke('themes:list'),
     importArchive: () => ipcRenderer.invoke('themes:importArchive'),
     deletePlugin: (pluginId) => ipcRenderer.invoke('themes:deletePlugin', pluginId)
   },
   system: {
+    getAppInfo: () => ipcRenderer.invoke('system:getAppInfo'),
     getPathForFile: (file) => {
       try {
         const localPath = webUtils.getPathForFile(file)

@@ -9,7 +9,8 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import {
   createServerEditorDocument,
   createSessionEditorDocument,
-  createSettingsEditorDocument
+  createSettingsEditorDocument,
+  createUpdatesEditorDocument
 } from '@/lib/workbench'
 import { createWinsshApiMock } from '@/test/create-winssh-api'
 import { useSessionsStore } from '@/store/sessions-store'
@@ -292,5 +293,19 @@ describe('WorkbenchEditorTabs session context menu', () => {
       'server-editor:server-1',
       'settings-editor'
     ])
+  })
+
+  it('shows the updates tab with the updates title', async () => {
+    window.winsshApi = createWinsshApiMock({
+      servers: {
+        list: vi.fn().mockResolvedValue([])
+      }
+    })
+
+    useWorkbenchStore.getState().openDocument(createUpdatesEditorDocument())
+    renderEditorTabs()
+
+    expect(await screen.findByText('Updates')).toBeInTheDocument()
+    expect(screen.queryByText('Terminal')).not.toBeInTheDocument()
   })
 })

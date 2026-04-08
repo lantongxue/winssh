@@ -30,6 +30,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   theme: SYSTEM_THEME_ID,
   terminalFontSize: 14,
   terminalFontFamily: 'JetBrains Mono, Consolas, monospace',
+  autoUpdateCheckEnabled: true,
   experimentalTerminalWebgl: false,
   cursorStyle: 'block',
   cursorBlink: true,

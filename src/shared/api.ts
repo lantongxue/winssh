@@ -1,4 +1,5 @@
 import type {
+  AppInfo,
   AppSettings,
   ConnectionRequest,
   Credential,
@@ -30,6 +31,7 @@ import type {
   Tag,
   TagInput,
   TransferProgressEvent,
+  UpdateState,
   WindowState
 } from './types'
 import type { ServerIconMimeType } from './server-brands'
@@ -112,12 +114,20 @@ export interface WinsshApi {
     get: () => Promise<AppSettings>
     update: (input: Partial<AppSettings>) => Promise<AppSettings>
   }
+  updates: {
+    getState: () => Promise<UpdateState>
+    check: () => Promise<UpdateState>
+    download: () => Promise<UpdateState>
+    quitAndInstall: () => Promise<void>
+    onStateChange: (callback: (state: UpdateState) => void) => Unsubscribe
+  }
   themes: {
     list: () => Promise<ThemeDefinition[]>
     importArchive: () => Promise<ThemeImportResult | null>
     deletePlugin: (pluginId: string) => Promise<ThemeDeleteResult>
   }
   system: {
+    getAppInfo: () => Promise<AppInfo>
     getPathForFile: (file: File) => string | null
     pickPrivateKey: () => Promise<string | null>
     pickServerIcon: () => Promise<{ mimeType: ServerIconMimeType; data: Uint8Array } | null>

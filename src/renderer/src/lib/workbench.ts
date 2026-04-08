@@ -21,6 +21,7 @@ export type WorkbenchExplorerNodeId =
 
 export type WorkbenchDocumentId =
   | 'settings-editor'
+  | 'updates-editor'
   | 'terminal-welcome'
   | `server-editor:${string}`
   | `session-editor:${string}`
@@ -29,6 +30,11 @@ export type WorkbenchDocumentId =
 export interface SettingsEditorDocument {
   id: 'settings-editor'
   kind: 'settings-editor'
+}
+
+export interface UpdatesEditorDocument {
+  id: 'updates-editor'
+  kind: 'updates-editor'
 }
 
 export interface TerminalWelcomeDocument {
@@ -57,6 +63,7 @@ export interface LocalTerminalEditorDocument {
 
 export type WorkbenchDocument =
   | SettingsEditorDocument
+  | UpdatesEditorDocument
   | TerminalWelcomeDocument
   | ServerEditorDocument
   | SessionEditorDocument
@@ -118,6 +125,10 @@ export function createSettingsEditorDocument(): SettingsEditorDocument {
   return { id: 'settings-editor', kind: 'settings-editor' }
 }
 
+export function createUpdatesEditorDocument(): UpdatesEditorDocument {
+  return { id: 'updates-editor', kind: 'updates-editor' }
+}
+
 export function createTerminalWelcomeDocument(): TerminalWelcomeDocument {
   return { id: 'terminal-welcome', kind: 'terminal-welcome' }
 }
@@ -172,7 +183,7 @@ export function getDocumentActivity(document: WorkbenchDocument | null): Workben
     return 'explorer'
   }
 
-  if (document.kind === 'settings-editor') {
+  if (document.kind === 'settings-editor' || document.kind === 'updates-editor') {
     return 'settings'
   }
 
@@ -207,6 +218,8 @@ export function getDocumentFallbackTitle(document: WorkbenchDocument): string {
   switch (document.kind) {
     case 'settings-editor':
       return 'Settings'
+    case 'updates-editor':
+      return 'Updates'
     case 'terminal-welcome':
       return 'Terminal'
     case 'server-editor':
@@ -224,6 +237,8 @@ export function getDocumentDescription(document: WorkbenchDocument): string {
   switch (document.kind) {
     case 'settings-editor':
       return 'Application preferences.'
+    case 'updates-editor':
+      return 'Check for, download, and install application updates.'
     case 'terminal-welcome':
       return 'No active terminal session.'
     case 'server-editor':

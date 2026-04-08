@@ -137,6 +137,14 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
   const resolvedSystemApi: WinsshApi['system'] = {
     getCapabilities:
       systemOverrides?.getCapabilities ?? (async () => ({ credentialStorage: true })),
+    getAppInfo:
+      systemOverrides?.getAppInfo ??
+      (async () => ({
+        name: 'WinSSH',
+        platform: 'linux',
+        releaseChannel: 'latest',
+        version: '0.1.0'
+      })),
     getPathForFile:
       systemOverrides?.getPathForFile ??
       ((file) => {
@@ -282,6 +290,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
     },
     settings: {
       get: async () => ({
+        autoUpdateCheckEnabled: true,
         copyOnSelect: true,
         cursorBlink: true,
         cursorStyle: 'block',
@@ -294,6 +303,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
         windowTitleBarStyle: 'custom'
       }),
       update: async (input) => ({
+        autoUpdateCheckEnabled: input.autoUpdateCheckEnabled ?? true,
         copyOnSelect: true,
         cursorBlink: true,
         cursorStyle: 'block',
@@ -306,6 +316,41 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
         windowTitleBarStyle: 'custom'
       }),
       ...overrides.settings
+    },
+    updates: {
+      check: async () => ({
+        autoCheckEnabled: true,
+        availableUpdate: null,
+        currentVersion: '0.1.0',
+        downloadProgressPercent: null,
+        errorMessage: null,
+        phase: 'not-available',
+        supported: false,
+        unsupportedReason: 'platform_not_supported'
+      }),
+      download: async () => ({
+        autoCheckEnabled: true,
+        availableUpdate: null,
+        currentVersion: '0.1.0',
+        downloadProgressPercent: null,
+        errorMessage: null,
+        phase: 'not-available',
+        supported: false,
+        unsupportedReason: 'platform_not_supported'
+      }),
+      getState: async () => ({
+        autoCheckEnabled: true,
+        availableUpdate: null,
+        currentVersion: '0.1.0',
+        downloadProgressPercent: null,
+        errorMessage: null,
+        phase: 'unsupported',
+        supported: false,
+        unsupportedReason: 'platform_not_supported'
+      }),
+      onStateChange: () => noopUnsubscribe,
+      quitAndInstall: async () => undefined,
+      ...overrides.updates
     },
     credentials: {
       create: async () => {

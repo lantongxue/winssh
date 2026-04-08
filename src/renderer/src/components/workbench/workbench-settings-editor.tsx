@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { DEFAULT_APP_SETTINGS } from '@shared/constants'
+import { APP_NAME, DEFAULT_APP_SETTINGS } from '@shared/constants'
 import { SYSTEM_THEME_ID, type ThemeDefinition } from '@shared/themes'
+import type { ReleaseChannel } from '@shared/types'
 import {
   Check,
   ChevronsUpDown,
+  CircleHelp,
   KeyRound,
   Languages,
   ShieldCheck,
@@ -71,10 +73,12 @@ const settingsSections = [
   { id: 'appearance', labelKey: 'workbench.settings.sections.appearance' },
   { id: 'terminal', labelKey: 'workbench.settings.sections.terminal' },
   { id: 'security', labelKey: 'workbench.settings.sections.security' },
-  { id: 'credentialVault', labelKey: 'workbench.settings.sections.credentialVault' }
+  { id: 'credentialVault', labelKey: 'workbench.settings.sections.credentialVault' },
+  { id: 'about', labelKey: 'workbench.settings.sections.about' }
 ] as const
 
 const settingsSectionIcons = {
+  about: CircleHelp,
   appearance: SlidersHorizontal,
   credentialVault: KeyRound,
   security: ShieldCheck,
@@ -129,6 +133,26 @@ function getUserThemePacks(themes: ThemeDefinition[] | undefined): UserThemePack
   return [...packs.values()].sort((left, right) =>
     left.pluginDisplayName.localeCompare(right.pluginDisplayName)
   )
+}
+
+function formatPlatformLabel(platform: string) {
+  switch (platform) {
+    case 'win32':
+      return 'Windows'
+    case 'darwin':
+      return 'macOS'
+    case 'linux':
+      return 'Linux'
+    default:
+      return platform
+  }
+}
+
+function getReleaseChannelLabel(
+  releaseChannel: ReleaseChannel,
+  t: ReturnType<typeof useTranslation>['t']
+) {
+  return t(`workbench.settings.about.channels.${releaseChannel}`)
 }
 
 type TerminalFontFamilyComboboxProps = {
@@ -238,7 +262,7 @@ export function WorkbenchSettingsEditor() {
   const DeleteIcon = actionIcons.delete
   const SaveIcon = actionIcons.save
   const UploadIcon = actionIcons.upload
-  const showSaveAction = selectedSection !== 'credentialVault'
+  const showSaveAction = selectedSection === 'appearance' || selectedSection === 'terminal'
 
   const settingsQuery = useQuery({
     queryKey: ['settings'],
@@ -255,6 +279,10 @@ export function WorkbenchSettingsEditor() {
   const themesQuery = useQuery({
     queryKey: ['themes'],
     queryFn: () => window.winsshApi.themes.list()
+  })
+  const appInfoQuery = useQuery({
+    queryKey: ['app-info'],
+    queryFn: () => window.winsshApi.system.getAppInfo()
   })
   const systemFontsQuery = useQuery({
     queryKey: ['system-fonts'],
@@ -361,7 +389,6 @@ export function WorkbenchSettingsEditor() {
       )
     }
   })
-
   return (
     <div className="liquid-glass-page flex h-full min-h-0 bg-[var(--workbench-editor)]">
       <aside className="liquid-glass-pane w-[220px] shrink-0 border-r border-[var(--workbench-border)] bg-[var(--workbench-sidebar)] px-3 py-3">
@@ -423,98 +450,101 @@ export function WorkbenchSettingsEditor() {
             )}
           >
             {selectedSection === 'appearance' ? (
-              <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <SlidersHorizontal className="size-4 text-primary" />
-                  {t('workbench.settings.sections.appearance')}
-                </div>
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="language"
-                    render={({ field }) => (
-                      <FormItem className="max-w-sm">
-                        <FormLabel>{t('workbench.settings.form.language')}</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="system">
-                              <div className="flex items-center gap-2">
-                                <Languages className="size-4" />
-                                {t('common.language.system')}
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="zh-CN">{t('common.language.zhCN')}</SelectItem>
-                            <SelectItem value="en-US">{t('common.language.enUS')}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="theme"
-                    render={({ field }) => (
-                      <FormItem className="max-w-sm">
-                        <FormLabel>{t('workbench.settings.form.theme')}</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value={SYSTEM_THEME_ID}>
-                              {t('common.theme.system')}
-                            </SelectItem>
-                            {(themesQuery.data ?? []).map((theme) => (
-                              <SelectItem key={theme.id} value={theme.id}>
-                                {theme.label}
+              <>
+                <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    <SlidersHorizontal className="size-4 text-primary" />
+                    {t('workbench.settings.sections.appearance')}
+                  </div>
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="language"
+                      render={({ field }) => (
+                        <FormItem className="max-w-sm">
+                          <FormLabel>{t('workbench.settings.form.language')}</FormLabel>
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="system">
+                                <div className="flex items-center gap-2">
+                                  <Languages className="size-4" />
+                                  {t('common.language.system')}
+                                </div>
                               </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="windowTitleBarStyle"
-                    render={({ field }) => (
-                      <FormItem className="max-w-sm">
-                        <FormLabel>{t('workbench.settings.form.titleBarStyle')}</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="native">
-                              {t('common.titleBarStyle.native')}
-                            </SelectItem>
-                            <SelectItem value="custom">
-                              {t('common.titleBarStyle.custom')}
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <div className="space-y-4 rounded-sm border border-[var(--workbench-border)] px-4 py-4">
+                              <SelectItem value="zh-CN">{t('common.language.zhCN')}</SelectItem>
+                              <SelectItem value="en-US">{t('common.language.enUS')}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="theme"
+                      render={({ field }) => (
+                        <FormItem className="max-w-sm">
+                          <FormLabel>{t('workbench.settings.form.theme')}</FormLabel>
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value={SYSTEM_THEME_ID}>
+                                {t('common.theme.system')}
+                              </SelectItem>
+                              {(themesQuery.data ?? []).map((theme) => (
+                                <SelectItem key={theme.id} value={theme.id}>
+                                  {theme.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="windowTitleBarStyle"
+                      render={({ field }) => (
+                        <FormItem className="max-w-sm">
+                          <FormLabel>{t('workbench.settings.form.titleBarStyle')}</FormLabel>
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="native">
+                                {t('common.titleBarStyle.native')}
+                              </SelectItem>
+                              <SelectItem value="custom">
+                                {t('common.titleBarStyle.custom')}
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </section>
+
+                <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
+                  <div className="text-sm font-semibold">
+                    {t('workbench.settings.themeManagement.title')}
+                  </div>
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-1">
-                      <div className="text-sm font-medium">
-                        {t('workbench.settings.themeManagement.title')}
-                      </div>
                       <div className="text-sm text-muted-foreground">
                         {t('workbench.settings.themeManagement.importDescription')}
                       </div>
@@ -582,8 +612,8 @@ export function WorkbenchSettingsEditor() {
                       {t('workbench.settings.themeManagement.empty')}
                     </div>
                   )}
-                </div>
-              </section>
+                </section>
+              </>
             ) : null}
 
             {selectedSection === 'terminal' ? (
@@ -844,6 +874,62 @@ export function WorkbenchSettingsEditor() {
                 </div>
                 <CredentialVault />
               </section>
+            ) : null}
+
+            {selectedSection === 'about' ? (
+              <>
+                <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    <CircleHelp className="size-4 text-primary" />
+                    {t('workbench.settings.sections.about')}
+                  </div>
+
+                  <div className="rounded-sm border border-[var(--workbench-border)] px-4 py-4">
+                    <div className="text-sm font-medium">
+                      {t('workbench.settings.about.intro.title')}
+                    </div>
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      {t('workbench.settings.about.intro.description')}
+                    </div>
+                  </div>
+                </section>
+
+                <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
+                  <div className="text-sm font-semibold">
+                    {t('workbench.settings.about.version.title')}
+                  </div>
+                  <dl className="grid gap-3 lg:grid-cols-2">
+                    <div className="rounded-sm border border-[var(--workbench-border)] px-3 py-3">
+                      <dt className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                        {t('workbench.settings.about.version.nameLabel')}
+                      </dt>
+                      <dd className="mt-1 font-medium">{appInfoQuery.data?.name ?? APP_NAME}</dd>
+                    </div>
+                    <div className="rounded-sm border border-[var(--workbench-border)] px-3 py-3">
+                      <dt className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                        {t('workbench.settings.about.version.versionLabel')}
+                      </dt>
+                      <dd className="mt-1 font-medium">{appInfoQuery.data?.version ?? '0.0.0'}</dd>
+                    </div>
+                    <div className="rounded-sm border border-[var(--workbench-border)] px-3 py-3">
+                      <dt className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                        {t('workbench.settings.about.version.platformLabel')}
+                      </dt>
+                      <dd className="mt-1 font-medium">
+                        {formatPlatformLabel(appInfoQuery.data?.platform ?? 'unknown')}
+                      </dd>
+                    </div>
+                    <div className="rounded-sm border border-[var(--workbench-border)] px-3 py-3">
+                      <dt className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                        {t('workbench.settings.about.version.channelLabel')}
+                      </dt>
+                      <dd className="mt-1 font-medium">
+                        {getReleaseChannelLabel(appInfoQuery.data?.releaseChannel ?? 'latest', t)}
+                      </dd>
+                    </div>
+                  </dl>
+                </section>
+              </>
             ) : null}
 
             {showSaveAction ? (

@@ -126,6 +126,7 @@ describe('WorkbenchCommandCenter quick connect', () => {
 
   it('lists the pixel theme and saves it through settings.update', async () => {
     const updateSettings = vi.fn().mockResolvedValue({
+      autoUpdateCheckEnabled: true,
       copyOnSelect: true,
       cursorBlink: true,
       cursorStyle: 'block',
