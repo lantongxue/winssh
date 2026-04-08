@@ -58,6 +58,7 @@ class MockTerminal {
 
   dispose = vi.fn()
   clearSelection = vi.fn()
+  clearTextureAtlas = vi.fn()
   focus = vi.fn()
   getSelection = vi.fn(() => '')
   loadAddon = vi.fn()
@@ -65,6 +66,7 @@ class MockTerminal {
   onSelectionChange = vi.fn(() => ({ dispose: vi.fn() }))
   open = vi.fn()
   paste = vi.fn()
+  refresh = vi.fn()
   write = vi.fn()
 }
 
@@ -409,6 +411,7 @@ describe('useTerminal', () => {
     expect(terminalInstances[0]?.loadAddon).toHaveBeenCalledWith(webLinksAddonInstances[0])
     expect(terminalInstances[0]?.loadAddon).toHaveBeenCalledWith(unicode11AddonInstances[0])
     expect(terminalInstances[0]?.initialOptions.allowProposedApi).toBe(true)
+    expect(terminalInstances[0]?.initialOptions.fontFamily).toBe('Consolas, monospace')
     expect(terminalInstances[0]?.unicode.activeVersion).toBe('11')
     expect(terminalInstances[0]?.options.theme).toMatchObject({
       background: darkTheme.terminal.background
@@ -421,6 +424,26 @@ describe('useTerminal', () => {
       background: pixelTheme.terminal.background
     })
     expect(fitAddonInstances[0]?.fit).toHaveBeenCalled()
+  })
+
+  it('reformats the font stack and refreshes xterm glyph caches when typography changes', () => {
+    const { rerender } = render(<TestTerminal settings={settings} theme={darkTheme} />)
+
+    terminalInstances[0]?.clearTextureAtlas.mockClear()
+    terminalInstances[0]?.refresh.mockClear()
+
+    rerender(
+      <TestTerminal
+        settings={{ ...settings, terminalFontFamily: 'IBM Plex Mono', terminalFontSize: 16 }}
+        theme={darkTheme}
+      />
+    )
+
+    expect(terminalInstances).toHaveLength(1)
+    expect(terminalInstances[0]?.options.fontFamily).toBe('"IBM Plex Mono", monospace')
+    expect(terminalInstances[0]?.options.fontSize).toBe(16)
+    expect(terminalInstances[0]?.clearTextureAtlas).toHaveBeenCalledOnce()
+    expect(terminalInstances[0]?.refresh).toHaveBeenCalledWith(0, 23)
   })
 
   it('recreates the terminal and loads the WebGL addon when experimental WebGL rendering is enabled', () => {

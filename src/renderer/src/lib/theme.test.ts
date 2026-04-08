@@ -6,7 +6,11 @@ import {
   DEFAULT_LIGHT_THEME_ID,
   DEFAULT_PIXEL_THEME_ID
 } from '@shared/themes'
-import { applyThemeToRoot, resolveTerminalAppearance } from '@/lib/theme'
+import {
+  applyThemeToRoot,
+  formatTerminalFontFamily,
+  resolveTerminalAppearance
+} from '@/lib/theme'
 
 const themes = [
   createThemeDefinition({
@@ -148,5 +152,15 @@ describe('theme helpers', () => {
 
     expect(appearance.theme.background).toBe('#ffffff')
     expect(appearance.theme.foreground).toBe('#1f2328')
+  })
+
+  it('formats terminal font stacks so xterm can reliably apply named fonts', () => {
+    expect(formatTerminalFontFamily('IBM Plex Mono')).toBe('"IBM Plex Mono", monospace')
+    expect(formatTerminalFontFamily('JetBrains Mono, Consolas, monospace')).toBe(
+      '"JetBrains Mono", Consolas, monospace'
+    )
+    expect(formatTerminalFontFamily('"Cascadia Code", ui-monospace')).toBe(
+      '"Cascadia Code", ui-monospace'
+    )
   })
 })

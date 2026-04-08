@@ -824,6 +824,13 @@ button,
   cursor: default;
 }
 
+.terminal-surface .xterm,
+.terminal-surface .xterm .xterm-helper-textarea,
+.terminal-surface .xterm .xterm-accessibility-tree,
+.terminal-surface xterm-char-measure-element {
+  font-family: var(--terminal-font-family, monospace);
+}
+
 .terminal-surface .xterm-viewport {
   background-color: var(--terminal-surface-bg);
   scrollbar-width: thin;

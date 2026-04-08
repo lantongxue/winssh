@@ -5,6 +5,8 @@ import type { AppSettings } from '@shared/types'
 import i18n from '@/i18n'
 import type { SessionTab } from '@/store/sessions-store'
 import { TerminalPane } from '@/components/terminal-pane'
+import { TERMINAL_PATH_DRAG_MIME } from '@/lib/terminal-path-dnd'
+import { createWinsshApiMock } from '@/test/create-winssh-api'
 
 const { searchControllerMock, useTerminalMock } = vi.hoisted(() => ({
   searchControllerMock: {
@@ -68,8 +70,10 @@ describe('TerminalPane', () => {
     useTerminalMock.mockReset()
     useTerminalMock.mockReturnValue({
       containerRef: { current: null },
+      focus: vi.fn(),
       search: searchControllerMock
     })
+    window.winsshApi = createWinsshApiMock()
   })
 
   afterEach(() => {
@@ -288,5 +292,79 @@ describe('TerminalPane', () => {
     })
 
     expect(searchControllerMock.clear).toHaveBeenCalled()
+  })
+
+  it('writes a dragged SFTP path into the terminal transport', async () => {
+    const sessionsWrite = vi.fn().mockResolvedValue(undefined)
+    window.winsshApi = createWinsshApiMock({
+      sessions: {
+        write: sessionsWrite
+      }
+    })
+    const readySession: SessionTab = {
+      ...session,
+      connectionPhase: 'attach',
+      status: 'ready'
+    }
+    const dataTransfer = {
+      dropEffect: 'none',
+      getData: vi.fn((type: string) =>
+        type === TERMINAL_PATH_DRAG_MIME ? '/var/www/config.json' : ''
+      ),
+      types: [TERMINAL_PATH_DRAG_MIME]
+    }
+
+    const { container } = render(
+      <TerminalPane
+        session={readySession}
+        settings={settings}
+        theme={theme}
+        onReconnect={async () => undefined}
+      />
+    )
+
+    const surface = container.querySelector('.terminal-surface')
+    expect(surface).toBeTruthy()
+
+    fireEvent.dragOver(surface as HTMLElement, { dataTransfer })
+    expect(screen.getByText('Drop to paste the remote path')).toBeInTheDocument()
+    expect(screen.getByText('/var/www/config.json')).toBeInTheDocument()
+
+    fireEvent.drop(surface as HTMLElement, { dataTransfer })
+
+    await waitFor(() => {
+      expect(sessionsWrite).toHaveBeenCalledWith('session-1', '/var/www/config.json')
+    })
+    await waitFor(() => {
+      expect(screen.queryByText('Drop to paste the remote path')).not.toBeInTheDocument()
+    })
+  })
+
+  it('derives the terminal path drop overlay colors from the active theme', () => {
+    const readySession: SessionTab = {
+      ...session,
+      connectionPhase: 'attach',
+      status: 'ready'
+    }
+
+    const { container } = render(
+      <TerminalPane
+        session={readySession}
+        settings={settings}
+        theme={theme}
+        onReconnect={async () => undefined}
+      />
+    )
+
+    const surface = container.querySelector('.terminal-surface') as HTMLElement | null
+
+    expect(surface).toBeTruthy()
+    expect(surface?.style.getPropertyValue('--terminal-drop-text')).toBe(theme.terminal.foreground)
+    expect(surface?.style.getPropertyValue('--terminal-drop-panel')).toContain(
+      theme.terminal.background
+    )
+    expect(surface?.style.getPropertyValue('--terminal-drop-border')).toContain(
+      theme.terminal.cursor
+    )
   })
 })

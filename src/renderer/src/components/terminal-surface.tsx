@@ -1,7 +1,9 @@
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode
 } from 'react'
@@ -15,6 +17,8 @@ import {
   type TerminalSearchResultsState,
   type TerminalTransport
 } from '@/hooks/use-terminal'
+import { hasTerminalPathDragData, readTerminalPathDragData } from '@/lib/terminal-path-dnd'
+import { formatTerminalFontFamily, resolveTerminalAppearance } from '@/lib/theme'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -44,7 +48,13 @@ export function TerminalSurface({
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<TerminalSearchResultsState | null>(null)
-  const { containerRef: terminalRef, search } = useTerminal(
+  const [draggedPath, setDraggedPath] = useState<string | null>(null)
+  const [isPathDropActive, setIsPathDropActive] = useState(false)
+  const {
+    containerRef: terminalRef,
+    search,
+    focus: focusTerminal = () => undefined
+  } = useTerminal(
     transport,
     settings,
     theme,
@@ -63,12 +73,35 @@ export function TerminalSurface({
             total: searchResults?.resultCount ?? 0
           })
         : t('workbench.terminal.search.noMatches')
+  const surfaceStyle = useMemo<CSSProperties | undefined>(() => {
+    if (!theme) {
+      return undefined
+    }
+
+    const terminalAppearance = resolveTerminalAppearance(settings, theme)
+
+    return {
+      '--terminal-drop-border': `color-mix(in srgb, ${theme.terminal.cursor} 70%, ${theme.terminal.foreground} 30%)`,
+      '--terminal-drop-glow': `0 0 0 1px color-mix(in srgb, ${theme.terminal.selectionBackground} 72%, transparent), 0 22px 54px color-mix(in srgb, ${theme.terminal.cursor} 18%, transparent)`,
+      '--terminal-drop-muted': `color-mix(in srgb, ${theme.terminal.foreground} 72%, ${theme.colors['workbench-muted']} 28%)`,
+      '--terminal-drop-panel': `color-mix(in srgb, ${theme.terminal.background} 86%, ${theme.colors['workbench-editor']} 14%)`,
+      '--terminal-drop-surface': `color-mix(in srgb, ${theme.terminal.background} 76%, transparent)`,
+      '--terminal-font-family': formatTerminalFontFamily(terminalAppearance.fontFamily),
+      '--terminal-drop-text': theme.terminal.foreground,
+      backgroundColor: theme.terminal.background
+    } as CSSProperties
+  }, [settings, theme])
 
   const closeSearch = () => {
     setSearchOpen(false)
     setSearchQuery('')
     setSearchResults(null)
     search.clear()
+  }
+
+  const resetPathDropState = () => {
+    setIsPathDropActive(false)
+    setDraggedPath(null)
   }
 
   const openSearch = () => {
@@ -109,6 +142,14 @@ export function TerminalSurface({
       search.clear()
     }
   }, [search])
+
+  useEffect(() => {
+    if (enabled && transport) {
+      return
+    }
+
+    resetPathDropState()
+  }, [enabled, transport])
 
   const handlePaneKeyDownCapture = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     const isSearchShortcut =
@@ -154,13 +195,83 @@ export function TerminalSurface({
     }
   }
 
+  const handleTerminalPathDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!transport || !enabled || !hasTerminalPathDragData(event.dataTransfer)) {
+      return
+    }
+
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'copy'
+    setDraggedPath(readTerminalPathDragData(event.dataTransfer))
+    setIsPathDropActive(true)
+  }
+
+  const handleTerminalPathDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasTerminalPathDragData(event.dataTransfer)) {
+      return
+    }
+
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      return
+    }
+
+    resetPathDropState()
+  }
+
+  const handleTerminalPathDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!transport || !enabled || !hasTerminalPathDragData(event.dataTransfer)) {
+      return
+    }
+
+    event.preventDefault()
+    const droppedPath = readTerminalPathDragData(event.dataTransfer)
+    resetPathDropState()
+
+    if (!droppedPath) {
+      return
+    }
+
+    void transport
+      .write(droppedPath)
+      .then(focusTerminal)
+      .catch(() => {
+        resetPathDropState()
+      })
+  }
+
   return (
     <div
       className="relative h-full p-2 terminal-surface"
-      style={theme ? { backgroundColor: theme.terminal.background } : undefined}
+      style={surfaceStyle}
+      onDragLeave={handleTerminalPathDragLeave}
+      onDragOver={handleTerminalPathDragOver}
+      onDrop={handleTerminalPathDrop}
       onKeyDownCapture={handlePaneKeyDownCapture}
     >
       <div ref={terminalRef} className="h-full w-full overflow-hidden" />
+      {isPathDropActive ? (
+        <div
+          className="pointer-events-none absolute inset-2 z-10 flex items-center justify-center rounded-[var(--workbench-panel-frame-radius)] border border-dashed px-6 py-5 text-center backdrop-blur-sm"
+          style={{
+            background:
+              'linear-gradient(180deg, color-mix(in srgb, var(--terminal-drop-surface) 94%, transparent), color-mix(in srgb, var(--terminal-drop-panel) 92%, transparent))',
+            borderColor: 'var(--terminal-drop-border)',
+            boxShadow: 'var(--terminal-drop-glow)'
+          }}
+        >
+          <div className="max-w-lg space-y-1">
+            <div className="text-sm font-semibold" style={{ color: 'var(--terminal-drop-text)' }}>
+              {t('workbench.terminal.dropPath.title')}
+            </div>
+            <div
+              className="font-mono text-xs leading-5 [overflow-wrap:anywhere]"
+              style={{ color: 'var(--terminal-drop-muted)' }}
+            >
+              {draggedPath ?? t('workbench.terminal.dropPath.fallback')}
+            </div>
+          </div>
+        </div>
+      ) : null}
       {searchOpen ? (
         <div className="absolute right-4 top-4 z-20 w-[min(26rem,calc(100%-2rem))]">
           <div className="flex items-center gap-1.5 rounded-lg border border-[var(--workbench-border)] bg-[color-mix(in_srgb,var(--workbench-editor)_88%,transparent)] px-2 py-2 shadow-lg backdrop-blur-sm">

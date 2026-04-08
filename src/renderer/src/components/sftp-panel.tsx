@@ -8,6 +8,7 @@ import { getParentRemotePath } from '@shared/sftp'
 import type { RemoteEntry } from '@shared/types'
 import { formatFileSize } from '@/i18n/format'
 import { actionIcons } from '@/lib/action-icons'
+import { writeTerminalPathDragData } from '@/lib/terminal-path-dnd'
 import type { SessionTab } from '@/store/sessions-store'
 import { cn } from '@/lib/utils'
 import { useSessionsStore } from '@/store/sessions-store'
@@ -627,6 +628,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                               aria-busy={isRemoving || undefined}
                               data-removing={isRemoving ? 'true' : 'false'}
                               disabled={isRemoving}
+                              draggable={!isRemoving}
                               className={cn(
                                 'flex h-full w-full items-start gap-3 border-b px-3 py-2 text-left transition-[opacity,transform,background-color,color] duration-200 ease-out',
                                 isSelected
@@ -675,6 +677,9 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                                   selectSingleEntry(entry.path)
                                   openDirectory(entry.path)
                                 }
+                              }}
+                              onDragStart={(event) => {
+                                writeTerminalPathDragData(event.dataTransfer, entry.path)
                               }}
                             >
                               <div

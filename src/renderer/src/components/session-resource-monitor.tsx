@@ -117,31 +117,39 @@ export function SessionResourceMonitor({
 
   return (
     <div
-      className={cn('flex min-w-0 flex-1 items-center justify-center', className)}
+      className={cn('flex min-w-0 flex-1 items-center justify-end', className)}
       data-state={expanded ? 'expanded' : 'collapsed'}
       data-testid="session-resource-monitor"
     >
-      <div className="flex min-w-0 max-w-[920px] flex-1 items-center gap-2 overflow-hidden">
+      <div
+        className="flex w-full min-w-0 max-w-[920px] items-center gap-2 overflow-hidden"
+        data-testid="session-resource-monitor-content"
+      >
         {expanded ? (
           <div className="no-scrollbar min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
-            {!monitorReady ? (
-              <div className="truncate rounded-md border border-dashed border-[var(--workbench-border)] px-2.5 py-1.5 text-xs text-muted-foreground">
-                {t('workbench.sessionEditor.resourceMonitor.unavailable')}
-              </div>
-            ) : monitorQuery.data ? (
-              <ResourceMetrics snapshot={monitorQuery.data} />
-            ) : monitorQuery.isPending || !active ? (
-              <div className="inline-flex min-w-max items-center gap-1.5">
-                <Skeleton className="h-8 w-[92px] rounded-md" />
-                <Skeleton className="h-8 w-[188px] rounded-md" />
-                <Skeleton className="h-8 w-[188px] rounded-md" />
-                <Skeleton className="h-8 w-[188px] rounded-md" />
-              </div>
-            ) : (
-              <div className="truncate rounded-md border border-dashed border-[var(--workbench-border)] px-2.5 py-1.5 text-xs text-muted-foreground">
-                {inlineMessage}
-              </div>
-            )}
+            <div
+              className="inline-flex min-w-full justify-end"
+              data-testid="session-resource-monitor-viewport"
+            >
+              {!monitorReady ? (
+                <div className="truncate rounded-md border border-dashed border-[var(--workbench-border)] px-2.5 py-1.5 text-xs text-muted-foreground">
+                  {t('workbench.sessionEditor.resourceMonitor.unavailable')}
+                </div>
+              ) : monitorQuery.data ? (
+                <ResourceMetrics snapshot={monitorQuery.data} />
+              ) : monitorQuery.isPending || !active ? (
+                <div className="inline-flex min-w-max items-center gap-1.5">
+                  <Skeleton className="h-8 w-[92px] rounded-md" />
+                  <Skeleton className="h-8 w-[188px] rounded-md" />
+                  <Skeleton className="h-8 w-[188px] rounded-md" />
+                  <Skeleton className="h-8 w-[188px] rounded-md" />
+                </div>
+              ) : (
+                <div className="truncate rounded-md border border-dashed border-[var(--workbench-border)] px-2.5 py-1.5 text-xs text-muted-foreground">
+                  {inlineMessage}
+                </div>
+              )}
+            </div>
           </div>
         ) : null}
       </div>

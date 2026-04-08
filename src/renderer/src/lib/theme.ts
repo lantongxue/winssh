@@ -13,6 +13,75 @@ export interface ResolvedThemeState {
   theme: ThemeDefinition
 }
 
+const GENERIC_FONT_FAMILIES = new Set([
+  'cursive',
+  'emoji',
+  'fangsong',
+  'fantasy',
+  'math',
+  'monospace',
+  'sans-serif',
+  'serif',
+  'system-ui',
+  'ui-monospace',
+  'ui-rounded',
+  'ui-sans-serif',
+  'ui-serif'
+])
+
+function stripWrappingQuotes(value: string) {
+  const trimmed = value.trim()
+
+  if (
+    trimmed.length >= 2 &&
+    ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith("'") && trimmed.endsWith("'")))
+  ) {
+    return trimmed.slice(1, -1)
+  }
+
+  return trimmed
+}
+
+function formatTerminalFontFamilyToken(value: string) {
+  const normalizedValue = stripWrappingQuotes(value)
+
+  if (!normalizedValue) {
+    return null
+  }
+
+  if (GENERIC_FONT_FAMILIES.has(normalizedValue.toLowerCase())) {
+    return normalizedValue.toLowerCase()
+  }
+
+  if (/^[A-Za-z0-9_-]+$/.test(normalizedValue)) {
+    return normalizedValue
+  }
+
+  return `"${normalizedValue.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+}
+
+export function formatTerminalFontFamily(fontFamily: string) {
+  const resolvedFamilies = fontFamily
+    .split(',')
+    .map((token) => formatTerminalFontFamilyToken(token))
+    .filter((token): token is string => Boolean(token))
+
+  if (resolvedFamilies.length === 0) {
+    return 'monospace'
+  }
+
+  if (
+    !resolvedFamilies.some((token) =>
+      GENERIC_FONT_FAMILIES.has(stripWrappingQuotes(token).toLowerCase())
+    )
+  ) {
+    resolvedFamilies.push('monospace')
+  }
+
+  return [...new Set(resolvedFamilies)].join(', ')
+}
+
 function getThemeById(themes: ThemeDefinition[], themeId: string) {
   return themes.find((theme) => theme.id === themeId) ?? null
 }

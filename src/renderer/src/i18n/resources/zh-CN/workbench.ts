@@ -411,7 +411,8 @@ const workbench = {
           title: '光标闪烁'
         },
         experimentalTerminalWebgl: {
-          description: '实验性支持。需要可用 GPU 加速；不受支持时会自动回退到默认渲染器。',
+          description:
+            '实验性支持，需要可用 GPU 加速。在部分 Windows 和 Electron 环境下，可能导致终端字体发虚、字重异常或其他字体渲染问题；如果终端字体显示异常，建议关闭。',
           title: '实验性 WebGL 渲染'
         },
         cursorStyle: '光标样式',
@@ -554,6 +555,10 @@ const workbench = {
       theme: '主题 {{value}}'
     },
     terminal: {
+      dropPath: {
+        fallback: '松开后会把远程路径写入当前终端。',
+        title: '松开以写入远程路径'
+      },
       linkHint: '按 Cmd+点击打开链接',
       search: {
         close: '关闭终端搜索',

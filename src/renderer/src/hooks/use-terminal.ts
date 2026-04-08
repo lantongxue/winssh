@@ -10,7 +10,7 @@ import { Terminal } from '@xterm/xterm'
 import type { ThemeDefinition } from '@shared/themes'
 import type { AppSettings } from '@shared/types'
 import i18n from '@/i18n'
-import { resolveTerminalAppearance } from '@/lib/theme'
+import { formatTerminalFontFamily, resolveTerminalAppearance } from '@/lib/theme'
 
 type TerminalDisposable = { dispose: () => void }
 type Unsubscribe = () => void
@@ -210,7 +210,7 @@ export function useTerminal(
     return {
       cursorBlink: settings.cursorBlink,
       cursorStyle: settings.cursorStyle,
-      fontFamily: terminalAppearance.fontFamily,
+      fontFamily: formatTerminalFontFamily(terminalAppearance.fontFamily),
       fontSize: terminalAppearance.fontSize,
       lineHeight: terminalAppearance.lineHeight,
       theme: { ...terminalAppearance.theme }
@@ -392,6 +392,8 @@ export function useTerminal(
     }
 
     terminal.options = terminalOptions
+    terminal.clearTextureAtlas?.()
+    terminal.refresh?.(0, terminal.rows - 1)
 
     syncGeometry()
   }, [terminalOptions])
@@ -442,6 +444,7 @@ export function useTerminal(
 
   return {
     containerRef,
+    focus: () => focusTerminal(),
     search: searchController
   }
 }

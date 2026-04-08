@@ -187,4 +187,20 @@ describe('SessionResourceMonitor', () => {
 
     expect(await screen.findByText('Unavailable')).toBeInTheDocument()
   })
+
+  it('keeps the monitor strip right-aligned while remaining scrollable', async () => {
+    renderMonitor()
+
+    const monitor = screen.getByTestId('session-resource-monitor')
+    const content = screen.getByTestId('session-resource-monitor-content')
+    const viewport = screen.getByTestId('session-resource-monitor-viewport')
+    expect(monitor.className).toContain('justify-end')
+    expect(monitor.className).not.toContain('justify-center')
+    expect(content.className).toContain('w-full')
+    expect(content.className).toContain('max-w-[920px]')
+    expect(content.className).not.toContain('flex-1')
+    expect(viewport.className).toContain('min-w-full')
+    expect(viewport.className).toContain('justify-end')
+    expect(await screen.findByText('CPU')).toBeInTheDocument()
+  })
 })

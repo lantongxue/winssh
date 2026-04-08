@@ -422,7 +422,7 @@ const workbench = {
         },
         experimentalTerminalWebgl: {
           description:
-            'Experimental support. Requires available GPU acceleration and falls back to the default renderer when unsupported.',
+            'Experimental support. Requires available GPU acceleration. In some Windows and Electron environments it can cause blurry terminal text, incorrect font weight, or other font rendering issues. Disable it if terminal fonts look wrong.',
           title: 'Experimental WebGL renderer'
         },
         cursorStyle: 'Cursor style',
@@ -571,6 +571,10 @@ const workbench = {
       theme: 'theme {{value}}'
     },
     terminal: {
+      dropPath: {
+        fallback: 'Drop to write the remote path into the terminal.',
+        title: 'Drop to paste the remote path'
+      },
       linkHint: 'Cmd+click to open the link',
       search: {
         close: 'Close terminal search',

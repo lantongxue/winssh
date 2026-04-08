@@ -8,6 +8,7 @@ import type { SessionTab } from '@/store/sessions-store'
 import { createWinsshApiMock } from '@/test/create-winssh-api'
 import { useSessionsStore } from '@/store/sessions-store'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { TERMINAL_PATH_DRAG_MIME } from '@/lib/terminal-path-dnd'
 
 vi.mock('sonner', () => ({
   toast: {
@@ -276,5 +277,33 @@ describe('SftpPanel', () => {
     await waitFor(() => {
       expect(entryButton).toHaveAttribute('data-removing', 'true')
     })
+  })
+
+  it('writes the dragged entry path into terminal drag data', async () => {
+    window.winsshApi = createWinsshApiMock({
+      sftp: {
+        list: vi.fn().mockResolvedValue({
+          entries,
+          path: '/var/www'
+        })
+      }
+    })
+
+    renderSftpPanel(session)
+
+    const entryButton = (await screen.findByText('config.json')).closest('button')
+    const setData = vi.fn()
+    const dataTransfer = {
+      effectAllowed: 'none',
+      setData
+    }
+
+    expect(entryButton).not.toBeNull()
+
+    fireEvent.dragStart(entryButton as HTMLElement, { dataTransfer })
+
+    expect(dataTransfer.effectAllowed).toBe('copy')
+    expect(setData).toHaveBeenCalledWith(TERMINAL_PATH_DRAG_MIME, '/var/www/config.json')
+    expect(setData).toHaveBeenCalledWith('text/plain', '/var/www/config.json')
   })
 })
