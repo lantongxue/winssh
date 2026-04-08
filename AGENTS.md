@@ -4,7 +4,7 @@
 
 这份文件用于给后续协作者和代码代理提供当前项目快照。
 
-本次梳理时间为 `2026-04-07`。内容只基于当前仓库代码、目录结构和关键入口文件阅读完成，没有执行 `test`、`typecheck`、`lint`、`build`、`dist` 等校验命令，因此这里描述的是“代码现状”，不是“已验证结果”。
+本次梳理时间为 `2026-04-09`。内容只基于当前仓库代码、目录结构和关键入口文件阅读完成，没有执行 `test`、`typecheck`、`lint`、`build`、`dist` 等校验命令，因此这里描述的是“代码现状”，不是“已验证结果”。
 
 ## 这次梳理的关键结论
 
@@ -290,6 +290,7 @@
 - `session-editor`
 - `local-terminal-editor`
 - `settings-editor`
+- `updates-editor`
 - `terminal-welcome`
 
 当前底部面板包括：
@@ -320,13 +321,63 @@
 - primary sidebar 支持服务器搜索
 - primary sidebar 支持把服务器拖到分组 / ungrouped
 - 分组右键菜单支持直接新建服务器
+- activity bar 底部 settings 按钮已经是 dropdown，并支持直接触发检查更新
 - editor tabs 支持拖拽重排
 - editor tabs 支持重命名 title override
 - explorer home / terminal welcome 都已有本地终端入口
 
 另外，当前 `session-editor` / `local-terminal-editor` 在 inactive 时会保持 mounted，只通过可见性切换隐藏，目的是避免 xterm 因标签切换或面板收起而重新挂载。
 
-### 12. 平台与交付层也已经有明确策略
+### 12. 应用更新已经形成独立子系统，但当前是 Windows-only + 手动下载/安装模型
+
+- `src/main/update-service.ts` 已封装 `electron-updater` 的 `NsisUpdater`
+- 主进程已暴露：
+  - `updates:getState`
+  - `updates:check`
+  - `updates:download`
+  - `updates:quitAndInstall`
+- 主进程会把 `UpdateService` 的状态变化通过 `updates:state` 主动推送到 renderer
+- `system:getAppInfo` 已返回：
+  - `name`
+  - `version`
+  - `platform`
+  - `releaseChannel`
+- `shared/types.ts` 当前已有：
+  - `ReleaseChannel`
+  - `UpdateVersionInfo`
+  - `UpdateState`
+  - `UpdatePhase`
+  - `UpdateUnsupportedReason`
+- `AppSettings` 已新增 `autoUpdateCheckEnabled`
+- activity bar 设置菜单已支持“检查更新”
+- workbench 已有独立 `updates-editor`
+- `App.tsx` 已有自动弹出的更新对话框
+- `package.json` 已引入 `electron-updater`
+- `electron-builder.yml` 的 Windows 目标已配置 generic publish feed
+
+当前实现特征：
+
+- 仅 `win32` 支持自动更新；`darwin` / `linux` 当前会直接进入 `unsupported`
+- Windows unpackaged build 默认也会进入 `unsupported`
+- 缺少 `WINSSH_UPDATE_BASE_URL` 时也会进入 `unsupported`
+- `autoDownload = false`，当前只自动检查，不自动下载
+- 下载和安装都由用户显式触发
+- 应用启动后的自动检查受 `autoUpdateCheckEnabled` 控制
+- `releaseChannel` 当前按版本号后缀解析：
+  - `-alpha` -> `alpha`
+  - `-beta` -> `beta`
+  - 其他 -> `latest`
+- 显式设置 `WINSSH_ALLOW_DEV_UPDATES` 后，开发态会生成 `dev-app-update.yml` 并允许测试更新源
+
+另外，仓库里已经有本地更新测试基础设施：
+
+- `updates:mock`
+- `updates:serve`
+- `electron-builder.env`
+- `dev-app-update.yml`
+- `release/0.1.1` / `release/0.1.2` 当前是本地模拟 feed，不代表真实二进制升级包
+
+### 13. 平台与交付层也已经有明确策略
 
 当前可以直接从代码确认：
 
@@ -335,6 +386,9 @@
 - 可通过环境变量 `WINSSH_HARDWARE_ACCELERATION` 覆盖
 - 标题栏样式支持 `native | custom`
 - 切换标题栏样式后，设置页会提示重启应用
+- Windows 打包当前已配置 generic 更新源：
+  - `electron-builder.yml` 在 `win.publish` 下读取 `WINSSH_UPDATE_BASE_URL`
+  - `electronUpdaterCompatibility` 当前为 `>=2.16`
 - `electron-builder.yml` 当前只在 mac 目标下注入 `resources/bin` 下的字体 helper，不再作为全平台 extra resource
 - 打包脚本已经拆出：
   - `dist:win`
@@ -361,6 +415,7 @@
 - node-pty
 - ssh2
 - better-sqlite3
+- electron-updater
 - keytar
 - adm-zip
 - i18next
@@ -385,6 +440,7 @@
 - 主题系统与用户主题包导入 / 删除
 - 服务器品牌识别 / 自定义图标
 - 设置中心
+- 应用更新检查 / 下载 / 安装（Windows）
 - known hosts 管理
 - quick connect
 - 多语言
@@ -407,6 +463,8 @@
 - 主题包导入 / 删除
 - 会话资源采样
 - 服务器品牌探测
+- 应用更新服务
+- 应用版本 / 发布通道信息
 - 主题注册与解析
 - 主进程本地化
 - GPU / 窗口配置
@@ -429,6 +487,7 @@
 - SFTP 路径工具
 - quick connect 解析
 - 本地终端 shell 平台归一化
+- 应用更新 / 应用版本信息类型
 - server brand / icon 定义
 - 主题定义与 schema
 - preload / renderer 共用 API 类型
@@ -445,6 +504,7 @@
 - 会话资源监控
 - 服务器品牌 / 自定义图标展示
 - 设置页
+- 更新对话框 / updates editor
 - i18n 资源
 
 ### `web/`
@@ -468,7 +528,9 @@
 - `LocalTerminalManager`
 - `ThemeRegistry`
 - `SystemFontService`
+- `UpdateService`
 - 主进程本地化解析
+- 应用版本 / 发布通道解析
 - GPU 配置
 - 窗口 chrome 配置
 
@@ -484,6 +546,7 @@
 - `portForwards:*`
 - `themes:*`
 - `settings:*`
+- `updates:*`
 - `system:*`
 
 当前比较关键的 IPC 包括：
@@ -497,12 +560,35 @@
 - `themes:list`
 - `themes:importArchive`
 - `themes:deletePlugin`
+- `updates:getState`
+- `updates:check`
+- `updates:download`
+- `updates:quitAndInstall`
+- `system:getAppInfo`
 - `system:pickServerIcon`
 - `system:listFonts`
 - `system:getCapabilities`
 - `system:removeKnownHost`
 - `system:relaunch`
 - `system:window:*`
+
+### 应用更新服务现状
+
+- `UpdateService` 当前包装 `electron-updater` 的 `NsisUpdater`
+- 状态机当前覆盖：
+  - `unsupported`
+  - `idle`
+  - `checking`
+  - `available`
+  - `not-available`
+  - `downloading`
+  - `downloaded`
+  - `error`
+- `updates:state` 会在状态变化时主动推送到 renderer
+- `settings:update` 修改 `autoUpdateCheckEnabled` 后，会同步写回 `UpdateService`
+- 主窗口首次 `did-finish-load` 后，如果自动检查开关开启，会主动执行一次 `check()`
+- `quitAndInstall()` 当前只有在 `downloaded` 状态才会真正触发
+- 开发态只有在显式设置 `WINSSH_ALLOW_DEV_UPDATES` 时才允许 dev feed，并会写出 `dev-app-update.yml`
 
 ## 数据层现状
 
@@ -575,6 +661,13 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - `recordRecentSession()` 会把最近连接写入 `recent_sessions`
 - 数据库层会保留最近 `20` 条
 - `listRecentSessions()` 默认返回最近 `8` 条
+
+### 应用设置现状
+
+- `app_settings` 当前仍是单条 JSON 设置模型
+- `autoUpdateCheckEnabled` 已进入 `AppSettings`
+- 默认值当前来自 `DEFAULT_APP_SETTINGS.autoUpdateCheckEnabled = true`
+- `database.test.ts` 已覆盖该设置项的持久化回归
 
 ## 安全存储现状
 
@@ -928,6 +1021,55 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - Windows 默认关闭硬件加速
 - 环境变量 `WINSSH_HARDWARE_ACCELERATION` 可覆盖
 
+## 应用更新现状
+
+当前仓库已经有正式的应用更新能力，不再只是交付层预留配置。
+
+已实现内容：
+
+- `UpdateService`
+- `updates:*` IPC
+- `updates:state` 状态事件
+- `system:getAppInfo`
+- `ReleaseChannel` / `UpdateState` 共享类型
+- `autoUpdateCheckEnabled` 设置项
+- workbench 独立 `updates-editor`
+- Activity Bar 设置菜单触发“立即检查更新”
+- App 级自动更新对话框
+- Windows generic feed 打包配置
+- 本地 mock release / test server 脚本
+
+当前关键特征：
+
+- 自动更新当前只支持 Windows NSIS 构建
+- 自动检查和下载被明确拆开，当前不会自动下载更新包
+- `updates-editor` 会展示：
+  - 当前 app 名称
+  - 当前版本
+  - 当前平台
+  - 发布通道
+  - 更新状态
+  - release date / release notes（如果 feed 提供）
+- `App.tsx` 中的对话框会在首次观察到新版本时自动弹出，但同一版本被手动关闭后不会反复弹
+- 手动下载完成后，renderer 会切到 `downloaded` 状态，并允许 `quitAndInstall`
+- `autoUpdateCheckEnabled` 只控制启动后的自动检查，不阻止用户手动点“检查更新”
+
+当前本地测试基础设施包括：
+
+- `scripts/mock-update-release.mjs`
+- `scripts/update-test-server.mjs`
+- `electron-builder.env`
+- `dev-app-update.yml`
+- `release/0.1.0`
+- `release/0.1.1`
+- `release/0.1.2`
+
+需要特别注意的边界：
+
+- `release/0.1.1` / `release/0.1.2` 当前是“元数据模拟升级”，复制的仍然是 `0.1.0` 安装器，适合做检测 / 下载流程测试，不适合拿来当真实升级验证
+- 缺少 feed URL、平台不支持或构建形态不支持时，UI 预期是进入 `unsupported`，不是抛异常中断启动
+- `releaseChannel` 由版本号后缀推导，如果后续引入别的版本命名策略，需要同步调整 about / updates UI 与相关 tests
+
 ## Workbench 现状
 
 当前渲染层已经是明确的 workbench 结构，而不是传统多页面表单应用。
@@ -955,6 +1097,7 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - `session-editor`
 - `local-terminal-editor`
 - `settings-editor`
+- `updates-editor`
 - `terminal-welcome`
 
 当前底部面板：
@@ -991,6 +1134,7 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - group 右键菜单可以直接新建 server
 - editor tabs 支持拖拽重排
 - editor tabs 支持 rename title override
+- editor tabs 已支持独立 `updates-editor` 标签
 - 关闭 session tab / local terminal tab 会触发真实 disconnect / close，而不是只关 UI
 
 ### 标题栏与导航现状
@@ -1009,8 +1153,15 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - explorer / terminal / settings legacy route 同步
 - terminal activity 在 session / local terminal / terminal welcome 之间切换
 - panel / sidebar resizable layout
+- 在 settings activity 下渲染独立 `updates-editor`
 
 另外，当前 `session-editor` 和 `local-terminal-editor` 在 inactive 时会保持 mounted，仅通过可见性切换隐藏；这已经是为了避免 xterm / terminal runtime 因标签切换或面板收起而重挂载的显式策略。
+
+另外，当前更新相关交互已经明确包括：
+
+- Activity Bar 底部设置按钮现在是 dropdown，不只是单一 settings 入口
+- dropdown 里可以直接触发“检查更新”，并打开 `updates-editor`
+- `App.tsx` 会在检测到可用更新时自动弹出对话框，而不是要求用户必须先进入设置
 
 ## 会话编辑器现状
 
@@ -1161,6 +1312,7 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - known hosts 列表查看
 - known hosts 删除
 - 凭据库管理
+- 应用名称 / 版本 / 平台 / 发布通道查看
 
 设置页当前分区包括：
 
@@ -1168,6 +1320,13 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - `terminal`
 - `security`
 - `credentialVault`
+- `about`
+
+需要特别修正一点：
+
+- 应用更新当前不是 `WorkbenchSettingsEditor` 里的内嵌分区
+- 更新能力当前放在 settings activity 下的独立 `updates-editor`
+- `WorkbenchSettingsEditor` 里的 `about` 分区主要负责展示 app info，不直接承担检查 / 下载 / 安装动作
 
 安全相关能力当前包括：
 
@@ -1267,6 +1426,7 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - `session-manager.connect`
 - `local-terminal-manager`
 - `theme-registry`
+- `update-service`
 - `window-config`
 - `gpu-config`
 - `system-fonts`
@@ -1283,9 +1443,11 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - `sftp-panel`
 - `server-brand-icon`
 - `workbench-primary-sidebar`
+- `workbench-activity-bar`
 - `workbench-explorer-home`
 - `workbench-titlebar`
 - `workbench-settings-editor`
+- `workbench-updates-editor`
 - `workbench-server-editor`
 - `workbench-quick-input`
 - `workbench-command-center`
@@ -1297,6 +1459,7 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - `local-terminals-store`
 - `workbench-store`
 - `workbench-shortcuts`
+- `App`
 - i18n format / index
 - web `home-page`
 - web `docs-page`
@@ -1324,6 +1487,26 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - `themes/builtin/*`
 - `src/renderer/src/lib/theme.ts`
 - `src/renderer/src/components/workbench/workbench-settings-editor.tsx`
+
+应用更新相关改动还会多牵涉：
+
+- `src/shared/types.ts`
+- `src/shared/validation.ts`
+- `src/shared/api.ts`
+- `src/shared/constants.ts`
+- `src/main/app-info.ts`
+- `src/main/update-service.ts`
+- `src/main/index.ts`
+- `src/preload/index.ts`
+- `src/renderer/src/App.tsx`
+- `src/renderer/src/components/workbench/workbench-activity-bar.tsx`
+- `src/renderer/src/components/workbench/workbench-updates-editor.tsx`
+- `src/renderer/src/store/update-dialog-store.ts`
+- `src/renderer/src/test/create-winssh-api.ts`
+- `electron-builder.yml`
+- `package.json`
+- `scripts/mock-update-release.mjs`
+- `scripts/update-test-server.mjs`
 
 私钥、凭据和连接流程相关改动还会多牵涉：
 
@@ -1415,6 +1598,8 @@ Jump Server、server brand、自定义图标相关改动还会多牵涉：
 - `src/main/index.ts`
 - `src/main/session-manager.ts`
 - `src/main/local-terminal-manager.ts`
+- `src/main/app-info.ts`
+- `src/main/update-service.ts`
 - `src/main/database.ts`
 - `src/main/secure-store.ts`
 - `src/main/system-fonts.ts`
@@ -1435,9 +1620,11 @@ Jump Server、server brand、自定义图标相关改动还会多牵涉：
 - `src/renderer/src/components/credential-vault.tsx`
 - `src/renderer/src/components/terminal-surface.tsx`
 - `src/renderer/src/lib/theme.ts`
+- `src/renderer/src/components/workbench/workbench-updates-editor.tsx`
 - `src/renderer/src/components/workbench/workbench-settings-editor.tsx`
 - `src/renderer/src/components/workbench/workbench-shell.tsx`
 - `src/renderer/src/components/workbench/workbench-context.tsx`
+- `src/renderer/src/store/update-dialog-store.ts`
 - `src/renderer/src/store/sessions-store.ts`
 - `src/renderer/src/store/local-terminals-store.ts`
 - `web/vite.config.ts`
@@ -1492,6 +1679,13 @@ Jump Server、server brand、自定义图标相关改动还会多牵涉：
 - 本地终端当前依赖 `node-pty`，非 Windows 平台还依赖 `spawn-helper` 可执行权限修复链路
 - 本地终端 shell 当前已经是设置项，但它只影响新开的 local terminal；不要误以为修改设置会热切换已有 PTY
 - `localTerminalShell` 当前会在主进程按平台归一化；如果做设置迁移或跨平台同步，不要假设持久化值总是对当前平台有效
+- 自动更新当前只支持 Windows packaged build；`darwin` / `linux` 和默认 dev build 进入 `unsupported` 是预期行为
+- `autoUpdateCheckEnabled` 当前只控制启动后的自动检查，不会禁止用户手动检查更新
+- `UpdateService` 当前显式 `autoDownload = false`；看到 `available` 不代表更新包已经下载到本地
+- `WINSSH_UPDATE_BASE_URL` 缺失时，更新 UI 应进入 `feed_url_missing`，不要把它当成异常态直接吞掉
+- 如果要在开发态联调更新，需要一起考虑 `WINSSH_ALLOW_DEV_UPDATES`、`dev-app-update.yml` 和本地 feed 服务
+- `release/0.1.1` / `release/0.1.2` 当前是模拟 feed，复制的仍是 `0.1.0` 安装器，不要把它们当成真实升级包
+- `system:getAppInfo` 当前驱动 about / updates editor 的版本、平台和发布通道显示；改版本命名时要同步确认 `releaseChannel` 推导与 UI 文案
 - 主题系统当前是“theme id + theme registry + theme plugin document”的结构，不是简单 dark mode 开关
 - 用户主题包当前通过 ZIP 导入到 `app.getPath('userData')/themes`，built-in theme pack 不可删除
 - `web/` 站点当前直接复用根 `package.json` 的版本 / homepage，以及内置 `light-plus` / `dark-plus` 主题 JSON；修改这些源头会同时影响官网
@@ -1522,6 +1716,8 @@ npm run test
 npm run web:dev
 npm run web:build
 npm run web:test
+npm run updates:mock
+npm run updates:serve
 npm run postinstall
 npm run dist
 npm run dist:win
@@ -1539,4 +1735,5 @@ npm run dist:linux
 2. 再决定是否让 `SessionManager` 直接接管凭据库解析，结束“凭据库 + 服务器内联 + keytar”并存状态，并把 target / jump server 的 secret 解析统一起来
 3. 继续做真实 SSH / SFTP / 端口转发 / Jump Server 联调，重点确认凭据引用、recoverable secret prompt、端口转发恢复和 SFTP 非空目录边界
 4. 继续做本地终端与终端渲染层的跨平台验证，重点确认 `node-pty` packaging、`spawn-helper`、`experimentalTerminalWebgl` 和焦点行为
-5. 继续完善主题和平台层，尤其是用户主题包导入 / 删除、server brand / custom icon 体验、系统字体策略、Windows GPU 策略和标题栏切换体验
+5. 继续做 Windows 打包与更新源联调，重点确认 `WINSSH_UPDATE_BASE_URL`、dev update config、更新对话框、`updates-editor` 和 `quitAndInstall` 的真实行为
+6. 继续完善主题和平台层，尤其是用户主题包导入 / 删除、server brand / custom icon 体验、系统字体策略、Windows GPU 策略和标题栏切换体验
