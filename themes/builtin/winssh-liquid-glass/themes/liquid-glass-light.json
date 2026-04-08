@@ -30,6 +30,8 @@
     "sidebar-ring": "rgba(47, 125, 255, 0.28)",
     "workbench-bg": "#e8eef7",
     "workbench-titlebar": "rgba(248, 250, 255, 0.72)",
+    "workbench-window-control-hover": "rgba(255, 255, 255, 0.6)",
+    "workbench-window-control-hover-foreground": "#182230",
     "workbench-activity-bar": "rgba(244, 247, 253, 0.64)",
     "workbench-sidebar": "rgba(244, 247, 253, 0.64)",
     "workbench-tabs": "rgba(244, 247, 253, 0.58)",

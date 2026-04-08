@@ -14,9 +14,10 @@ describe('getWindowChromeOptions', () => {
     })
   })
 
-  it('uses a hidden title bar without native overlay controls on Windows and Linux custom title bars', () => {
+  it('uses a hidden title bar with native overlay controls on Windows custom title bars', () => {
     expect(getWindowChromeOptions({ windowTitleBarStyle: 'custom' }, 'win32')).toEqual({
-      titleBarStyle: 'hidden'
+      titleBarStyle: 'hidden',
+      titleBarOverlay: true
     })
   })
 })

@@ -138,6 +138,43 @@ describe('ThemeRegistry', () => {
     expect(registry.resolveTheme(SYSTEM_THEME_ID, true).id).toBe(DEFAULT_DARK_THEME_ID)
   })
 
+  it('derives window theme colors from the resolved theme', () => {
+    const root = mkdtempSync(join(tmpdir(), 'winssh-theme-registry-'))
+    tempDirs.push(root)
+
+    writeDefaultThemes(root)
+    writeJson(join(root, 'user', 'nebula', 'package.json'), {
+      name: 'nebula-theme-pack',
+      publisher: 'acme',
+      version: '1.2.0',
+      contributes: {
+        themes: [
+          {
+            id: 'acme.nebula',
+            label: 'Nebula',
+            uiTheme: 'vs-dark',
+            path: './themes/nebula.json'
+          }
+        ]
+      }
+    })
+    writeJson(join(root, 'user', 'nebula', 'themes', 'nebula.json'), {
+      colors: {
+        'workbench-bg': '#101522',
+        'workbench-titlebar': '#141a29',
+        'workbench-muted': '#8fa1b8'
+      }
+    })
+
+    const registry = new ThemeRegistry(join(root, 'builtin'), join(root, 'user'))
+
+    expect(registry.getWindowThemeColors('acme.nebula', true)).toEqual({
+      backgroundColor: '#101522',
+      titleBarColor: '#141a29',
+      titleBarSymbolColor: '#8fa1b8'
+    })
+  })
+
   it('imports a ZIP theme pack into the user theme directory', async () => {
     const root = mkdtempSync(join(tmpdir(), 'winssh-theme-registry-'))
     tempDirs.push(root)

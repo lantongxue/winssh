@@ -50,7 +50,9 @@ const themes = [
     colors: {
       'workbench-logo': '#9ff6a8',
       'workbench-card-radius': '2px',
-      'workbench-tab-radius': '2px'
+      'workbench-tab-radius': '2px',
+      'workbench-window-control-hover': 'rgba(125, 255, 155, 0.16)',
+      'workbench-window-control-hover-foreground': '#d7ffe0'
     },
     pluginDisplayName: 'WinSSH Default Themes',
     pluginId: 'winssh.default-themes',
@@ -81,6 +83,12 @@ describe('theme helpers', () => {
     expect(root.style.getPropertyValue('--workbench-logo')).toBe('#9ff6a8')
     expect(root.style.getPropertyValue('--workbench-card-radius')).toBe('2px')
     expect(root.style.getPropertyValue('--workbench-tab-radius')).toBe('2px')
+    expect(root.style.getPropertyValue('--workbench-window-control-hover')).toBe(
+      'rgba(125, 255, 155, 0.16)'
+    )
+    expect(root.style.getPropertyValue('--workbench-window-control-hover-foreground')).toBe(
+      '#d7ffe0'
+    )
   })
 
   it('resolves system theme against the OS preference', () => {

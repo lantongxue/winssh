@@ -73,6 +73,12 @@ interface ThemePluginRecord {
   version: string
 }
 
+export interface WindowThemeColors {
+  backgroundColor: string
+  titleBarColor: string
+  titleBarSymbolColor: string
+}
+
 function isPathWithin(parentPath: string, targetPath: string) {
   const normalizedParent = normalize(resolve(parentPath))
   const normalizedTarget = normalize(resolve(targetPath))
@@ -267,7 +273,17 @@ export class ThemeRegistry {
   }
 
   getWindowBackgroundColor(themeSelection: string, prefersDark: boolean): string {
-    return this.resolveTheme(themeSelection, prefersDark).colors['workbench-bg']
+    return this.getWindowThemeColors(themeSelection, prefersDark).backgroundColor
+  }
+
+  getWindowThemeColors(themeSelection: string, prefersDark: boolean): WindowThemeColors {
+    const theme = this.resolveTheme(themeSelection, prefersDark)
+
+    return {
+      backgroundColor: theme.colors['workbench-bg'],
+      titleBarColor: theme.colors['workbench-titlebar'],
+      titleBarSymbolColor: theme.colors['workbench-muted']
+    }
   }
 
   async importArchive(archivePath: string): Promise<ThemeImportResult> {

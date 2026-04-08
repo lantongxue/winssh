@@ -7,7 +7,8 @@ import {
   ipcMain,
   nativeTheme,
   shell,
-  type OpenDialogOptions
+  type OpenDialogOptions,
+  type TitleBarOverlayOptions
 } from 'electron'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -38,17 +39,43 @@ import { LocalTerminalManager } from './local-terminal-manager'
 import { createMainTranslator, resolveMainLanguage } from './localization'
 import { SecureStoreService } from './secure-store'
 import { SessionManager } from './session-manager'
-import { configureHardwareAcceleration } from './gpu-config'
 import { SystemFontService } from './system-fonts'
 import { ThemeRegistry, ThemeRegistryError } from './theme-registry'
 import { getWindowChromeOptions } from './window-config'
 
 let mainWindow: BrowserWindow | null = null
+const CUSTOM_TITLEBAR_HEIGHT = 36
+const WINDOWS_TITLEBAR_OVERLAY_HEIGHT = CUSTOM_TITLEBAR_HEIGHT - 1
 
 function sendWindowState(window: BrowserWindow) {
   window.webContents.send('system:windowState', {
     isMaximized: window.isMaximized()
   })
+}
+
+function syncWindowTheme(
+  window: BrowserWindow,
+  settings: Pick<AppSettings, 'theme' | 'windowTitleBarStyle'>,
+  themeRegistry: ThemeRegistry
+) {
+  const resolvedWindowTheme = themeRegistry.getWindowThemeColors(
+    settings.theme,
+    nativeTheme.shouldUseDarkColors
+  )
+
+  window.setBackgroundColor(resolvedWindowTheme.backgroundColor)
+
+  if (process.platform === 'win32' && settings.windowTitleBarStyle === 'custom') {
+    const overlayOptions: TitleBarOverlayOptions = {
+      color: resolvedWindowTheme.titleBarColor,
+      // Leave the bottom divider line to the renderer titlebar so the underline
+      // still spans across the native Win11 caption button lane.
+      height: WINDOWS_TITLEBAR_OVERLAY_HEIGHT,
+      symbolColor: resolvedWindowTheme.titleBarSymbolColor
+    }
+
+    window.setTitleBarOverlay(overlayOptions)
+  }
 }
 
 function createWindow(settings: AppSettings, themeRegistry: ThemeRegistry): BrowserWindow {
@@ -71,6 +98,8 @@ function createWindow(settings: AppSettings, themeRegistry: ThemeRegistry): Brow
       sandbox: false
     }
   })
+
+  syncWindowTheme(window, settings, themeRegistry)
 
   window.on('ready-to-show', () => {
     window.show()
@@ -250,6 +279,12 @@ async function bootstrap(): Promise<void> {
     })
 
     return nextThemeSelection
+  }
+
+  const syncMainWindowTheme = (settings: Pick<AppSettings, 'theme' | 'windowTitleBarStyle'>) => {
+    if (mainWindow) {
+      syncWindowTheme(mainWindow, settings, themeRegistry)
+    }
   }
 
   const formatThemeRegistryError = (error: unknown) => {
@@ -489,6 +524,7 @@ async function bootstrap(): Promise<void> {
     try {
       const imported = await themeRegistry.importArchive(filePath)
       syncThemeSelectionAfterMutation(previousThemeState)
+      syncMainWindowTheme(themeRegistry.normalizeSettings(database.getSettings()))
       return imported
     } catch (error) {
       throw new Error(formatThemeRegistryError(error))
@@ -500,6 +536,7 @@ async function bootstrap(): Promise<void> {
     try {
       const deleted = await themeRegistry.deletePlugin(pluginId)
       const nextThemeSelection = syncThemeSelectionAfterMutation(previousThemeState)
+      syncMainWindowTheme(themeRegistry.normalizeSettings(database.getSettings()))
 
       return {
         ...deleted,
@@ -522,9 +559,11 @@ async function bootstrap(): Promise<void> {
       throw new Error(`unknown theme "${merged.theme}"`)
     }
 
-    return themeRegistry.normalizeSettings(
+    const nextSettings = themeRegistry.normalizeSettings(
       database.updateSettings(normalizeAppSettingsForPlatform(merged))
     )
+    syncMainWindowTheme(nextSettings)
+    return nextSettings
   })
 
   ipcMain.handle('system:pickPrivateKey', async () => {
@@ -624,6 +663,10 @@ async function bootstrap(): Promise<void> {
 
   mainWindow = createWindow(themeRegistry.normalizeSettings(database.getSettings()), themeRegistry)
 
+  nativeTheme.on('updated', () => {
+    syncMainWindowTheme(themeRegistry.normalizeSettings(database.getSettings()))
+  })
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       mainWindow = createWindow(
@@ -639,8 +682,6 @@ async function bootstrap(): Promise<void> {
     database.close()
   })
 }
-
-configureHardwareAcceleration(app, process.platform, process.env)
 
 app.whenReady().then(bootstrap)
 

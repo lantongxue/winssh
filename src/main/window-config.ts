@@ -17,6 +17,13 @@ export function getWindowChromeOptions(
     }
   }
 
+  if (platform === 'win32') {
+    return {
+      titleBarStyle: 'hidden',
+      titleBarOverlay: true
+    }
+  }
+
   return {
     titleBarStyle: 'hidden'
   }

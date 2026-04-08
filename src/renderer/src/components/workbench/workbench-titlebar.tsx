@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import type { WindowTitleBarStyle } from '@shared/types'
 import { useTranslation } from 'react-i18next'
 import { actionIcons } from '@/lib/action-icons'
 import { getPlatform } from '@/lib/platform'
@@ -14,6 +15,26 @@ type AppRegionStyle = CSSProperties & {
 }
 
 const noDragStyle = { WebkitAppRegion: 'no-drag' } as AppRegionStyle
+const WINDOW_CONTROL_BUTTONS_FALLBACK_RIGHT_INSET = 138
+
+interface WindowControlsOverlayGeometrySource {
+  visible: boolean
+  getTitlebarAreaRect: () => Pick<DOMRect, 'x' | 'width'>
+  addEventListener?: (type: 'geometrychange', listener: () => void) => void
+  removeEventListener?: (type: 'geometrychange', listener: () => void) => void
+}
+
+type NavigatorWithWindowControlsOverlay = Navigator & {
+  windowControlsOverlay?: WindowControlsOverlayGeometrySource
+}
+
+function getWindowControlsOverlay() {
+  if (typeof navigator === 'undefined') {
+    return null
+  }
+
+  return (navigator as NavigatorWithWindowControlsOverlay).windowControlsOverlay ?? null
+}
 
 function WinsshLogo(props: React.ComponentProps<'svg'>) {
   return (
@@ -64,9 +85,13 @@ function TitlebarButton({
 function WindowControlButton({
   children,
   className,
+  tone = 'default',
   tooltip,
   ...props
-}: React.ComponentProps<typeof Button> & { tooltip: string }) {
+}: React.ComponentProps<typeof Button> & {
+  tooltip: string
+  tone?: 'default' | 'close'
+}) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -74,9 +99,10 @@ function WindowControlButton({
           variant="ghost"
           size="icon-sm"
           aria-label={tooltip}
+          data-window-control-tone={tone}
           {...props}
           className={cn(
-            'liquid-glass-chip h-9 w-11 rounded-none border-0 bg-transparent p-0 text-[var(--workbench-muted)] hover:bg-[var(--workbench-hover)] hover:text-foreground',
+            'window-control-button liquid-glass-chip h-9 w-11 rounded-none border-0 bg-transparent p-0 text-[var(--workbench-muted)]',
             className
           )}
           style={noDragStyle}
@@ -97,14 +123,25 @@ export function WorkbenchTitlebar() {
   const setCommandPaletteOpen = useWorkbenchStore((state) => state.setCommandPaletteOpen)
   const setQuickOpenOpen = useWorkbenchStore((state) => state.setQuickOpenOpen)
   const [isMaximized, setIsMaximized] = useState(false)
+  const [nativeWindowControlsRightInset, setNativeWindowControlsRightInset] = useState(0)
+  const [appliedWindowTitleBarStyle, setAppliedWindowTitleBarStyle] =
+    useState<WindowTitleBarStyle | null>(null)
   const settingsQuery = useQuery({
     queryKey: ['settings'],
     queryFn: () => window.winsshApi.settings.get()
   })
 
-  const customTitleBar = settingsQuery.data?.windowTitleBarStyle === 'custom'
+  useEffect(() => {
+    if (!appliedWindowTitleBarStyle && settingsQuery.data?.windowTitleBarStyle) {
+      setAppliedWindowTitleBarStyle(settingsQuery.data.windowTitleBarStyle)
+    }
+  }, [appliedWindowTitleBarStyle, settingsQuery.data?.windowTitleBarStyle])
+
+  const customTitleBar =
+    (appliedWindowTitleBarStyle ?? settingsQuery.data?.windowTitleBarStyle) === 'custom'
   const platform = useMemo(() => getPlatform(), [])
   const isMac = platform.includes('mac')
+  const isWindows = platform.includes('win')
   const QuickOpenIcon = actionIcons.quickOpen
   const OpenTerminalIcon = actionIcons.openTerminal
   const CommandPaletteIcon = actionIcons.commandPalette
@@ -113,6 +150,43 @@ export function WorkbenchTitlebar() {
   const MinimizeWindowIcon = actionIcons.minimizeWindow
   const MaximizeWindowIcon = isMaximized ? actionIcons.restoreWindow : actionIcons.maximizeWindow
   const CloseWindowIcon = actionIcons.close
+
+  useEffect(() => {
+    if (!customTitleBar || !isWindows) {
+      setNativeWindowControlsRightInset(0)
+      return
+    }
+
+    const overlay = getWindowControlsOverlay()
+    if (!overlay || typeof window === 'undefined') {
+      setNativeWindowControlsRightInset(0)
+      return
+    }
+
+    const syncOverlayGeometry = () => {
+      if (!overlay.visible) {
+        setNativeWindowControlsRightInset(0)
+        return
+      }
+
+      const rect = overlay.getTitlebarAreaRect()
+      const rightInset = Math.max(
+        WINDOW_CONTROL_BUTTONS_FALLBACK_RIGHT_INSET,
+        Math.round(window.innerWidth - (rect.x + rect.width))
+      )
+
+      setNativeWindowControlsRightInset(rightInset)
+    }
+
+    syncOverlayGeometry()
+    overlay.addEventListener?.('geometrychange', syncOverlayGeometry)
+    window.addEventListener('resize', syncOverlayGeometry)
+
+    return () => {
+      overlay.removeEventListener?.('geometrychange', syncOverlayGeometry)
+      window.removeEventListener('resize', syncOverlayGeometry)
+    }
+  }, [customTitleBar, isWindows])
 
   useEffect(() => {
     if (!customTitleBar) {
@@ -137,6 +211,9 @@ export function WorkbenchTitlebar() {
     }
   }, [customTitleBar])
 
+  const useNativeWindowsCaptionButtons =
+    customTitleBar && isWindows && nativeWindowControlsRightInset > 0
+
   return (
     <header
       className="liquid-glass-toolbar relative flex h-9 shrink-0 items-center border-b border-[var(--workbench-border)] bg-[var(--workbench-titlebar)] px-2 text-xs"
@@ -144,6 +221,9 @@ export function WorkbenchTitlebar() {
         {
           WebkitAppRegion: customTitleBar ? 'drag' : 'no-drag',
           paddingLeft: customTitleBar && isMac ? '76px' : undefined,
+          paddingRight: useNativeWindowsCaptionButtons
+            ? `${nativeWindowControlsRightInset + 8}px`
+            : undefined,
           userSelect: 'none'
         } as AppRegionStyle
       }
@@ -197,7 +277,7 @@ export function WorkbenchTitlebar() {
           <TogglePanelIcon className="size-4" />
         </WindowControlButton>
 
-        {customTitleBar && !isMac ? (
+        {customTitleBar && !isMac && !useNativeWindowsCaptionButtons ? (
           <>
             <WindowControlButton
               tooltip={t('workbench.titleBar.minimizeWindow')}
@@ -217,7 +297,7 @@ export function WorkbenchTitlebar() {
             </WindowControlButton>
             <WindowControlButton
               tooltip={t('workbench.titleBar.closeWindow')}
-              className="hover:bg-destructive hover:text-destructive-foreground"
+              tone="close"
               onClick={() => void window.winsshApi.system.window.close()}
             >
               <CloseWindowIcon className="size-4" />

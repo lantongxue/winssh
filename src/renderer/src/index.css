@@ -36,6 +36,8 @@
   --sidebar-ring: #0078d4;
   --workbench-bg: #f3f5f7;
   --workbench-titlebar: #f3f5f7;
+  --workbench-window-control-hover: rgba(15, 23, 42, 0.12);
+  --workbench-window-control-hover-foreground: #1f2328;
   --workbench-activity-bar: #eef2f6;
   --workbench-sidebar: #f6f8fa;
   --workbench-tabs: #eef2f6;
@@ -138,6 +140,8 @@
   --sidebar-ring: #3794ff;
   --workbench-bg: #181a1f;
   --workbench-titlebar: #181a1f;
+  --workbench-window-control-hover: rgba(255, 255, 255, 0.14);
+  --workbench-window-control-hover-foreground: #f3f6fa;
   --workbench-activity-bar: #20242b;
   --workbench-sidebar: #20242b;
   --workbench-tabs: #20242b;
@@ -345,8 +349,7 @@ button,
   position: absolute;
   pointer-events: none;
   border-radius: 999px;
-  filter: blur(72px);
-  opacity: 0.9;
+  opacity: 0.82;
   z-index: 0;
 }
 
@@ -355,7 +358,11 @@ button,
   left: -96px;
   width: 320px;
   height: 320px;
-  background: color-mix(in srgb, var(--primary) 26%, transparent);
+  background: radial-gradient(
+    circle at center,
+    color-mix(in srgb, var(--primary) 26%, transparent) 0 32%,
+    transparent 72%
+  );
 }
 
 .theme-liquid-glass .workbench-shell::after {
@@ -363,7 +370,11 @@ button,
   right: -96px;
   width: 360px;
   height: 360px;
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  background: radial-gradient(
+    circle at center,
+    color-mix(in srgb, var(--accent) 18%, transparent) 0 30%,
+    transparent 70%
+  );
 }
 
 .theme-liquid-glass .workbench-shell > * {
@@ -373,15 +384,8 @@ button,
 
 .theme-liquid-glass .liquid-glass-pane,
 .theme-liquid-glass .liquid-glass-toolbar,
-.theme-liquid-glass .liquid-glass-card,
-.theme-liquid-glass .liquid-glass-hero,
 .theme-liquid-glass [data-slot='dialog-content'],
-.theme-liquid-glass [data-slot='select-content'],
-.theme-liquid-glass [data-slot='context-menu-content'],
-.theme-liquid-glass [data-slot='context-menu-sub-content'],
-.theme-liquid-glass [data-slot='dropdown-menu-content'],
-.theme-liquid-glass [data-slot='dropdown-menu-sub-content'],
-.theme-liquid-glass [data-slot='tooltip-content'] {
+.theme-liquid-glass [data-slot='select-content'] {
   border-color: var(--glass-border);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
@@ -431,8 +435,8 @@ button,
       transparent 42%
     ),
     color-mix(in srgb, black 42%, transparent);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .theme-liquid-glass [data-slot='command'] {
@@ -629,8 +633,8 @@ button,
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 80%, transparent),
     0 8px 20px color-mix(in srgb, black 8%, transparent);
-  backdrop-filter: blur(calc(var(--glass-blur) * 0.55)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.55)) saturate(var(--glass-saturate));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .theme-liquid-glass [data-slot='input']:hover,
@@ -770,6 +774,26 @@ button,
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 84%, transparent),
     0 10px 22px color-mix(in srgb, black 8%, transparent);
+}
+
+[data-slot='button'][data-variant='ghost'].window-control-button {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--workbench-muted);
+}
+
+[data-slot='button'][data-variant='ghost'].window-control-button:hover {
+  transform: none;
+  border-color: transparent;
+  background: var(--workbench-window-control-hover);
+  box-shadow: none;
+  color: var(--workbench-window-control-hover-foreground);
+}
+
+[data-slot='button'][data-variant='ghost'].window-control-button[data-window-control-tone='close']:hover {
+  background: var(--destructive);
+  color: var(--destructive-foreground);
 }
 
 .theme-liquid-glass .liquid-glass-tab[data-active='true'] {
@@ -943,7 +967,8 @@ button,
   );
   color: var(--foreground);
   box-shadow: var(--toast-shadow);
-  backdrop-filter: blur(var(--toast-backdrop-blur));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .winssh-toast::before {
