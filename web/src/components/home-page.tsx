@@ -15,11 +15,13 @@ import { withBasePath } from '@/lib/paths'
 
 const featureIcons = {
   terminal: TerminalSquare,
+  local: TerminalSquare,
+  connections: KeyRound,
   sftp: FolderTree,
   forwarding: Cable,
-  vault: KeyRound,
+  observability: ShieldCheck,
   themes: Palette,
-  workbench: LayoutPanelTop
+  updates: LayoutPanelTop
 } as const
 
 export function HomePage() {
