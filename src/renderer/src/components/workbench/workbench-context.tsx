@@ -13,6 +13,11 @@ import type {
   Server,
   ServerUpsertInput
 } from '@shared/types'
+import { localTerminalsClient } from '@/features/local-terminals/api/local-terminals-client'
+import { queryKeys } from '@/features/shared/query-keys'
+import { serversClient } from '@/features/servers/api/servers-client'
+import { sessionsClient } from '@/features/sessions/api/sessions-client'
+import { systemClient } from '@/features/system/api/system-client'
 import type { WorkbenchActivityId } from '@/lib/workbench'
 import {
   createLocalTerminalEditorDocument,
@@ -135,12 +140,12 @@ interface WorkbenchContextValue {
 const WorkbenchContext = createContext<WorkbenchContextValue | null>(null)
 
 const workspaceQueryKeys = [
-  ['servers'],
-  ['groups'],
-  ['tags'],
-  ['recent-sessions'],
-  ['capabilities'],
-  ['known-hosts']
+  queryKeys.servers,
+  queryKeys.groups,
+  queryKeys.tags,
+  queryKeys.recentSessions,
+  queryKeys.capabilities,
+  queryKeys.knownHosts
 ] as const
 
 function buildQuickConnectServerName(target: QuickConnectTarget) {
@@ -235,28 +240,28 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   }
 
   const getCredentialStorageAvailable = async () => {
-    const cached = queryClient.getQueryData<RuntimeCapabilities>(['capabilities'])
+    const cached = queryClient.getQueryData<RuntimeCapabilities>(queryKeys.capabilities)
     if (cached) {
       return cached.credentialStorage
     }
 
     const capabilities = await queryClient.fetchQuery({
-      queryKey: ['capabilities'],
-      queryFn: () => window.winsshApi.system.getCapabilities()
+      queryKey: queryKeys.capabilities,
+      queryFn: () => systemClient.getCapabilities()
     })
 
     return capabilities.credentialStorage
   }
 
   const getServers = async (options?: { force?: boolean }) => {
-    const cached = !options?.force ? queryClient.getQueryData<Server[]>(['servers']) : undefined
+    const cached = !options?.force ? queryClient.getQueryData<Server[]>(queryKeys.servers) : undefined
     if (cached) {
       return cached
     }
 
     return queryClient.fetchQuery({
-      queryKey: ['servers'],
-      queryFn: () => window.winsshApi.servers.list()
+      queryKey: queryKeys.servers,
+      queryFn: () => serversClient.list()
     })
   }
 
@@ -300,7 +305,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 
   const openLocalTerminal = async () => {
     try {
-      const terminal = await window.winsshApi.localTerminals.create()
+      const terminal = await localTerminalsClient.create()
       addLocalTerminal(terminal)
       setActiveActivity('terminal')
       openDocument(createLocalTerminalEditorDocument(terminal.terminalId))
@@ -407,7 +412,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       return existing
     }
 
-    const created = await window.winsshApi.servers.create({
+    const created = await serversClient.create({
       authType: 'password',
       favorite: false,
       groupId: null,
@@ -423,7 +428,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       username: target.username
     })
 
-    queryClient.setQueryData<Server[]>(['servers'], (current) => {
+    queryClient.setQueryData<Server[]>(queryKeys.servers, (current) => {
       const servers = current ?? []
       return servers.some((server) => server.id === created.id) ? servers : [...servers, created]
     })
@@ -475,7 +480,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       message: t('workbench.output.connectingTo', { name: server.name })
     })
 
-    const result = await window.winsshApi.sessions.connect(nextRequest)
+    const result = await sessionsClient.connect(nextRequest)
     if (result.ok) {
       setPendingConnections((current) => {
         const next = { ...current }
@@ -639,7 +644,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     const session = useSessionsStore.getState().tabs.find((tab) => tab.sessionId === sessionId)
 
     if (!session?.provisional) {
-      await window.winsshApi.sessions.disconnect(sessionId)
+      await sessionsClient.disconnect(sessionId)
     }
     setPendingConnections((current) => {
       const next = { ...current }
@@ -666,7 +671,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       .getState()
       .tabs.find((tab) => tab.terminalId === terminalId)
 
-    await window.winsshApi.localTerminals.close(terminalId)
+    await localTerminalsClient.close(terminalId)
     removeLocalTerminal(terminalId)
     closeDocument(`local-terminal-editor:${terminalId}`)
 
@@ -688,7 +693,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       const cachedServers = queryClient.getQueryData<Server[]>(['servers']) ?? []
       const server =
         cachedServers.find((item) => item.id === session.serverId) ??
-        (await window.winsshApi.servers.list()).find((item) => item.id === session.serverId)
+        (await serversClient.list()).find((item) => item.id === session.serverId)
 
       if (!server) {
         toast.error(t('workbench.toasts.serverConfigMissing'))
@@ -709,7 +714,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 
     try {
       setSessionState(sessionId, 'connecting', undefined, 'validate')
-      const nextSession = await window.winsshApi.sessions.reconnect(sessionId)
+      const nextSession = await sessionsClient.reconnect(sessionId)
       replaceSession(sessionId, nextSession)
       replaceDocument(
         `session-editor:${sessionId}`,
@@ -737,12 +742,12 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   }
 
   const toggleFavorite = async (serverId: string) => {
-    await window.winsshApi.servers.toggleFavorite(serverId)
+    await serversClient.toggleFavorite(serverId)
     await refreshWorkspaceData()
   }
 
   const deleteServer = async (serverId: string) => {
-    await window.winsshApi.servers.delete(serverId)
+    await serversClient.delete(serverId)
     closeDocument(`server-editor:${serverId}`)
     await refreshWorkspaceData()
     toast.success(t('workbench.toasts.serverDeleted'))
@@ -758,7 +763,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       let privateKey: string | null | undefined
 
       if (currentServer.authType === 'privateKey' && !currentServer.credentialId) {
-        const secrets = await window.winsshApi.servers.getSecrets(currentServer.id)
+        const secrets = await serversClient.getSecrets(currentServer.id)
         privateKey = secrets.privateKey
 
         if (!privateKey?.trim()) {
@@ -766,7 +771,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      await window.winsshApi.servers.update(
+      await serversClient.update(
         currentServer.id,
         buildServerGroupUpdatePayload(currentServer, groupId, { privateKey })
       )

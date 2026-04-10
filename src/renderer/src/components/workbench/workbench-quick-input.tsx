@@ -4,6 +4,9 @@ import { LoaderCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { formatQuickConnectTarget } from '@shared/quick-connect'
+import { groupsClient } from '@/features/groups/api/groups-client'
+import { queryKeys } from '@/features/shared/query-keys'
+import { tagsClient } from '@/features/tags/api/tags-client'
 import { colorOptions, getColorStyle } from '@/lib/colors'
 import { actionIcons } from '@/lib/action-icons'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
@@ -67,23 +70,23 @@ export function WorkbenchQuickInput() {
     try {
       if (quickInput.entityType === 'group') {
         if (quickInput.mode === 'create') {
-          await window.winsshApi.groups.create({ color, name: name.trim() })
+          await groupsClient.create({ color, name: name.trim() })
           toast.success(t('workbench.quickInput.toasts.groupCreated'))
         } else if (quickInput.entityId) {
-          await window.winsshApi.groups.update(quickInput.entityId, { color, name: name.trim() })
+          await groupsClient.update(quickInput.entityId, { color, name: name.trim() })
           toast.success(t('workbench.quickInput.toasts.groupUpdated'))
         }
       } else if (quickInput.mode === 'create') {
-        await window.winsshApi.tags.create({ color, name: name.trim() })
+        await tagsClient.create({ color, name: name.trim() })
         toast.success(t('workbench.quickInput.toasts.tagCreated'))
       } else if (quickInput.entityId) {
-        await window.winsshApi.tags.update(quickInput.entityId, { color, name: name.trim() })
+        await tagsClient.update(quickInput.entityId, { color, name: name.trim() })
         toast.success(t('workbench.quickInput.toasts.tagUpdated'))
       }
 
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['groups'] }),
-        queryClient.invalidateQueries({ queryKey: ['tags'] })
+        queryClient.invalidateQueries({ queryKey: queryKeys.groups }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.tags })
       ])
       await refreshWorkspaceData()
       closeQuickInput()

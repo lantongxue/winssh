@@ -100,10 +100,10 @@ export class LocalTerminalManager {
     }
 
     const dataDisposable = pty.onData((data) => {
-      this.emitToRenderer('localTerminals:data', {
+      this.emitToRenderer('localTerminals:data', this.withObservableMetadata(terminalId, {
         data,
         terminalId
-      })
+      }))
     })
     const exitDisposable = pty.onExit(({ exitCode, signal }) => {
       const current = this.terminals.get(terminalId)
@@ -124,16 +124,18 @@ export class LocalTerminalManager {
         status: 'exited'
       }
 
-      this.emitToRenderer('localTerminals:state', {
+      this.emitToRenderer('localTerminals:state', this.withObservableMetadata(terminalId, {
+        code: 'local_terminal_exited',
         message: lastMessage,
+        recoverable: false,
         status: 'exited',
         terminalId
-      })
-      this.emitToRenderer('localTerminals:exit', {
+      }))
+      this.emitToRenderer('localTerminals:exit', this.withObservableMetadata(terminalId, {
         exitCode,
         signal,
         terminalId
-      })
+      }))
     })
 
     record.disposeListeners = () => {
@@ -169,6 +171,15 @@ export class LocalTerminalManager {
   dispose() {
     for (const terminalId of this.terminals.keys()) {
       this.close(terminalId)
+    }
+  }
+
+  private withObservableMetadata<TPayload extends object>(correlationId: string, payload: TPayload) {
+    return {
+      ...payload,
+      correlationId,
+      source: 'main' as const,
+      timestamp: now()
     }
   }
 

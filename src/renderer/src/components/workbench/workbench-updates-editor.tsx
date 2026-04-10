@@ -5,6 +5,10 @@ import type { AppInfo, ReleaseChannel, UpdateState } from '@shared/types'
 import { RefreshCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { queryKeys } from '@/features/shared/query-keys'
+import { settingsClient } from '@/features/settings/api/settings-client'
+import { systemClient } from '@/features/system/api/system-client'
+import { updatesClient } from '@/features/updates/api/updates-client'
 import { formatDateTime } from '@/i18n/format'
 import { actionIcons } from '@/lib/action-icons'
 import { Button } from '@/components/ui/button'
@@ -84,16 +88,16 @@ export function WorkbenchUpdatesEditor() {
   const SaveIcon = actionIcons.save
 
   const settingsQuery = useQuery({
-    queryKey: ['settings'],
-    queryFn: () => window.winsshApi.settings.get()
+    queryKey: queryKeys.settings,
+    queryFn: () => settingsClient.get()
   })
   const appInfoQuery = useQuery({
-    queryKey: ['app-info'],
-    queryFn: () => window.winsshApi.system.getAppInfo()
+    queryKey: queryKeys.appInfo,
+    queryFn: () => systemClient.getAppInfo()
   })
   const updatesQuery = useQuery({
-    queryKey: ['updates', 'state'],
-    queryFn: () => window.winsshApi.updates.getState()
+    queryKey: queryKeys.updatesState,
+    queryFn: () => updatesClient.getState()
   })
 
   useEffect(() => {
@@ -103,19 +107,16 @@ export function WorkbenchUpdatesEditor() {
   }, [settingsQuery.data?.autoUpdateCheckEnabled])
 
   useEffect(() => {
-    return window.winsshApi.updates.onStateChange((state) => {
-      queryClient.setQueryData(['updates', 'state'], state)
+    return updatesClient.onStateChange((state) => {
+      queryClient.setQueryData(queryKeys.updatesState, state)
     })
   }, [queryClient])
 
   const saveAutoCheck = useMutation({
-    mutationFn: (enabled: boolean) =>
-      window.winsshApi.settings.update({
-        autoUpdateCheckEnabled: enabled
-      }),
+    mutationFn: (enabled: boolean) => settingsClient.update({ autoUpdateCheckEnabled: enabled }),
     onSuccess: (settings) => {
-      queryClient.setQueryData(['settings'], settings)
-      queryClient.setQueryData<UpdateState | undefined>(['updates', 'state'], (current) =>
+      queryClient.setQueryData(queryKeys.settings, settings)
+      queryClient.setQueryData<UpdateState | undefined>(queryKeys.updatesState, (current) =>
         current
           ? {
               ...current,
@@ -128,12 +129,12 @@ export function WorkbenchUpdatesEditor() {
   })
 
   const checkForUpdates = useMutation({
-    mutationFn: () => window.winsshApi.updates.check(),
+    mutationFn: () => updatesClient.check(),
     onMutate: () => {
-      const currentState = queryClient.getQueryData<UpdateState>(['updates', 'state'])
+      const currentState = queryClient.getQueryData<UpdateState>(queryKeys.updatesState)
 
       if (currentState) {
-        queryClient.setQueryData<UpdateState>(['updates', 'state'], {
+        queryClient.setQueryData<UpdateState>(queryKeys.updatesState, {
           ...currentState,
           errorMessage: null,
           phase: 'checking'
@@ -145,7 +146,7 @@ export function WorkbenchUpdatesEditor() {
         return
       }
 
-      queryClient.setQueryData<UpdateState>(['updates', 'state'], {
+      queryClient.setQueryData<UpdateState>(queryKeys.updatesState, {
         autoCheckEnabled,
         availableUpdate: null,
         currentVersion: appInfoQuery.data.version,
@@ -157,7 +158,7 @@ export function WorkbenchUpdatesEditor() {
       })
     },
     onSuccess: (state) => {
-      queryClient.setQueryData(['updates', 'state'], state)
+      queryClient.setQueryData(queryKeys.updatesState, state)
     },
     onError: (error) => {
       toast.error(
@@ -167,9 +168,9 @@ export function WorkbenchUpdatesEditor() {
   })
 
   const downloadUpdate = useMutation({
-    mutationFn: () => window.winsshApi.updates.download(),
+    mutationFn: () => updatesClient.download(),
     onSuccess: (state) => {
-      queryClient.setQueryData(['updates', 'state'], state)
+      queryClient.setQueryData(queryKeys.updatesState, state)
     },
     onError: (error) => {
       toast.error(
@@ -181,7 +182,7 @@ export function WorkbenchUpdatesEditor() {
   })
 
   const quitAndInstallUpdate = useMutation({
-    mutationFn: () => window.winsshApi.updates.quitAndInstall(),
+    mutationFn: () => updatesClient.quitAndInstall(),
     onError: (error) => {
       toast.error(
         error instanceof Error

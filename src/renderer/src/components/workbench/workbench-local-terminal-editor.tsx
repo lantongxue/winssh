@@ -2,6 +2,10 @@ import { memo, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
+import { localTerminalsClient } from '@/features/local-terminals/api/local-terminals-client'
+import { queryKeys } from '@/features/shared/query-keys'
+import { settingsClient } from '@/features/settings/api/settings-client'
+import { themesClient } from '@/features/themes/api/themes-client'
 import { actionIcons } from '@/lib/action-icons'
 import { usePrefersDark } from '@/hooks/use-prefers-dark'
 import { resolveThemeDefinition } from '@/lib/theme'
@@ -26,27 +30,27 @@ function WorkbenchLocalTerminalEditorImpl({
     (state) => state.tabs.find((tab) => tab.terminalId === terminalId) ?? null
   )
   const settingsQuery = useQuery({
-    queryKey: ['settings'],
-    queryFn: () => window.winsshApi.settings.get(),
+    queryKey: queryKeys.settings,
+    queryFn: () => settingsClient.get(),
     initialData: DEFAULT_APP_SETTINGS
   })
   const themesQuery = useQuery({
-    queryKey: ['themes'],
-    queryFn: () => window.winsshApi.themes.list()
+    queryKey: queryKeys.themes,
+    queryFn: () => themesClient.list()
   })
   const CloseIcon = actionIcons.close
 
   const transport = useMemo(
     () => ({
       onData: (callback: (data: string) => void) =>
-        window.winsshApi.localTerminals.onData((event) => {
+        localTerminalsClient.onData((event) => {
           if (event.terminalId === terminalId) {
             callback(event.data)
           }
         }),
       resize: (columns: number, rows: number) =>
-        window.winsshApi.localTerminals.resize(terminalId, columns, rows),
-      write: (data: string) => window.winsshApi.localTerminals.write(terminalId, data)
+        localTerminalsClient.resize(terminalId, columns, rows),
+      write: (data: string) => localTerminalsClient.write(terminalId, data)
     }),
     [terminalId]
   )

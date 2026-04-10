@@ -939,19 +939,19 @@ export class SessionManager {
       }
 
       shell.on('data', (chunk: Buffer | string) => {
-        this.emitToRenderer('sessions:data', {
+        this.emitToRenderer('sessions:data', this.withObservableMetadata(sessionId, {
           sessionId,
           data: chunk.toString()
-        })
+        }))
       })
       shell.stderr.on('data', (chunk: Buffer | string) => {
-        this.emitToRenderer('sessions:data', {
+        this.emitToRenderer('sessions:data', this.withObservableMetadata(sessionId, {
           sessionId,
           data: chunk.toString()
-        })
+        }))
       })
       shell.on('close', (code?: number, signal?: string) => {
-        runtime.lastExit = { sessionId, code, signal }
+        runtime.lastExit = this.withObservableMetadata(sessionId, { sessionId, code, signal })
         client?.end()
       })
 
@@ -1103,7 +1103,7 @@ export class SessionManager {
         saveResult.filePath as string,
         {
           step: (transferred, _chunk, total) => {
-            this.emitToRenderer('sftp:transfer', {
+            this.emitToRenderer('sftp:transfer', this.withObservableMetadata(sessionId, {
               sessionId,
               direction: 'download',
               fileName,
@@ -1112,12 +1112,12 @@ export class SessionManager {
               transferred,
               total,
               status: 'running'
-            })
+            }))
           }
         },
         (error) => {
           if (error) {
-            this.emitToRenderer('sftp:transfer', {
+            this.emitToRenderer('sftp:transfer', this.withObservableMetadata(sessionId, {
               sessionId,
               direction: 'download',
               fileName,
@@ -1127,12 +1127,12 @@ export class SessionManager {
               total: 0,
               status: 'error',
               error: error.message
-            })
+            }))
             reject(error)
             return
           }
 
-          this.emitToRenderer('sftp:transfer', {
+          this.emitToRenderer('sftp:transfer', this.withObservableMetadata(sessionId, {
             sessionId,
             direction: 'download',
             fileName,
@@ -1141,7 +1141,7 @@ export class SessionManager {
             transferred: 1,
             total: 1,
             status: 'completed'
-          })
+          }))
           resolve()
         }
       )
@@ -1441,7 +1441,15 @@ export class SessionManager {
       }
 
       runtime.lastError = error.message
-      this.emitToRenderer('sessions:error', { sessionId, message: error.message })
+      this.emitToRenderer(
+        'sessions:error',
+        this.withObservableMetadata(sessionId, {
+          sessionId,
+          code: 'session_runtime_error',
+          message: error.message,
+          recoverable: !primary
+        })
+      )
       this.emitSessionState(sessionId, 'error', undefined, error.message)
 
       if (!primary) {
@@ -1585,7 +1593,7 @@ export class SessionManager {
           step: (nextTransferred, _chunk, nextTotal) => {
             transferred = nextTransferred
             total = Math.max(nextTotal, 1)
-            this.emitToRenderer('sftp:transfer', {
+            this.emitToRenderer('sftp:transfer', this.withObservableMetadata(sessionId, {
               sessionId,
               direction: 'upload',
               fileName,
@@ -1594,12 +1602,12 @@ export class SessionManager {
               transferred,
               total,
               status: 'running'
-            })
+            }))
           }
         },
         (error) => {
           if (error) {
-            this.emitToRenderer('sftp:transfer', {
+            this.emitToRenderer('sftp:transfer', this.withObservableMetadata(sessionId, {
               sessionId,
               direction: 'upload',
               fileName,
@@ -1609,12 +1617,12 @@ export class SessionManager {
               total,
               status: 'error',
               error: error.message
-            })
+            }))
             reject(error)
             return
           }
 
-          this.emitToRenderer('sftp:transfer', {
+          this.emitToRenderer('sftp:transfer', this.withObservableMetadata(sessionId, {
             sessionId,
             direction: 'upload',
             fileName,
@@ -1623,7 +1631,7 @@ export class SessionManager {
             transferred: total,
             total,
             status: 'completed'
-          })
+          }))
           resolve()
         }
       )
@@ -1737,10 +1745,10 @@ export class SessionManager {
   }
 
   private emitPortForwardState(rule: PortForwardRule): void {
-    this.emitToRenderer('portForwards:state', {
+    this.emitToRenderer('portForwards:state', this.withObservableMetadata(rule.sessionId, {
       sessionId: rule.sessionId,
       rule: clonePortForwardRule(rule)
-    })
+    }))
   }
 
   private async startPortForwardRuntime(
@@ -2146,11 +2154,20 @@ export class SessionManager {
     phase?: SessionConnectionPhase,
     message?: string
   ): void {
-    this.emitToRenderer('sessions:state', {
+    this.emitToRenderer('sessions:state', this.withObservableMetadata(sessionId, {
       sessionId,
       status,
       phase,
       message
-    })
+    }))
+  }
+
+  private withObservableMetadata<TPayload extends object>(correlationId: string, payload: TPayload) {
+    return {
+      ...payload,
+      correlationId,
+      source: 'main' as const,
+      timestamp: now()
+    }
   }
 }

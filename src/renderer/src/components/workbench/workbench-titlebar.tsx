@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { WindowTitleBarStyle } from '@shared/types'
 import { useTranslation } from 'react-i18next'
+import { queryKeys } from '@/features/shared/query-keys'
+import { settingsClient } from '@/features/settings/api/settings-client'
+import { systemClient } from '@/features/system/api/system-client'
 import { actionIcons } from '@/lib/action-icons'
 import { getPlatform } from '@/lib/platform'
 import { cn } from '@/lib/utils'
@@ -127,8 +130,8 @@ export function WorkbenchTitlebar() {
   const [appliedWindowTitleBarStyle, setAppliedWindowTitleBarStyle] =
     useState<WindowTitleBarStyle | null>(null)
   const settingsQuery = useQuery({
-    queryKey: ['settings'],
-    queryFn: () => window.winsshApi.settings.get()
+    queryKey: queryKeys.settings,
+    queryFn: () => settingsClient.get()
   })
 
   useEffect(() => {
@@ -195,13 +198,13 @@ export function WorkbenchTitlebar() {
 
     let cancelled = false
 
-    void window.winsshApi.system.window.isMaximized().then((value) => {
+    void systemClient.window.isMaximized().then((value) => {
       if (!cancelled) {
         setIsMaximized(value)
       }
     })
 
-    const unsubscribe = window.winsshApi.system.window.onStateChange((state) => {
+    const unsubscribe = systemClient.window.onStateChange((state) => {
       setIsMaximized(state.isMaximized)
     })
 
@@ -281,7 +284,7 @@ export function WorkbenchTitlebar() {
           <>
             <WindowControlButton
               tooltip={t('workbench.titleBar.minimizeWindow')}
-              onClick={() => void window.winsshApi.system.window.minimize()}
+              onClick={() => void systemClient.window.minimize()}
             >
               <MinimizeWindowIcon className="size-4" />
             </WindowControlButton>
@@ -291,14 +294,14 @@ export function WorkbenchTitlebar() {
                   ? 'workbench.titleBar.restoreWindow'
                   : 'workbench.titleBar.maximizeWindow'
               )}
-              onClick={() => void window.winsshApi.system.window.toggleMaximize()}
+              onClick={() => void systemClient.window.toggleMaximize()}
             >
               <MaximizeWindowIcon className="size-4" />
             </WindowControlButton>
             <WindowControlButton
               tooltip={t('workbench.titleBar.closeWindow')}
               tone="close"
-              onClick={() => void window.winsshApi.system.window.close()}
+              onClick={() => void systemClient.window.close()}
             >
               <CloseWindowIcon className="size-4" />
             </WindowControlButton>

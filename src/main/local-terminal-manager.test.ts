@@ -140,10 +140,13 @@ describe('LocalTerminalManager', () => {
     manager.write(summary.terminalId, 'ls\n')
     manager.resize(summary.terminalId, 100, 40)
 
-    expect(emitToRenderer).toHaveBeenCalledWith('localTerminals:data', {
-      data: 'hello',
-      terminalId: summary.terminalId
-    })
+    expect(emitToRenderer).toHaveBeenCalledWith(
+      'localTerminals:data',
+      expect.objectContaining({
+        data: 'hello',
+        terminalId: summary.terminalId
+      })
+    )
     expect(pty?.write).toHaveBeenCalledWith('ls\n')
     expect(pty?.resize).toHaveBeenCalledWith(100, 40)
   })
@@ -155,16 +158,22 @@ describe('LocalTerminalManager', () => {
 
     createdPtys[0]?.emitExit({ exitCode: 9, signal: 15 })
 
-    expect(emitToRenderer).toHaveBeenCalledWith('localTerminals:state', {
-      message: 'Local terminal exited with code 9 (signal 15).',
-      status: 'exited',
-      terminalId: summary.terminalId
-    })
-    expect(emitToRenderer).toHaveBeenCalledWith('localTerminals:exit', {
-      exitCode: 9,
-      signal: 15,
-      terminalId: summary.terminalId
-    })
+    expect(emitToRenderer).toHaveBeenCalledWith(
+      'localTerminals:state',
+      expect.objectContaining({
+        message: 'Local terminal exited with code 9 (signal 15).',
+        status: 'exited',
+        terminalId: summary.terminalId
+      })
+    )
+    expect(emitToRenderer).toHaveBeenCalledWith(
+      'localTerminals:exit',
+      expect.objectContaining({
+        exitCode: 9,
+        signal: 15,
+        terminalId: summary.terminalId
+      })
+    )
     expect(getTerminalsMap(manager).get(summary.terminalId)?.summary).toMatchObject({
       lastMessage: 'Local terminal exited with code 9 (signal 15).',
       status: 'exited'

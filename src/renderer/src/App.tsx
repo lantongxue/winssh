@@ -5,6 +5,7 @@ import type { ThemeMode } from '@shared/types'
 import { useTranslation } from 'react-i18next'
 import { Toaster } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { AppErrorBoundary } from '@/components/app-error-boundary'
 import {
   Dialog,
   DialogContent,
@@ -15,11 +16,16 @@ import {
 } from '@/components/ui/dialog'
 import { WorkbenchShell } from '@/components/workbench/workbench-shell'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { queryKeys } from '@/features/shared/query-keys'
+import { settingsClient } from '@/features/settings/api/settings-client'
+import { themesClient } from '@/features/themes/api/themes-client'
+import { updatesClient } from '@/features/updates/api/updates-client'
 import { usePrefersDark } from '@/hooks/use-prefers-dark'
 import { useSessionEvents } from '@/hooks/use-session-events'
 import i18n from '@/i18n'
 import { resolveAppLanguage } from '@/i18n/format'
 import { actionIcons } from '@/lib/action-icons'
+import { rendererLogger } from '@/lib/logger'
 import { applyThemeToRoot } from '@/lib/theme'
 import { useUpdateDialogStore } from '@/store/update-dialog-store'
 
@@ -38,13 +44,13 @@ function UpdateDialog() {
   const RestartIcon = actionIcons.restart
 
   const updatesQuery = useQuery({
-    queryKey: ['updates', 'state'],
-    queryFn: () => window.winsshApi.updates.getState()
+    queryKey: queryKeys.updatesState,
+    queryFn: () => updatesClient.getState()
   })
 
   useEffect(() => {
-    return window.winsshApi.updates.onStateChange((state) => {
-      queryClient.setQueryData(['updates', 'state'], state)
+    return updatesClient.onStateChange((state) => {
+      queryClient.setQueryData(queryKeys.updatesState, state)
     })
   }, [queryClient])
 
@@ -70,13 +76,13 @@ function UpdateDialog() {
   }, [availableVersion, closeDialog, dialogMode, openAutoDialog, updateState?.phase])
 
   const downloadUpdate = useMutation({
-    mutationFn: () => window.winsshApi.updates.download(),
+    mutationFn: () => updatesClient.download(),
     onSuccess: (state) => {
-      queryClient.setQueryData(['updates', 'state'], state)
+      queryClient.setQueryData(queryKeys.updatesState, state)
     }
   })
   const installUpdate = useMutation({
-    mutationFn: () => window.winsshApi.updates.quitAndInstall()
+    mutationFn: () => updatesClient.quitAndInstall()
   })
 
   const handleClose = () => {
@@ -188,13 +194,31 @@ export default function App() {
   const prefersDark = usePrefersDark()
   const [bootstrappedLanguage, setBootstrappedLanguage] = useState<string | null>(null)
 
+  useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      rendererLogger.error('Unhandled promise rejection', {
+        reason:
+          event.reason instanceof Error
+            ? {
+                message: event.reason.message,
+                name: event.reason.name,
+                stack: event.reason.stack
+              }
+            : event.reason
+      })
+    }
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection)
+    return () => window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+  }, [])
+
   const settingsQuery = useQuery({
-    queryKey: ['settings'],
-    queryFn: () => window.winsshApi.settings.get()
+    queryKey: queryKeys.settings,
+    queryFn: () => settingsClient.get()
   })
   const themesQuery = useQuery({
-    queryKey: ['themes'],
-    queryFn: () => window.winsshApi.themes.list()
+    queryKey: queryKeys.themes,
+    queryFn: () => themesClient.list()
   })
   const resolvedLanguage = settingsQuery.data
     ? resolveAppLanguage(settingsQuery.data.language)
@@ -232,7 +256,7 @@ export default function App() {
   }
 
   return (
-    <>
+    <AppErrorBoundary>
       <TooltipProvider>
         <WorkbenchShell />
       </TooltipProvider>
@@ -261,6 +285,6 @@ export default function App() {
           }
         }}
       />
-    </>
+    </AppErrorBoundary>
   )
 }

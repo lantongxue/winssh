@@ -77,6 +77,9 @@ describe('App update dialog', () => {
     renderApp()
 
     await screen.findByText('Workbench')
+    await waitFor(() => {
+      expect(stateChangeCallbacks).toHaveLength(1)
+    })
 
     if (stateChangeCallbacks[0]) {
       stateChangeCallbacks[0]({
@@ -172,6 +175,9 @@ describe('App update dialog', () => {
 
     renderApp()
     await screen.findByText('Workbench')
+    await waitFor(() => {
+      expect(stateChangeCallbacks).toHaveLength(1)
+    })
 
     const availableState: UpdateState = {
       autoCheckEnabled: true,
@@ -232,6 +238,9 @@ describe('App update dialog', () => {
 
     useUpdateDialogStore.getState().openManual()
     renderApp()
+    await waitFor(() => {
+      expect(stateChangeCallbacks).toHaveLength(1)
+    })
 
     expect(await screen.findByText('Checking for Updates')).toBeInTheDocument()
 

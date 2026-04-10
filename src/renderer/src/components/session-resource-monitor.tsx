@@ -4,6 +4,7 @@ import {
   SESSION_RESOURCE_MONITOR_LINUX_ONLY,
   type SessionResourceSnapshot
 } from '@shared/types'
+import { sessionsClient } from '@/features/sessions/api/sessions-client'
 import { formatFileSize, getResolvedLocale } from '@/i18n/format'
 import { cn } from '@/lib/utils'
 import type { SessionTab } from '@/store/sessions-store'
@@ -102,7 +103,7 @@ export function SessionResourceMonitor({
   const monitorReady = !session.provisional && session.status === 'ready'
   const monitorQuery = useQuery({
     enabled: monitorReady && active,
-    queryFn: () => window.winsshApi.sessions.getResourceSnapshot(session.sessionId),
+    queryFn: () => sessionsClient.getResourceSnapshot(session.sessionId),
     queryKey: ['session-resource-snapshot', session.sessionId],
     refetchInterval: monitorReady && active ? RESOURCE_MONITOR_REFETCH_INTERVAL_MS : false,
     retry: false

@@ -1,5 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { queryKeys } from '@/features/shared/query-keys'
+import { settingsClient } from '@/features/settings/api/settings-client'
+import { themesClient } from '@/features/themes/api/themes-client'
 import { isMacPlatform } from '@/lib/platform'
 import { getThemeSelectionLabel } from '@/lib/theme'
 import { getWorkbenchShortcutLabel } from '@/lib/workbench-shortcuts'
@@ -15,12 +18,12 @@ export function WorkbenchStatusBar() {
   const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen)
 
   const settingsQuery = useQuery({
-    queryKey: ['settings'],
-    queryFn: () => window.winsshApi.settings.get()
+    queryKey: queryKeys.settings,
+    queryFn: () => settingsClient.get()
   })
   const themesQuery = useQuery({
-    queryKey: ['themes'],
-    queryFn: () => window.winsshApi.themes.list()
+    queryKey: queryKeys.themes,
+    queryFn: () => themesClient.list()
   })
   const themeLabel = getThemeSelectionLabel(
     settingsQuery.data?.theme ?? 'system',

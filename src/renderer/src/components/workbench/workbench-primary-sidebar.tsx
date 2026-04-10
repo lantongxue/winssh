@@ -20,6 +20,10 @@ import {
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { Server, ServerGroup, Tag } from '@shared/types'
+import { groupsClient } from '@/features/groups/api/groups-client'
+import { queryKeys } from '@/features/shared/query-keys'
+import { serversClient } from '@/features/servers/api/servers-client'
+import { tagsClient } from '@/features/tags/api/tags-client'
 import { actionIcons } from '@/lib/action-icons'
 import { ServerBrandIcon } from '@/components/server-brand-icon'
 import { getColorStyle } from '@/lib/colors'
@@ -524,20 +528,20 @@ export function WorkbenchPrimarySidebar() {
   const deferredServerSearchQuery = useDeferredValue(serverSearchQuery)
 
   const serversQuery = useQuery({
-    queryKey: ['servers'],
-    queryFn: () => window.winsshApi.servers.list()
+    queryKey: queryKeys.servers,
+    queryFn: () => serversClient.list()
   })
   const groupsQuery = useQuery({
-    queryKey: ['groups'],
-    queryFn: () => window.winsshApi.groups.list()
+    queryKey: queryKeys.groups,
+    queryFn: () => groupsClient.list()
   })
   const tagsQuery = useQuery({
-    queryKey: ['tags'],
-    queryFn: () => window.winsshApi.tags.list()
+    queryKey: queryKeys.tags,
+    queryFn: () => tagsClient.list()
   })
   const recentQuery = useQuery({
-    queryKey: ['recent-sessions'],
-    queryFn: () => window.winsshApi.servers.listRecent()
+    queryKey: queryKeys.recentSessions,
+    queryFn: () => serversClient.listRecent()
   })
 
   const servers = useMemo(() => serversQuery.data ?? [], [serversQuery.data])
@@ -704,19 +708,19 @@ export function WorkbenchPrimarySidebar() {
   }
 
   const handleDeleteGroup = async (group: ServerGroup) => {
-    await window.winsshApi.groups.delete(group.id)
+    await groupsClient.delete(group.id)
     await refreshWorkspaceData()
     toast.success(t('workbench.primarySidebar.toasts.groupDeleted'))
   }
 
   const handleDeleteTag = async (tag: Tag) => {
-    await window.winsshApi.tags.delete(tag.id)
+    await tagsClient.delete(tag.id)
     await refreshWorkspaceData()
     toast.success(t('workbench.primarySidebar.toasts.tagDeleted'))
   }
 
   const handleClearRecent = async () => {
-    await window.winsshApi.servers.clearRecent()
+    await serversClient.clearRecent()
     await queryClient.invalidateQueries({ queryKey: ['recent-sessions'] })
     toast.success(t('workbench.primarySidebar.toasts.recentCleared'))
   }

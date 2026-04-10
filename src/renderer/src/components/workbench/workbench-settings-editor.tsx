@@ -18,6 +18,10 @@ import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { settingsSchema, type SettingsFormValues } from '@shared/validation'
+import { queryKeys } from '@/features/shared/query-keys'
+import { settingsClient } from '@/features/settings/api/settings-client'
+import { systemClient } from '@/features/system/api/system-client'
+import { themesClient } from '@/features/themes/api/themes-client'
 import { formatDateTime } from '@/i18n/format'
 import { getPlatform, isWindowsPlatform } from '@/lib/platform'
 import { actionIcons } from '@/lib/action-icons'
@@ -265,28 +269,28 @@ export function WorkbenchSettingsEditor() {
   const showSaveAction = selectedSection === 'appearance' || selectedSection === 'terminal'
 
   const settingsQuery = useQuery({
-    queryKey: ['settings'],
-    queryFn: () => window.winsshApi.settings.get()
+    queryKey: queryKeys.settings,
+    queryFn: () => settingsClient.get()
   })
   const knownHostsQuery = useQuery({
-    queryKey: ['known-hosts'],
-    queryFn: () => window.winsshApi.system.getKnownHosts()
+    queryKey: queryKeys.knownHosts,
+    queryFn: () => systemClient.getKnownHosts()
   })
   const capabilitiesQuery = useQuery({
-    queryKey: ['capabilities'],
-    queryFn: () => window.winsshApi.system.getCapabilities()
+    queryKey: queryKeys.capabilities,
+    queryFn: () => systemClient.getCapabilities()
   })
   const themesQuery = useQuery({
-    queryKey: ['themes'],
-    queryFn: () => window.winsshApi.themes.list()
+    queryKey: queryKeys.themes,
+    queryFn: () => themesClient.list()
   })
   const appInfoQuery = useQuery({
-    queryKey: ['app-info'],
-    queryFn: () => window.winsshApi.system.getAppInfo()
+    queryKey: queryKeys.appInfo,
+    queryFn: () => systemClient.getAppInfo()
   })
   const systemFontsQuery = useQuery({
     queryKey: ['system-fonts'],
-    queryFn: () => window.winsshApi.system.listFonts()
+    queryFn: () => systemClient.listFonts()
   })
   const userThemePacks = getUserThemePacks(themesQuery.data)
 
@@ -302,7 +306,7 @@ export function WorkbenchSettingsEditor() {
   }, [form, settingsQuery.data])
 
   const updateSettings = useMutation({
-    mutationFn: (values: SettingsFormValues) => window.winsshApi.settings.update(values),
+    mutationFn: (values: SettingsFormValues) => settingsClient.update(values),
     onSuccess: async (settings, values) => {
       const titleBarStyleChanged =
         settingsQuery.data?.windowTitleBarStyle !== values.windowTitleBarStyle
@@ -313,7 +317,7 @@ export function WorkbenchSettingsEditor() {
         toast.success(t('workbench.settings.titleBar.restartTitle'), {
           action: {
             label: t('common.actions.restartNow'),
-            onClick: () => void window.winsshApi.system.relaunch()
+            onClick: () => void systemClient.relaunch()
           },
           description: t('workbench.settings.titleBar.restartDescription')
         })
@@ -323,7 +327,7 @@ export function WorkbenchSettingsEditor() {
     }
   })
   const importThemePack = useMutation({
-    mutationFn: () => window.winsshApi.themes.importArchive(),
+    mutationFn: () => themesClient.importArchive(),
     onError: (error) => {
       toast.error(
         error instanceof Error ? error.message : t('workbench.settings.toasts.themeImportFailed')
@@ -346,7 +350,7 @@ export function WorkbenchSettingsEditor() {
     }
   })
   const deleteThemePack = useMutation({
-    mutationFn: (pluginId: string) => window.winsshApi.themes.deletePlugin(pluginId),
+    mutationFn: (pluginId: string) => themesClient.deletePlugin(pluginId),
     onError: (error) => {
       toast.error(
         error instanceof Error ? error.message : t('workbench.settings.toasts.themeDeleteFailed')
@@ -367,7 +371,7 @@ export function WorkbenchSettingsEditor() {
   })
   const removeKnownHost = useMutation({
     mutationFn: ({ host, port }: { host: string; port: number }) =>
-      window.winsshApi.system.removeKnownHost(host, port),
+      systemClient.removeKnownHost(host, port),
     onError: (error) => {
       toast.error(
         error instanceof Error
