@@ -71,6 +71,7 @@ describe('LocalTerminalManager', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     vi.unstubAllEnvs()
   })
 
@@ -88,7 +89,7 @@ describe('LocalTerminalManager', () => {
     })
     expect(spawnMock).toHaveBeenCalledWith(
       process.platform === 'win32' ? 'C:\\Windows\\System32\\cmd.exe' : '/bin/zsh',
-      [],
+      process.platform === 'win32' ? ['/d'] : [],
       expect.objectContaining({
         cols: 120,
         cwd: summary.cwd,
@@ -97,6 +98,7 @@ describe('LocalTerminalManager', () => {
           TERM: 'xterm-256color'
         }),
         name: 'xterm-256color',
+        ...(process.platform === 'win32' ? { useConpty: false } : {}),
         rows: 30
       })
     )
@@ -114,8 +116,8 @@ describe('LocalTerminalManager', () => {
       process.platform === 'win32'
         ? 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe'
         : '/bin/bash',
-      [],
-      expect.any(Object)
+      process.platform === 'win32' ? ['-NoLogo', '-NoProfile'] : [],
+      expect.objectContaining(process.platform === 'win32' ? { useConpty: false } : {})
     )
   })
 
@@ -131,24 +133,75 @@ describe('LocalTerminalManager', () => {
   })
 
   it('forwards data, write, and resize events to the correct PTY', () => {
-    const emitToRenderer = vi.fn()
-    const manager = new LocalTerminalManager(emitToRenderer)
-    const summary = manager.create()
-    const pty = createdPtys[0]
+    vi.useFakeTimers()
 
-    pty?.emitData('hello')
-    manager.write(summary.terminalId, 'ls\n')
-    manager.resize(summary.terminalId, 100, 40)
+    try {
+      const emitToRenderer = vi.fn()
+      const manager = new LocalTerminalManager(emitToRenderer)
+      const summary = manager.create()
+      const pty = createdPtys[0]
 
-    expect(emitToRenderer).toHaveBeenCalledWith(
-      'localTerminals:data',
-      expect.objectContaining({
-        data: 'hello',
-        terminalId: summary.terminalId
-      })
-    )
-    expect(pty?.write).toHaveBeenCalledWith('ls\n')
-    expect(pty?.resize).toHaveBeenCalledWith(100, 40)
+      pty?.emitData('hello')
+      manager.write(summary.terminalId, 'ls\n')
+      manager.resize(summary.terminalId, 100, 40)
+      vi.runAllTimers()
+
+      expect(emitToRenderer).toHaveBeenCalledWith(
+        'localTerminals:data',
+        expect.objectContaining({
+          data: 'hello',
+          terminalId: summary.terminalId
+        })
+      )
+      expect(pty?.write).toHaveBeenCalledWith('ls\n')
+      expect(pty?.resize).toHaveBeenCalledWith(100, 40)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('batches local terminal output and flushes it immediately before exit', () => {
+    vi.useFakeTimers()
+
+    try {
+      const emitToRenderer = vi.fn()
+      const manager = new LocalTerminalManager(emitToRenderer)
+      const summary = manager.create()
+
+      createdPtys[0]?.emitData('hello ')
+      createdPtys[0]?.emitData('world')
+
+      expect(emitToRenderer).not.toHaveBeenCalled()
+
+      createdPtys[0]?.emitExit({ exitCode: 0 })
+
+      expect(emitToRenderer).toHaveBeenNthCalledWith(
+        1,
+        'localTerminals:data',
+        expect.objectContaining({
+          data: 'hello world',
+          terminalId: summary.terminalId
+        })
+      )
+      expect(emitToRenderer).toHaveBeenNthCalledWith(
+        2,
+        'localTerminals:state',
+        expect.objectContaining({
+          status: 'exited',
+          terminalId: summary.terminalId
+        })
+      )
+      expect(emitToRenderer).toHaveBeenNthCalledWith(
+        3,
+        'localTerminals:exit',
+        expect.objectContaining({
+          exitCode: 0,
+          terminalId: summary.terminalId
+        })
+      )
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('emits exit and state events when the shell exits', () => {

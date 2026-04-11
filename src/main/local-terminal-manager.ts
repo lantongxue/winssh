@@ -22,11 +22,15 @@ type EventMap = {
   'localTerminals:state': LocalTerminalStateEvent
 }
 
+const LOCAL_TERMINAL_OUTPUT_BATCH_MS = 16
+
 interface LocalTerminalRecord {
   summary: LocalTerminalSummary
   pty: IPty | null
   disposeListeners: () => void
   closeRequested: boolean
+  pendingData: string
+  flushTimer: ReturnType<typeof setTimeout> | null
 }
 
 function now() {
@@ -59,7 +63,7 @@ export class LocalTerminalManager {
 
   create(): LocalTerminalSummary {
     this.ensureNodePtyHelperExecutable()
-    const { shell, shellPath } = this.resolveShellRuntime()
+    const { shell, shellArgs, shellPath } = this.resolveShellRuntime()
     const title = this.buildTitle(shell)
     const terminalId = randomUUID()
     const cwd = this.resolveWorkingDirectory()
@@ -76,7 +80,7 @@ export class LocalTerminalManager {
     let pty: IPty
 
     try {
-      pty = spawn(shellPath, [], {
+      pty = spawn(shellPath, shellArgs, {
         cols: 120,
         cwd,
         env: {
@@ -85,6 +89,14 @@ export class LocalTerminalManager {
           TERM: 'xterm-256color'
         },
         name: 'xterm-256color',
+        ...(process.platform === 'win32'
+          ? {
+              // ConPTY has been flaky in the local terminal path on Windows and can freeze the app
+              // while the shell is repainting after the initial resize. winpty is less featureful
+              // but has proven much more stable for this desktop app workflow.
+              useConpty: false
+            }
+          : {}),
         rows: 30
       })
     } catch (error) {
@@ -95,15 +107,16 @@ export class LocalTerminalManager {
     const record: LocalTerminalRecord = {
       closeRequested: false,
       disposeListeners: () => undefined,
+      flushTimer: null,
+      pendingData: '',
       pty,
       summary
     }
 
+    this.terminals.set(terminalId, record)
+
     const dataDisposable = pty.onData((data) => {
-      this.emitToRenderer('localTerminals:data', this.withObservableMetadata(terminalId, {
-        data,
-        terminalId
-      }))
+      this.bufferTerminalData(terminalId, data)
     })
     const exitDisposable = pty.onExit(({ exitCode, signal }) => {
       const current = this.terminals.get(terminalId)
@@ -111,6 +124,7 @@ export class LocalTerminalManager {
         return
       }
 
+      this.flushTerminalData(terminalId, current)
       current.pty = null
 
       if (current.closeRequested) {
@@ -142,8 +156,6 @@ export class LocalTerminalManager {
       dataDisposable.dispose()
       exitDisposable.dispose()
     }
-
-    this.terminals.set(terminalId, record)
     return summary
   }
 
@@ -162,6 +174,7 @@ export class LocalTerminalManager {
     }
 
     record.closeRequested = true
+    this.clearPendingTerminalData(record)
     record.disposeListeners()
     record.pty?.kill()
     record.pty = null
@@ -181,6 +194,59 @@ export class LocalTerminalManager {
       source: 'main' as const,
       timestamp: now()
     }
+  }
+
+  private bufferTerminalData(terminalId: string, data: string) {
+    const record = this.terminals.get(terminalId)
+    if (!record) {
+      return
+    }
+
+    record.pendingData += data
+
+    if (record.flushTimer) {
+      return
+    }
+
+    record.flushTimer = setTimeout(() => {
+      const current = this.terminals.get(terminalId)
+      if (!current) {
+        return
+      }
+
+      this.flushTerminalData(terminalId, current)
+    }, LOCAL_TERMINAL_OUTPUT_BATCH_MS)
+  }
+
+  private flushTerminalData(terminalId: string, record = this.terminals.get(terminalId)) {
+    if (!record) {
+      return
+    }
+
+    if (record.flushTimer) {
+      clearTimeout(record.flushTimer)
+      record.flushTimer = null
+    }
+
+    if (!record.pendingData) {
+      return
+    }
+
+    const data = record.pendingData
+    record.pendingData = ''
+    this.emitToRenderer('localTerminals:data', this.withObservableMetadata(terminalId, {
+      data,
+      terminalId
+    }))
+  }
+
+  private clearPendingTerminalData(record: LocalTerminalRecord) {
+    if (record.flushTimer) {
+      clearTimeout(record.flushTimer)
+      record.flushTimer = null
+    }
+
+    record.pendingData = ''
   }
 
   private ensureNodePtyHelperExecutable() {
@@ -248,6 +314,7 @@ export class LocalTerminalManager {
       const shellPath = this.resolveShellPath(shell)
       if (shellPath) {
         return {
+          shellArgs: this.getShellLaunchArgs(shell),
           shell,
           shellPath
         }
@@ -256,9 +323,27 @@ export class LocalTerminalManager {
 
     const fallbackShellPath = process.platform === 'win32' ? 'cmd.exe' : '/bin/sh'
     return {
+      shellArgs: this.getShellLaunchArgs(fallbackShellPath),
       shell: this.resolveShellName(fallbackShellPath),
       shellPath: fallbackShellPath
     }
+  }
+
+  private getShellLaunchArgs(shell: string) {
+    if (process.platform !== 'win32') {
+      return [] as string[]
+    }
+
+    const normalizedShell = this.resolveShellName(shell).toLowerCase()
+
+    if (normalizedShell === 'powershell' || normalizedShell === 'powershell.exe') {
+      // Skip user profiles to keep terminal startup predictable and avoid renderer lockups from
+      // noisy/slow profile scripts.
+      return ['-NoLogo', '-NoProfile']
+    }
+
+    // Disable AutoRun so cmd doesn't execute user-defined startup commands before the terminal is ready.
+    return ['/d']
   }
 
   private resolveShellPath(shell: string) {
