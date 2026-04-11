@@ -38,7 +38,7 @@ const defaultThemes = [
       brightCyan: '#0a6a75',
       brightWhite: '#24292f'
     },
-    version: '0.1.0'
+    version: '1.0.0'
   }),
   createThemeDefinition({
     appearance: 'dark',
@@ -69,7 +69,7 @@ const defaultThemes = [
       brightCyan: '#7ee7d8',
       brightWhite: '#f3f6fa'
     },
-    version: '0.1.0'
+    version: '1.0.0'
   }),
   createThemeDefinition({
     appearance: 'dark',
@@ -105,7 +105,7 @@ const defaultThemes = [
       fontSize: 13,
       lineHeight: 1.08
     },
-    version: '0.1.0'
+    version: '1.0.0'
   })
 ]
 
@@ -156,7 +156,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
         name: 'WinSSH',
         platform: 'linux',
         releaseChannel: 'latest',
-        version: '0.1.0'
+        version: '1.0.0'
       })),
     getPathForFile:
       systemOverrides?.getPathForFile ??
@@ -313,7 +313,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       check: async () => ({
         autoCheckEnabled: true,
         availableUpdate: null,
-        currentVersion: '0.1.0',
+        currentVersion: '1.0.0',
         downloadProgressPercent: null,
         errorMessage: null,
         phase: 'not-available',
@@ -323,7 +323,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       download: async () => ({
         autoCheckEnabled: true,
         availableUpdate: null,
-        currentVersion: '0.1.0',
+        currentVersion: '1.0.0',
         downloadProgressPercent: null,
         errorMessage: null,
         phase: 'not-available',
@@ -333,7 +333,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       getState: async () => ({
         autoCheckEnabled: true,
         availableUpdate: null,
-        currentVersion: '0.1.0',
+        currentVersion: '1.0.0',
         downloadProgressPercent: null,
         errorMessage: null,
         phase: 'unsupported',

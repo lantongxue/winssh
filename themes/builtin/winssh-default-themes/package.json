@@ -2,9 +2,9 @@
   "name": "default-themes",
   "displayName": "WinSSH Default Themes",
   "publisher": "winssh",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "engines": {
-    "winssh": "^0.1.0"
+    "winssh": "^1.0.0"
   },
   "contributes": {
     "themes": [

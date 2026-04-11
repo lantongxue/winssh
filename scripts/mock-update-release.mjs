@@ -9,7 +9,7 @@ function printHelp() {
   console.log(`WinSSH mock update release generator
 
 Usage:
-  npm run updates:mock -- --from 0.1.0 --to 0.1.1
+  npm run updates:mock -- --from 1.0.0 --to 1.0.1
 
 Options:
   --from <version>   Source release directory under ./release

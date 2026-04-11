@@ -26,8 +26,8 @@ function printHelp() {
 
 Usage:
   npm run updates:serve
-  npm run updates:serve -- --version 0.1.0
-  npm run updates:serve -- --dir release/0.1.0 --port 5600 --host 0.0.0.0
+  npm run updates:serve -- --version 1.0.0
+  npm run updates:serve -- --dir release/1.0.0 --port 5600 --host 0.0.0.0
 
 Options:
   --dir <path>      Directory that contains latest.yml and update artifacts.

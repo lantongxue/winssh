@@ -1,6 +1,6 @@
 {
   "name": "winssh",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "WinSSH is a cross-platform SSH and SFTP client.",
   "main": "./out/main/index.js",
   "author": "winssh",

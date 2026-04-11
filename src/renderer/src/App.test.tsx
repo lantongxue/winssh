@@ -60,7 +60,7 @@ describe('App update dialog', () => {
         getState: vi.fn().mockResolvedValue({
           autoCheckEnabled: true,
           availableUpdate: null,
-          currentVersion: '0.1.0',
+          currentVersion: '1.0.0',
           downloadProgressPercent: null,
           errorMessage: null,
           phase: 'idle',
@@ -90,7 +90,7 @@ describe('App update dialog', () => {
           releaseNotes: 'Bug fixes and polish.',
           version: '0.1.1'
         },
-        currentVersion: '0.1.0',
+        currentVersion: '1.0.0',
         downloadProgressPercent: null,
         errorMessage: null,
         phase: 'available',
@@ -113,7 +113,7 @@ describe('App update dialog', () => {
         releaseNotes: 'Bug fixes and polish.',
         version: '0.1.1'
       },
-      currentVersion: '0.1.0',
+      currentVersion: '1.0.0',
       downloadProgressPercent: 10,
       errorMessage: null,
       phase: 'downloading',
@@ -132,7 +132,7 @@ describe('App update dialog', () => {
             releaseNotes: 'Bug fixes and polish.',
             version: '0.1.1'
           },
-          currentVersion: '0.1.0',
+          currentVersion: '1.0.0',
           downloadProgressPercent: null,
           errorMessage: null,
           phase: 'available',
@@ -159,7 +159,7 @@ describe('App update dialog', () => {
         getState: vi.fn().mockResolvedValue({
           autoCheckEnabled: true,
           availableUpdate: null,
-          currentVersion: '0.1.0',
+          currentVersion: '1.0.0',
           downloadProgressPercent: null,
           errorMessage: null,
           phase: 'idle',
@@ -187,7 +187,7 @@ describe('App update dialog', () => {
         releaseNotes: 'Bug fixes and polish.',
         version: '0.1.1'
       },
-      currentVersion: '0.1.0',
+      currentVersion: '1.0.0',
       downloadProgressPercent: null,
       errorMessage: null,
       phase: 'available',
@@ -222,7 +222,7 @@ describe('App update dialog', () => {
         getState: vi.fn().mockResolvedValue({
           autoCheckEnabled: true,
           availableUpdate: null,
-          currentVersion: '0.1.0',
+          currentVersion: '1.0.0',
           downloadProgressPercent: null,
           errorMessage: null,
           phase: 'checking',
@@ -248,7 +248,7 @@ describe('App update dialog', () => {
       stateChangeCallbacks[0]({
         autoCheckEnabled: true,
         availableUpdate: null,
-        currentVersion: '0.1.0',
+        currentVersion: '1.0.0',
         downloadProgressPercent: null,
         errorMessage: null,
         phase: 'not-available',

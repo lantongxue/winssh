@@ -150,7 +150,7 @@ describe('WorkbenchUpdatesEditor', () => {
         getState: vi.fn().mockResolvedValue({
           autoCheckEnabled: true,
           availableUpdate: null,
-          currentVersion: '0.1.0',
+          currentVersion: '1.0.0',
           downloadProgressPercent: null,
           errorMessage: null,
           phase: 'idle',
@@ -176,7 +176,7 @@ describe('WorkbenchUpdatesEditor', () => {
     queryClient.setQueryData(['updates', 'state'], {
       autoCheckEnabled: true,
       availableUpdate: null,
-      currentVersion: '0.1.0',
+      currentVersion: '1.0.0',
       downloadProgressPercent: null,
       errorMessage: null,
       phase: 'idle',
@@ -215,7 +215,7 @@ describe('WorkbenchUpdatesEditor', () => {
         releaseNotes: 'Bug fixes',
         version: '0.2.0'
       },
-      currentVersion: '0.1.0',
+      currentVersion: '1.0.0',
       downloadProgressPercent: null,
       errorMessage: null,
       phase: 'available',
@@ -229,7 +229,7 @@ describe('WorkbenchUpdatesEditor', () => {
         getState: vi.fn().mockResolvedValue({
           autoCheckEnabled: true,
           availableUpdate: null,
-          currentVersion: '0.1.0',
+          currentVersion: '1.0.0',
           downloadProgressPercent: null,
           errorMessage: null,
           phase: 'idle',
@@ -262,7 +262,7 @@ describe('WorkbenchUpdatesEditor', () => {
             releaseNotes: 'Bug fixes',
             version: '0.2.0'
           },
-          currentVersion: '0.1.0',
+          currentVersion: '1.0.0',
           downloadProgressPercent: 100,
           errorMessage: null,
           phase: 'downloaded',
@@ -288,7 +288,7 @@ describe('WorkbenchUpdatesEditor', () => {
         getState: vi.fn().mockResolvedValue({
           autoCheckEnabled: true,
           availableUpdate: null,
-          currentVersion: '0.1.0',
+          currentVersion: '1.0.0',
           downloadProgressPercent: null,
           errorMessage: null,
           phase: 'unsupported',
@@ -311,7 +311,7 @@ describe('WorkbenchUpdatesEditor', () => {
         getState: vi.fn().mockResolvedValue({
           autoCheckEnabled: true,
           availableUpdate: null,
-          currentVersion: '0.1.0',
+          currentVersion: '1.0.0',
           downloadProgressPercent: null,
           errorMessage: 'network unavailable',
           phase: 'error',
