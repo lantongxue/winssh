@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { queryKeys } from '@/features/shared/query-keys'
 import { settingsClient } from '@/features/settings/api/settings-client'
+import { useSettingsAutoSave } from '@/features/settings/use-settings-auto-save'
 import { systemClient } from '@/features/system/api/system-client'
 import { updatesClient } from '@/features/updates/api/updates-client'
 import { formatDateTime } from '@/i18n/format'
@@ -85,7 +86,6 @@ export function WorkbenchUpdatesEditor() {
   const DownloadIcon = actionIcons.download
   const RefreshIcon = actionIcons.refresh
   const RestartIcon = actionIcons.restart
-  const SaveIcon = actionIcons.save
 
   const settingsQuery = useQuery({
     queryKey: queryKeys.settings,
@@ -99,6 +99,7 @@ export function WorkbenchUpdatesEditor() {
     queryKey: queryKeys.updatesState,
     queryFn: () => updatesClient.getState()
   })
+  const { saveField } = useSettingsAutoSave(settingsQuery.data)
 
   useEffect(() => {
     if (typeof settingsQuery.data?.autoUpdateCheckEnabled === 'boolean') {
@@ -111,22 +112,6 @@ export function WorkbenchUpdatesEditor() {
       queryClient.setQueryData(queryKeys.updatesState, state)
     })
   }, [queryClient])
-
-  const saveAutoCheck = useMutation({
-    mutationFn: (enabled: boolean) => settingsClient.update({ autoUpdateCheckEnabled: enabled }),
-    onSuccess: (settings) => {
-      queryClient.setQueryData(queryKeys.settings, settings)
-      queryClient.setQueryData<UpdateState | undefined>(queryKeys.updatesState, (current) =>
-        current
-          ? {
-              ...current,
-              autoCheckEnabled: settings.autoUpdateCheckEnabled
-            }
-          : current
-      )
-      toast.success(t('workbench.settings.toasts.saved'))
-    }
-  })
 
   const checkForUpdates = useMutation({
     mutationFn: () => updatesClient.check(),
@@ -198,9 +183,6 @@ export function WorkbenchUpdatesEditor() {
     checkForUpdates.isPending || downloadUpdate.isPending || quitAndInstallUpdate.isPending
   const showDownloadAction = updateState?.phase === 'available'
   const showInstallAction = updateState?.phase === 'downloaded'
-  const autoCheckDirty =
-    settingsQuery.data?.autoUpdateCheckEnabled !== undefined &&
-    autoCheckEnabled !== settingsQuery.data.autoUpdateCheckEnabled
   const availableReleaseDate = updateState?.availableUpdate?.releaseDate
     ? formatDateTime(updateState.availableUpdate.releaseDate)
     : null
@@ -209,6 +191,32 @@ export function WorkbenchUpdatesEditor() {
     updateState.availableUpdate.releaseNotes.trim()
       ? updateState.availableUpdate.releaseNotes
       : null
+
+  const syncUpdateStateAutoCheck = (enabled: boolean) => {
+    queryClient.setQueryData<UpdateState | undefined>(queryKeys.updatesState, (current) =>
+      current
+        ? {
+            ...current,
+            autoCheckEnabled: enabled
+          }
+        : current
+    )
+  }
+
+  const handleAutoCheckChange = (enabled: boolean) => {
+    setAutoCheckEnabled(enabled)
+
+    void saveField('autoUpdateCheckEnabled', enabled, {
+      onRevert: (rollbackValue) => {
+        setAutoCheckEnabled(rollbackValue)
+        syncUpdateStateAutoCheck(rollbackValue)
+      },
+      onSuccess: (settings) => {
+        setAutoCheckEnabled(settings.autoUpdateCheckEnabled)
+        syncUpdateStateAutoCheck(settings.autoUpdateCheckEnabled)
+      }
+    })
+  }
 
   return (
     <div className="liquid-glass-page flex h-full min-h-0 bg-[var(--workbench-editor)]">
@@ -262,25 +270,6 @@ export function WorkbenchUpdatesEditor() {
           </section>
 
           <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold">
-                  {t('workbench.settings.updates.autoCheck.title')}
-                </div>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  {t('workbench.settings.updates.autoCheck.description')}
-                </div>
-              </div>
-              <Button
-                type="button"
-                disabled={!autoCheckDirty || saveAutoCheck.isPending}
-                onClick={() => saveAutoCheck.mutate(autoCheckEnabled)}
-              >
-                <SaveIcon className="size-4" />
-                {t('common.actions.save')}
-              </Button>
-            </div>
-
             <div className="flex items-center justify-between rounded-sm border border-[var(--workbench-border)] px-4 py-3">
               <div>
                 <div className="font-medium">{t('workbench.settings.updates.autoCheck.title')}</div>
@@ -291,7 +280,7 @@ export function WorkbenchUpdatesEditor() {
               <Switch
                 aria-label={t('workbench.settings.updates.autoCheck.title')}
                 checked={autoCheckEnabled}
-                onCheckedChange={setAutoCheckEnabled}
+                onCheckedChange={handleAutoCheckChange}
               />
             </div>
           </section>

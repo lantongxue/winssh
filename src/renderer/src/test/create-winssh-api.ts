@@ -118,6 +118,19 @@ type DeepPartial<T> = {
 }
 
 export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): WinsshApi {
+  const defaultSettings = {
+    autoUpdateCheckEnabled: true,
+    copyOnSelect: true,
+    cursorBlink: true,
+    cursorStyle: 'block',
+    experimentalTerminalWebgl: false,
+    language: 'en-US',
+    localTerminalShell: 'zsh',
+    terminalFontFamily: 'Consolas',
+    terminalFontSize: 14,
+    theme: 'system',
+    windowTitleBarStyle: 'custom'
+  } as const
   const systemOverrides = overrides.system
   const windowOverrides = systemOverrides?.window
   const defaultWindowApi: WinsshApi['system']['window'] = {
@@ -289,31 +302,10 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       ...overrides.portForwards
     },
     settings: {
-      get: async () => ({
-        autoUpdateCheckEnabled: true,
-        copyOnSelect: true,
-        cursorBlink: true,
-        cursorStyle: 'block',
-        experimentalTerminalWebgl: false,
-        language: 'en-US',
-        localTerminalShell: 'zsh',
-        terminalFontFamily: 'Consolas',
-        terminalFontSize: 14,
-        theme: 'system',
-        windowTitleBarStyle: 'custom'
-      }),
+      get: async () => ({ ...defaultSettings }),
       update: async (input) => ({
-        autoUpdateCheckEnabled: input.autoUpdateCheckEnabled ?? true,
-        copyOnSelect: true,
-        cursorBlink: true,
-        cursorStyle: 'block',
-        experimentalTerminalWebgl: input.experimentalTerminalWebgl ?? false,
-        language: 'en-US',
-        localTerminalShell: input.localTerminalShell ?? 'zsh',
-        terminalFontFamily: 'Consolas',
-        terminalFontSize: 14,
-        theme: input.theme ?? 'system',
-        windowTitleBarStyle: 'custom'
+        ...defaultSettings,
+        ...input
       }),
       ...overrides.settings
     },

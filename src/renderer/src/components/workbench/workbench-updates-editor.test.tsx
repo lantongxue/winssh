@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { toast } from 'sonner'
 import i18n from '@/i18n'
 import { WorkbenchUpdatesEditor } from '@/components/workbench/workbench-updates-editor'
 import { createWinsshApiMock } from '@/test/create-winssh-api'
@@ -31,6 +32,7 @@ function renderUpdatesEditor(queryClient = createTestQueryClient()) {
 }
 
 beforeEach(async () => {
+  vi.clearAllMocks()
   await i18n.changeLanguage('en-US')
 })
 
@@ -54,7 +56,7 @@ describe('WorkbenchUpdatesEditor', () => {
     expect(screen.getByText('Beta')).toBeInTheDocument()
   })
 
-  it('saves the automatic update check toggle', async () => {
+  it('saves the automatic update check toggle immediately', async () => {
     const queryClient = createTestQueryClient()
     const updateSettings = vi.fn().mockResolvedValue({
       autoUpdateCheckEnabled: false,
@@ -106,16 +108,102 @@ describe('WorkbenchUpdatesEditor', () => {
     renderUpdatesEditor(queryClient)
 
     fireEvent.click(await screen.findByRole('switch', { name: 'Automatically check for updates' }))
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {
       expect(updateSettings).toHaveBeenCalledWith({
         autoUpdateCheckEnabled: false
       })
     })
+  })
+
+  it('does not render a save button for updates settings', async () => {
+    window.winsshApi = createWinsshApiMock()
+
+    renderUpdatesEditor()
+
+    await screen.findByRole('switch', { name: 'Automatically check for updates' })
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+  })
+
+  it('rolls back the auto-check toggle when saving fails', async () => {
+    const queryClient = createTestQueryClient()
+    const updateSettings = vi.fn().mockRejectedValue(new Error('Unable to persist settings'))
+
+    window.winsshApi = createWinsshApiMock({
+      settings: {
+        get: vi.fn().mockResolvedValue({
+          autoUpdateCheckEnabled: true,
+          copyOnSelect: true,
+          cursorBlink: true,
+          cursorStyle: 'block',
+          experimentalTerminalWebgl: false,
+          language: 'en-US',
+          localTerminalShell: 'zsh',
+          terminalFontFamily: 'Consolas',
+          terminalFontSize: 14,
+          theme: 'system',
+          windowTitleBarStyle: 'custom'
+        }),
+        update: updateSettings
+      },
+      updates: {
+        getState: vi.fn().mockResolvedValue({
+          autoCheckEnabled: true,
+          availableUpdate: null,
+          currentVersion: '0.1.0',
+          downloadProgressPercent: null,
+          errorMessage: null,
+          phase: 'idle',
+          supported: true,
+          unsupportedReason: null
+        })
+      }
+    })
+
+    queryClient.setQueryData(['settings'], {
+      autoUpdateCheckEnabled: true,
+      copyOnSelect: true,
+      cursorBlink: true,
+      cursorStyle: 'block',
+      experimentalTerminalWebgl: false,
+      language: 'en-US',
+      localTerminalShell: 'zsh',
+      terminalFontFamily: 'Consolas',
+      terminalFontSize: 14,
+      theme: 'system',
+      windowTitleBarStyle: 'custom'
+    })
+    queryClient.setQueryData(['updates', 'state'], {
+      autoCheckEnabled: true,
+      availableUpdate: null,
+      currentVersion: '0.1.0',
+      downloadProgressPercent: null,
+      errorMessage: null,
+      phase: 'idle',
+      supported: true,
+      unsupportedReason: null
+    })
+
+    renderUpdatesEditor(queryClient)
+
+    const autoCheckSwitch = await screen.findByRole('switch', {
+      name: 'Automatically check for updates'
+    })
+    fireEvent.click(autoCheckSwitch)
+
+    await waitFor(() => {
+      expect(updateSettings).toHaveBeenCalledWith({
+        autoUpdateCheckEnabled: false
+      })
+    })
+    await waitFor(() => {
+      expect(autoCheckSwitch).toHaveAttribute('aria-checked', 'true')
+    })
+
+    expect(queryClient.getQueryData(['updates', 'state'])).toMatchObject({
+      autoCheckEnabled: true
+    })
+    expect(toast.error).toHaveBeenCalledWith('Unable to persist settings')
   })
 
   it('checks for updates and shows the download action', async () => {

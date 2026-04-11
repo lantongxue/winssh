@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { APP_NAME, DEFAULT_APP_SETTINGS } from '@shared/constants'
 import { SYSTEM_THEME_ID, type ThemeDefinition } from '@shared/themes'
-import type { ReleaseChannel } from '@shared/types'
+import type { AppSettings, ReleaseChannel } from '@shared/types'
 import {
   Check,
   ChevronsUpDown,
@@ -20,13 +20,13 @@ import { toast } from 'sonner'
 import { settingsSchema, type SettingsFormValues } from '@shared/validation'
 import { queryKeys } from '@/features/shared/query-keys'
 import { settingsClient } from '@/features/settings/api/settings-client'
+import { useSettingsAutoSave } from '@/features/settings/use-settings-auto-save'
 import { systemClient } from '@/features/system/api/system-client'
 import { themesClient } from '@/features/themes/api/themes-client'
 import { formatDateTime } from '@/i18n/format'
 import { getPlatform, isWindowsPlatform } from '@/lib/platform'
 import { actionIcons } from '@/lib/action-icons'
 import { cn } from '@/lib/utils'
-import { useWorkbenchStore } from '@/store/workbench-store'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -259,14 +259,11 @@ export function WorkbenchSettingsEditor() {
         { label: t('workbench.settings.localTerminalShells.zsh'), value: 'zsh' }
       ]
   const queryClient = useQueryClient()
-  const pushProblem = useWorkbenchStore((state) => state.pushProblem)
   const [selectedSection, setSelectedSection] =
     useState<(typeof settingsSections)[number]['id']>('appearance')
   const [themePackPendingDelete, setThemePackPendingDelete] = useState<UserThemePack | null>(null)
   const DeleteIcon = actionIcons.delete
-  const SaveIcon = actionIcons.save
   const UploadIcon = actionIcons.upload
-  const showSaveAction = selectedSection === 'appearance' || selectedSection === 'terminal'
 
   const settingsQuery = useQuery({
     queryKey: queryKeys.settings,
@@ -298,34 +295,59 @@ export function WorkbenchSettingsEditor() {
     resolver: zodResolver(settingsSchema as never),
     defaultValues: settingsQuery.data ?? DEFAULT_SETTINGS_FORM_VALUES
   })
+  const { saveField, savedSettingsRef } = useSettingsAutoSave(settingsQuery.data)
 
   useEffect(() => {
     if (settingsQuery.data) {
-      form.reset(settingsQuery.data)
+      form.reset(settingsQuery.data, { keepDirtyValues: true })
     }
   }, [form, settingsQuery.data])
 
-  const updateSettings = useMutation({
-    mutationFn: (values: SettingsFormValues) => settingsClient.update(values),
-    onSuccess: async (settings, values) => {
-      const titleBarStyleChanged =
-        settingsQuery.data?.windowTitleBarStyle !== values.windowTitleBarStyle
+  const resetSavedField = <K extends keyof AppSettings>(field: K, value: AppSettings[K]) => {
+    form.resetField(field as keyof SettingsFormValues, {
+      defaultValue: value as SettingsFormValues[K]
+    })
+  }
 
-      queryClient.setQueryData(['settings'], settings)
+  const handleSettingSave = <K extends keyof AppSettings>(field: K, value: AppSettings[K]) =>
+    saveField(field, value, {
+      onRevert: (rollbackValue) => {
+        resetSavedField(field, rollbackValue)
+      },
+      onSuccess: (settings, previousSettings) => {
+        resetSavedField(field, settings[field])
 
-      if (titleBarStyleChanged) {
-        toast.success(t('workbench.settings.titleBar.restartTitle'), {
-          action: {
-            label: t('common.actions.restartNow'),
-            onClick: () => void systemClient.relaunch()
-          },
-          description: t('workbench.settings.titleBar.restartDescription')
-        })
-      } else {
-        toast.success(t('workbench.settings.toasts.saved'))
+        if (
+          field === 'windowTitleBarStyle' &&
+          previousSettings.windowTitleBarStyle !== settings.windowTitleBarStyle
+        ) {
+          toast.success(t('workbench.settings.titleBar.restartTitle'), {
+            action: {
+              label: t('common.actions.restartNow'),
+              onClick: () => void systemClient.relaunch()
+            },
+            description: t('workbench.settings.titleBar.restartDescription')
+          })
+        }
       }
+    })
+
+  const handleTerminalFontSizeBlur = async () => {
+    const parsedFontSize = settingsSchema.shape.terminalFontSize.safeParse(
+      form.getValues('terminalFontSize')
+    )
+
+    if (!parsedFontSize.success) {
+      resetSavedField(
+        'terminalFontSize',
+        savedSettingsRef.current?.terminalFontSize ?? DEFAULT_SETTINGS_FORM_VALUES.terminalFontSize
+      )
+      toast.error(t('workbench.settings.validation.failed'))
+      return
     }
-  })
+
+    await handleSettingSave('terminalFontSize', parsedFontSize.data)
+  }
   const importThemePack = useMutation({
     mutationFn: () => themesClient.importArchive(),
     onError: (error) => {
@@ -435,24 +457,7 @@ export function WorkbenchSettingsEditor() {
         </div>
 
         <Form {...form}>
-          <form
-            className="space-y-6 px-6 py-6"
-            onSubmit={form.handleSubmit(
-              async (values) => updateSettings.mutateAsync(values),
-              (errors) => {
-                const message = Object.values(errors)[0]?.message
-                pushProblem({
-                  detail: t('workbench.settings.title'),
-                  id: 'settings:validation',
-                  severity: 'error',
-                  title:
-                    typeof message === 'string'
-                      ? message
-                      : t('workbench.settings.validation.failed')
-                })
-              }
-            )}
-          >
+          <div className="space-y-6 px-6 py-6">
             {selectedSection === 'appearance' ? (
               <>
                 <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
@@ -467,7 +472,13 @@ export function WorkbenchSettingsEditor() {
                       render={({ field }) => (
                         <FormItem className="max-w-sm">
                           <FormLabel>{t('workbench.settings.form.language')}</FormLabel>
-                          <Select value={field.value} onValueChange={field.onChange}>
+                          <Select
+                            value={field.value}
+                            onValueChange={(value) => {
+                              field.onChange(value)
+                              void handleSettingSave('language', value as AppSettings['language'])
+                            }}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue />
@@ -494,7 +505,13 @@ export function WorkbenchSettingsEditor() {
                       render={({ field }) => (
                         <FormItem className="max-w-sm">
                           <FormLabel>{t('workbench.settings.form.theme')}</FormLabel>
-                          <Select value={field.value} onValueChange={field.onChange}>
+                          <Select
+                            value={field.value}
+                            onValueChange={(value) => {
+                              field.onChange(value)
+                              void handleSettingSave('theme', value)
+                            }}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue />
@@ -521,7 +538,16 @@ export function WorkbenchSettingsEditor() {
                       render={({ field }) => (
                         <FormItem className="max-w-sm">
                           <FormLabel>{t('workbench.settings.form.titleBarStyle')}</FormLabel>
-                          <Select value={field.value} onValueChange={field.onChange}>
+                          <Select
+                            value={field.value}
+                            onValueChange={(value) => {
+                              field.onChange(value)
+                              void handleSettingSave(
+                                'windowTitleBarStyle',
+                                value as AppSettings['windowTitleBarStyle']
+                              )
+                            }}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue />
@@ -634,7 +660,16 @@ export function WorkbenchSettingsEditor() {
                       <FormItem>
                         <FormLabel>{t('workbench.settings.form.terminalFontSize')}</FormLabel>
                         <FormControl>
-                          <Input {...field} type="number" min={10} max={24} />
+                          <Input
+                            {...field}
+                            type="number"
+                            min={10}
+                            max={24}
+                            onBlur={() => {
+                              field.onBlur()
+                              void handleTerminalFontSizeBlur()
+                            }}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -651,7 +686,10 @@ export function WorkbenchSettingsEditor() {
                           <FormLabel>{t('workbench.settings.form.terminalFontFamily')}</FormLabel>
                           <TerminalFontFamilyCombobox
                             value={field.value}
-                            onChange={field.onChange}
+                            onChange={(value) => {
+                              field.onChange(value)
+                              void handleSettingSave('terminalFontFamily', value)
+                            }}
                             options={fontOptions}
                           />
                           <FormMessage />
@@ -665,7 +703,16 @@ export function WorkbenchSettingsEditor() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('workbench.settings.form.localTerminalShell')}</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
+                        <Select
+                          value={field.value}
+                          onValueChange={(value) => {
+                            field.onChange(value)
+                            void handleSettingSave(
+                              'localTerminalShell',
+                              value as AppSettings['localTerminalShell']
+                            )
+                          }}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue />
@@ -692,7 +739,16 @@ export function WorkbenchSettingsEditor() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('workbench.settings.form.cursorStyle')}</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
+                        <Select
+                          value={field.value}
+                          onValueChange={(value) => {
+                            field.onChange(value)
+                            void handleSettingSave(
+                              'cursorStyle',
+                              value as AppSettings['cursorStyle']
+                            )
+                          }}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue />
@@ -733,7 +789,10 @@ export function WorkbenchSettingsEditor() {
                           <Switch
                             aria-label={t('workbench.settings.form.cursorBlink.title')}
                             checked={field.value}
-                            onCheckedChange={field.onChange}
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked)
+                              void handleSettingSave('cursorBlink', checked)
+                            }}
                           />
                         </FormControl>
                       </FormItem>
@@ -756,7 +815,10 @@ export function WorkbenchSettingsEditor() {
                           <Switch
                             aria-label={t('workbench.settings.form.copyOnSelect.title')}
                             checked={field.value}
-                            onCheckedChange={field.onChange}
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked)
+                              void handleSettingSave('copyOnSelect', checked)
+                            }}
                           />
                         </FormControl>
                       </FormItem>
@@ -781,7 +843,10 @@ export function WorkbenchSettingsEditor() {
                               'workbench.settings.form.experimentalTerminalWebgl.title'
                             )}
                             checked={field.value}
-                            onCheckedChange={field.onChange}
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked)
+                              void handleSettingSave('experimentalTerminalWebgl', checked)
+                            }}
                           />
                         </FormControl>
                       </FormItem>
@@ -935,16 +1000,7 @@ export function WorkbenchSettingsEditor() {
                 </section>
               </>
             ) : null}
-
-            {showSaveAction ? (
-              <div className="flex justify-end">
-                <Button type="submit" disabled={updateSettings.isPending}>
-                  <SaveIcon className="size-4" />
-                  {t('common.actions.save')}
-                </Button>
-              </div>
-            ) : null}
-          </form>
+          </div>
         </Form>
 
         <Dialog

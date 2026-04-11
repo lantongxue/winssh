@@ -7,6 +7,7 @@ import {
   DEFAULT_PIXEL_THEME_ID
 } from '@shared/themes'
 import type { AppSettings } from '@shared/types'
+import { toast } from 'sonner'
 import i18n from '@/i18n'
 import { WorkbenchSettingsEditor } from '@/components/workbench/workbench-settings-editor'
 import { createWinsshApiMock } from '@/test/create-winssh-api'
@@ -62,6 +63,7 @@ const importedTheme = createThemeDefinition({
 })
 
 beforeEach(async () => {
+  vi.clearAllMocks()
   await i18n.changeLanguage('en-US')
   useWorkbenchStore.getState().reset()
   Object.defineProperty(window.navigator, 'platform', {
@@ -150,7 +152,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     expect(titleBarSelect).toHaveTextContent('Custom Title Bar')
   })
 
-  it('loads, allows selecting Pixel CRT, and saves the updated theme', async () => {
+  it('loads and saves the updated theme immediately after selection', async () => {
     const updateSettings = vi.fn().mockResolvedValue({
       autoUpdateCheckEnabled: true,
       copyOnSelect: true,
@@ -190,15 +192,21 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     fireEvent.click(themeSelect)
     const pixelOptions = await screen.findAllByText('Pixel CRT')
     fireEvent.click(pixelOptions[pixelOptions.length - 1] as HTMLElement)
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {
-      expect(updateSettings).toHaveBeenCalledWith(
-        expect.objectContaining({
-          theme: DEFAULT_PIXEL_THEME_ID
-        })
-      )
+      expect(updateSettings).toHaveBeenCalledWith({
+        theme: DEFAULT_PIXEL_THEME_ID
+      })
     })
+  })
+
+  it('does not render a save button for application settings', async () => {
+    window.winsshApi = createWinsshApiMock()
+
+    renderSettingsEditor()
+
+    await screen.findByRole('combobox', { name: 'Theme mode' })
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
   })
 
   it('imports a ZIP theme pack and refreshes the available theme list', async () => {
@@ -289,7 +297,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     })
   })
 
-  it('uses a searchable combobox to save terminal font settings', async () => {
+  it('uses a searchable combobox to save terminal font settings immediately', async () => {
     const updateSettings = vi.fn().mockResolvedValue({
       autoUpdateCheckEnabled: true,
       copyOnSelect: true,
@@ -336,14 +344,11 @@ describe('WorkbenchSettingsEditor theme selection', () => {
       target: { value: 'IBM Plex Mono' }
     })
     fireEvent.click(await screen.findByText('IBM Plex Mono'))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {
-      expect(updateSettings).toHaveBeenCalledWith(
-        expect.objectContaining({
-          terminalFontFamily: 'IBM Plex Mono'
-        })
-      )
+      expect(updateSettings).toHaveBeenCalledWith({
+        terminalFontFamily: 'IBM Plex Mono'
+      })
     })
   })
 
@@ -398,14 +403,59 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     expect(screen.queryByText('Zsh')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getAllByText('PowerShell').at(-1) as HTMLElement)
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {
-      expect(updateSettings).toHaveBeenCalledWith(
-        expect.objectContaining({
-          localTerminalShell: 'powershell'
-        })
-      )
+      expect(updateSettings).toHaveBeenCalledWith({
+        localTerminalShell: 'powershell'
+      })
+    })
+  })
+
+  it('saves terminal toggles and cursor style immediately', async () => {
+    const updateSettings = vi.fn().mockImplementation(async (input) => ({
+      autoUpdateCheckEnabled: true,
+      copyOnSelect:
+        typeof input.copyOnSelect === 'boolean' ? input.copyOnSelect : persistedDarkSettings.copyOnSelect,
+      cursorBlink:
+        typeof input.cursorBlink === 'boolean' ? input.cursorBlink : persistedDarkSettings.cursorBlink,
+      cursorStyle: input.cursorStyle ?? persistedDarkSettings.cursorStyle,
+      experimentalTerminalWebgl:
+        typeof input.experimentalTerminalWebgl === 'boolean'
+          ? input.experimentalTerminalWebgl
+          : persistedDarkSettings.experimentalTerminalWebgl,
+      language: persistedDarkSettings.language,
+      localTerminalShell: persistedDarkSettings.localTerminalShell,
+      terminalFontFamily: persistedDarkSettings.terminalFontFamily,
+      terminalFontSize: persistedDarkSettings.terminalFontSize,
+      theme: persistedDarkSettings.theme,
+      windowTitleBarStyle: persistedDarkSettings.windowTitleBarStyle
+    }))
+
+    window.winsshApi = createWinsshApiMock({
+      settings: {
+        get: vi.fn().mockResolvedValue(persistedDarkSettings),
+        update: updateSettings
+      }
+    })
+
+    renderSettingsEditor()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Terminal' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Blinking cursor' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Copy on select' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Cursor style' }))
+    fireEvent.click(await screen.findByText('Underline'))
+
+    await waitFor(() => {
+      expect(updateSettings).toHaveBeenNthCalledWith(1, {
+        cursorBlink: false
+      })
+      expect(updateSettings).toHaveBeenNthCalledWith(2, {
+        copyOnSelect: false
+      })
+      expect(updateSettings).toHaveBeenNthCalledWith(3, {
+        cursorStyle: 'underline'
+      })
     })
   })
 
@@ -447,14 +497,94 @@ describe('WorkbenchSettingsEditor theme selection', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Terminal' }))
     fireEvent.click(screen.getByRole('switch', { name: 'Experimental WebGL renderer' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {
-      expect(updateSettings).toHaveBeenCalledWith(
-        expect.objectContaining({
-          experimentalTerminalWebgl: true
-        })
-      )
+      expect(updateSettings).toHaveBeenCalledWith({
+        experimentalTerminalWebgl: true
+      })
+    })
+  })
+
+  it('saves the terminal font size on blur only', async () => {
+    const updateSettings = vi.fn().mockResolvedValue({
+      ...persistedDarkSettings,
+      terminalFontSize: 16
+    })
+
+    window.winsshApi = createWinsshApiMock({
+      settings: {
+        get: vi.fn().mockResolvedValue(persistedDarkSettings),
+        update: updateSettings
+      }
+    })
+
+    renderSettingsEditor()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Terminal' }))
+
+    const fontSizeInput = screen.getByRole('spinbutton', { name: 'Terminal font size' })
+    fireEvent.change(fontSizeInput, { target: { value: '16' } })
+
+    expect(updateSettings).not.toHaveBeenCalled()
+
+    fireEvent.blur(fontSizeInput)
+
+    await waitFor(() => {
+      expect(updateSettings).toHaveBeenCalledWith({
+        terminalFontSize: 16
+      })
+    })
+  })
+
+  it('rolls back an invalid terminal font size on blur and shows an error toast', async () => {
+    const updateSettings = vi.fn()
+
+    window.winsshApi = createWinsshApiMock({
+      settings: {
+        get: vi.fn().mockResolvedValue(persistedDarkSettings),
+        update: updateSettings
+      }
+    })
+
+    renderSettingsEditor()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Terminal' }))
+
+    const fontSizeInput = screen.getByRole('spinbutton', { name: 'Terminal font size' })
+    fireEvent.change(fontSizeInput, { target: { value: '99' } })
+    fireEvent.blur(fontSizeInput)
+
+    await waitFor(() => {
+      expect(fontSizeInput).toHaveValue(14)
+    })
+    expect(updateSettings).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('Settings form validation failed.')
+  })
+
+  it('shows the saved value again when an automatic save fails', async () => {
+    const updateSettings = vi.fn().mockRejectedValue(new Error('Unable to persist settings'))
+
+    window.winsshApi = createWinsshApiMock({
+      settings: {
+        get: vi.fn().mockResolvedValue(persistedDarkSettings),
+        update: updateSettings
+      }
+    })
+
+    renderSettingsEditor()
+
+    const themeSelect = await screen.findByRole('combobox', { name: 'Theme mode' })
+    fireEvent.click(themeSelect)
+    const pixelOptions = await screen.findAllByText('Pixel CRT')
+    fireEvent.click(pixelOptions[pixelOptions.length - 1] as HTMLElement)
+
+    await waitFor(() => {
+      expect(updateSettings).toHaveBeenCalledWith({
+        theme: DEFAULT_PIXEL_THEME_ID
+      })
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Theme mode' })).toHaveTextContent('Dark+')
     })
   })
 
