@@ -60,7 +60,7 @@ describe('App update dialog', () => {
         getState: vi.fn().mockResolvedValue({
           autoCheckEnabled: true,
           availableUpdate: null,
-          currentVersion: '0.1.0',
+          currentVersion: '1.0.0',
           downloadProgressPercent: null,
           errorMessage: null,
           phase: 'idle',
@@ -77,6 +77,9 @@ describe('App update dialog', () => {
     renderApp()
 
     await screen.findByText('Workbench')
+    await waitFor(() => {
+      expect(stateChangeCallbacks).toHaveLength(1)
+    })
 
     if (stateChangeCallbacks[0]) {
       stateChangeCallbacks[0]({
@@ -87,7 +90,7 @@ describe('App update dialog', () => {
           releaseNotes: 'Bug fixes and polish.',
           version: '0.1.1'
         },
-        currentVersion: '0.1.0',
+        currentVersion: '1.0.0',
         downloadProgressPercent: null,
         errorMessage: null,
         phase: 'available',
@@ -110,7 +113,7 @@ describe('App update dialog', () => {
         releaseNotes: 'Bug fixes and polish.',
         version: '0.1.1'
       },
-      currentVersion: '0.1.0',
+      currentVersion: '1.0.0',
       downloadProgressPercent: 10,
       errorMessage: null,
       phase: 'downloading',
@@ -129,7 +132,7 @@ describe('App update dialog', () => {
             releaseNotes: 'Bug fixes and polish.',
             version: '0.1.1'
           },
-          currentVersion: '0.1.0',
+          currentVersion: '1.0.0',
           downloadProgressPercent: null,
           errorMessage: null,
           phase: 'available',
@@ -156,7 +159,7 @@ describe('App update dialog', () => {
         getState: vi.fn().mockResolvedValue({
           autoCheckEnabled: true,
           availableUpdate: null,
-          currentVersion: '0.1.0',
+          currentVersion: '1.0.0',
           downloadProgressPercent: null,
           errorMessage: null,
           phase: 'idle',
@@ -172,6 +175,9 @@ describe('App update dialog', () => {
 
     renderApp()
     await screen.findByText('Workbench')
+    await waitFor(() => {
+      expect(stateChangeCallbacks).toHaveLength(1)
+    })
 
     const availableState: UpdateState = {
       autoCheckEnabled: true,
@@ -181,7 +187,7 @@ describe('App update dialog', () => {
         releaseNotes: 'Bug fixes and polish.',
         version: '0.1.1'
       },
-      currentVersion: '0.1.0',
+      currentVersion: '1.0.0',
       downloadProgressPercent: null,
       errorMessage: null,
       phase: 'available',
@@ -216,7 +222,7 @@ describe('App update dialog', () => {
         getState: vi.fn().mockResolvedValue({
           autoCheckEnabled: true,
           availableUpdate: null,
-          currentVersion: '0.1.0',
+          currentVersion: '1.0.0',
           downloadProgressPercent: null,
           errorMessage: null,
           phase: 'checking',
@@ -232,6 +238,9 @@ describe('App update dialog', () => {
 
     useUpdateDialogStore.getState().openManual()
     renderApp()
+    await waitFor(() => {
+      expect(stateChangeCallbacks).toHaveLength(1)
+    })
 
     expect(await screen.findByText('Checking for Updates')).toBeInTheDocument()
 
@@ -239,7 +248,7 @@ describe('App update dialog', () => {
       stateChangeCallbacks[0]({
         autoCheckEnabled: true,
         availableUpdate: null,
-        currentVersion: '0.1.0',
+        currentVersion: '1.0.0',
         downloadProgressPercent: null,
         errorMessage: null,
         phase: 'not-available',

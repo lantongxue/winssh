@@ -2,6 +2,11 @@ import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { localTerminalsClient } from '@/features/local-terminals/api/local-terminals-client'
+import { portForwardsClient } from '@/features/port-forwards/api/port-forwards-client'
+import { queryKeys } from '@/features/shared/query-keys'
+import { sftpClient } from '@/features/sftp/api/sftp-client'
+import { sessionsClient } from '@/features/sessions/api/sessions-client'
 import { useLocalTerminalsStore } from '@/store/local-terminals-store'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
@@ -16,7 +21,7 @@ export function useSessionEvents() {
   const upsertTransfer = useWorkbenchStore((state) => state.upsertTransfer)
 
   useEffect(() => {
-    const unsubscribeState = window.winsshApi.sessions.onStateChange((event) => {
+    const unsubscribeState = sessionsClient.onStateChange((event) => {
       updateSessionState(event)
 
       if (event.status === 'connecting') {
@@ -42,7 +47,7 @@ export function useSessionEvents() {
       }
     })
 
-    const unsubscribeError = window.winsshApi.sessions.onError((event) => {
+    const unsubscribeError = sessionsClient.onError((event) => {
       appendOutput({
         detail: event.sessionId,
         level: 'error',
@@ -58,7 +63,7 @@ export function useSessionEvents() {
       toast.error(event.message)
     })
 
-    const unsubscribeExit = window.winsshApi.sessions.onExit((event) => {
+    const unsubscribeExit = sessionsClient.onExit((event) => {
       appendOutput({
         detail: `${event.code ?? t('workbench.panel.transfer.unknown')}${event.signal ? ` · ${event.signal}` : ''}`,
         level: 'warning',
@@ -66,7 +71,7 @@ export function useSessionEvents() {
       })
     })
 
-    const unsubscribeTransfer = window.winsshApi.sftp.onTransferProgress((event) => {
+    const unsubscribeTransfer = sftpClient.onTransferProgress((event) => {
       upsertTransfer(event)
 
       if (event.status === 'completed') {
@@ -99,10 +104,10 @@ export function useSessionEvents() {
       }
     })
 
-    const unsubscribePortForward = window.winsshApi.portForwards.onStateChange((event) => {
+    const unsubscribePortForward = portForwardsClient.onStateChange((event) => {
       const detail = `${event.rule.bindHost}:${event.rule.bindPort} -> ${event.rule.targetHost}:${event.rule.targetPort}`
 
-      void queryClient.invalidateQueries({ queryKey: ['port-forwards', event.sessionId] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.portForwards(event.sessionId) })
 
       if (event.rule.status === 'error' && event.rule.lastError) {
         appendOutput({
@@ -148,7 +153,7 @@ export function useSessionEvents() {
       }
     })
 
-    const unsubscribeLocalTerminalState = window.winsshApi.localTerminals.onStateChange((event) => {
+    const unsubscribeLocalTerminalState = localTerminalsClient.onStateChange((event) => {
       updateLocalTerminalState(event)
 
       if (event.status === 'exited') {
@@ -174,7 +179,7 @@ export function useSessionEvents() {
       }
     })
 
-    const unsubscribeLocalTerminalExit = window.winsshApi.localTerminals.onExit((event) => {
+    const unsubscribeLocalTerminalExit = localTerminalsClient.onExit((event) => {
       appendOutput({
         detail: `${event.exitCode}${event.signal === undefined ? '' : ` · ${event.signal}`}`,
         level: 'warning',

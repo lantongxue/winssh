@@ -84,7 +84,7 @@ describe('WorkbenchActivityBar', () => {
     const updateState: UpdateState = {
       autoCheckEnabled: true,
       availableUpdate: null,
-      currentVersion: '0.1.0',
+      currentVersion: '1.0.0',
       downloadProgressPercent: null,
       errorMessage: null,
       phase: 'not-available',

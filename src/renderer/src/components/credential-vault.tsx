@@ -7,6 +7,9 @@ import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import type { Credential, CredentialKind } from '@shared/types'
 import { credentialSchema, type CredentialFormValues } from '@shared/validation'
+import { credentialsClient } from '@/features/credentials/api/credentials-client'
+import { queryKeys } from '@/features/shared/query-keys'
+import { systemClient } from '@/features/system/api/system-client'
 import { actionIcons } from '@/lib/action-icons'
 import { Button } from '@/components/ui/button'
 import {
@@ -85,7 +88,7 @@ function CredentialFormDialog({
 
   const secretQuery = useQuery({
     queryKey: ['credential-secret', credential?.id],
-    queryFn: () => window.winsshApi.credentials.getSecret(credential!.id),
+    queryFn: () => credentialsClient.getSecret(credential!.id),
     enabled: Boolean(credential?.id)
   })
 
@@ -101,12 +104,12 @@ function CredentialFormDialog({
   const saveMutation = useMutation({
     mutationFn: async (values: CredentialFormValues) => {
       if (credential) {
-        return window.winsshApi.credentials.update(credential.id, values)
+        return credentialsClient.update(credential.id, values)
       }
-      return window.winsshApi.credentials.create(values)
+      return credentialsClient.create(values)
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['credentials'] })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.credentials })
       if (credential) {
         await queryClient.invalidateQueries({ queryKey: ['credential-secret', credential.id] })
       }
@@ -256,7 +259,7 @@ function CredentialFormDialog({
                           size="sm"
                           className="w-full sm:w-auto"
                           onClick={async () => {
-                            const key = await window.winsshApi.system.pickPrivateKey()
+                            const key = await systemClient.pickPrivateKey()
                             if (key) {
                               form.setValue('privateKey', key, {
                                 shouldDirty: true,
@@ -364,7 +367,7 @@ function DeleteCredentialDialog({
   const queryClient = useQueryClient()
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => window.winsshApi.credentials.delete(id),
+    mutationFn: (id: string) => credentialsClient.delete(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['credentials'] })
       await queryClient.invalidateQueries({ queryKey: ['servers'] })
@@ -410,8 +413,8 @@ export function CredentialVault() {
   const DeleteIcon = actionIcons.delete
 
   const credentialsQuery = useQuery({
-    queryKey: ['credentials'],
-    queryFn: () => window.winsshApi.credentials.list()
+    queryKey: queryKeys.credentials,
+    queryFn: () => credentialsClient.list()
   })
 
   const credentials = credentialsQuery.data ?? []

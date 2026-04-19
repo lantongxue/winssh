@@ -1,7 +1,7 @@
 import { execFile, spawnSync } from 'node:child_process'
 import { constants as fsConstants } from 'node:fs'
 import { access, mkdir } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { dirname, posix } from 'node:path'
 import { promisify } from 'node:util'
 import { app } from 'electron'
 
@@ -69,7 +69,9 @@ function parseMacSystemProfilerFonts(stdout: string): string[] {
 }
 
 function getMacFontHelperCandidates(candidateRoots: string[]): string[] {
-  return [...new Set(candidateRoots.map((root) => join(root, 'bin', MAC_FONT_HELPER_NAME)))]
+  return [
+    ...new Set(candidateRoots.map((root) => posix.join(root, 'bin', MAC_FONT_HELPER_NAME)))
+  ]
 }
 
 async function hasExecutableAccess(path: string): Promise<boolean> {
@@ -238,18 +240,18 @@ export class SystemFontService {
   private getMacHelperRoots(appPath: string): string[] {
     return [
       this.getResourcesPath(),
-      ...(appPath.endsWith('.asar') ? [join(appPath, '..')] : []),
-      join(appPath, 'resources'),
-      join(this.getWorkingDirectory(), 'resources'),
-      join(this.getCurrentDirectory(), '..', '..', 'resources')
+      ...(appPath.endsWith('.asar') ? [posix.join(appPath, '..')] : []),
+      posix.join(appPath, 'resources'),
+      posix.join(this.getWorkingDirectory(), 'resources'),
+      posix.join(this.getCurrentDirectory(), '..', '..', 'resources')
     ]
   }
 
   private getMacHelperSourceCandidates(appPath: string): string[] {
     return [
-      join(appPath, 'src', 'native', 'macos', 'list-fonts.m'),
-      join(this.getWorkingDirectory(), 'src', 'native', 'macos', 'list-fonts.m'),
-      join(this.getCurrentDirectory(), '..', '..', 'src', 'native', 'macos', 'list-fonts.m')
+      posix.join(appPath, 'src', 'native', 'macos', 'list-fonts.m'),
+      posix.join(this.getWorkingDirectory(), 'src', 'native', 'macos', 'list-fonts.m'),
+      posix.join(this.getCurrentDirectory(), '..', '..', 'src', 'native', 'macos', 'list-fonts.m')
     ]
   }
 
@@ -282,7 +284,7 @@ export class SystemFontService {
     }
 
     for (const root of candidateRoots) {
-      const outputPath = join(root, 'bin', MAC_FONT_HELPER_NAME)
+      const outputPath = posix.join(root, 'bin', MAC_FONT_HELPER_NAME)
 
       try {
         await mkdir(dirname(outputPath), { recursive: true })

@@ -3,6 +3,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { DEFAULT_PIXEL_THEME_ID, SYSTEM_THEME_ID } from '@shared/themes'
 import { useTranslation } from 'react-i18next'
 import { formatQuickConnectTarget, parseQuickConnectInput } from '@shared/quick-connect'
+import { queryKeys } from '@/features/shared/query-keys'
+import { serversClient } from '@/features/servers/api/servers-client'
+import { settingsClient } from '@/features/settings/api/settings-client'
+import { themesClient } from '@/features/themes/api/themes-client'
 import {
   Files,
   MonitorCog,
@@ -69,12 +73,12 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
   const isMac = isMacPlatform()
 
   const serversQuery = useQuery({
-    queryKey: ['servers'],
-    queryFn: () => window.winsshApi.servers.list()
+    queryKey: queryKeys.servers,
+    queryFn: () => serversClient.list()
   })
   const themesQuery = useQuery({
-    queryKey: ['themes'],
-    queryFn: () => window.winsshApi.themes.list()
+    queryKey: queryKeys.themes,
+    queryFn: () => themesClient.list()
   })
 
   const themeIcons = {
@@ -83,8 +87,8 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
   const SystemThemeIcon = themeIcons.system
 
   const handleThemeChange = async (theme: string) => {
-    const settings = await window.winsshApi.settings.update({ theme })
-    queryClient.setQueryData(['settings'], settings)
+    const settings = await settingsClient.update({ theme })
+    queryClient.setQueryData(queryKeys.settings, settings)
     setCommandPaletteOpen(false)
   }
 

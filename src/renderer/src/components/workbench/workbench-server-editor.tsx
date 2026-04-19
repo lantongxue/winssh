@@ -9,6 +9,12 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 import type { Credential, Server, ServerSecrets, ServerUpsertInput, Tag } from '@shared/types'
 import { serverSchema, tagSchema, type ServerFormValues } from '@shared/validation'
+import { credentialsClient } from '@/features/credentials/api/credentials-client'
+import { groupsClient } from '@/features/groups/api/groups-client'
+import { queryKeys } from '@/features/shared/query-keys'
+import { serversClient } from '@/features/servers/api/servers-client'
+import { systemClient } from '@/features/system/api/system-client'
+import { tagsClient } from '@/features/tags/api/tags-client'
 import { actionIcons } from '@/lib/action-icons'
 import { ServerBrandIcon } from '@/components/server-brand-icon'
 import { colorOptions, getColorStyle } from '@/lib/colors'
@@ -326,31 +332,31 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   const RemoveIcon = actionIcons.delete
 
   const serversQuery = useQuery({
-    queryKey: ['servers'],
-    queryFn: () => window.winsshApi.servers.list()
+    queryKey: queryKeys.servers,
+    queryFn: () => serversClient.list()
   })
   const groupsQuery = useQuery({
-    queryKey: ['groups'],
-    queryFn: () => window.winsshApi.groups.list()
+    queryKey: queryKeys.groups,
+    queryFn: () => groupsClient.list()
   })
   const tagsQuery = useQuery({
-    queryKey: ['tags'],
-    queryFn: () => window.winsshApi.tags.list()
+    queryKey: queryKeys.tags,
+    queryFn: () => tagsClient.list()
   })
   const capabilitiesQuery = useQuery({
-    queryKey: ['capabilities'],
-    queryFn: () => window.winsshApi.system.getCapabilities()
+    queryKey: queryKeys.capabilities,
+    queryFn: () => systemClient.getCapabilities()
   })
   const credentialsQuery = useQuery({
-    queryKey: ['credentials'],
-    queryFn: () => window.winsshApi.credentials.list()
+    queryKey: queryKeys.credentials,
+    queryFn: () => credentialsClient.list()
   })
 
   const server = (serversQuery.data ?? []).find((item) => item.id === document.serverId) ?? null
   const credentialStorageAvailable = capabilitiesQuery.data?.credentialStorage ?? false
   const serverSecretsQuery = useQuery({
-    queryKey: ['server-secrets', document.serverId],
-    queryFn: () => window.winsshApi.servers.getSecrets(document.serverId as string),
+    queryKey: queryKeys.serverSecrets(document.serverId as string),
+    queryFn: () => serversClient.getSecrets(document.serverId as string),
     enabled: Boolean(document.serverId)
   })
   const serverSecrets = serverSecretsQuery.data
@@ -461,7 +467,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   useEffect(() => {
     if (!selectedCredential) return
     // Request the secret content and prefill
-    void window.winsshApi.credentials.getSecret(selectedCredential.id).then((secret) => {
+    void credentialsClient.getSecret(selectedCredential.id).then((secret) => {
       if (selectedCredential.kind === 'password') {
         form.setValue('password', secret.password ?? '', { shouldDirty: false })
         form.setValue('authType', 'password', { shouldDirty: false })
@@ -559,7 +565,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   }
 
   const handleUploadCustomIcon = async () => {
-    const selectedIcon = await window.winsshApi.system.pickServerIcon()
+    const selectedIcon = await systemClient.pickServerIcon()
     if (!selectedIcon) {
       return
     }
@@ -582,7 +588,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   }
 
   const ensureJumpServerTag = async () => {
-    const availableTags = tagsQuery.data ?? (await window.winsshApi.tags.list())
+    const availableTags = tagsQuery.data ?? (await tagsClient.list())
     const existing = availableTags.find(
       (tag: Tag) => tag.name.trim().toLowerCase() === 'jumpserver'
     )
@@ -591,7 +597,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
       return existing
     }
 
-    return window.winsshApi.tags.create({
+    return tagsClient.create({
       color: 'amber',
       name: 'jumpserver'
     })
@@ -626,7 +632,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     setDeletingTagId(tag.id)
 
     try {
-      await window.winsshApi.tags.delete(tag.id)
+      await tagsClient.delete(tag.id)
       removeSelectedTag(tag.id)
       queryClient.setQueryData<Tag[]>(['tags'], (current) =>
         sortTagsByName((current ?? []).filter((currentTag) => currentTag.id !== tag.id))
@@ -666,7 +672,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     setTagDraftSubmitting(true)
 
     try {
-      const availableTags = tagsQuery.data ?? (await window.winsshApi.tags.list())
+      const availableTags = tagsQuery.data ?? (await tagsClient.list())
       if (!tagsQuery.data) {
         syncTagsQueryData(availableTags)
       }
@@ -680,13 +686,13 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
         return
       }
 
-      const created = await window.winsshApi.tags.create(parsed.data)
+      const created = await tagsClient.create(parsed.data)
       syncTagsQueryData([...availableTags, created])
       selectTag(created.id)
       setTagDraftError(null)
     } catch (error) {
       try {
-        const latestTags = await window.winsshApi.tags.list()
+        const latestTags = await tagsClient.list()
         syncTagsQueryData(latestTags)
         const matched = latestTags.find(
           (tag) => normalizeTagName(tag.name) === normalizeTagName(tagName)
@@ -718,8 +724,8 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
       buildServerPayload(values, credentialStorageAvailable, customIconDraft, options)
     )
     const saved = document.serverId
-      ? await window.winsshApi.servers.update(document.serverId, payload)
-      : await window.winsshApi.servers.create(payload)
+      ? await serversClient.update(document.serverId, payload)
+      : await serversClient.create(payload)
 
     if (!document.serverId) {
       replaceDocument(document.id, createServerEditorDocument(saved.id))
@@ -745,7 +751,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
 
   const handleCreateJumpServer = jumpServerForm.handleSubmit(async (values) => {
     const jumpTag = await ensureJumpServerTag()
-    const created = await window.winsshApi.servers.create({
+    const created = await serversClient.create({
       authType: values.authType,
       credentialId: null,
       favorite: false,
@@ -1141,7 +1147,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                           size="sm"
                           className="w-full sm:w-auto"
                           onClick={async () => {
-                            const privateKey = await window.winsshApi.system.pickPrivateKey()
+                            const privateKey = await systemClient.pickPrivateKey()
                             if (privateKey) {
                               form.setValue('privateKey', privateKey, {
                                 shouldDirty: true,
@@ -1507,7 +1513,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                           size="sm"
                           className="w-full sm:w-auto"
                           onClick={async () => {
-                            const privateKey = await window.winsshApi.system.pickPrivateKey()
+                            const privateKey = await systemClient.pickPrivateKey()
                             if (privateKey) {
                               jumpServerForm.setValue('privateKey', privateKey, {
                                 shouldDirty: true,

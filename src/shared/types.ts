@@ -1,5 +1,6 @@
 import type { ThemeSelection } from './themes'
 import type { ServerBrandId, ServerIconMimeType } from './server-brands'
+import type { ObservableSource } from './observability'
 
 export type AuthType = 'password' | 'privateKey'
 export type CredentialKind = 'password' | 'privateKey'
@@ -234,27 +235,37 @@ export interface SessionSummary {
   currentPath: string
 }
 
-export interface SessionStateEvent {
+export interface ObservableEventMetadata {
+  correlationId?: string
+  source?: ObservableSource
+  timestamp?: string
+}
+
+export interface SessionStateEvent extends ObservableEventMetadata {
   sessionId: string
   status: SessionStatus
   phase?: SessionConnectionPhase
   message?: string
+  code?: string
+  recoverable?: boolean
 }
 
-export interface SessionDataEvent {
+export interface SessionDataEvent extends ObservableEventMetadata {
   sessionId: string
   data: string
 }
 
-export interface SessionExitEvent {
+export interface SessionExitEvent extends ObservableEventMetadata {
   sessionId: string
   code?: number
   signal?: string
 }
 
-export interface SessionErrorEvent {
+export interface SessionErrorEvent extends ObservableEventMetadata {
   sessionId: string
   message: string
+  code?: string
+  recoverable?: boolean
 }
 
 export interface SessionResourceSnapshot {
@@ -291,18 +302,20 @@ export interface LocalTerminalSummary {
   lastMessage?: string
 }
 
-export interface LocalTerminalStateEvent {
+export interface LocalTerminalStateEvent extends ObservableEventMetadata {
   terminalId: string
   status: LocalTerminalStatus
   message?: string
+  code?: string
+  recoverable?: boolean
 }
 
-export interface LocalTerminalDataEvent {
+export interface LocalTerminalDataEvent extends ObservableEventMetadata {
   terminalId: string
   data: string
 }
 
-export interface LocalTerminalExitEvent {
+export interface LocalTerminalExitEvent extends ObservableEventMetadata {
   terminalId: string
   exitCode: number
   signal?: number
@@ -327,7 +340,7 @@ export interface SftpListResult {
   entries: RemoteEntry[]
 }
 
-export interface TransferProgressEvent {
+export interface TransferProgressEvent extends ObservableEventMetadata {
   sessionId: string
   direction: 'upload' | 'download'
   fileName: string
@@ -357,7 +370,7 @@ export interface PortForwardRule extends PortForwardInput {
   lastError?: string
 }
 
-export interface PortForwardStateEvent {
+export interface PortForwardStateEvent extends ObservableEventMetadata {
   sessionId: string
   rule: PortForwardRule
 }

@@ -5,6 +5,11 @@ import type { AppInfo, ReleaseChannel, UpdateState } from '@shared/types'
 import { RefreshCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { queryKeys } from '@/features/shared/query-keys'
+import { settingsClient } from '@/features/settings/api/settings-client'
+import { useSettingsAutoSave } from '@/features/settings/use-settings-auto-save'
+import { systemClient } from '@/features/system/api/system-client'
+import { updatesClient } from '@/features/updates/api/updates-client'
 import { formatDateTime } from '@/i18n/format'
 import { actionIcons } from '@/lib/action-icons'
 import { Button } from '@/components/ui/button'
@@ -81,20 +86,20 @@ export function WorkbenchUpdatesEditor() {
   const DownloadIcon = actionIcons.download
   const RefreshIcon = actionIcons.refresh
   const RestartIcon = actionIcons.restart
-  const SaveIcon = actionIcons.save
 
   const settingsQuery = useQuery({
-    queryKey: ['settings'],
-    queryFn: () => window.winsshApi.settings.get()
+    queryKey: queryKeys.settings,
+    queryFn: () => settingsClient.get()
   })
   const appInfoQuery = useQuery({
-    queryKey: ['app-info'],
-    queryFn: () => window.winsshApi.system.getAppInfo()
+    queryKey: queryKeys.appInfo,
+    queryFn: () => systemClient.getAppInfo()
   })
   const updatesQuery = useQuery({
-    queryKey: ['updates', 'state'],
-    queryFn: () => window.winsshApi.updates.getState()
+    queryKey: queryKeys.updatesState,
+    queryFn: () => updatesClient.getState()
   })
+  const { saveField } = useSettingsAutoSave(settingsQuery.data)
 
   useEffect(() => {
     if (typeof settingsQuery.data?.autoUpdateCheckEnabled === 'boolean') {
@@ -103,37 +108,18 @@ export function WorkbenchUpdatesEditor() {
   }, [settingsQuery.data?.autoUpdateCheckEnabled])
 
   useEffect(() => {
-    return window.winsshApi.updates.onStateChange((state) => {
-      queryClient.setQueryData(['updates', 'state'], state)
+    return updatesClient.onStateChange((state) => {
+      queryClient.setQueryData(queryKeys.updatesState, state)
     })
   }, [queryClient])
 
-  const saveAutoCheck = useMutation({
-    mutationFn: (enabled: boolean) =>
-      window.winsshApi.settings.update({
-        autoUpdateCheckEnabled: enabled
-      }),
-    onSuccess: (settings) => {
-      queryClient.setQueryData(['settings'], settings)
-      queryClient.setQueryData<UpdateState | undefined>(['updates', 'state'], (current) =>
-        current
-          ? {
-              ...current,
-              autoCheckEnabled: settings.autoUpdateCheckEnabled
-            }
-          : current
-      )
-      toast.success(t('workbench.settings.toasts.saved'))
-    }
-  })
-
   const checkForUpdates = useMutation({
-    mutationFn: () => window.winsshApi.updates.check(),
+    mutationFn: () => updatesClient.check(),
     onMutate: () => {
-      const currentState = queryClient.getQueryData<UpdateState>(['updates', 'state'])
+      const currentState = queryClient.getQueryData<UpdateState>(queryKeys.updatesState)
 
       if (currentState) {
-        queryClient.setQueryData<UpdateState>(['updates', 'state'], {
+        queryClient.setQueryData<UpdateState>(queryKeys.updatesState, {
           ...currentState,
           errorMessage: null,
           phase: 'checking'
@@ -145,7 +131,7 @@ export function WorkbenchUpdatesEditor() {
         return
       }
 
-      queryClient.setQueryData<UpdateState>(['updates', 'state'], {
+      queryClient.setQueryData<UpdateState>(queryKeys.updatesState, {
         autoCheckEnabled,
         availableUpdate: null,
         currentVersion: appInfoQuery.data.version,
@@ -157,7 +143,7 @@ export function WorkbenchUpdatesEditor() {
       })
     },
     onSuccess: (state) => {
-      queryClient.setQueryData(['updates', 'state'], state)
+      queryClient.setQueryData(queryKeys.updatesState, state)
     },
     onError: (error) => {
       toast.error(
@@ -167,9 +153,9 @@ export function WorkbenchUpdatesEditor() {
   })
 
   const downloadUpdate = useMutation({
-    mutationFn: () => window.winsshApi.updates.download(),
+    mutationFn: () => updatesClient.download(),
     onSuccess: (state) => {
-      queryClient.setQueryData(['updates', 'state'], state)
+      queryClient.setQueryData(queryKeys.updatesState, state)
     },
     onError: (error) => {
       toast.error(
@@ -181,7 +167,7 @@ export function WorkbenchUpdatesEditor() {
   })
 
   const quitAndInstallUpdate = useMutation({
-    mutationFn: () => window.winsshApi.updates.quitAndInstall(),
+    mutationFn: () => updatesClient.quitAndInstall(),
     onError: (error) => {
       toast.error(
         error instanceof Error
@@ -197,9 +183,6 @@ export function WorkbenchUpdatesEditor() {
     checkForUpdates.isPending || downloadUpdate.isPending || quitAndInstallUpdate.isPending
   const showDownloadAction = updateState?.phase === 'available'
   const showInstallAction = updateState?.phase === 'downloaded'
-  const autoCheckDirty =
-    settingsQuery.data?.autoUpdateCheckEnabled !== undefined &&
-    autoCheckEnabled !== settingsQuery.data.autoUpdateCheckEnabled
   const availableReleaseDate = updateState?.availableUpdate?.releaseDate
     ? formatDateTime(updateState.availableUpdate.releaseDate)
     : null
@@ -208,6 +191,32 @@ export function WorkbenchUpdatesEditor() {
     updateState.availableUpdate.releaseNotes.trim()
       ? updateState.availableUpdate.releaseNotes
       : null
+
+  const syncUpdateStateAutoCheck = (enabled: boolean) => {
+    queryClient.setQueryData<UpdateState | undefined>(queryKeys.updatesState, (current) =>
+      current
+        ? {
+            ...current,
+            autoCheckEnabled: enabled
+          }
+        : current
+    )
+  }
+
+  const handleAutoCheckChange = (enabled: boolean) => {
+    setAutoCheckEnabled(enabled)
+
+    void saveField('autoUpdateCheckEnabled', enabled, {
+      onRevert: (rollbackValue) => {
+        setAutoCheckEnabled(rollbackValue)
+        syncUpdateStateAutoCheck(rollbackValue)
+      },
+      onSuccess: (settings) => {
+        setAutoCheckEnabled(settings.autoUpdateCheckEnabled)
+        syncUpdateStateAutoCheck(settings.autoUpdateCheckEnabled)
+      }
+    })
+  }
 
   return (
     <div className="liquid-glass-page flex h-full min-h-0 bg-[var(--workbench-editor)]">
@@ -261,25 +270,6 @@ export function WorkbenchUpdatesEditor() {
           </section>
 
           <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold">
-                  {t('workbench.settings.updates.autoCheck.title')}
-                </div>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  {t('workbench.settings.updates.autoCheck.description')}
-                </div>
-              </div>
-              <Button
-                type="button"
-                disabled={!autoCheckDirty || saveAutoCheck.isPending}
-                onClick={() => saveAutoCheck.mutate(autoCheckEnabled)}
-              >
-                <SaveIcon className="size-4" />
-                {t('common.actions.save')}
-              </Button>
-            </div>
-
             <div className="flex items-center justify-between rounded-sm border border-[var(--workbench-border)] px-4 py-3">
               <div>
                 <div className="font-medium">{t('workbench.settings.updates.autoCheck.title')}</div>
@@ -290,7 +280,7 @@ export function WorkbenchUpdatesEditor() {
               <Switch
                 aria-label={t('workbench.settings.updates.autoCheck.title')}
                 checked={autoCheckEnabled}
-                onCheckedChange={setAutoCheckEnabled}
+                onCheckedChange={handleAutoCheckChange}
               />
             </div>
           </section>

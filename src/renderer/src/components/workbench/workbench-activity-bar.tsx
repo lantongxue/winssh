@@ -3,6 +3,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { UpdateState } from '@shared/types'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { queryKeys } from '@/features/shared/query-keys'
+import { updatesClient } from '@/features/updates/api/updates-client'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import {
   DropdownMenu,
@@ -35,22 +37,22 @@ export function WorkbenchActivityBar() {
   const settingsTitle = t('workbench.activity.settings.title')
 
   const checkForUpdates = useMutation({
-    mutationFn: () => window.winsshApi.updates.check(),
+    mutationFn: () => updatesClient.check(),
     onMutate: () => {
-      const currentState = queryClient.getQueryData<UpdateState>(['updates', 'state'])
+      const currentState = queryClient.getQueryData<UpdateState>(queryKeys.updatesState)
 
       if (!currentState) {
         return
       }
 
-      queryClient.setQueryData<UpdateState>(['updates', 'state'], {
+      queryClient.setQueryData<UpdateState>(queryKeys.updatesState, {
         ...currentState,
         errorMessage: null,
         phase: 'checking'
       })
     },
     onSuccess: (state) => {
-      queryClient.setQueryData(['updates', 'state'], state)
+      queryClient.setQueryData(queryKeys.updatesState, state)
     },
     onError: (error) => {
       toast.error(

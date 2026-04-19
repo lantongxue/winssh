@@ -26,7 +26,7 @@ const themes = [
       cursor: '#0f6cbd',
       selectionBackground: 'rgba(15,108,189,0.18)'
     },
-    version: '0.1.0'
+    version: '1.0.0'
   }),
   createThemeDefinition({
     appearance: 'dark',
@@ -41,7 +41,7 @@ const themes = [
       cursor: '#3794ff',
       selectionBackground: 'rgba(55,148,255,0.24)'
     },
-    version: '0.1.0'
+    version: '1.0.0'
   }),
   createThemeDefinition({
     appearance: 'dark',
@@ -68,7 +68,7 @@ const themes = [
       fontSize: 13,
       lineHeight: 1.08
     },
-    version: '0.1.0'
+    version: '1.0.0'
   })
 ]
 
