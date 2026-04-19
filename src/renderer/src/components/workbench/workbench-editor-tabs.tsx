@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { Server } from '@shared/types'
+import { queryKeys } from '@/features/shared/query-keys'
+import { serversClient } from '@/features/servers/api/servers-client'
 import { actionIcons } from '@/lib/action-icons'
 import { ServerBrandIcon } from '@/components/server-brand-icon'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
@@ -103,8 +105,8 @@ export function WorkbenchEditorTabs() {
   )
   const [renameValue, setRenameValue] = useState('')
   const serversQuery = useQuery({
-    queryKey: ['servers'],
-    queryFn: () => window.winsshApi.servers.list()
+    queryKey: queryKeys.servers,
+    queryFn: () => serversClient.list()
   })
   const CancelIcon = actionIcons.cancel
   const CloneIcon = actionIcons.clone
@@ -205,7 +207,7 @@ export function WorkbenchEditorTabs() {
 
     const server =
       (serversQuery.data ?? []).find((item) => item.id === session.serverId) ??
-      (await window.winsshApi.servers.list()).find((item) => item.id === session.serverId)
+      (await serversClient.list()).find((item) => item.id === session.serverId)
 
     if (!server) {
       toast.error(t('workbench.toasts.serverConfigMissing'))

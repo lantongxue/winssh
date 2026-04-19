@@ -4,11 +4,36 @@
 
 这份文件用于给后续协作者和代码代理提供当前项目快照。
 
-本次梳理时间为 `2026-04-09`。内容只基于当前仓库代码、目录结构和关键入口文件阅读完成，没有执行 `test`、`typecheck`、`lint`、`build`、`dist` 等校验命令，因此这里描述的是“代码现状”，不是“已验证结果”。
+本次梳理时间为 `2026-04-10`。本次补充除了继续基于当前仓库代码、目录结构和关键入口文件阅读，还实际执行了 `npm run typecheck`、`npm run test`，并观察了 `npm run lint` 的现状；`lint` 当前仍有仓库级历史问题，`build`、`dist` 没有执行。因此这里描述的是“当前代码现状 + 已跑过的基础校验”，不是“完整交付验证结果”。
 
 ## 这次梳理的关键结论
 
 当前仓库最值得先知道的，不是“功能列表”，而是几条已经成型、并且会直接影响后续修改方式的主线。
+
+### 架构重构主线
+
+- `src/main/index.ts` 现在已经退化为薄入口，只负责 `app.whenReady().then(bootstrap)` 和 `window-all-closed` 收尾
+- 主进程新增 `src/main/bootstrap.ts`，负责依赖装配、窗口创建、生命周期绑定和 IPC 注册
+- 主进程新增 `src/main/application/`，当前已落地：
+  - `ServersApplicationService`
+  - `SessionsApplicationService`
+  - `SettingsApplicationService`
+- 主进程新增 `src/main/ipc/`，当前已拆出：
+  - `register-server-ipc.ts`
+  - `register-session-ipc.ts`
+  - `register-system-ipc.ts`
+- 主进程新增 `src/main/observability.ts`
+- 共享层新增 `src/shared/observability.ts`
+- renderer 新增 `src/renderer/src/features/*/api`，组件侧已经不再直接读取 `window.winsshApi`
+- renderer 新增 `src/renderer/src/features/shared/query-keys.ts`，开始集中维护 React Query key
+- `App.tsx` 已接入 `AppErrorBoundary`，`src/renderer/src/lib/logger.ts` 已承担 renderer 侧基础结构化日志
+- `eslint.config.mjs` 已新增约束，默认禁止 `src/renderer/src` 的组件直接访问 `window.winsshApi`
+
+当前需要明确的是，这条重构主线已经落地到了“主进程装配拆分、API gateway 收敛、基础可观测和护栏”这一层，但还没有完成全部 renderer command / view-model 化：
+
+- `WorkbenchProvider` 仍然承担较多交互编排
+- `useSessionEvents()` 仍然同时处理 store 更新、toast、problem 和 query 失效
+- `WorkbenchServerEditor`、`WorkbenchSettingsEditor`、`WorkbenchPrimarySidebar` 等大组件虽然已经切到 feature client，但仍未完全拆成纯展示 UI + 独立 command/hook 层
 
 ### 1. 凭据库仍然是正式子系统，但当前依旧是混合 secret 模型
 
@@ -82,7 +107,8 @@
 
 - `src/shared/types.ts`
 - `src/shared/validation.ts`
-- `src/main/index.ts`
+- `src/main/ipc/register-session-ipc.ts`
+- `src/main/session-manager.ts`
 - `src/renderer/src/components/workbench/workbench-context.tsx`
 - `src/renderer/src/store/sessions-store.ts`
 - 对应 tests
@@ -398,7 +424,7 @@
 ## 项目概览
 
 - 项目名：`winssh`
-- 版本：`0.1.0`
+- 版本：`1.0.0`
 - 形态：Electron 桌面应用 + `web/` 品牌站 / docs landing 子工程
 - 目标：提供面向桌面的 SSH、SFTP、端口转发和工作台式连接管理，并配套官网首页与文档入口页
 
@@ -455,7 +481,11 @@
 
 负责：
 
-- Electron 主进程入口
+- Electron 主进程薄入口
+- `bootstrap.ts` 应用启动、依赖装配、窗口生命周期
+- `application/` 用例编排层
+- `ipc/` IPC 注册层
+- `observability.ts` 主进程日志 / operation context / app error 辅助
 - SQLite 数据库
 - 系统安全存储
 - SSH / SFTP / 端口转发运行时
@@ -470,13 +500,24 @@
 - GPU / 窗口配置
 - 系统字体枚举
 
+当前需要特别注意：
+
+- 这次重构并没有把 `database.ts`、`session-manager.ts`、`local-terminal-manager.ts` 再拆成更细的基础设施目录，它们仍然是 `src/main/` 根下的重要运行时实现
+- `application/` 目前只先覆盖了 `servers / sessions / settings` 三个最复杂的编排点，不代表全仓已经完全按同一粒度拆分
+
 ### `src/preload/`
 
 负责：
 
 - `contextBridge`
 - 将主进程能力统一暴露为 `window.winsshApi`
+- 继续维护手写 typed bridge
 - 暴露基于 `webUtils.getPathForFile()` 的本地拖拽文件路径解析
+
+当前需要特别注意：
+
+- `window.winsshApi` 仍然存在，但它现在更偏向“renderer 基础设施层入口”
+- renderer 组件应通过 `src/renderer/src/features/*/api` 访问这些能力，而不是直接在组件里碰 `window.winsshApi`
 
 ### `src/shared/`
 
@@ -488,16 +529,56 @@
 - quick connect 解析
 - 本地终端 shell 平台归一化
 - 应用更新 / 应用版本信息类型
+- 可观测性共享类型
 - server brand / icon 定义
 - 主题定义与 schema
 - preload / renderer 共用 API 类型
+
+这次新增的共享主线包括：
+
+- `AppError`
+- `OperationContext`
+- `ObservableEvent<T>`
+- `DomainResult<T>`
+- 事件元数据字段：
+  - `correlationId`
+  - `source`
+  - `timestamp`
+  - 部分状态 / 错误事件上的 `code` / `recoverable`
+
+### `src/renderer/src/features/`
+
+负责：
+
+- 每个 feature 的 API gateway
+- query key 收敛
+- 作为组件访问 preload bridge 的唯一建议入口
+
+当前已能确认的目录至少包括：
+
+- `credentials/api`
+- `groups/api`
+- `local-terminals/api`
+- `port-forwards/api`
+- `servers/api`
+- `sessions/api`
+- `settings/api`
+- `sftp/api`
+- `system/api`
+- `tags/api`
+- `themes/api`
+- `updates/api`
+- `shared/api`
+- `shared/query-keys.ts`
 
 ### `src/renderer/src/`
 
 负责：
 
 - React 应用入口
+- `AppErrorBoundary`
 - Workbench UI
+- feature gateway 消费层
 - Zustand store
 - React Query 数据流
 - SSH 终端 / 本地终端 / SFTP / 端口转发界面
@@ -520,21 +601,47 @@
 
 ## 主进程现状
 
-`src/main/index.ts` 当前已接入：
+`src/main/index.ts` 当前只负责：
 
-- `DatabaseService`
-- `SecureStoreService`
-- `SessionManager`
-- `LocalTerminalManager`
-- `ThemeRegistry`
-- `SystemFontService`
-- `UpdateService`
-- 主进程本地化解析
-- 应用版本 / 发布通道解析
-- GPU 配置
-- 窗口 chrome 配置
+- `app.whenReady().then(bootstrap)`
+- `window-all-closed` 下的跨平台退出策略
 
-当前 IPC 分组包括：
+真正的主进程装配当前已经迁到 `src/main/bootstrap.ts`，其中负责：
+
+- 创建 `DatabaseService`
+- 创建 `SecureStoreService`
+- 创建 `SessionManager`
+- 创建 `LocalTerminalManager`
+- 创建 `ThemeRegistry`
+- 创建 `SystemFontService`
+- 创建 `UpdateService`
+- 创建主进程本地化和 app info
+- 创建：
+  - `ServersApplicationService`
+  - `SessionsApplicationService`
+  - `SettingsApplicationService`
+- 注册 IPC
+- 创建主窗口、同步窗口主题、绑定 before-quit / activate / did-finish-load 等生命周期
+
+当前 IPC 当前已经按 3 个注册器装配：
+
+- `register-server-ipc.ts`
+  - `credentials:*`
+  - `groups:*`
+  - `tags:*`
+  - `servers:*`
+- `register-session-ipc.ts`
+  - `sessions:*`
+  - `localTerminals:*`
+  - `sftp:*`
+  - `portForwards:*`
+- `register-system-ipc.ts`
+  - `themes:*`
+  - `settings:*`
+  - `updates:*`
+  - `system:*`
+
+因此从逻辑分组上看，当前 IPC 能力仍然包括：
 
 - `credentials:*`
 - `groups:*`
@@ -548,6 +655,36 @@
 - `settings:*`
 - `updates:*`
 - `system:*`
+
+### 可观测性现状
+
+- `src/main/observability.ts` 当前已提供：
+  - `createLogger()`
+  - `createOperationContext()`
+  - `toAppError()`
+- `src/shared/observability.ts` 当前已提供：
+  - `AppError`
+  - `OperationContext`
+  - `ObservableEvent<T>`
+  - `DomainResult<T>`
+  - `createObservableEvent()`
+  - `createRequestId()`
+- `SessionManager` 和 `LocalTerminalManager` 发出的事件当前已经开始带：
+  - `correlationId`
+  - `source`
+  - `timestamp`
+- 部分 session / local terminal 状态与错误事件还会附带：
+  - `code`
+  - `recoverable`
+- renderer 当前已有：
+  - `src/renderer/src/lib/logger.ts`
+  - `src/renderer/src/components/app-error-boundary.tsx`
+  - `App.tsx` 中的 `unhandledrejection` 日志捕获
+
+当前需要特别注意：
+
+- 这是“基础可观测层”，不是完整 telemetry 平台
+- 事件元数据已经开始进入共享类型，但还没有做到所有 domain 事件都完全统一 envelope
 
 当前比较关键的 IPC 包括：
 
@@ -786,7 +923,8 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 
 - `src/shared/types.ts`
 - `src/shared/validation.ts`
-- `src/main/index.ts`
+- `src/main/ipc/register-session-ipc.ts`
+- `src/main/session-manager.ts`
 - `src/renderer/src/components/workbench/workbench-context.tsx`
 - `src/renderer/src/store/sessions-store.ts`
 - 对应 tests
@@ -1419,9 +1557,20 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 
 ## 测试版图现状
 
-虽然本次没有执行测试，但从文件分布看，当前测试面已经覆盖这些方向：
+这次补充更新时已经实际执行：
+
+- `npm run typecheck`
+- `npm run test`
+
+并且两者都通过。
+
+另外，`npm run lint` 已经跑过现状观察，但当前仍能看到仓库级历史问题，所以这里不把 lint 通过作为本次快照结论。
+
+从测试文件分布和这次实际跑通的结果看，当前测试面已经覆盖这些方向：
 
 - `database`
+- `main/application/servers-application-service`
+- `main/application/settings-application-service`
 - `session-manager`
 - `session-manager.connect`
 - `local-terminal-manager`
@@ -1434,6 +1583,7 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - `sftp` 工具
 - `quick-connect`
 - `validation`
+- `shared observability`
 - `theme` helper
 - `use-terminal`
 - `terminal-surface`
@@ -1473,12 +1623,13 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 
 1. `src/shared/types.ts`
 2. `src/shared/validation.ts`
-3. `src/shared/api.ts`
-4. `src/main/index.ts` 或 `src/main/session-manager.ts`
+3. `src/shared/api.ts` / `src/shared/observability.ts`
+4. `src/main/bootstrap.ts` / `src/main/ipc/*` / `src/main/application/*` / 对应 runtime service
 5. `src/preload/index.ts`
-6. `src/renderer/src/*`
+6. `src/renderer/src/features/*`
+7. `src/renderer/src/components/*` / `store/*` / `hooks/*`
 
-如果只改主进程或只改渲染层，很容易出现接口失配。
+现在如果只改主进程或只改渲染层，仍然很容易出现接口失配；但同时也不能再按旧习惯只搜 `window.winsshApi` 来追数据流，因为 renderer 已经先经过 `features/*/api` 这一层。
 
 主题相关改动还会多牵涉：
 
@@ -1496,9 +1647,14 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - `src/shared/constants.ts`
 - `src/main/app-info.ts`
 - `src/main/update-service.ts`
-- `src/main/index.ts`
+- `src/main/bootstrap.ts`
+- `src/main/ipc/register-system-ipc.ts`
+- `src/main/application/settings-application-service.ts`
 - `src/preload/index.ts`
 - `src/renderer/src/App.tsx`
+- `src/renderer/src/features/updates/api/updates-client.ts`
+- `src/renderer/src/features/settings/api/settings-client.ts`
+- `src/renderer/src/features/shared/query-keys.ts`
 - `src/renderer/src/components/workbench/workbench-activity-bar.tsx`
 - `src/renderer/src/components/workbench/workbench-updates-editor.tsx`
 - `src/renderer/src/store/update-dialog-store.ts`
@@ -1511,10 +1667,15 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 私钥、凭据和连接流程相关改动还会多牵涉：
 
 - `src/main/database.ts`
-- `src/main/index.ts`
+- `src/main/bootstrap.ts`
+- `src/main/ipc/register-server-ipc.ts`
+- `src/main/ipc/register-session-ipc.ts`
+- `src/main/application/servers-application-service.ts`
 - `src/main/session-manager.ts`
 - `src/main/secure-store.ts`
 - `src/renderer/src/components/credential-vault.tsx`
+- `src/renderer/src/features/credentials/api/credentials-client.ts`
+- `src/renderer/src/features/servers/api/servers-client.ts`
 - `src/renderer/src/components/workbench/workbench-server-editor.tsx`
 - `src/renderer/src/components/workbench/workbench-quick-input.tsx`
 - `src/renderer/src/store/sessions-store.ts`
@@ -1540,17 +1701,19 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - `src/shared/types.ts`
 - `src/shared/api.ts`
 - `src/main/session-manager.ts`
-- `src/main/index.ts`
+- `src/main/ipc/register-session-ipc.ts`
 - `src/preload/index.ts`
+- `src/renderer/src/features/sessions/api/sessions-client.ts`
 - `src/renderer/src/components/session-resource-monitor.tsx`
 - `src/renderer/src/components/workbench/workbench-session-editor.tsx`
 
 SFTP、拖拽上传和递归删除相关改动还会多牵涉：
 
 - `src/shared/api.ts`
-- `src/main/index.ts`
+- `src/main/ipc/register-session-ipc.ts`
 - `src/main/session-manager.ts`
 - `src/preload/index.ts`
+- `src/renderer/src/features/sftp/api/sftp-client.ts`
 - `src/renderer/src/components/sftp-panel.tsx`
 - `src/renderer/src/components/workbench/workbench-session-editor.tsx`
 - `src/renderer/src/test/create-winssh-api.ts`
@@ -1561,8 +1724,10 @@ Jump Server、server brand、自定义图标相关改动还会多牵涉：
 - `src/shared/types.ts`
 - `src/shared/validation.ts`
 - `src/main/database.ts`
+- `src/main/ipc/register-server-ipc.ts`
+- `src/main/ipc/register-session-ipc.ts`
 - `src/main/session-manager.ts`
-- `src/main/index.ts`
+- `src/main/application/servers-application-service.ts`
 - `src/renderer/src/components/server-brand-icon.tsx`
 - `src/renderer/src/components/workbench/workbench-server-editor.tsx`
 - `src/renderer/src/components/workbench/workbench-editor-tabs.tsx`
@@ -1585,7 +1750,8 @@ Jump Server、server brand、自定义图标相关改动还会多牵涉：
 
 - `src/shared/types.ts`
 - `src/shared/validation.ts`
-- `src/main/index.ts`
+- `src/main/ipc/register-session-ipc.ts`
+- `src/main/session-manager.ts`
 - `src/renderer/src/components/workbench/workbench-context.tsx`
 - `src/renderer/src/store/sessions-store.ts`
 - 对应 tests
@@ -1596,6 +1762,14 @@ Jump Server、server brand、自定义图标相关改动还会多牵涉：
 
 - `package.json`
 - `src/main/index.ts`
+- `src/main/bootstrap.ts`
+- `src/main/observability.ts`
+- `src/main/ipc/register-server-ipc.ts`
+- `src/main/ipc/register-session-ipc.ts`
+- `src/main/ipc/register-system-ipc.ts`
+- `src/main/application/servers-application-service.ts`
+- `src/main/application/sessions-application-service.ts`
+- `src/main/application/settings-application-service.ts`
 - `src/main/session-manager.ts`
 - `src/main/local-terminal-manager.ts`
 - `src/main/app-info.ts`
@@ -1608,6 +1782,7 @@ Jump Server、server brand、自定义图标相关改动还会多牵涉：
 - `src/main/gpu-config.ts`
 - `src/preload/index.ts`
 - `src/shared/types.ts`
+- `src/shared/observability.ts`
 - `src/shared/validation.ts`
 - `src/shared/api.ts`
 - `src/shared/server-brands.ts`
@@ -1615,10 +1790,14 @@ Jump Server、server brand、自定义图标相关改动还会多牵涉：
 - `src/shared/local-terminal-shells.ts`
 - `src/shared/quick-connect.ts`
 - `src/renderer/src/App.tsx`
+- `src/renderer/src/components/app-error-boundary.tsx`
 - `src/renderer/src/components/server-brand-icon.tsx`
 - `src/renderer/src/components/session-resource-monitor.tsx`
 - `src/renderer/src/components/credential-vault.tsx`
 - `src/renderer/src/components/terminal-surface.tsx`
+- `src/renderer/src/lib/logger.ts`
+- `src/renderer/src/features/shared/api/winssh-client.ts`
+- `src/renderer/src/features/shared/query-keys.ts`
 - `src/renderer/src/lib/theme.ts`
 - `src/renderer/src/components/workbench/workbench-updates-editor.tsx`
 - `src/renderer/src/components/workbench/workbench-settings-editor.tsx`
@@ -1659,6 +1838,12 @@ Jump Server、server brand、自定义图标相关改动还会多牵涉：
 
 ## 当前协作注意事项
 
+- `src/main/index.ts` 现在已经是薄入口；如果要改主进程装配或 IPC，不要只盯着 `index.ts`，优先看 `bootstrap.ts`、`src/main/ipc/*`、`src/main/application/*`
+- renderer 组件默认不要直接访问 `window.winsshApi`，当前建议入口是 `src/renderer/src/features/*/api`
+- React Query key 现在开始集中到 `src/renderer/src/features/shared/query-keys.ts`，新增 query 时不要再散落硬编码 key
+- `src/shared/types.ts` 里的部分事件现在已经带 `correlationId / source / timestamp`，session / local terminal 的状态与错误事件还可能带 `code / recoverable`；改事件类型时不要把这些元数据悄悄删掉
+- `AppErrorBoundary` 和 renderer logger 已经接进主流程；如果调整 `App.tsx`、全局异常处理或事件桥接，记得一起看错误归集链路
+- 当前 renderer 已经去掉了组件直连 IPC，但 `WorkbenchProvider`、`useSessionEvents()` 和若干大型 workbench 组件仍然承担较多编排；继续重构时应在这个基础上继续拆，而不是回退到“组件里直接写 IPC + toast + invalidateQueries”
 - 不要再假设所有 secret 都只走系统安全存储，当前 secret 已分散在 keytar、`servers.private_key` 和 `credentials` 表
 - 私钥现在会保存内容本身，修改前先确认是否接受这一安全模型
 - `private_key_path` 目前仍承担旧数据兼容职责，不要直接删除兼容逻辑
@@ -1666,7 +1851,7 @@ Jump Server、server brand、自定义图标相关改动还会多牵涉：
 - 主进程已经在 `servers:getSecrets` 和 `resolveStoredPrivateKey()` 里读取凭据库 secret，但 `SessionManager` 还不是统一的 credential resolver
 - 当前服务器表单保存 / 连接流程可能把凭据库里的 private key 再次写入 `servers.private_key`，如果要做“纯引用模型”，这条链路必须一起改
 - `servers:list()` 的 `hasPassword` / `hasPassphrase` 只反映 keytar 状态，不反映凭据库是否有 secret
-- `ConnectionRequest.sessionId` 现在已经贯穿 shared validation、主进程和 renderer；如果要动 provisional session identity，必须一起改 `types / validation / main / workbench-context / sessions-store / tests`
+- `ConnectionRequest.sessionId` 现在已经贯穿 shared validation、主进程和 renderer；如果要动 provisional session identity，至少要一起改 `types / validation / register-session-ipc / session-manager / workbench-context / sessions-store / tests`
 - 连接结果当前依赖结构化失败码，以及 recoverable failure 上的 `serverId + secretKind`，不要随意改回纯异常流或丢掉这两个字段
 - jump server 当前只支持单跳，嵌套 jump server chain 是显式不支持的
 - 连接 phase 和资源监控现在都是真实主进程驱动的数据流，不要只改 terminal overlay 文案而忽略真实事件或采样链路

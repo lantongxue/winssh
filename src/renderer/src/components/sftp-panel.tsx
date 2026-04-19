@@ -6,6 +6,9 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { getParentRemotePath } from '@shared/sftp'
 import type { RemoteEntry } from '@shared/types'
+import { sessionsClient } from '@/features/sessions/api/sessions-client'
+import { sftpClient } from '@/features/sftp/api/sftp-client'
+import { systemClient } from '@/features/system/api/system-client'
 import { formatFileSize } from '@/i18n/format'
 import { actionIcons } from '@/lib/action-icons'
 import { writeTerminalPathDragData } from '@/lib/terminal-path-dnd'
@@ -74,7 +77,7 @@ function resolveDroppedFilePath(file: File | null | undefined) {
   }
 
   const localPath =
-    window.winsshApi.system.getPathForFile(file) ??
+    systemClient.getPathForFile(file) ??
     (file as FileWithPath | null | undefined)?.path ??
     null
 
@@ -144,7 +147,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
 
   const listingQuery = useQuery({
     queryKey: ['sftp', session?.sessionId, session?.currentPath],
-    queryFn: () => window.winsshApi.sftp.list(session!.sessionId, session!.currentPath),
+    queryFn: () => sftpClient.list(session!.sessionId, session!.currentPath),
     enabled: Boolean(session && session.status === 'ready')
   })
   const currentPath = listingQuery.data?.path ?? session?.currentPath ?? '/'
@@ -301,7 +304,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
       return
     }
 
-    void runUpload(() => window.winsshApi.sftp.uploadPaths(session.sessionId, currentPath, localPaths))
+    void runUpload(() => sftpClient.uploadPaths(session.sessionId, currentPath, localPaths))
   }
 
   const copyPath = async (path: string) => {
@@ -315,7 +318,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
 
   const sendPathToTerminal = async (path: string) => {
     try {
-      await window.winsshApi.sessions.write(session.sessionId, path)
+      await sessionsClient.write(session.sessionId, path)
       toast.success(t('workbench.sftp.toasts.pathSentToTerminal'))
     } catch {
       toast.error(t('workbench.sftp.toasts.pathSendToTerminalFailed'))
@@ -433,7 +436,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
       await new Promise((resolve) => window.setTimeout(resolve, REMOVE_EXIT_ANIMATION_MS))
 
       for (const targetPath of targetPaths) {
-        await window.winsshApi.sftp.remove(session.sessionId, targetPath)
+        await sftpClient.remove(session.sessionId, targetPath)
       }
 
       await refresh()
@@ -556,7 +559,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
               size="icon-sm"
               label={t('common.actions.upload')}
               onClick={() =>
-                void runUpload(() => window.winsshApi.sftp.uploadFiles(session.sessionId, currentPath))
+                void runUpload(() => sftpClient.uploadFiles(session.sessionId, currentPath))
               }
             >
               <UploadIcon className="size-4" />
@@ -721,7 +724,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                             {singleContextTarget && singleContextTarget.kind !== 'directory' ? (
                               <ContextMenuItem
                                 onClick={() =>
-                                  void window.winsshApi.sftp.downloadFile(
+                                  void sftpClient.downloadFile(
                                     session.sessionId,
                                     singleContextTarget.path
                                   )
@@ -855,7 +858,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
             </Button>
             <Button
               onClick={async () => {
-                await window.winsshApi.sftp.createFile(
+                await sftpClient.createFile(
                   session.sessionId,
                   newFileTargetPath ?? currentPath,
                   newFileName
@@ -899,7 +902,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
             </Button>
             <Button
               onClick={async () => {
-                await window.winsshApi.sftp.mkdir(
+                await sftpClient.mkdir(
                   session.sessionId,
                   newFolderTargetPath ?? currentPath,
                   newFolderName
@@ -938,7 +941,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                   return
                 }
 
-                await window.winsshApi.sftp.rename(
+                await sftpClient.rename(
                   session.sessionId,
                   renameTarget.path,
                   renameValue

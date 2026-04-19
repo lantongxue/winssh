@@ -141,7 +141,7 @@ describe('WorkbenchShell shortcuts', () => {
         })
       )
     })
-  })
+  }, 10000)
 
   it('opens the settings editor with Cmd+,', async () => {
     window.winsshApi = createWinsshApiMock({

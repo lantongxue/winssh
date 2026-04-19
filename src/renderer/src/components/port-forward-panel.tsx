@@ -5,6 +5,8 @@ import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import type { PortForwardRule } from '@shared/types'
 import { portForwardSchema, type PortForwardFormValues } from '@shared/validation'
+import { portForwardsClient } from '@/features/port-forwards/api/port-forwards-client'
+import { queryKeys } from '@/features/shared/query-keys'
 import { actionIcons } from '@/lib/action-icons'
 import type { SessionTab } from '@/store/sessions-store'
 import { cn } from '@/lib/utils'
@@ -86,8 +88,8 @@ export function PortForwardPanel({ session, className }: PortForwardPanelProps) 
   })
 
   const rulesQuery = useQuery({
-    queryKey: ['port-forwards', session?.sessionId],
-    queryFn: () => window.winsshApi.portForwards.list(session!.sessionId),
+    queryKey: queryKeys.portForwards(session?.sessionId ?? ''),
+    queryFn: () => portForwardsClient.list(session!.sessionId),
     enabled: Boolean(session)
   })
 
@@ -100,7 +102,7 @@ export function PortForwardPanel({ session, className }: PortForwardPanelProps) 
       return
     }
 
-    await queryClient.invalidateQueries({ queryKey: ['port-forwards', session.sessionId] })
+    await queryClient.invalidateQueries({ queryKey: queryKeys.portForwards(session.sessionId) })
   }
 
   if (!session) {
@@ -200,7 +202,7 @@ export function PortForwardPanel({ session, className }: PortForwardPanelProps) 
                         size="sm"
                         disabled={!canManage}
                         onClick={async () => {
-                          await window.winsshApi.portForwards.stop(session.sessionId, rule.id)
+                          await portForwardsClient.stop(session.sessionId, rule.id)
                           await refresh()
                         }}
                       >
@@ -213,7 +215,7 @@ export function PortForwardPanel({ session, className }: PortForwardPanelProps) 
                         size="sm"
                         disabled={!canManage}
                         onClick={async () => {
-                          await window.winsshApi.portForwards.start(session.sessionId, rule.id)
+                          await portForwardsClient.start(session.sessionId, rule.id)
                           await refresh()
                         }}
                       >
@@ -226,7 +228,7 @@ export function PortForwardPanel({ session, className }: PortForwardPanelProps) 
                       size="sm"
                       disabled={!canManage}
                       onClick={async () => {
-                        await window.winsshApi.portForwards.remove(session.sessionId, rule.id)
+                        await portForwardsClient.remove(session.sessionId, rule.id)
                         await refresh()
                       }}
                     >
@@ -256,7 +258,7 @@ export function PortForwardPanel({ session, className }: PortForwardPanelProps) 
                   return
                 }
 
-                await window.winsshApi.portForwards.create(session.sessionId, values)
+                await portForwardsClient.create(session.sessionId, values)
                 setCreateOpen(false)
                 form.reset(DEFAULT_VALUES)
                 await refresh()

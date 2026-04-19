@@ -2,6 +2,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowUpRight, Clock3, Heart } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { queryKeys } from '@/features/shared/query-keys'
+import { serversClient } from '@/features/servers/api/servers-client'
 import { formatDateTime } from '@/i18n/format'
 import { actionIcons } from '@/lib/action-icons'
 import { cn } from '@/lib/utils'
@@ -65,20 +67,20 @@ export function WorkbenchExplorerHome() {
   const ClearIcon = actionIcons.clear
 
   const serversQuery = useQuery({
-    queryKey: ['servers'],
-    queryFn: () => window.winsshApi.servers.list()
+    queryKey: queryKeys.servers,
+    queryFn: () => serversClient.list()
   })
   const recentQuery = useQuery({
-    queryKey: ['recent-sessions'],
-    queryFn: () => window.winsshApi.servers.listRecent()
+    queryKey: queryKeys.recentSessions,
+    queryFn: () => serversClient.listRecent()
   })
 
   const favoriteServers = (serversQuery.data ?? []).filter((server) => server.favorite).slice(0, 6)
   const recentServers = (recentQuery.data ?? []).slice(0, 6)
 
   const handleClearRecent = async () => {
-    await window.winsshApi.servers.clearRecent()
-    await queryClient.invalidateQueries({ queryKey: ['recent-sessions'] })
+    await serversClient.clearRecent()
+    await queryClient.invalidateQueries({ queryKey: queryKeys.recentSessions })
     toast.success(t('workbench.explorerHome.toasts.recentCleared'))
   }
 

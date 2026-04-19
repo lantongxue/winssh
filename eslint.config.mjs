@@ -33,6 +33,21 @@ export default defineConfig(
     }
   },
   {
+    files: ['src/renderer/src/**/*.{ts,tsx}'],
+    ignores: ['src/renderer/src/features/shared/api/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'window',
+          property: 'winsshApi',
+          message:
+            'Use feature API clients from src/renderer/src/features/*/api instead of window.winsshApi directly.'
+        }
+      ]
+    }
+  },
+  {
     files: ['src/renderer/src/components/ui/**/*.{ts,tsx}'],
     rules: {
       'react-refresh/only-export-components': 'off',

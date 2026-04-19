@@ -274,7 +274,7 @@ describe('useTerminal', () => {
     pluginDisplayName: 'Tests',
     pluginId: 'tests',
     source: 'builtin',
-    version: '0.1.0'
+    version: '1.0.0'
   })
 
   const pixelTheme = createThemeDefinition({
@@ -287,7 +287,7 @@ describe('useTerminal', () => {
     terminal: {
       background: '#0b1811'
     },
-    version: '0.1.0'
+    version: '1.0.0'
   })
 
   beforeEach(() => {

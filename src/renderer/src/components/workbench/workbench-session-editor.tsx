@@ -3,6 +3,9 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
+import { queryKeys } from '@/features/shared/query-keys'
+import { settingsClient } from '@/features/settings/api/settings-client'
+import { themesClient } from '@/features/themes/api/themes-client'
 import { actionIcons } from '@/lib/action-icons'
 import { usePrefersDark } from '@/hooks/use-prefers-dark'
 import { resolveThemeDefinition } from '@/lib/theme'
@@ -36,13 +39,13 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
   )
   const setAuxView = useSessionsStore((state) => state.setAuxView)
   const settingsQuery = useQuery({
-    queryKey: ['settings'],
-    queryFn: () => window.winsshApi.settings.get(),
+    queryKey: queryKeys.settings,
+    queryFn: () => settingsClient.get(),
     initialData: DEFAULT_APP_SETTINGS
   })
   const themesQuery = useQuery({
-    queryKey: ['themes'],
-    queryFn: () => window.winsshApi.themes.list()
+    queryKey: queryKeys.themes,
+    queryFn: () => themesClient.list()
   })
   const RemoteFilesIcon = actionIcons.openRemoteFiles
   const PortForwardIcon = actionIcons.openPortForwards

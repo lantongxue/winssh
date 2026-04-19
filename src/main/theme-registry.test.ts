@@ -20,7 +20,7 @@ function writeDefaultThemes(root: string) {
   writeJson(join(root, 'builtin', 'defaults', 'package.json'), {
     name: 'default-themes',
     publisher: 'winssh',
-    version: '0.1.0',
+    version: '1.0.0',
     contributes: {
       themes: [
         {

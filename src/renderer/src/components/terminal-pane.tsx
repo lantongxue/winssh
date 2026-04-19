@@ -3,6 +3,7 @@ import { CheckCircle2, LoaderCircle, RotateCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { ThemeDefinition } from '@shared/themes'
 import { SESSION_CONNECTION_PHASES, type AppSettings } from '@shared/types'
+import { sessionsClient } from '@/features/sessions/api/sessions-client'
 import { actionIcons } from '@/lib/action-icons'
 import type { SessionTab } from '@/store/sessions-store'
 import { TerminalSurface } from '@/components/terminal-surface'
@@ -144,14 +145,14 @@ function TerminalPaneImpl({
         ? null
         : {
             onData: (callback: (data: string) => void) =>
-              window.winsshApi.sessions.onData((event) => {
+              sessionsClient.onData((event) => {
                 if (event.sessionId === session.sessionId) {
                   callback(event.data)
                 }
               }),
             resize: (columns: number, rows: number) =>
-              window.winsshApi.sessions.resize(session.sessionId, columns, rows),
-            write: (data: string) => window.winsshApi.sessions.write(session.sessionId, data)
+              sessionsClient.resize(session.sessionId, columns, rows),
+            write: (data: string) => sessionsClient.write(session.sessionId, data)
           },
     [session.provisional, session.sessionId]
   )

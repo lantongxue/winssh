@@ -17,7 +17,7 @@ function createService(overrides: Partial<ConstructorParameters<typeof UpdateSer
   const updater = new FakeUpdater()
   const service = new UpdateService({
     autoCheckEnabled: true,
-    currentVersion: '0.1.0',
+    currentVersion: '1.0.0',
     feedUrl: 'https://updates.example.com/winssh',
     isPackaged: true,
     platform: 'win32',
