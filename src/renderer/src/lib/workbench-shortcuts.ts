@@ -1,3 +1,4 @@
+import type { SystemMenuAction } from '@shared/types'
 import { isMacPlatform } from '@/lib/platform'
 
 export type WorkbenchShortcutId =
@@ -10,15 +11,17 @@ export type WorkbenchShortcutId =
   | 'togglePanel'
   | 'toggleSidebar'
 
-export type WorkbenchShortcutAction =
+export type WorkbenchShortcutAction = Extract<
+  SystemMenuAction,
   | 'closeActiveDocument'
   | 'openCommandPalette'
   | 'openNewConnection'
-  | 'openSettings'
   | 'openQuickOpen'
+  | 'openSettings'
   | 'saveActiveDocument'
   | 'togglePanel'
   | 'toggleSidebar'
+>
 
 type KeyboardShortcutEvent = Pick<KeyboardEvent, 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>
 

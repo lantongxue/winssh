@@ -132,7 +132,14 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
     windowTitleBarStyle: 'custom'
   } as const
   const systemOverrides = overrides.system
+  const menuOverrides = systemOverrides?.menu
   const windowOverrides = systemOverrides?.window
+  const defaultMenuApi: WinsshApi['system']['menu'] = {
+    onAction: () => noopUnsubscribe
+  }
+  const resolvedMenuApi: WinsshApi['system']['menu'] = {
+    onAction: menuOverrides?.onAction ?? defaultMenuApi.onAction
+  }
   const defaultWindowApi: WinsshApi['system']['window'] = {
     close: async () => undefined,
     isMaximized: async () => false,
@@ -172,6 +179,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
     pickPrivateKey: systemOverrides?.pickPrivateKey ?? (async () => null),
     pickServerIcon: systemOverrides?.pickServerIcon ?? (async () => null),
     relaunch: systemOverrides?.relaunch ?? (async () => undefined),
+    menu: resolvedMenuApi,
     window: resolvedWindowApi
   }
 

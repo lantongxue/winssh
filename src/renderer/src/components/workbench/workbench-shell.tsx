@@ -1,8 +1,9 @@
-import { useEffect, useLayoutEffect } from 'react'
+import { useEffect, useEffectEvent, useLayoutEffect } from 'react'
 import { Files } from 'lucide-react'
 import { usePanelRef } from 'react-resizable-panels'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import type { SystemMenuAction } from '@shared/types'
 import { actionIcons } from '@/lib/action-icons'
 import { isMacPlatform } from '@/lib/platform'
 import {
@@ -89,8 +90,14 @@ function WorkbenchTerminalWelcome() {
 }
 
 function WorkbenchShellContent() {
-  const { closeLocalTerminal, disconnectSession, openServerEditor, openSettingsEditor } =
-    useWorkbenchContext()
+  const {
+    closeLocalTerminal,
+    disconnectSession,
+    openLocalTerminal,
+    openServerEditor,
+    openSettingsEditor,
+    openUpdatesEditor
+  } = useWorkbenchContext()
   const location = useLocation()
   const navigate = useNavigate()
   const activeDocumentId = useWorkbenchStore((state) => state.activeDocumentId)
@@ -111,6 +118,78 @@ function WorkbenchShellContent() {
   const bottomPanelRef = usePanelRef()
 
   const activeDocument = openDocuments.find((document) => document.id === activeDocumentId) ?? null
+
+  const handleWorkbenchAction = useEffectEvent(async (action: SystemMenuAction) => {
+    if (action === 'saveActiveDocument') {
+      if (activeDocument?.kind === 'server-editor') {
+        submitServerEditorForm(activeDocument.id)
+      }
+      return
+    }
+
+    if (action === 'closeActiveDocument') {
+      if (!activeDocument) {
+        return
+      }
+
+      if (activeDocument.kind === 'session-editor') {
+        await disconnectSession(activeDocument.sessionId)
+        return
+      }
+
+      if (activeDocument.kind === 'local-terminal-editor') {
+        await closeLocalTerminal(activeDocument.terminalId)
+        return
+      }
+
+      closeDocument(activeDocument.id)
+      return
+    }
+
+    if (action === 'toggleSidebar') {
+      toggleSidebar()
+      return
+    }
+
+    if (action === 'togglePanel') {
+      togglePanel()
+      return
+    }
+
+    if (action === 'openCommandPalette') {
+      setCommandPaletteOpen(true)
+      setQuickOpenOpen(false)
+      return
+    }
+
+    if (action === 'openQuickOpen') {
+      setQuickOpenOpen(true)
+      setCommandPaletteOpen(false)
+      return
+    }
+
+    setCommandPaletteOpen(false)
+    setQuickOpenOpen(false)
+
+    if (action === 'openNewConnection') {
+      openServerEditor()
+      return
+    }
+
+    if (action === 'openSettings') {
+      openSettingsEditor()
+      return
+    }
+
+    if (action === 'openUpdates') {
+      openUpdatesEditor()
+      return
+    }
+
+    if (action === 'openLocalTerminal') {
+      await openLocalTerminal()
+    }
+  })
 
   useEffect(() => {
     const currentState = useWorkbenchStore.getState()
@@ -188,81 +267,18 @@ function WorkbenchShellContent() {
 
       event.preventDefault()
 
-      if (action === 'saveActiveDocument') {
-        if (activeDocument?.kind === 'server-editor') {
-          submitServerEditorForm(activeDocument.id)
-        }
-        return
-      }
-
-      if (action === 'closeActiveDocument') {
-        if (!activeDocument) {
-          return
-        }
-
-        if (activeDocument.kind === 'session-editor') {
-          void disconnectSession(activeDocument.sessionId)
-          return
-        }
-
-        if (activeDocument.kind === 'local-terminal-editor') {
-          void closeLocalTerminal(activeDocument.terminalId)
-          return
-        }
-
-        closeDocument(activeDocument.id)
-        return
-      }
-
-      if (action === 'toggleSidebar') {
-        toggleSidebar()
-        return
-      }
-
-      if (action === 'togglePanel') {
-        togglePanel()
-        return
-      }
-
-      if (action === 'openCommandPalette') {
-        setCommandPaletteOpen(true)
-        setQuickOpenOpen(false)
-        return
-      }
-
-      if (action === 'openNewConnection') {
-        setCommandPaletteOpen(false)
-        setQuickOpenOpen(false)
-        openServerEditor()
-        return
-      }
-
-      if (action === 'openSettings') {
-        setCommandPaletteOpen(false)
-        setQuickOpenOpen(false)
-        openSettingsEditor()
-        return
-      }
-
-      setQuickOpenOpen(true)
-      setCommandPaletteOpen(false)
+      void handleWorkbenchAction(action)
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [
-    activeDocument,
-    closeLocalTerminal,
-    closeDocument,
-    disconnectSession,
-    isMac,
-    openServerEditor,
-    openSettingsEditor,
-    setCommandPaletteOpen,
-    setQuickOpenOpen,
-    togglePanel,
-    toggleSidebar
-  ])
+  }, [isMac])
+
+  useEffect(() => {
+    return window.winsshApi.system.menu.onAction((action) => {
+      void handleWorkbenchAction(action)
+    })
+  }, [])
 
   useEffect(() => {
     const targetPath =

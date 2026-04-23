@@ -12,8 +12,8 @@ export class SettingsApplicationService {
     private readonly themeRegistry: ThemeRegistry,
     private readonly updateService: UpdateService,
     private readonly normalizeSettingsForPlatform: (settings: AppSettings) => AppSettings,
-    private readonly syncMainWindowTheme: (
-      settings: Pick<AppSettings, 'theme' | 'windowTitleBarStyle'>
+    private readonly syncApplicationShell: (
+      settings: Pick<AppSettings, 'language' | 'theme' | 'windowTitleBarStyle'>
     ) => void
   ) {}
 
@@ -35,9 +35,8 @@ export class SettingsApplicationService {
     )
 
     this.updateService.setAutoCheckEnabled(normalizedSettings.autoUpdateCheckEnabled)
-    this.syncMainWindowTheme(normalizedSettings)
+    this.syncApplicationShell(normalizedSettings)
 
     return normalizedSettings
   }
 }
-

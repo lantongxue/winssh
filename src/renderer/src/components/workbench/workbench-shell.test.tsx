@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import type { SystemMenuAction } from '@shared/types'
 import i18n from '@/i18n'
 import { WorkbenchShell } from '@/components/workbench/workbench-shell'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -158,6 +159,38 @@ describe('WorkbenchShell shortcuts', () => {
       const state = useWorkbenchStore.getState()
       expect(state.activeActivityId).toBe('settings')
       expect(state.activeDocumentId).toBe('settings-editor')
+    })
+  })
+
+  it('opens the updates editor from a native menu action', async () => {
+    let menuActionHandler: ((action: SystemMenuAction) => void) | null = null
+
+    window.winsshApi = createWinsshApiMock({
+      servers: {
+        list: vi.fn().mockResolvedValue([])
+      },
+      system: {
+        menu: {
+          onAction: (callback) => {
+            menuActionHandler = callback
+            return () => {
+              menuActionHandler = null
+            }
+          }
+        }
+      }
+    })
+
+    renderWorkbenchShell()
+
+    act(() => {
+      menuActionHandler?.('openUpdates')
+    })
+
+    await waitFor(() => {
+      const state = useWorkbenchStore.getState()
+      expect(state.activeActivityId).toBe('settings')
+      expect(state.activeDocumentId).toBe('updates-editor')
     })
   })
 

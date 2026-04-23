@@ -379,6 +379,18 @@ export interface RuntimeCapabilities {
   credentialStorage: boolean
 }
 
+export type SystemMenuAction =
+  | 'closeActiveDocument'
+  | 'openCommandPalette'
+  | 'openLocalTerminal'
+  | 'openNewConnection'
+  | 'openQuickOpen'
+  | 'openSettings'
+  | 'openUpdates'
+  | 'saveActiveDocument'
+  | 'togglePanel'
+  | 'toggleSidebar'
+
 export interface WindowState {
   isMaximized: boolean
 }

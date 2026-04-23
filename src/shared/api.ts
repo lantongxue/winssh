@@ -28,6 +28,7 @@ import type {
   SessionResourceSnapshot,
   SessionSummary,
   SftpListResult,
+  SystemMenuAction,
   Tag,
   TagInput,
   TransferProgressEvent,
@@ -136,6 +137,9 @@ export interface WinsshApi {
     removeKnownHost: (host: string, port: number) => Promise<void>
     getCapabilities: () => Promise<RuntimeCapabilities>
     relaunch: () => Promise<void>
+    menu: {
+      onAction: (callback: (action: SystemMenuAction) => void) => Unsubscribe
+    }
     window: {
       minimize: () => Promise<void>
       toggleMaximize: () => Promise<void>

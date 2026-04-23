@@ -19,6 +19,8 @@ describe('main localization', () => {
     expect(en('dialogs.pickServerIcon.title')).toBe('Choose Server Icon')
     expect(zh('dialogs.importThemeArchive.title')).toBe('导入主题包')
     expect(en('dialogs.importThemeArchive.filters.zip')).toBe('ZIP Archives')
+    expect(zh('menu.file.newConnection')).toBe('新建连接')
+    expect(en('menu.view.commandPalette')).toBe('Command Palette')
     expect(
       zh('dialogs.hostFirstSeen.detail', {
         fingerprint: 'SHA256:demo',

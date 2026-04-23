@@ -12,6 +12,7 @@ import { APP_ID, APP_NAME } from '@shared/constants'
 import { normalizeLocalTerminalShell } from '@shared/local-terminal-shells'
 import type { AppSettings } from '@shared/types'
 import { createAppInfo } from './app-info'
+import { syncApplicationMenu } from './app-menu'
 import { DatabaseService } from './database'
 import { LocalTerminalManager } from './local-terminal-manager'
 import { createMainTranslator, resolveMainLanguage } from './localization'
@@ -181,6 +182,15 @@ export async function bootstrap(): Promise<void> {
       if (mainWindow) {
         syncWindowTheme(mainWindow, settings, themeRegistry)
       }
+
+      syncApplicationMenu({
+        appName: APP_NAME,
+        getMainWindow: () => mainWindow,
+        isDevelopment: is.dev,
+        platform: process.platform,
+        translate,
+        updateService
+      })
     }
   )
 
@@ -205,6 +215,15 @@ export async function bootstrap(): Promise<void> {
     settingsService,
     systemFontService,
     themeRegistry,
+    translate,
+    updateService
+  })
+
+  syncApplicationMenu({
+    appName: APP_NAME,
+    getMainWindow: () => mainWindow,
+    isDevelopment: is.dev,
+    platform: process.platform,
     translate,
     updateService
   })

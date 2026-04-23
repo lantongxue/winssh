@@ -39,6 +39,43 @@ export type MainTranslationKey =
   | 'errors.themeBuiltinConflict'
   | 'errors.themePluginDeleteBuiltin'
   | 'errors.themePluginNotFound'
+  | 'menu.app.about'
+  | 'menu.app.checkForUpdates'
+  | 'menu.app.hide'
+  | 'menu.app.hideOthers'
+  | 'menu.app.quit'
+  | 'menu.app.services'
+  | 'menu.app.settings'
+  | 'menu.app.showAll'
+  | 'menu.edit.copy'
+  | 'menu.edit.cut'
+  | 'menu.edit.paste'
+  | 'menu.edit.redo'
+  | 'menu.edit.selectAll'
+  | 'menu.edit.title'
+  | 'menu.edit.undo'
+  | 'menu.file.closeTab'
+  | 'menu.file.newConnection'
+  | 'menu.file.openLocalTerminal'
+  | 'menu.file.quickConnect'
+  | 'menu.file.save'
+  | 'menu.file.title'
+  | 'menu.help.title'
+  | 'menu.view.actualSize'
+  | 'menu.view.commandPalette'
+  | 'menu.view.forceReload'
+  | 'menu.view.reload'
+  | 'menu.view.title'
+  | 'menu.view.toggleDeveloperTools'
+  | 'menu.view.toggleFullScreen'
+  | 'menu.view.togglePanel'
+  | 'menu.view.toggleSidebar'
+  | 'menu.view.zoomIn'
+  | 'menu.view.zoomOut'
+  | 'menu.window.bringAllToFront'
+  | 'menu.window.minimize'
+  | 'menu.window.title'
+  | 'menu.window.zoom'
   | 'session.connecting'
   | 'session.connected'
   | 'session.closed'
@@ -122,6 +159,57 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
       themePluginDeleteBuiltin: 'Built-in themes cannot be deleted.',
       themePluginNotFound: 'The selected theme pack could not be found.'
     },
+    menu: {
+      app: {
+        about: 'About {{appName}}',
+        checkForUpdates: 'Check for Updates...',
+        hide: 'Hide {{appName}}',
+        hideOthers: 'Hide Others',
+        quit: 'Quit {{appName}}',
+        services: 'Services',
+        settings: 'Settings...',
+        showAll: 'Show All'
+      },
+      edit: {
+        copy: 'Copy',
+        cut: 'Cut',
+        paste: 'Paste',
+        redo: 'Redo',
+        selectAll: 'Select All',
+        title: 'Edit',
+        undo: 'Undo'
+      },
+      file: {
+        closeTab: 'Close Tab',
+        newConnection: 'New Connection',
+        openLocalTerminal: 'Open Local Terminal',
+        quickConnect: 'Quick Connect',
+        save: 'Save',
+        title: 'File'
+      },
+      help: {
+        title: 'Help'
+      },
+      view: {
+        actualSize: 'Actual Size',
+        commandPalette: 'Command Palette',
+        forceReload: 'Force Reload',
+        reload: 'Reload',
+        title: 'View',
+        toggleDeveloperTools: 'Toggle Developer Tools',
+        toggleFullScreen: 'Toggle Full Screen',
+        togglePanel: 'Toggle Panel',
+        toggleSidebar: 'Toggle Sidebar',
+        zoomIn: 'Zoom In',
+        zoomOut: 'Zoom Out'
+      },
+      window: {
+        bringAllToFront: 'Bring All to Front',
+        minimize: 'Minimize',
+        title: 'Window',
+        zoom: 'Zoom'
+      }
+    },
     session: {
       connecting: 'Establishing connection',
       connected: 'Connection established',
@@ -194,6 +282,57 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
       themeBuiltinConflict: '导入的主题包与内置主题 "{{value}}" 冲突，无法安装',
       themePluginDeleteBuiltin: '内置主题不能删除',
       themePluginNotFound: '找不到所选主题包'
+    },
+    menu: {
+      app: {
+        about: '关于 {{appName}}',
+        checkForUpdates: '检查更新...',
+        hide: '隐藏 {{appName}}',
+        hideOthers: '隐藏其他',
+        quit: '退出 {{appName}}',
+        services: '服务',
+        settings: '设置...',
+        showAll: '全部显示'
+      },
+      edit: {
+        copy: '复制',
+        cut: '剪切',
+        paste: '粘贴',
+        redo: '重做',
+        selectAll: '全选',
+        title: '编辑',
+        undo: '撤销'
+      },
+      file: {
+        closeTab: '关闭标签',
+        newConnection: '新建连接',
+        openLocalTerminal: '打开本地终端',
+        quickConnect: '快速连接',
+        save: '保存',
+        title: '文件'
+      },
+      help: {
+        title: '帮助'
+      },
+      view: {
+        actualSize: '实际大小',
+        commandPalette: '命令面板',
+        forceReload: '强制重新载入',
+        reload: '重新载入',
+        title: '显示',
+        toggleDeveloperTools: '切换开发者工具',
+        toggleFullScreen: '切换全屏',
+        togglePanel: '切换底部面板',
+        toggleSidebar: '切换侧栏',
+        zoomIn: '放大',
+        zoomOut: '缩小'
+      },
+      window: {
+        bringAllToFront: '前置全部窗口',
+        minimize: '最小化',
+        title: '窗口',
+        zoom: '缩放'
+      }
     },
     session: {
       connecting: '正在建立连接',

@@ -119,6 +119,9 @@ const api: WinsshApi = {
     removeKnownHost: (host, port) => ipcRenderer.invoke('system:removeKnownHost', host, port),
     getCapabilities: () => ipcRenderer.invoke('system:getCapabilities'),
     relaunch: () => ipcRenderer.invoke('system:relaunch'),
+    menu: {
+      onAction: (callback) => subscribe('system:menuAction', callback)
+    },
     window: {
       minimize: () => ipcRenderer.invoke('system:window:minimize'),
       toggleMaximize: () => ipcRenderer.invoke('system:window:toggleMaximize'),
