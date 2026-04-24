@@ -15,4 +15,3 @@ export const queryKeys = {
   portForwards: (sessionId: string) => ['port-forwards', sessionId] as const,
   serverSecrets: (serverId: string) => ['server-secrets', serverId] as const
 }
-
