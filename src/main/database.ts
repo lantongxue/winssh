@@ -183,13 +183,24 @@ function mapKnownHost(row: KnownHostRow): KnownHost {
 
 export class DatabaseService {
   private readonly db: Database.Database
+  private readonly databasePath: string
 
   constructor(databasePath: string) {
     mkdirSync(dirname(databasePath), { recursive: true })
+    this.databasePath = databasePath
     this.db = new Database(databasePath)
     this.db.pragma('journal_mode = WAL')
     this.db.pragma('foreign_keys = ON')
     this.initialize()
+  }
+
+  getDatabasePath(): string {
+    return this.databasePath
+  }
+
+  async exportDatabase(targetPath: string): Promise<void> {
+    mkdirSync(dirname(targetPath), { recursive: true })
+    await this.db.backup(targetPath)
   }
 
   private initialize(): void {
@@ -450,9 +461,7 @@ export class DatabaseService {
     const existing = this.getServerById(input.id)
     const existingAssets = this.db
       .prepare('SELECT custom_icon_mime_type, custom_icon FROM servers WHERE id = ?')
-      .get(input.id) as
-      | Pick<ServerRow, 'custom_icon_mime_type' | 'custom_icon'>
-      | undefined
+      .get(input.id) as Pick<ServerRow, 'custom_icon_mime_type' | 'custom_icon'> | undefined
     const customIconMimeType =
       input.customIconMimeType === undefined
         ? (existingAssets?.custom_icon_mime_type ?? null)
@@ -553,11 +562,9 @@ export class DatabaseService {
   }
 
   updateServerBrand(id: string, brandId: ServerBrandId): Server {
-    this.db.prepare('UPDATE servers SET brand_id = ?, updated_at = ? WHERE id = ?').run(
-      brandId,
-      nowIso(),
-      id
-    )
+    this.db
+      .prepare('UPDATE servers SET brand_id = ?, updated_at = ? WHERE id = ?')
+      .run(brandId, nowIso(), id)
 
     return this.getServerById(id) as Server
   }

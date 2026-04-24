@@ -113,6 +113,22 @@ export interface AppSettings {
   copyOnSelect: boolean
   localTerminalShell: LocalTerminalShell
   windowTitleBarStyle: WindowTitleBarStyle
+  webdavBackupEnabled: boolean
+  webdavUrl: string | null
+  webdavUsername: string | null
+  webdavBackupIntervalMinutes: number
+  webdavBackupPath: string | null
+}
+
+export interface WebDAVBackupState {
+  lastBackupAt: string | null
+  lastBackupError: string | null
+  nextBackupAt: string | null
+}
+
+export interface WebDAVBackupEntry {
+  fileName: string
+  modifiedAt: string
 }
 
 export interface AppInfo {

@@ -399,6 +399,7 @@ const workbench = {
       descriptions: {
         about: '查看应用介绍和版本信息。',
         appearance: '调整语言、主题和窗口标题栏模式。',
+        backup: '配置 WebDAV 定时备份，将数据安全同步到远程存储。',
         credentialVault: '集中管理可复用的密码、私钥与口令记录。',
         security: '查看凭据存储能力与已信任主机列表。',
         updates: '查看当前更新状态，并决定何时下载或安装新版本。',
@@ -427,11 +428,23 @@ const workbench = {
         terminalFontFamilyHint: '已检测到 {{count}} 个系统字体，也可以直接输入自定义字体栈。',
         terminalFontFamilyLoading: '正在加载系统字体...',
         terminalFontFamilySearchPlaceholder: '搜索系统字体，或输入自定义字体栈',
-        terminalFontFamilyUseCustom: '使用“{{value}}”',
+        terminalFontFamilyUseCustom: '使用"{{value}}"',
         terminalFontFamily: '终端字体',
         terminalFontSize: '终端字号',
         theme: '主题模式',
-        titleBarStyle: '窗口标题栏'
+        titleBarStyle: '窗口标题栏',
+        webdavBackupEnabled: {
+          description: '按设定间隔自动将数据库备份上传到 WebDAV。',
+          title: '启用 WebDAV 自动备份'
+        },
+        webdavBackupInterval: '备份间隔（分钟）',
+        webdavBackupIntervalDescription: '最小 15 分钟，最大 10080 分钟（7 天）。',
+        webdavBackupPath: '远程备份路径',
+        webdavPassword: 'WebDAV 密码',
+        webdavPasswordDescription: '密码仅保存在系统安全存储中，不会写入配置文件。',
+        webdavPasswordPlaceholder: '输入新密码以更新',
+        webdavUrl: 'WebDAV 服务器地址',
+        webdavUsername: 'WebDAV 用户名'
       },
       localTerminalShells: {
         bash: 'Bash',
@@ -451,10 +464,48 @@ const workbench = {
       sections: {
         about: '关于',
         appearance: '界面',
+        backup: '备份',
         credentialVault: '保险柜',
         security: '安全',
         updates: '更新',
         terminal: '终端'
+      },
+      backup: {
+        actions: {
+          backupNow: '立即备份',
+          restore: '从 WebDAV 恢复',
+          testConnection: '测试连接'
+        },
+        backupFailed: '备份失败',
+        backupSuccess: '备份已成功上传到 WebDAV。',
+        deleteDialog: {
+          description:
+            '要删除远端 WebDAV 备份“{{fileName}}”吗？这只会删除 WebDAV 上所选的备份文件。',
+          title: '删除 WebDAV 备份'
+        },
+        deleteFailed: '删除 WebDAV 备份失败。',
+        deleteSuccess: '已删除 WebDAV 备份“{{fileName}}”。',
+        restoreFailed: '恢复失败',
+        restoreDialog: {
+          confirm: '恢复所选备份',
+          deleteLabel: '删除备份 {{fileName}}',
+          description: '请选择当前保存在 WebDAV 上的一份备份，然后按该数据库快照执行恢复。',
+          empty: '当前还没有可恢复的 WebDAV 备份。',
+          loadFailed: '加载备份列表失败。',
+          loading: '正在加载可用的 WebDAV 备份...',
+          modifiedAt: '修改时间',
+          title: '选择要恢复的备份'
+        },
+        status: {
+          lastBackup: '上次备份',
+          lastError: '上次错误',
+          nextBackup: '下次备份',
+          noBackupYet: '暂无备份记录',
+          title: '备份状态'
+        },
+        testFailed: '连接测试失败',
+        testFailedMessage: '连接测试失败：{{message}}',
+        testSuccess: '连接测试成功：{{message}}'
       },
       about: {
         channels: {

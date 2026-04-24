@@ -1,11 +1,5 @@
 import { join } from 'node:path'
-import {
-  app,
-  BrowserWindow,
-  nativeTheme,
-  shell,
-  type TitleBarOverlayOptions
-} from 'electron'
+import { app, BrowserWindow, nativeTheme, shell, type TitleBarOverlayOptions } from 'electron'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { APP_ID, APP_NAME } from '@shared/constants'
@@ -28,6 +22,7 @@ import { SessionManager } from './session-manager'
 import { SystemFontService } from './system-fonts'
 import { ThemeRegistry } from './theme-registry'
 import { UpdateService } from './update-service'
+import { WebDAVBackupService } from './webdav-backup-service'
 import { getWindowChromeOptions } from './window-config'
 
 let mainWindow: BrowserWindow | null = null
@@ -193,6 +188,8 @@ export async function bootstrap(): Promise<void> {
       })
     }
   )
+  const webdavBackupService = new WebDAVBackupService(database, secureStore, settingsService)
+  await webdavBackupService.syncAutoBackupSettings()
 
   app.on('browser-window-created', (_event, window) => {
     optimizer.watchWindowShortcuts(window)
@@ -216,7 +213,8 @@ export async function bootstrap(): Promise<void> {
     systemFontService,
     themeRegistry,
     translate,
-    updateService
+    updateService,
+    webdavBackupService
   })
 
   syncApplicationMenu({
@@ -249,6 +247,7 @@ export async function bootstrap(): Promise<void> {
 
   app.on('before-quit', () => {
     logger.info('Disposing application services')
+    webdavBackupService.dispose()
     localTerminalManager.dispose()
     sessionManager.dispose()
     database.close()

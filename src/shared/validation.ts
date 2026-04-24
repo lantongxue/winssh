@@ -189,7 +189,12 @@ export const settingsSchema = z.object({
   cursorBlink: z.boolean(),
   copyOnSelect: z.boolean(),
   localTerminalShell: z.enum(['cmd', 'powershell', 'bash', 'zsh']),
-  windowTitleBarStyle: z.enum(['native', 'custom'])
+  windowTitleBarStyle: z.enum(['native', 'custom']),
+  webdavBackupEnabled: z.boolean(),
+  webdavUrl: z.string().trim().max(512).nullable(),
+  webdavUsername: z.string().trim().max(120).nullable(),
+  webdavBackupIntervalMinutes: z.coerce.number().int().min(15).max(10080),
+  webdavBackupPath: z.string().trim().max(512).nullable()
 })
 
 export type ServerFormValues = z.infer<typeof serverSchema>
