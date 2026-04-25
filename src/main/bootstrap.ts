@@ -54,7 +54,13 @@ function syncWindowTheme(
       symbolColor: resolvedWindowTheme.titleBarSymbolColor
     }
 
-    window.setTitleBarOverlay(overlayOptions)
+    try {
+      window.setTitleBarOverlay(overlayOptions)
+    } catch {
+      // Window was not created with titleBarOverlay enabled (e.g. switching
+      // from native to custom title bar). The user must relaunch the app
+      // for the change to take effect, so we silently ignore the error here.
+    }
   }
 }
 
