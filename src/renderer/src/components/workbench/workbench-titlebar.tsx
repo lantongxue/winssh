@@ -123,6 +123,8 @@ export function WorkbenchTitlebar() {
   const { openLocalTerminal } = useWorkbenchContext()
   const togglePanel = useWorkbenchStore((state) => state.togglePanel)
   const toggleSidebar = useWorkbenchStore((state) => state.toggleSidebar)
+  const panelOpen = useWorkbenchStore((state) => state.panelOpen)
+  const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen)
   const setCommandPaletteOpen = useWorkbenchStore((state) => state.setCommandPaletteOpen)
   const setQuickOpenOpen = useWorkbenchStore((state) => state.setQuickOpenOpen)
   const [isMaximized, setIsMaximized] = useState(false)
@@ -148,8 +150,8 @@ export function WorkbenchTitlebar() {
   const QuickOpenIcon = actionIcons.quickOpen
   const OpenTerminalIcon = actionIcons.openTerminal
   const CommandPaletteIcon = actionIcons.commandPalette
-  const ToggleSidebarIcon = actionIcons.toggleSidebar
-  const TogglePanelIcon = actionIcons.togglePanel
+  const ToggleSidebarIcon = sidebarOpen ? actionIcons.toggleSidebarOpen : actionIcons.toggleSidebarClosed
+  const TogglePanelIcon = panelOpen ? actionIcons.togglePanelOpen : actionIcons.togglePanelClosed
   const MinimizeWindowIcon = actionIcons.minimizeWindow
   const MaximizeWindowIcon = isMaximized ? actionIcons.restoreWindow : actionIcons.maximizeWindow
   const CloseWindowIcon = actionIcons.close

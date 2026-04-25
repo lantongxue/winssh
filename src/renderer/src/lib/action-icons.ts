@@ -12,7 +12,11 @@ import {
   FolderTree,
   Minus,
   PanelBottom,
+  PanelBottomClose,
+  PanelBottomOpen,
   PanelLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
   PencilLine,
   Plus,
   RefreshCcw,
@@ -67,7 +71,11 @@ export const actionIcons = {
   star: Star,
   stop: SquareStop,
   togglePanel: PanelBottom,
+  togglePanelClosed: PanelBottomClose,
+  togglePanelOpen: PanelBottomOpen,
   toggleSidebar: PanelLeft,
+  toggleSidebarClosed: PanelLeftClose,
+  toggleSidebarOpen: PanelLeftOpen,
   openPortForwards: Route,
   upload: Upload
 } as const
