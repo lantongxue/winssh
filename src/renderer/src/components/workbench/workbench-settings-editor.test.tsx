@@ -49,6 +49,11 @@ const persistedDarkSettings: AppSettings = {
   terminalFontFamily: 'JetBrains Mono, Consolas, monospace',
   terminalFontSize: 14,
   theme: DEFAULT_DARK_THEME_ID,
+  webdavBackupEnabled: false,
+  webdavBackupIntervalMinutes: 60,
+  webdavBackupPath: '/winssh-backup/',
+  webdavUrl: null,
+  webdavUsername: null,
   windowTitleBarStyle: 'custom'
 }
 
@@ -415,9 +420,13 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     const updateSettings = vi.fn().mockImplementation(async (input) => ({
       autoUpdateCheckEnabled: true,
       copyOnSelect:
-        typeof input.copyOnSelect === 'boolean' ? input.copyOnSelect : persistedDarkSettings.copyOnSelect,
+        typeof input.copyOnSelect === 'boolean'
+          ? input.copyOnSelect
+          : persistedDarkSettings.copyOnSelect,
       cursorBlink:
-        typeof input.cursorBlink === 'boolean' ? input.cursorBlink : persistedDarkSettings.cursorBlink,
+        typeof input.cursorBlink === 'boolean'
+          ? input.cursorBlink
+          : persistedDarkSettings.cursorBlink,
       cursorStyle: input.cursorStyle ?? persistedDarkSettings.cursorStyle,
       experimentalTerminalWebgl:
         typeof input.experimentalTerminalWebgl === 'boolean'
@@ -623,6 +632,108 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     await waitFor(() => {
       expect(screen.queryByText('alpha.example.com:22')).not.toBeInTheDocument()
     })
+  })
+
+  it('opens a restore dialog, lists WebDAV backups, and relaunches after restoring the selected backup', async () => {
+    const listBackups = vi.fn().mockResolvedValue([
+      {
+        fileName: 'winssh-win32-2026-04-24T08-00-00-000Z.db',
+        modifiedAt: '2026-04-24T08:00:00.000Z'
+      },
+      {
+        fileName: 'winssh-win32-2026-04-23T08-00-00-000Z.db',
+        modifiedAt: '2026-04-23T08:00:00.000Z'
+      }
+    ])
+    const restore = vi.fn().mockResolvedValue(undefined)
+    const relaunch = vi.fn().mockResolvedValue(undefined)
+
+    window.winsshApi = createWinsshApiMock({
+      backup: {
+        list: listBackups,
+        restore
+      },
+      system: {
+        relaunch
+      }
+    })
+
+    renderSettingsEditor()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Backup' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Restore from WebDAV' }))
+
+    expect(await screen.findByText('Choose a Backup to Restore')).toBeInTheDocument()
+    expect(listBackups).toHaveBeenCalledTimes(1)
+    expect(await screen.findByText('winssh-win32-2026-04-24T08-00-00-000Z.db')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Restore Selected Backup' })).toBeDisabled()
+
+    fireEvent.click(screen.getByText('winssh-win32-2026-04-23T08-00-00-000Z.db'))
+    fireEvent.click(screen.getByRole('button', { name: 'Restore Selected Backup' }))
+
+    await waitFor(() => {
+      expect(restore).toHaveBeenCalledWith('winssh-win32-2026-04-23T08-00-00-000Z.db')
+    })
+    await waitFor(() => {
+      expect(relaunch).toHaveBeenCalledTimes(1)
+    })
+    await waitFor(() => {
+      expect(screen.queryByText('Choose a Backup to Restore')).not.toBeInTheDocument()
+    })
+    expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it('confirms before deleting a WebDAV backup and refreshes the backup list', async () => {
+    const firstBackup = {
+      fileName: 'winssh-win32-2026-04-24T08-00-00-000Z.db',
+      modifiedAt: '2026-04-24T08:00:00.000Z'
+    }
+    const secondBackup = {
+      fileName: 'winssh-win32-2026-04-23T08-00-00-000Z.db',
+      modifiedAt: '2026-04-23T08:00:00.000Z'
+    }
+    const listBackups = vi
+      .fn()
+      .mockResolvedValueOnce([firstBackup, secondBackup])
+      .mockResolvedValueOnce([secondBackup])
+    const deleteBackup = vi.fn().mockResolvedValue(undefined)
+
+    window.winsshApi = createWinsshApiMock({
+      backup: {
+        delete: deleteBackup,
+        list: listBackups
+      }
+    })
+
+    renderSettingsEditor()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Backup' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Restore from WebDAV' }))
+
+    expect(await screen.findByText('Choose a Backup to Restore')).toBeInTheDocument()
+    expect(await screen.findByText(firstBackup.fileName)).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: `Delete backup ${firstBackup.fileName}`
+      })
+    )
+
+    expect(deleteBackup).not.toHaveBeenCalled()
+    expect(await screen.findByText('Delete WebDAV Backup')).toBeInTheDocument()
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Delete' }).at(-1) as HTMLElement)
+
+    await waitFor(() => {
+      expect(deleteBackup).toHaveBeenCalledWith(firstBackup.fileName)
+    })
+    await waitFor(() => {
+      expect(listBackups).toHaveBeenCalledTimes(2)
+    })
+    await waitFor(() => {
+      expect(screen.queryByText(firstBackup.fileName)).not.toBeInTheDocument()
+    })
+    expect(screen.getByText(secondBackup.fileName)).toBeInTheDocument()
   })
 
   it('renders app version details in the about section', async () => {

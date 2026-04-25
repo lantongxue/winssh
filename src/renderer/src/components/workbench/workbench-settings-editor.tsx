@@ -3,11 +3,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { APP_NAME, DEFAULT_APP_SETTINGS } from '@shared/constants'
 import { SYSTEM_THEME_ID, type ThemeDefinition } from '@shared/themes'
-import type { AppSettings, ReleaseChannel } from '@shared/types'
+import type { AppSettings, ReleaseChannel, WebDAVBackupEntry } from '@shared/types'
 import {
   Check,
   ChevronsUpDown,
   CircleHelp,
+  Cloud,
   KeyRound,
   Languages,
   ShieldCheck,
@@ -19,6 +20,7 @@ import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { settingsSchema, type SettingsFormValues } from '@shared/validation'
 import { queryKeys } from '@/features/shared/query-keys'
+import { backupClient } from '@/features/backup/api/backup-client'
 import { settingsClient } from '@/features/settings/api/settings-client'
 import { useSettingsAutoSave } from '@/features/settings/use-settings-auto-save'
 import { systemClient } from '@/features/system/api/system-client'
@@ -78,12 +80,14 @@ const settingsSections = [
   { id: 'terminal', labelKey: 'workbench.settings.sections.terminal' },
   { id: 'security', labelKey: 'workbench.settings.sections.security' },
   { id: 'credentialVault', labelKey: 'workbench.settings.sections.credentialVault' },
+  { id: 'backup', labelKey: 'workbench.settings.sections.backup' },
   { id: 'about', labelKey: 'workbench.settings.sections.about' }
 ] as const
 
 const settingsSectionIcons = {
   about: CircleHelp,
   appearance: SlidersHorizontal,
+  backup: Cloud,
   credentialVault: KeyRound,
   security: ShieldCheck,
   terminal: TerminalSquare
@@ -262,6 +266,9 @@ export function WorkbenchSettingsEditor() {
   const [selectedSection, setSelectedSection] =
     useState<(typeof settingsSections)[number]['id']>('appearance')
   const [themePackPendingDelete, setThemePackPendingDelete] = useState<UserThemePack | null>(null)
+  const [backupRestoreDialogOpen, setBackupRestoreDialogOpen] = useState(false)
+  const [backupPendingDelete, setBackupPendingDelete] = useState<WebDAVBackupEntry | null>(null)
+  const [selectedBackupFileName, setSelectedBackupFileName] = useState<string | null>(null)
   const DeleteIcon = actionIcons.delete
   const UploadIcon = actionIcons.upload
 
@@ -316,6 +323,16 @@ export function WorkbenchSettingsEditor() {
       },
       onSuccess: (settings, previousSettings) => {
         resetSavedField(field, settings[field])
+
+        if (
+          field === 'webdavBackupEnabled' ||
+          field === 'webdavBackupIntervalMinutes' ||
+          field === 'webdavBackupPath' ||
+          field === 'webdavUrl' ||
+          field === 'webdavUsername'
+        ) {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.backupState })
+        }
 
         if (
           field === 'windowTitleBarStyle' &&
@@ -415,6 +432,97 @@ export function WorkbenchSettingsEditor() {
       )
     }
   })
+  const backupStateQuery = useQuery({
+    queryKey: queryKeys.backupState,
+    queryFn: () => backupClient.getState()
+  })
+  const backupListQuery = useQuery({
+    queryKey: queryKeys.backupList,
+    queryFn: () => backupClient.list(),
+    enabled: backupRestoreDialogOpen
+  })
+
+  useEffect(() => {
+    if (!backupRestoreDialogOpen) {
+      setSelectedBackupFileName(null)
+      setBackupPendingDelete(null)
+    } else if (
+      selectedBackupFileName &&
+      backupListQuery.data &&
+      !backupListQuery.data.some((backup) => backup.fileName === selectedBackupFileName)
+    ) {
+      setSelectedBackupFileName(null)
+    }
+
+    if (
+      backupPendingDelete &&
+      backupListQuery.data &&
+      !backupListQuery.data.some((backup) => backup.fileName === backupPendingDelete.fileName)
+    ) {
+      setBackupPendingDelete(null)
+    }
+  }, [backupListQuery.data, backupPendingDelete, backupRestoreDialogOpen, selectedBackupFileName])
+  const testConnection = useMutation({
+    mutationFn: () => backupClient.testConnection(),
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : t('workbench.settings.backup.testFailed')
+      )
+    },
+    onSuccess: (result) => {
+      if (result.ok) {
+        toast.success(t('workbench.settings.backup.testSuccess', { message: result.message }))
+      } else {
+        toast.error(t('workbench.settings.backup.testFailedMessage', { message: result.message }))
+      }
+    }
+  })
+  const backupNow = useMutation({
+    mutationFn: () => backupClient.backupNow(),
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : t('workbench.settings.backup.backupFailed')
+      )
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.backupState })
+      toast.success(t('workbench.settings.backup.backupSuccess'))
+    }
+  })
+  const deleteBackup = useMutation({
+    mutationFn: (fileName: string) => backupClient.delete(fileName),
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : t('workbench.settings.backup.deleteFailed')
+      )
+    },
+    onSuccess: async (_data, fileName) => {
+      setBackupPendingDelete(null)
+      if (selectedBackupFileName === fileName) {
+        setSelectedBackupFileName(null)
+      }
+      queryClient.setQueryData<WebDAVBackupEntry[]>(queryKeys.backupList, (current) =>
+        (current ?? []).filter((backup) => backup.fileName !== fileName)
+      )
+      await queryClient.invalidateQueries({ queryKey: queryKeys.backupList })
+      toast.success(t('workbench.settings.backup.deleteSuccess', { fileName }))
+    }
+  })
+  const restoreBackup = useMutation({
+    mutationFn: (fileName: string) => backupClient.restore(fileName),
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : t('workbench.settings.backup.restoreFailed')
+      )
+    },
+    onSuccess: async () => {
+      setBackupRestoreDialogOpen(false)
+      setBackupPendingDelete(null)
+      setSelectedBackupFileName(null)
+      await systemClient.relaunch()
+    }
+  })
+  const backupDestructiveActionPending = restoreBackup.isPending || deleteBackup.isPending
   return (
     <div className="liquid-glass-page flex h-full min-h-0 bg-[var(--workbench-editor)]">
       <aside className="liquid-glass-pane w-[220px] shrink-0 border-r border-[var(--workbench-border)] bg-[var(--workbench-sidebar)] px-3 py-3">
@@ -945,6 +1053,238 @@ export function WorkbenchSettingsEditor() {
               </section>
             ) : null}
 
+            {selectedSection === 'backup' ? (
+              <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <Cloud className="size-4 text-primary" />
+                  {t('workbench.settings.sections.backup')}
+                </div>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="webdavUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('workbench.settings.form.webdavUrl')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value ?? ''}
+                            placeholder="https://example.com/dav"
+                            onBlur={() => {
+                              field.onBlur()
+                              void handleSettingSave('webdavUrl', field.value)
+                            }}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="webdavUsername"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('workbench.settings.form.webdavUsername')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value ?? ''}
+                            onBlur={() => {
+                              field.onBlur()
+                              void handleSettingSave('webdavUsername', field.value)
+                            }}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormItem>
+                    <FormLabel>{t('workbench.settings.form.webdavPassword')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder={
+                          savedSettingsRef.current?.webdavUrl
+                            ? t('workbench.settings.form.webdavPasswordPlaceholder')
+                            : undefined
+                        }
+                        onBlur={async (e) => {
+                          const value = e.target.value
+                          if (value) {
+                            try {
+                              await settingsClient.update({
+                                webdavPassword: value
+                              } as Partial<AppSettings>)
+                              await queryClient.invalidateQueries({
+                                queryKey: queryKeys.backupState
+                              })
+                            } catch (error) {
+                              toast.error(
+                                error instanceof Error
+                                  ? error.message
+                                  : t('workbench.settings.backup.testFailed')
+                              )
+                            }
+                          }
+                        }}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t('workbench.settings.form.webdavPasswordDescription')}
+                    </FormDescription>
+                  </FormItem>
+                  <FormField
+                    control={form.control}
+                    name="webdavBackupPath"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('workbench.settings.form.webdavBackupPath')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value ?? ''}
+                            onBlur={() => {
+                              field.onBlur()
+                              void handleSettingSave('webdavBackupPath', field.value)
+                            }}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="webdavBackupIntervalMinutes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('workbench.settings.form.webdavBackupInterval')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="number"
+                            min={15}
+                            max={10080}
+                            onBlur={() => {
+                              field.onBlur()
+                              const parsed =
+                                settingsSchema.shape.webdavBackupIntervalMinutes.safeParse(
+                                  form.getValues('webdavBackupIntervalMinutes')
+                                )
+                              if (parsed.success) {
+                                void handleSettingSave('webdavBackupIntervalMinutes', parsed.data)
+                              } else {
+                                resetSavedField(
+                                  'webdavBackupIntervalMinutes',
+                                  savedSettingsRef.current?.webdavBackupIntervalMinutes ??
+                                    DEFAULT_SETTINGS_FORM_VALUES.webdavBackupIntervalMinutes
+                                )
+                                toast.error(t('workbench.settings.validation.failed'))
+                              }
+                            }}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          {t('workbench.settings.form.webdavBackupIntervalDescription')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="webdavBackupEnabled"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-sm border border-[var(--workbench-border)] px-4 py-3">
+                        <div>
+                          <div className="font-medium">
+                            {t('workbench.settings.form.webdavBackupEnabled.title')}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {t('workbench.settings.form.webdavBackupEnabled.description')}
+                          </div>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            aria-label={t('workbench.settings.form.webdavBackupEnabled.title')}
+                            checked={field.value}
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked)
+                              void handleSettingSave('webdavBackupEnabled', checked)
+                            }}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={testConnection.isPending}
+                    onClick={() => testConnection.mutate()}
+                  >
+                    {t('workbench.settings.backup.actions.testConnection')}
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={backupNow.isPending}
+                    onClick={() => backupNow.mutate()}
+                  >
+                    {t('workbench.settings.backup.actions.backupNow')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={backupDestructiveActionPending}
+                    onClick={() => setBackupRestoreDialogOpen(true)}
+                  >
+                    {t('workbench.settings.backup.actions.restore')}
+                  </Button>
+                </div>
+                {backupStateQuery.data ? (
+                  <div className="space-y-2 rounded-sm border border-[var(--workbench-border)] px-4 py-3">
+                    <div className="text-sm font-medium">
+                      {t('workbench.settings.backup.status.title')}
+                    </div>
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      {backupStateQuery.data.lastBackupAt && (
+                        <div>
+                          {t('workbench.settings.backup.status.lastBackup')}:{' '}
+                          {formatDateTime(backupStateQuery.data.lastBackupAt)}
+                        </div>
+                      )}
+                      {backupStateQuery.data.nextBackupAt && (
+                        <div>
+                          {t('workbench.settings.backup.status.nextBackup')}:{' '}
+                          {formatDateTime(backupStateQuery.data.nextBackupAt)}
+                        </div>
+                      )}
+                      {backupStateQuery.data.lastBackupError && (
+                        <div className="text-destructive">
+                          {t('workbench.settings.backup.status.lastError')}:{' '}
+                          {backupStateQuery.data.lastBackupError}
+                        </div>
+                      )}
+                      {!backupStateQuery.data.lastBackupAt &&
+                        !backupStateQuery.data.lastBackupError && (
+                          <div>{t('workbench.settings.backup.status.noBackupYet')}</div>
+                        )}
+                    </div>
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+
             {selectedSection === 'about' ? (
               <>
                 <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
@@ -1004,6 +1344,121 @@ export function WorkbenchSettingsEditor() {
         </Form>
 
         <Dialog
+          open={backupRestoreDialogOpen}
+          onOpenChange={(open) => {
+            setBackupRestoreDialogOpen(open)
+            if (!open) {
+              setSelectedBackupFileName(null)
+              setBackupPendingDelete(null)
+            }
+          }}
+        >
+          <DialogContent className="max-w-lg border-[var(--workbench-border)] bg-[var(--workbench-editor)]">
+            <DialogHeader>
+              <DialogTitle>{t('workbench.settings.backup.restoreDialog.title')}</DialogTitle>
+              <DialogDescription>
+                {t('workbench.settings.backup.restoreDialog.description')}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3">
+              {backupListQuery.isLoading ? (
+                <div className="rounded-sm border border-dashed border-[var(--workbench-border)] px-4 py-6 text-sm text-muted-foreground">
+                  {t('workbench.settings.backup.restoreDialog.loading')}
+                </div>
+              ) : null}
+
+              {backupListQuery.isError ? (
+                <div className="rounded-sm border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                  {backupListQuery.error instanceof Error
+                    ? backupListQuery.error.message
+                    : t('workbench.settings.backup.restoreDialog.loadFailed')}
+                </div>
+              ) : null}
+
+              {!backupListQuery.isLoading && !backupListQuery.isError ? (
+                <BackupRestoreList
+                  backups={backupListQuery.data ?? []}
+                  actionPending={backupDestructiveActionPending}
+                  onDelete={setBackupPendingDelete}
+                  selectedBackupFileName={selectedBackupFileName}
+                  onSelect={setSelectedBackupFileName}
+                />
+              ) : null}
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setBackupRestoreDialogOpen(false)}
+              >
+                {t('common.actions.cancel')}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={
+                  backupDestructiveActionPending ||
+                  backupListQuery.isLoading ||
+                  backupListQuery.isError ||
+                  !selectedBackupFileName
+                }
+                onClick={() => {
+                  if (!selectedBackupFileName) {
+                    return
+                  }
+
+                  restoreBackup.mutate(selectedBackupFileName)
+                }}
+              >
+                {t('workbench.settings.backup.restoreDialog.confirm')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={backupPendingDelete !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setBackupPendingDelete(null)
+            }
+          }}
+        >
+          <DialogContent className="max-w-sm border-[var(--workbench-border)] bg-[var(--workbench-editor)]">
+            <DialogHeader>
+              <DialogTitle>{t('workbench.settings.backup.deleteDialog.title')}</DialogTitle>
+              <DialogDescription>
+                {t('workbench.settings.backup.deleteDialog.description', {
+                  fileName: backupPendingDelete?.fileName ?? ''
+                })}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setBackupPendingDelete(null)}>
+                {t('common.actions.cancel')}
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={!backupPendingDelete || deleteBackup.isPending}
+                onClick={() => {
+                  if (!backupPendingDelete) {
+                    return
+                  }
+
+                  deleteBackup.mutate(backupPendingDelete.fileName)
+                }}
+              >
+                <DeleteIcon className="size-4" />
+                {t('common.actions.delete')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
           open={themePackPendingDelete !== null}
           onOpenChange={(open) => {
             if (!open) {
@@ -1047,6 +1502,87 @@ export function WorkbenchSettingsEditor() {
           </DialogContent>
         </Dialog>
       </div>
+    </div>
+  )
+}
+
+type BackupRestoreListProps = {
+  actionPending: boolean
+  backups: WebDAVBackupEntry[]
+  onDelete: (backup: WebDAVBackupEntry) => void
+  selectedBackupFileName: string | null
+  onSelect: (fileName: string) => void
+}
+
+function BackupRestoreList({
+  actionPending,
+  backups,
+  onDelete,
+  selectedBackupFileName,
+  onSelect
+}: BackupRestoreListProps) {
+  const { t } = useTranslation()
+  const DeleteIcon = actionIcons.delete
+
+  if (backups.length === 0) {
+    return (
+      <div className="rounded-sm border border-dashed border-[var(--workbench-border)] px-4 py-6 text-sm text-muted-foreground">
+        {t('workbench.settings.backup.restoreDialog.empty')}
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+      {backups.map((backup) => {
+        const selected = backup.fileName === selectedBackupFileName
+
+        return (
+          <div
+            key={backup.fileName}
+            className={cn(
+              'flex w-full items-start justify-between gap-3 rounded-sm border px-4 py-3 text-left transition-colors',
+              selected
+                ? 'border-primary bg-primary/10 text-foreground'
+                : 'border-[var(--workbench-border)] hover:bg-[var(--workbench-hover)]'
+            )}
+          >
+            <button
+              type="button"
+              className="min-w-0 flex-1 text-left disabled:cursor-not-allowed"
+              disabled={actionPending}
+              onClick={() => onSelect(backup.fileName)}
+            >
+              <div className="space-y-1">
+                <div className="truncate font-medium">{backup.fileName}</div>
+                <div className="text-sm text-muted-foreground">
+                  {t('workbench.settings.backup.restoreDialog.modifiedAt')}:{' '}
+                  {formatDateTime(backup.modifiedAt)}
+                </div>
+              </div>
+            </button>
+            <div className="flex items-start gap-2">
+              <Check
+                className={cn('mt-2 size-4 shrink-0', selected ? 'opacity-100' : 'opacity-0')}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                aria-label={t('workbench.settings.backup.restoreDialog.deleteLabel', {
+                  fileName: backup.fileName
+                })}
+                disabled={actionPending}
+                onClick={() => onDelete(backup)}
+              >
+                <DeleteIcon className="size-4" />
+                {t('common.actions.delete')}
+              </Button>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

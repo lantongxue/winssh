@@ -408,6 +408,7 @@ const workbench = {
       descriptions: {
         about: 'Review app details and version information.',
         appearance: 'Adjust language, theme, and window title bar mode.',
+        backup: 'Configure WebDAV scheduled backups to sync data to remote storage safely.',
         credentialVault: 'Manage reusable passwords, private keys, and passphrases.',
         security: 'Review credential storage support and trusted hosts.',
         updates:
@@ -444,7 +445,19 @@ const workbench = {
         terminalFontFamily: 'Terminal font',
         terminalFontSize: 'Terminal font size',
         theme: 'Theme mode',
-        titleBarStyle: 'Window title bar'
+        titleBarStyle: 'Window title bar',
+        webdavBackupEnabled: {
+          description: 'Automatically upload database backups to WebDAV at the set interval.',
+          title: 'Enable WebDAV auto backup'
+        },
+        webdavBackupInterval: 'Backup interval (minutes)',
+        webdavBackupIntervalDescription: 'Minimum 15 minutes, maximum 10080 minutes (7 days).',
+        webdavBackupPath: 'Remote backup path',
+        webdavPassword: 'WebDAV password',
+        webdavPasswordDescription: 'Password is stored in system secure storage, not in config.',
+        webdavPasswordPlaceholder: 'Enter new password to update',
+        webdavUrl: 'WebDAV server URL',
+        webdavUsername: 'WebDAV username'
       },
       localTerminalShells: {
         bash: 'Bash',
@@ -464,10 +477,49 @@ const workbench = {
       sections: {
         about: 'About',
         appearance: 'Appearance',
+        backup: 'Backup',
         credentialVault: 'Credential Vault',
         security: 'Security',
         updates: 'Updates',
         terminal: 'Terminal'
+      },
+      backup: {
+        actions: {
+          backupNow: 'Backup Now',
+          restore: 'Restore from WebDAV',
+          testConnection: 'Test Connection'
+        },
+        backupFailed: 'Backup failed',
+        backupSuccess: 'Backup uploaded to WebDAV successfully.',
+        deleteDialog: {
+          description:
+            'Delete the remote WebDAV backup "{{fileName}}"? This only removes the selected backup file from WebDAV.',
+          title: 'Delete WebDAV Backup'
+        },
+        deleteFailed: 'Failed to delete the WebDAV backup.',
+        deleteSuccess: 'Deleted WebDAV backup "{{fileName}}".',
+        restoreFailed: 'Restore failed',
+        restoreDialog: {
+          confirm: 'Restore Selected Backup',
+          deleteLabel: 'Delete backup {{fileName}}',
+          description:
+            'Choose one of the backups currently stored on WebDAV, then restore that database snapshot.',
+          empty: 'No WebDAV backups are available yet.',
+          loadFailed: 'Failed to load the backup list.',
+          loading: 'Loading available WebDAV backups...',
+          modifiedAt: 'Modified',
+          title: 'Choose a Backup to Restore'
+        },
+        status: {
+          lastBackup: 'Last backup',
+          lastError: 'Last error',
+          nextBackup: 'Next backup',
+          noBackupYet: 'No backup yet',
+          title: 'Backup status'
+        },
+        testFailed: 'Connection test failed',
+        testFailedMessage: 'Connection test failed: {{message}}',
+        testSuccess: 'Connection test successful: {{message}}'
       },
       about: {
         channels: {

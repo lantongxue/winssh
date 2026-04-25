@@ -33,6 +33,8 @@ import type {
   TagInput,
   TransferProgressEvent,
   UpdateState,
+  WebDAVBackupEntry,
+  WebDAVBackupState,
   WindowState
 } from './types'
 import type { ServerIconMimeType } from './server-brands'
@@ -126,6 +128,14 @@ export interface WinsshApi {
     list: () => Promise<ThemeDefinition[]>
     importArchive: () => Promise<ThemeImportResult | null>
     deletePlugin: (pluginId: string) => Promise<ThemeDeleteResult>
+  }
+  backup: {
+    getState: () => Promise<WebDAVBackupState>
+    list: () => Promise<WebDAVBackupEntry[]>
+    backupNow: () => Promise<void>
+    delete: (fileName: string) => Promise<void>
+    restore: (fileName?: string) => Promise<void>
+    testConnection: () => Promise<{ ok: boolean; message: string }>
   }
   system: {
     getAppInfo: () => Promise<AppInfo>

@@ -41,7 +41,8 @@ const api: WinsshApi = {
     connect: (request) => ipcRenderer.invoke('sessions:connect', request),
     disconnect: (sessionId) => ipcRenderer.invoke('sessions:disconnect', sessionId),
     reconnect: (sessionId) => ipcRenderer.invoke('sessions:reconnect', sessionId),
-    getResourceSnapshot: (sessionId) => ipcRenderer.invoke('sessions:getResourceSnapshot', sessionId),
+    getResourceSnapshot: (sessionId) =>
+      ipcRenderer.invoke('sessions:getResourceSnapshot', sessionId),
     write: (sessionId, data) => ipcRenderer.invoke('sessions:write', sessionId, data),
     resize: (sessionId, columns, rows) =>
       ipcRenderer.invoke('sessions:resize', sessionId, columns, rows),
@@ -101,6 +102,14 @@ const api: WinsshApi = {
     list: () => ipcRenderer.invoke('themes:list'),
     importArchive: () => ipcRenderer.invoke('themes:importArchive'),
     deletePlugin: (pluginId) => ipcRenderer.invoke('themes:deletePlugin', pluginId)
+  },
+  backup: {
+    getState: () => ipcRenderer.invoke('backup:getState'),
+    list: () => ipcRenderer.invoke('backup:list'),
+    backupNow: () => ipcRenderer.invoke('backup:backupNow'),
+    delete: (fileName) => ipcRenderer.invoke('backup:delete', fileName),
+    restore: (fileName) => ipcRenderer.invoke('backup:restore', fileName),
+    testConnection: () => ipcRenderer.invoke('backup:testConnection')
   },
   system: {
     getAppInfo: () => ipcRenderer.invoke('system:getAppInfo'),

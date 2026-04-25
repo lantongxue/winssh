@@ -6,6 +6,18 @@
 
 本次梳理时间为 `2026-04-10`。本次补充除了继续基于当前仓库代码、目录结构和关键入口文件阅读，还实际执行了 `npm run typecheck`、`npm run test`，并观察了 `npm run lint` 的现状；`lint` 当前仍有仓库级历史问题，`build`、`dist` 没有执行。因此这里描述的是“当前代码现状 + 已跑过的基础校验”，不是“完整交付验证结果”。
 
+### 补充记录（`2026-04-25`）
+
+本次又基于当前仓库代码补了一轮增量快照，重点覆盖的是 WebDAV 备份 / 恢复链路最近的产品化改动，而不是重写整份快照。
+
+这次补充实际执行了：
+
+- `npm run typecheck`
+- `npx vitest run "src/main/webdav-backup-service.test.ts" "src/renderer/src/components/workbench/workbench-settings-editor.test.tsx"`
+- `npm run build`
+
+并且三者都通过。
+
 ## 这次梳理的关键结论
 
 当前仓库最值得先知道的，不是“功能列表”，而是几条已经成型、并且会直接影响后续修改方式的主线。
@@ -421,6 +433,23 @@
   - `dist:mac`
   - `dist:linux`
 
+### 14. WebDAV 备份恢复已经从“直接恢复最新”演进到“可选远端备份 + 单项删除”
+
+- `backup:restore` 当前已经支持按指定远端备份文件恢复，而不再只支持“内部自动挑最新”
+- 设置页点击恢复时，当前会先弹出远端 WebDAV 备份列表，而不是直接触发恢复
+- 恢复弹窗当前会列出已有 `winssh-*.db` 远端备份，用户必须显式选择一项后才能恢复
+- 备份列表项右侧当前已有删除动作，点击后会先弹出确认对话框，确认后才会真正删除远端备份文件
+- 主进程当前已经新增 `backup:list` 与 `backup:delete`
+- `WebDAVBackupService` 当前除了 `backupNow()` / `restore()` / `testConnection()`，还承担远端备份列举与删除
+- 恢复成功后，renderer 当前不会再只弹“稍后重启”提示，而是直接走 `system:relaunch` 触发整应用刷新 / 重载
+
+当前需要特别注意的是，这条链路的数据源仍然是 WebDAV 远端目录，不是本地文件系统：
+
+- restore dialog 当前展示的是远端 `PROPFIND` 结果
+- delete 当前发的是 WebDAV `DELETE`
+- restore 当前下载的是用户选中的远端备份文件
+- 远端目录不存在时，列表当前返回 empty，而不是顺手创建目录
+
 ## 项目概览
 
 - 项目名：`winssh`
@@ -464,6 +493,7 @@
 - SFTP 浏览与传输
 - 会话级端口转发
 - 主题系统与用户主题包导入 / 删除
+- WebDAV 备份 / 远端备份恢复 / 远端备份删除
 - 服务器品牌识别 / 自定义图标
 - 设置中心
 - 应用更新检查 / 下载 / 安装（Windows）
@@ -638,6 +668,7 @@
 - `register-system-ipc.ts`
   - `themes:*`
   - `settings:*`
+  - `backup:*`
   - `updates:*`
   - `system:*`
 
@@ -653,6 +684,7 @@
 - `portForwards:*`
 - `themes:*`
 - `settings:*`
+- `backup:*`
 - `updates:*`
 - `system:*`
 
@@ -697,6 +729,11 @@
 - `themes:list`
 - `themes:importArchive`
 - `themes:deletePlugin`
+- `backup:getState`
+- `backup:list`
+- `backup:backupNow`
+- `backup:delete`
+- `backup:restore`
 - `updates:getState`
 - `updates:check`
 - `updates:download`
@@ -805,6 +842,49 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - `autoUpdateCheckEnabled` 已进入 `AppSettings`
 - 默认值当前来自 `DEFAULT_APP_SETTINGS.autoUpdateCheckEnabled = true`
 - `database.test.ts` 已覆盖该设置项的持久化回归
+
+## WebDAV 备份与恢复现状
+
+当前仓库已经有正式的 WebDAV 备份子流程，不再只是“填几个设置项，未来再接能力”。
+
+当前已实现：
+
+- `backup:getState`
+- `backup:list`
+- `backup:backupNow`
+- `backup:delete`
+- `backup:restore`
+- `backup:testConnection`
+- 设置页 backup 分区
+- restore dialog 远端备份列表
+- restore dialog 单项删除 + 二次确认
+- restore 成功后直接整应用 relaunch
+
+当前主进程实现核心在 `src/main/webdav-backup-service.ts`，其行为已经明确包括：
+
+- `backupNow()`：导出当前 SQLite 数据库并上传到 WebDAV
+- `list()`：通过 WebDAV `PROPFIND` 列出可恢复备份
+- `delete(fileName)`：校验文件名后对远端备份发 `DELETE`
+- `restore(fileName?)`：按指定备份恢复；未显式传入时仍保留“回落到最新备份”的兼容行为
+- `testConnection()`：验证凭据和远端目录可用性
+
+当前实现特征：
+
+- 远端备份文件名当前匹配 `winssh-<platform>-<timestamp>.db`
+- 列表链路当前是只读语义；远端目录不存在时返回 empty，不会因打开恢复弹窗而创建目录
+- 删除和恢复前都会校验备份文件名格式，不把 renderer 选中值当成可信输入
+- restore 下载后仍会校验 SQLite header，避免把无效文件写回主数据库
+- restore 成功后当前预期是立即 `system:relaunch`，而不是在原进程里继续跑旧内存状态
+
+renderer 侧当前行为也已经不是“点恢复 -> 直接恢复最新”，而是：
+
+1. 点击 settings 里的 restore
+2. 打开 restore dialog
+3. 拉取远端备份列表
+4. 用户显式选择一项后才允许 restore
+5. 用户也可以在列表项右侧触发 delete
+6. delete 需要先经过确认对话框
+7. restore 成功后直接 relaunch 应用
 
 ## 安全存储现状
 
@@ -1449,6 +1529,10 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - 选中即复制
 - known hosts 列表查看
 - known hosts 删除
+- WebDAV 连接测试
+- WebDAV 立即备份
+- WebDAV 远端备份列表恢复
+- WebDAV 远端备份删除
 - 凭据库管理
 - 应用名称 / 版本 / 平台 / 发布通道查看
 
@@ -1457,6 +1541,7 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - `appearance`
 - `terminal`
 - `security`
+- `backup`
 - `credentialVault`
 - `about`
 
@@ -1473,6 +1558,12 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - known hosts 管理
 - 主机指纹变更 warning
 - 私钥内容回填与旧路径兼容
+
+另外，backup 分区当前需要特别注意的现实约束是：
+
+- restore dialog 当前列出的不是本地文件，而是 WebDAV 远端备份
+- 删除动作当前删除的是远端备份文件，不会影响本地当前数据库，除非用户后续主动 restore
+- restore 成功后当前会直接 relaunch，因此不要按“恢复成功但进程继续原地跑”来推导后续 UI 状态
 
 另外，设置页里和本地终端 shell 相关的当前边界是：
 
@@ -1580,6 +1671,7 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - `gpu-config`
 - `system-fonts`
 - `localization`
+- `main/webdav-backup-service`
 - `sftp` 工具
 - `quick-connect`
 - `validation`
@@ -1663,6 +1755,22 @@ secret 需要通过 `credentials:getSecret()` 单独取。
 - `package.json`
 - `scripts/mock-update-release.mjs`
 - `scripts/update-test-server.mjs`
+
+WebDAV 备份 / 恢复相关改动还会多牵涉：
+
+- `src/shared/types.ts`
+- `src/shared/api.ts`
+- `src/main/ipc/register-system-ipc.ts`
+- `src/main/webdav-backup-service.ts`
+- `src/preload/index.ts`
+- `src/renderer/src/features/backup/api/backup-client.ts`
+- `src/renderer/src/features/shared/query-keys.ts`
+- `src/renderer/src/components/workbench/workbench-settings-editor.tsx`
+- `src/renderer/src/i18n/resources/en-US/workbench.ts`
+- `src/renderer/src/i18n/resources/zh-CN/workbench.ts`
+- `src/renderer/src/test/create-winssh-api.ts`
+- `src/main/webdav-backup-service.test.ts`
+- `src/renderer/src/components/workbench/workbench-settings-editor.test.tsx`
 
 私钥、凭据和连接流程相关改动还会多牵涉：
 
@@ -1774,6 +1882,7 @@ Jump Server、server brand、自定义图标相关改动还会多牵涉：
 - `src/main/local-terminal-manager.ts`
 - `src/main/app-info.ts`
 - `src/main/update-service.ts`
+- `src/main/webdav-backup-service.ts`
 - `src/main/database.ts`
 - `src/main/secure-store.ts`
 - `src/main/system-fonts.ts`
@@ -1867,6 +1976,10 @@ Jump Server、server brand、自定义图标相关改动还会多牵涉：
 - 自动更新当前只支持 Windows packaged build；`darwin` / `linux` 和默认 dev build 进入 `unsupported` 是预期行为
 - `autoUpdateCheckEnabled` 当前只控制启动后的自动检查，不会禁止用户手动检查更新
 - `UpdateService` 当前显式 `autoDownload = false`；看到 `available` 不代表更新包已经下载到本地
+- backup restore 当前已经不是“直接恢复最新”；如果要改恢复 UX、删除逻辑或恢复后行为，优先看 `backup:list` / `backup:delete` / `backup:restore(fileName?)` 这条链路
+- restore dialog 当前列的是 WebDAV 远端备份，不要误按本地文件导入 / 本地 picker 心智去改
+- `backup:delete` 当前要求先确认再删；如果以后改成批量删除或快捷删除，需要重新审视误删风险和确认策略
+- restore 成功后当前会直接 `system:relaunch`；不要假设 renderer 可以安全地继续沿用 restore 前的 query cache / store / in-memory runtime
 - `WINSSH_UPDATE_BASE_URL` 缺失时，更新 UI 应进入 `feed_url_missing`，不要把它当成异常态直接吞掉
 - 如果要在开发态联调更新，需要一起考虑 `WINSSH_ALLOW_DEV_UPDATES`、`dev-app-update.yml` 和本地 feed 服务
 - `release/0.1.1` / `release/0.1.2` 当前是模拟 feed，复制的仍是 `0.1.0` 安装器，不要把它们当成真实升级包

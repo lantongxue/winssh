@@ -1,4 +1,5 @@
 import type { WinsshApi } from '@shared/api'
+import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import {
   createThemeDefinition,
   DEFAULT_DARK_THEME_ID,
@@ -119,16 +120,9 @@ type DeepPartial<T> = {
 
 export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): WinsshApi {
   const defaultSettings = {
-    autoUpdateCheckEnabled: true,
-    copyOnSelect: true,
-    cursorBlink: true,
-    cursorStyle: 'block',
-    experimentalTerminalWebgl: false,
+    ...DEFAULT_APP_SETTINGS,
     language: 'en-US',
-    localTerminalShell: 'zsh',
     terminalFontFamily: 'Consolas',
-    terminalFontSize: 14,
-    theme: 'system',
     windowTitleBarStyle: 'custom'
   } as const
   const systemOverrides = overrides.system
@@ -316,6 +310,22 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
         ...input
       }),
       ...overrides.settings
+    },
+    backup: {
+      backupNow: async () => undefined,
+      delete: async () => undefined,
+      getState: async () => ({
+        lastBackupAt: null,
+        lastBackupError: null,
+        nextBackupAt: null
+      }),
+      list: async () => [],
+      restore: async () => undefined,
+      testConnection: async () => ({
+        message: 'ok',
+        ok: true
+      }),
+      ...overrides.backup
     },
     updates: {
       check: async () => ({

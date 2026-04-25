@@ -10,7 +10,8 @@ export const queryKeys = {
   tags: ['tags'] as const,
   themes: ['themes'] as const,
   updatesState: ['updates', 'state'] as const,
+  backupList: ['backup', 'list'] as const,
+  backupState: ['backup', 'state'] as const,
   portForwards: (sessionId: string) => ['port-forwards', sessionId] as const,
   serverSecrets: (serverId: string) => ['server-secrets', serverId] as const
 }
-
