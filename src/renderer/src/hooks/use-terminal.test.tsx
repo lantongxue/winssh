@@ -264,6 +264,11 @@ describe('useTerminal', () => {
     terminalFontFamily: 'Consolas',
     terminalFontSize: 14,
     theme: 'system',
+    webdavBackupEnabled: false,
+    webdavBackupIntervalMinutes: 60,
+    webdavBackupPath: '/winssh-backup/',
+    webdavUrl: null,
+    webdavUsername: null,
     windowTitleBarStyle: 'custom'
   }
 

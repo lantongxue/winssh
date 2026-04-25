@@ -36,5 +36,10 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   cursorBlink: true,
   copyOnSelect: true,
   localTerminalShell: 'zsh',
-  windowTitleBarStyle: 'native'
+  windowTitleBarStyle: 'native',
+  webdavBackupEnabled: false,
+  webdavUrl: null,
+  webdavUsername: null,
+  webdavBackupIntervalMinutes: 60,
+  webdavBackupPath: '/winssh-backup/'
 }

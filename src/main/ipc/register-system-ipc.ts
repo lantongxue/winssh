@@ -1,12 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { extname } from 'node:path'
-import {
-  app,
-  dialog,
-  ipcMain,
-  type BrowserWindow,
-  type OpenDialogOptions
-} from 'electron'
+import { app, dialog, ipcMain, type BrowserWindow, type OpenDialogOptions } from 'electron'
 import { isServerIconMimeType } from '@shared/server-brands'
 import { getDefaultThemeId, SYSTEM_THEME_ID, type ThemeAppearance } from '@shared/themes'
 import type { AppInfo, AppSettings } from '@shared/types'
@@ -18,6 +12,7 @@ import { createLogger } from '../observability'
 import type { SystemFontService } from '../system-fonts'
 import { ThemeRegistry, ThemeRegistryError } from '../theme-registry'
 import type { UpdateService } from '../update-service'
+import type { WebDAVBackupService } from '../webdav-backup-service'
 
 function parseInput<T>(parser: { parse: (value: unknown) => T }, value: unknown): T {
   return parser.parse(value)
@@ -47,6 +42,7 @@ export function registerSystemIpc(options: {
   themeRegistry: ThemeRegistry
   translate: MainTranslator
   updateService: UpdateService
+  webdavBackupService: WebDAVBackupService
 }) {
   const logger = createLogger('main')
   const {
@@ -58,7 +54,8 @@ export function registerSystemIpc(options: {
     systemFontService,
     themeRegistry,
     translate,
-    updateService
+    updateService,
+    webdavBackupService
   } = options
 
   const captureThemeSelectionState = () => {
@@ -176,20 +173,31 @@ export function registerSystemIpc(options: {
     }
   })
   ipcMain.handle('settings:get', () => settingsService.getSettings())
-  ipcMain.handle('settings:update', (_event, input: Partial<AppSettings>) => {
-    const merged = parseInput(settingsSchema, {
-      ...settingsService.getSettings(),
-      ...input
-    })
+  ipcMain.handle(
+    'settings:update',
+    async (_event, input: Partial<AppSettings> & { webdavPassword?: string | null }) => {
+      const { webdavPassword, ...settingsInput } = input
+      const merged = parseInput(settingsSchema, {
+        ...settingsService.getSettings(),
+        ...settingsInput
+      })
 
-    return settingsService.updateSettings(merged)
-  })
+      if (webdavPassword !== undefined) {
+        await webdavBackupService.updatePassword(webdavPassword ?? null)
+      }
+
+      const result = settingsService.updateSettings(merged)
+      await webdavBackupService.syncAutoBackupSettings()
+      return result
+    }
+  )
   ipcMain.handle('updates:getState', () => updateService.getState())
   ipcMain.handle('updates:check', () => updateService.check())
   ipcMain.handle('updates:download', () => updateService.download())
   ipcMain.handle('updates:quitAndInstall', () => {
     updateService.quitAndInstall()
   })
+  ipcMain.handle('backup:list', () => webdavBackupService.list())
   ipcMain.handle('system:getAppInfo', () => appInfo)
   ipcMain.handle('system:pickPrivateKey', async () => {
     const options: OpenDialogOptions = {
@@ -287,4 +295,14 @@ export function registerSystemIpc(options: {
     getMainWindow()?.close()
   })
   ipcMain.handle('system:window:isMaximized', () => getMainWindow()?.isMaximized() ?? false)
+
+  ipcMain.handle('backup:getState', () => webdavBackupService.getState())
+  ipcMain.handle('backup:backupNow', () => webdavBackupService.backupNow())
+  ipcMain.handle('backup:delete', (_event, fileName: string) =>
+    webdavBackupService.delete(fileName)
+  )
+  ipcMain.handle('backup:restore', (_event, fileName?: string) =>
+    webdavBackupService.restore(fileName)
+  )
+  ipcMain.handle('backup:testConnection', () => webdavBackupService.testConnection())
 }
