@@ -655,6 +655,10 @@ const workbench = {
         createFolder: '新建文件夹',
         rename: '重命名'
       },
+      deleteDialog: {
+        description: '是否确认删除，删除后无法恢复。',
+        title: '确认删除'
+      },
       empty: {
         directory: '当前目录为空。',
         noSessionDescription: '先发起 SSH 连接，SFTP 面板会自动跟随当前标签加载。',

@@ -674,6 +674,10 @@ const workbench = {
         createFolder: 'New Folder',
         rename: 'Rename'
       },
+      deleteDialog: {
+        description: 'Are you sure you want to delete this item? This action cannot be undone.',
+        title: 'Confirm Delete'
+      },
       empty: {
         directory: 'This directory is empty.',
         noSessionDescription:

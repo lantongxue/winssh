@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { RemoteEntry } from '@shared/types'
 import i18n from '@/i18n'
 import { SftpPanel } from '@/components/sftp-panel'
@@ -251,7 +251,7 @@ describe('SftpPanel', () => {
     })
   })
 
-  it('shows a removing transition state before deleting the entry', async () => {
+  it('confirms before deleting and then shows a removing transition state', async () => {
     const remove = vi.fn(() => new Promise<void>(() => undefined))
 
     window.winsshApi = createWinsshApiMock({
@@ -273,6 +273,15 @@ describe('SftpPanel', () => {
 
     fireEvent.contextMenu(entryLabel)
     fireEvent.click(await screen.findByText('Delete'))
+
+    expect(remove).not.toHaveBeenCalled()
+
+    const dialog = await screen.findByRole('dialog')
+    expect(
+      within(dialog).getByText('Are you sure you want to delete this item? This action cannot be undone.')
+    ).toBeInTheDocument()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
 
     await waitFor(() => {
       expect(entryButton).toHaveAttribute('data-removing', 'true')

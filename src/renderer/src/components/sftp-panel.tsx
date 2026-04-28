@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -129,6 +130,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
   const [newFolderTargetPath, setNewFolderTargetPath] = useState<string | null>(null)
   const [renameTarget, setRenameTarget] = useState<RemoteEntry | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [pendingDeleteEntries, setPendingDeleteEntries] = useState<RemoteEntry[] | null>(null)
   const [isDragActive, setIsDragActive] = useState(false)
   const [removingEntryPaths, setRemovingEntryPaths] = useState<string[]>([])
   const RefreshIcon = actionIcons.refresh
@@ -421,6 +423,18 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
     setNewFolderName('')
     setNewFolderTargetPath(targetPath)
     setNewFolderOpen(true)
+  }
+
+  const openDeleteDialog = (entriesToRemove: RemoteEntry[]) => {
+    const uniqueEntries = entriesToRemove.filter(
+      (entry, index, current) => current.findIndex((item) => item.path === entry.path) === index
+    )
+
+    if (uniqueEntries.length === 0) {
+      return
+    }
+
+    setPendingDeleteEntries(uniqueEntries)
   }
 
   const removeEntries = async (entriesToRemove: RemoteEntry[]) => {
@@ -784,7 +798,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
 
                             <ContextMenuItem
                               variant="destructive"
-                              onClick={() => void removeEntries(contextMenuTargets)}
+                              onClick={() => openDeleteDialog(contextMenuTargets)}
                             >
                               <DeleteIcon className="size-4" />
                               {t('common.actions.delete')}
@@ -952,6 +966,43 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
             >
               <SaveIcon className="size-4" />
               {t('common.actions.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(pendingDeleteEntries)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingDeleteEntries(null)
+          }
+        }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t('workbench.sftp.deleteDialog.title')}</DialogTitle>
+            <DialogDescription>{t('workbench.sftp.deleteDialog.description')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPendingDeleteEntries(null)}>
+              <CancelIcon className="size-4" />
+              {t('common.actions.cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (!pendingDeleteEntries?.length) {
+                  return
+                }
+
+                const entriesToRemove = pendingDeleteEntries
+                setPendingDeleteEntries(null)
+                void removeEntries(entriesToRemove)
+              }}
+            >
+              <DeleteIcon className="size-4" />
+              {t('common.actions.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>
