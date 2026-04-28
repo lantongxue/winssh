@@ -11,6 +11,7 @@ import {
   createSessionEditorDocument,
   createSettingsEditorDocument,
   createTerminalWelcomeDocument,
+  DEFAULT_WORKBENCH_BOTTOM_PANEL_SIZE_PX,
   getServerEditorFormId,
   getLegacyPathForActivity,
   getLegacyPathForDocument
@@ -104,11 +105,13 @@ function WorkbenchShellContent() {
   const activeActivityId = useWorkbenchStore((state) => state.activeActivityId)
   const openDocuments = useWorkbenchStore((state) => state.openDocuments)
   const panelOpen = useWorkbenchStore((state) => state.panelOpen)
+  const panelSizePx = useWorkbenchStore((state) => state.panelSizePx)
   const sidebarOpen = useWorkbenchStore((state) => state.sidebarOpen)
   const openDocument = useWorkbenchStore((state) => state.openDocument)
   const closeDocument = useWorkbenchStore((state) => state.closeDocument)
   const setActiveActivity = useWorkbenchStore((state) => state.setActiveActivity)
   const setCommandPaletteOpen = useWorkbenchStore((state) => state.setCommandPaletteOpen)
+  const setPanelSizePx = useWorkbenchStore((state) => state.setPanelSizePx)
   const setQuickOpenOpen = useWorkbenchStore((state) => state.setQuickOpenOpen)
   const togglePanel = useWorkbenchStore((state) => state.togglePanel)
   const toggleSidebar = useWorkbenchStore((state) => state.toggleSidebar)
@@ -321,13 +324,17 @@ function WorkbenchShellContent() {
       if (bottomPanel.isCollapsed()) {
         bottomPanel.expand()
       }
+
+      if (Math.abs(bottomPanel.getSize().inPixels - panelSizePx) > 1) {
+        bottomPanel.resize(panelSizePx)
+      }
       return
     }
 
     if (!bottomPanel.isCollapsed()) {
       bottomPanel.collapse()
     }
-  }, [bottomPanelRef, panelOpen])
+  }, [bottomPanelRef, panelOpen, panelSizePx])
 
   const hasActiveDocument = Boolean(activeDocument)
   const documentLayers = openDocuments.map((document) => {
@@ -375,9 +382,15 @@ function WorkbenchShellContent() {
         <ResizablePanel
           collapsedSize={0}
           collapsible
-          defaultSize="26%"
+          defaultSize={`${DEFAULT_WORKBENCH_BOTTOM_PANEL_SIZE_PX}px`}
+          groupResizeBehavior="preserve-pixel-size"
           id="workbench-bottom-panel"
           minSize="10%"
+          onResize={(size) => {
+            if (size.inPixels > 0) {
+              setPanelSizePx(size.inPixels)
+            }
+          }}
           panelRef={bottomPanelRef}
         >
           <div

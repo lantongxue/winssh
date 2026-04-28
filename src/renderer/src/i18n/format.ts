@@ -55,7 +55,14 @@ export function formatFileSize(value: number): string {
     unitIndex += 1
   }
 
+  if (unitIndex === 0) {
+    return `${new Intl.NumberFormat(getResolvedLocale(), {
+      maximumFractionDigits: 0
+    }).format(size)} ${FILE_SIZE_UNITS[unitIndex]}`
+  }
+
   return `${new Intl.NumberFormat(getResolvedLocale(), {
-    maximumFractionDigits: size >= 10 ? 0 : 1
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
   }).format(size)} ${FILE_SIZE_UNITS[unitIndex]}`
 }

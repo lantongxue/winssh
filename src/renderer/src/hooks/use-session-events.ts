@@ -7,6 +7,7 @@ import { portForwardsClient } from '@/features/port-forwards/api/port-forwards-c
 import { queryKeys } from '@/features/shared/query-keys'
 import { sftpClient } from '@/features/sftp/api/sftp-client'
 import { sessionsClient } from '@/features/sessions/api/sessions-client'
+import { MIN_TRANSFER_PANEL_REVEAL_SIZE_PX } from '@/lib/workbench'
 import { useLocalTerminalsStore } from '@/store/local-terminals-store'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
@@ -18,6 +19,7 @@ export function useSessionEvents() {
   const updateSessionState = useSessionsStore((state) => state.updateSessionState)
   const appendOutput = useWorkbenchStore((state) => state.appendOutput)
   const pushProblem = useWorkbenchStore((state) => state.pushProblem)
+  const revealPanel = useWorkbenchStore((state) => state.revealPanel)
   const upsertTransfer = useWorkbenchStore((state) => state.upsertTransfer)
 
   useEffect(() => {
@@ -73,6 +75,10 @@ export function useSessionEvents() {
 
     const unsubscribeTransfer = sftpClient.onTransferProgress((event) => {
       upsertTransfer(event)
+
+      if (event.direction === 'upload' && event.status === 'running') {
+        revealPanel('transfers', { minSizePx: MIN_TRANSFER_PANEL_REVEAL_SIZE_PX })
+      }
 
       if (event.status === 'completed') {
         const message = t(`workbench.output.${event.direction}Completed`, {
@@ -200,6 +206,7 @@ export function useSessionEvents() {
     appendOutput,
     pushProblem,
     queryClient,
+    revealPanel,
     t,
     updateLocalTerminalState,
     updateSessionState,

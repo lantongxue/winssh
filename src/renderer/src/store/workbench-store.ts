@@ -11,7 +11,11 @@ import type {
   WorkbenchProblemEntry,
   WorkbenchTransferEntry
 } from '@/lib/workbench'
-import { createTransferEntryId, getDocumentActivity } from '@/lib/workbench'
+import {
+  createTransferEntryId,
+  DEFAULT_WORKBENCH_BOTTOM_PANEL_SIZE_PX,
+  getDocumentActivity
+} from '@/lib/workbench'
 
 interface WorkbenchStateData {
   activeActivityId: WorkbenchActivityId
@@ -23,6 +27,7 @@ interface WorkbenchStateData {
   openDocuments: WorkbenchDocument[]
   outputEntries: WorkbenchOutputEntry[]
   panelOpen: boolean
+  panelSizePx: number
   problems: WorkbenchProblemEntry[]
   quickOpenOpen: boolean
   selectedExplorerNode: WorkbenchExplorerNodeId
@@ -32,6 +37,7 @@ interface WorkbenchStateData {
 
 interface WorkbenchState extends WorkbenchStateData {
   appendOutput: (entry: Omit<WorkbenchOutputEntry, 'id' | 'createdAt'>) => void
+  clearOutput: () => void
   clearProblems: () => void
   clearDocumentTitleOverride: (documentId: WorkbenchDocumentId) => void
   clearTransfers: () => void
@@ -42,12 +48,19 @@ interface WorkbenchState extends WorkbenchStateData {
   pushProblem: (problem: Omit<WorkbenchProblemEntry, 'createdAt'>) => void
   replaceDocument: (currentDocumentId: WorkbenchDocumentId, document: WorkbenchDocument) => void
   reset: () => void
+  revealPanel: (
+    panelId: WorkbenchPanelId,
+    options?: {
+      minSizePx?: number
+    }
+  ) => void
   setActiveActivity: (activityId: WorkbenchActivityId) => void
   setActiveDocument: (documentId: WorkbenchDocumentId | null) => void
   setActivePanel: (panelId: WorkbenchPanelId) => void
   setCommandPaletteOpen: (open: boolean) => void
   setDocumentTitleOverride: (documentId: WorkbenchDocumentId, title: string) => void
   setPanelOpen: (open: boolean) => void
+  setPanelSizePx: (sizePx: number) => void
   setQuickOpenOpen: (open: boolean) => void
   setSelectedExplorerNode: (nodeId: WorkbenchExplorerNodeId) => void
   setSidebarOpen: (open: boolean) => void
@@ -55,6 +68,14 @@ interface WorkbenchState extends WorkbenchStateData {
   toggleSection: (sectionId: WorkbenchExplorerSectionId) => void
   toggleSidebar: () => void
   upsertTransfer: (entry: Omit<WorkbenchTransferEntry, 'id' | 'updatedAt'>) => void
+}
+
+function normalizePanelSizePx(sizePx: number) {
+  if (!Number.isFinite(sizePx)) {
+    return DEFAULT_WORKBENCH_BOTTOM_PANEL_SIZE_PX
+  }
+
+  return Math.max(160, Math.round(sizePx))
 }
 
 function normalizeDocuments(documents: WorkbenchDocument[]): WorkbenchDocument[] {
@@ -98,6 +119,7 @@ function createInitialState(): WorkbenchStateData {
     openDocuments: [],
     outputEntries: [],
     panelOpen: false,
+    panelSizePx: DEFAULT_WORKBENCH_BOTTOM_PANEL_SIZE_PX,
     problems: [],
     quickOpenOpen: false,
     selectedExplorerNode: 'home',
@@ -121,6 +143,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
             ...state.outputEntries
           ].slice(0, 120)
         })),
+      clearOutput: () => set({ outputEntries: [] }),
       clearDocumentTitleOverride: (documentId) =>
         set((state) => {
           if (!state.documentTitleOverrides[documentId]) {
@@ -252,6 +275,26 @@ export const useWorkbenchStore = create<WorkbenchState>()(
           }
         }),
       reset: () => set(createInitialState()),
+      revealPanel: (panelId, options) =>
+        set((state) => {
+          const nextPanelSizePx = options?.minSizePx
+            ? Math.max(state.panelSizePx, normalizePanelSizePx(options.minSizePx))
+            : state.panelSizePx
+
+          if (
+            state.activePanelId === panelId &&
+            state.panelOpen &&
+            state.panelSizePx === nextPanelSizePx
+          ) {
+            return state
+          }
+
+          return {
+            activePanelId: panelId,
+            panelOpen: true,
+            panelSizePx: nextPanelSizePx
+          }
+        }),
       setActiveActivity: (activityId) => set({ activeActivityId: activityId }),
       setActiveDocument: (documentId) =>
         set((state) => {
@@ -283,6 +326,18 @@ export const useWorkbenchStore = create<WorkbenchState>()(
           }
         })),
       setPanelOpen: (open) => set({ panelOpen: open }),
+      setPanelSizePx: (sizePx) =>
+        set((state) => {
+          const nextPanelSizePx = normalizePanelSizePx(sizePx)
+
+          if (state.panelSizePx === nextPanelSizePx) {
+            return state
+          }
+
+          return {
+            panelSizePx: nextPanelSizePx
+          }
+        }),
       setQuickOpenOpen: (open) => set({ quickOpenOpen: open }),
       setSelectedExplorerNode: (nodeId) => set({ selectedExplorerNode: nodeId }),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
@@ -327,6 +382,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
         activePanelId: state.activePanelId,
         collapsedSections: state.collapsedSections,
         panelOpen: state.panelOpen,
+        panelSizePx: state.panelSizePx,
         selectedExplorerNode: state.selectedExplorerNode,
         sidebarOpen: state.sidebarOpen
       }),

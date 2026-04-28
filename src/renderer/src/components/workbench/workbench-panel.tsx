@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { formatTime } from '@/i18n/format'
+import { formatFileSize, formatTime } from '@/i18n/format'
 import { actionIcons } from '@/lib/action-icons'
 import { workbenchPanels } from '@/lib/workbench'
 import { cn } from '@/lib/utils'
@@ -13,6 +13,7 @@ export function WorkbenchPanel() {
   const outputEntries = useWorkbenchStore((state) => state.outputEntries)
   const problems = useWorkbenchStore((state) => state.problems)
   const transferEntries = useWorkbenchStore((state) => state.transferEntries)
+  const clearOutput = useWorkbenchStore((state) => state.clearOutput)
   const clearProblems = useWorkbenchStore((state) => state.clearProblems)
   const clearTransfers = useWorkbenchStore((state) => state.clearTransfers)
   const setActivePanel = useWorkbenchStore((state) => state.setActivePanel)
@@ -41,6 +42,12 @@ export function WorkbenchPanel() {
         </div>
 
         <div className="flex items-center gap-1">
+          {activePanelId === 'output' ? (
+            <Button variant="ghost" size="sm" onClick={clearOutput}>
+              <ClearIcon className="size-4" />
+              {t('workbench.panel.clearOutput')}
+            </Button>
+          ) : null}
           {activePanelId === 'problems' ? (
             <Button variant="ghost" size="sm" onClick={clearProblems}>
               <ClearIcon className="size-4" />
@@ -102,6 +109,12 @@ export function WorkbenchPanel() {
             ) : (
               transferEntries.map((entry) => {
                 const ratio = entry.total > 0 ? Math.min(entry.transferred / entry.total, 1) : 0
+                const transferredText = formatFileSize(entry.transferred)
+                const totalText =
+                  entry.total > 0
+                    ? formatFileSize(entry.total)
+                    : t('workbench.panel.transfer.unknown')
+
                 return (
                   <div key={entry.id} className="bg-[var(--workbench-panel)] px-4 py-3 text-sm">
                     <div className="flex items-center justify-between gap-3">
@@ -118,7 +131,7 @@ export function WorkbenchPanel() {
                       />
                     </div>
                     <div className="mt-2 text-[11px] text-muted-foreground">
-                      {entry.transferred} / {entry.total || t('workbench.panel.transfer.unknown')} ·{' '}
+                      {transferredText} / {totalText} ·{' '}
                       {t(`workbench.panel.transfer.${entry.status}`)}
                     </div>
                   </div>

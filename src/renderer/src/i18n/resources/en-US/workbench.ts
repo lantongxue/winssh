@@ -103,6 +103,7 @@ const workbench = {
       }
     },
     panel: {
+      clearOutput: 'Clear Output',
       clearProblems: 'Clear Problems',
       clearTransfers: 'Clear Transfers',
       empty: {

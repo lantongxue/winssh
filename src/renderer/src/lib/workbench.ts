@@ -7,6 +7,9 @@ export type WorkbenchPanelId = 'output' | 'transfers' | 'problems'
 export type WorkbenchLegacyPath = '/servers' | '/sessions' | '/settings'
 export type WorkbenchExplorerSectionId = 'favorites' | 'recent' | 'groups' | 'tags' | 'all-servers'
 
+export const DEFAULT_WORKBENCH_BOTTOM_PANEL_SIZE_PX = 260
+export const MIN_TRANSFER_PANEL_REVEAL_SIZE_PX = 280
+
 export type WorkbenchExplorerNodeId =
   | 'home'
   | 'favorites'

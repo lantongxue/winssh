@@ -101,6 +101,7 @@ const workbench = {
       }
     },
     panel: {
+      clearOutput: '清除输出记录',
       clearProblems: '清除问题',
       clearTransfers: '清除传输记录',
       empty: {

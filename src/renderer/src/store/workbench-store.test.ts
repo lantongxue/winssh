@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   createServerEditorDocument,
   createSessionEditorDocument,
-  createSettingsEditorDocument
+  createSettingsEditorDocument,
+  MIN_TRANSFER_PANEL_REVEAL_SIZE_PX
 } from '@/lib/workbench'
 import { useWorkbenchStore } from './workbench-store'
 
@@ -107,5 +108,35 @@ describe('workbench store', () => {
     expect(state.commandPaletteOpen).toBe(true)
     expect(state.quickOpenOpen).toBe(true)
     expect(state.panelOpen).toBe(true)
+  })
+
+  it('clears output entries without affecting other workbench state', () => {
+    const store = useWorkbenchStore.getState()
+
+    store.appendOutput({
+      detail: 'session-1',
+      level: 'info',
+      message: 'Connected'
+    })
+    store.setActivePanel('output')
+    store.setPanelOpen(true)
+    store.clearOutput()
+
+    const state = useWorkbenchStore.getState()
+    expect(state.outputEntries).toEqual([])
+    expect(state.activePanelId).toBe('output')
+    expect(state.panelOpen).toBe(true)
+  })
+
+  it('reveals the transfers panel and enforces a minimum useful size', () => {
+    const store = useWorkbenchStore.getState()
+
+    store.setPanelSizePx(180)
+    store.revealPanel('transfers', { minSizePx: MIN_TRANSFER_PANEL_REVEAL_SIZE_PX })
+
+    const state = useWorkbenchStore.getState()
+    expect(state.activePanelId).toBe('transfers')
+    expect(state.panelOpen).toBe(true)
+    expect(state.panelSizePx).toBe(MIN_TRANSFER_PANEL_REVEAL_SIZE_PX)
   })
 })
