@@ -44,7 +44,7 @@ export const SITE_COPY = {
     home: {
       seoTitle: 'WinSSH',
       seoDescription:
-        'WinSSH is a cross-platform desktop SSH client with local terminals, jump hosts, SFTP, port forwarding, resource monitoring, theme packs, updates, and a structured workbench UI.',
+        'WinSSH is a cross-platform desktop SSH client with local terminals, jump hosts, SFTP and remote file editing, WebDAV backup and restore, port forwarding, resource monitoring, theme packs, updates, and a structured workbench UI.',
       seoKeywords: [
         'WinSSH',
         'SSH client',
@@ -57,6 +57,9 @@ export const SITE_COPY = {
         'credential vault',
         'terminal workbench',
         'app updates',
+        'remote file editor',
+        'WebDAV backup',
+        'backup restore',
         'cross-platform SSH',
         'Windows SSH client',
         'macOS SSH client',
@@ -138,7 +141,7 @@ export const SITE_COPY = {
             id: 'sftp',
             title: 'SFTP Workspace',
             description:
-              'Browse remote files, create and rename entries, upload whole directories, delete recursively, multi-select, and track transfers without playing window-juggling.',
+              'Browse remote files, open and save remote text files, create and rename entries, upload whole directories, delete recursively, multi-select, and track transfers without playing window-juggling.',
             tag: 'SFTP'
           },
           {
@@ -166,7 +169,7 @@ export const SITE_COPY = {
             id: 'updates',
             title: 'Workbench and Updates',
             description:
-              'Activity bar, primary sidebar, tabs, local terminals, command palette, updates editor, and status bar give SSH work a proper desk instead of a toolbox spill.',
+              'Activity bar, primary sidebar, tabs, local terminals, command palette, updates editor, status bar, and WebDAV backup flows give SSH work a proper desk instead of a toolbox spill.',
             tag: 'UX'
           }
         ]
@@ -199,7 +202,7 @@ export const SITE_COPY = {
         noteEyebrow: 'Docs',
         noteTitle: 'Docs start as a front door, not a shrug.',
         noteBody:
-          'The docs landing already maps quick start, connections, local terminals, SFTP, port forwarding, observability, themes, updates, and security. It opens the room instead of apologizing for being early.',
+          'The docs landing already maps quick start, connections, local terminals, SFTP, port forwarding, observability, themes, updates, backup, and security. It opens the room instead of apologizing for being early.',
         noteCta: 'Open Docs Landing',
         cards: [
           {
@@ -230,7 +233,7 @@ export const SITE_COPY = {
           {
             question: 'What is WinSSH?',
             answer:
-              'WinSSH is a cross-platform desktop SSH client with a workbench layout, SSH and local terminals, jump servers, SFTP tooling, session-level port forwarding, resource monitoring, a credential vault, theming, and settings surfaces.'
+              'WinSSH is a cross-platform desktop SSH client with a workbench layout, SSH and local terminals, jump servers, SFTP tooling with remote file editing, WebDAV backup and restore, session-level port forwarding, resource monitoring, a credential vault, theming, and settings surfaces.'
           },
           {
             question: 'How does website theme switching work?',
@@ -250,7 +253,7 @@ export const SITE_COPY = {
           {
             question: 'What does the docs section include first?',
             answer:
-              'The first docs surface is a landing page that maps the product areas and points visitors toward the material that will expand next: quick start, connections, local terminals, SFTP, port forwarding, observability, themes, updates, and security.'
+              'The first docs surface is a landing page that maps the product areas and points visitors toward the material that will expand next: quick start, connections, local terminals, SFTP, port forwarding, observability, themes, updates, backup, and security.'
           }
         ]
       }
@@ -258,7 +261,7 @@ export const SITE_COPY = {
     docs: {
       seoTitle: 'WinSSH Docs',
       seoDescription:
-        'WinSSH documentation for quick start, saved connections, jump hosts, local terminals, SFTP, port forwarding, updates, theme development, and the current security model.',
+        'WinSSH documentation for quick start, saved connections, jump hosts, local terminals, SFTP remote file editing, WebDAV backup and restore, port forwarding, updates, theme development, and the current security model.',
       seoKeywords: [
         'WinSSH docs',
         'SSH documentation',
@@ -268,6 +271,8 @@ export const SITE_COPY = {
         'port forwarding docs',
         'resource monitor',
         'app updates',
+        'remote file editor',
+        'WebDAV backup',
         'theme development',
         'SSH client guide',
         'credential vault',
@@ -283,6 +288,7 @@ export const SITE_COPY = {
         { id: 'observability', label: 'Observability', meta: 'Linux signals, best effort' },
         { id: 'themes', label: 'Themes', meta: 'Registry, plugins, dev' },
         { id: 'updates', label: 'Updates', meta: 'Windows-first release flow' },
+        { id: 'backup', label: 'Backup', meta: 'WebDAV restore flow' },
         { id: 'security', label: 'Security Model', meta: 'Vault, keytar, known hosts' }
       ],
       hero: {
@@ -307,7 +313,7 @@ export const SITE_COPY = {
           id: 'connections',
           title: 'Connections',
           summary:
-            'Explains saved servers, quick connect, credential references, single-hop jump servers, connection phases, provisional tabs, and reconnect behavior without pretending the edges do not exist.',
+            'Explains saved servers, quick connect, credential references, single-hop jump servers, server identity metadata, connection phases, provisional tabs, and reconnect behavior without pretending the edges do not exist.',
           status: 'Map ready',
           bullets: ['Saved servers', 'Jump hosts', 'Connection phases']
         },
@@ -323,9 +329,9 @@ export const SITE_COPY = {
           id: 'sftp',
           title: 'SFTP',
           summary:
-            'Maps remote file browsing, transfers, current path actions, multi-select, recursive directory upload, recursive delete, and path-to-terminal actions without the usual scavenger hunt.',
+            'Maps remote file browsing, remote text file open and save, transfers, current path actions, multi-select, recursive directory upload, recursive delete, and path-to-terminal actions without the usual scavenger hunt.',
           status: 'Map ready',
-          bullets: ['Directory browsing', 'Uploads and downloads', 'Recursive operations']
+          bullets: ['Directory browsing', 'Remote file editing', 'Recursive operations']
         },
         {
           id: 'port-forwarding',
@@ -535,10 +541,18 @@ export const SITE_COPY = {
           bullets: ['Windows-only updater', 'Manual download flow', 'Release channels']
         },
         {
+          id: 'backup',
+          title: 'Backup',
+          summary:
+            'Covers WebDAV backup configuration, manual backup, remote backup listing, restore-from-selection, remote backup deletion, and the relaunch behavior after a restore completes.',
+          status: 'Map ready',
+          bullets: ['WebDAV settings', 'Remote restore list', 'Delete and relaunch']
+        },
+        {
           id: 'security',
           title: 'Security Model',
           summary:
-            'Clarifies the current hybrid secret model across keytar, server fields, and the credential vault, plus known hosts trust behavior without hand-waving.',
+            'Clarifies the current hybrid secret model across keytar, server fields, and the credential vault, including password and private-key credentials plus known hosts trust behavior without hand-waving.',
           status: 'Map ready',
           bullets: ['Credential vault', 'Keytar boundaries', 'Known hosts']
         }
@@ -582,7 +596,7 @@ export const SITE_COPY = {
     home: {
       seoTitle: 'WinSSH',
       seoDescription:
-        'WinSSH 是一款跨平台桌面 SSH 客户端，已经覆盖本地终端、Jump Server、SFTP、端口转发、资源监控、主题包、更新系统和结构化 workbench 界面。',
+        'WinSSH 是一款跨平台桌面 SSH 客户端，已经覆盖本地终端、Jump Server、SFTP 与远端文件编辑、WebDAV 备份恢复、端口转发、资源监控、主题包、更新系统和结构化 workbench 界面。',
       seoKeywords: [
         'WinSSH',
         'SSH 客户端',
@@ -595,6 +609,9 @@ export const SITE_COPY = {
         '凭据库',
         '终端工作台',
         '应用更新',
+        '远端文件编辑',
+        'WebDAV 备份',
+        '备份恢复',
         '跨平台 SSH',
         'Windows SSH',
         'macOS SSH',
@@ -674,7 +691,7 @@ export const SITE_COPY = {
             id: 'sftp',
             title: 'SFTP 工作区',
             description:
-              '远端目录浏览、创建、重命名、递归上传目录、递归删除、多选和传输进度都留在 workbench 里，不用边干活边找窗。',
+              '远端目录浏览、远端文本文件打开保存、创建、重命名、递归上传目录、递归删除、多选和传输进度都留在 workbench 里，不用边干活边找窗。',
             tag: 'SFTP'
           },
           {
@@ -702,7 +719,7 @@ export const SITE_COPY = {
             id: 'updates',
             title: 'Workbench 与更新',
             description:
-              '活动栏、侧边栏、标签区、本地终端、命令面板、updates editor 和状态栏，让 SSH 工作终于有了一张完整桌子。',
+              '活动栏、侧边栏、标签区、本地终端、命令面板、updates editor、状态栏和 WebDAV 备份流转，让 SSH 工作终于有了一张完整桌子。',
             tag: '体验'
           }
         ]
@@ -735,7 +752,7 @@ export const SITE_COPY = {
         noteEyebrow: '文档',
         noteTitle: '文档先做前门，不做一句“敬请期待”。',
         noteBody:
-          'docs landing 已经把快速开始、连接、本地终端、SFTP、端口转发、资源监控、主题、更新和安全都各自开了门，不会只剩一句客气占位。',
+          'docs landing 已经把快速开始、连接、本地终端、SFTP、端口转发、资源监控、主题、更新、备份和安全都各自开了门，不会只剩一句客气占位。',
         noteCta: '打开文档入口',
         cards: [
           {
@@ -765,7 +782,7 @@ export const SITE_COPY = {
           {
             question: 'WinSSH 是什么？',
             answer:
-              'WinSSH 是一款跨平台桌面 SSH 客户端，已经具备 workbench 布局、SSH 与本地终端、Jump Server、SFTP、会话级端口转发、资源监控、凭据库、主题系统和设置中心。'
+              'WinSSH 是一款跨平台桌面 SSH 客户端，已经具备 workbench 布局、SSH 与本地终端、Jump Server、带远端文件编辑的 SFTP、WebDAV 备份恢复、会话级端口转发、资源监控、凭据库、主题系统和设置中心。'
           },
           {
             question: '官网主题切换是怎么工作的？',
@@ -785,7 +802,7 @@ export const SITE_COPY = {
           {
             question: '文档入口首版包含什么？',
             answer:
-              '首版文档页是一个产品地图，围绕快速开始、连接、本地终端、SFTP、端口转发、资源监控、主题、更新和安全模型这些方向组织后续文档扩展。'
+              '首版文档页是一个产品地图，围绕快速开始、连接、本地终端、SFTP、端口转发、资源监控、主题、更新、备份和安全模型这些方向组织后续文档扩展。'
           }
         ]
       }
@@ -793,7 +810,7 @@ export const SITE_COPY = {
     docs: {
       seoTitle: 'WinSSH 文档',
       seoDescription:
-        'WinSSH 文档入口，覆盖快速开始、保存连接、Jump Server、本地终端、SFTP、端口转发、更新系统、主题开发以及当前安全模型说明。',
+        'WinSSH 文档入口，覆盖快速开始、保存连接、Jump Server、本地终端、SFTP 远端文件编辑、WebDAV 备份恢复、端口转发、更新系统、主题开发以及当前安全模型说明。',
       seoKeywords: [
         'WinSSH 文档',
         'SSH 文档',
@@ -803,6 +820,8 @@ export const SITE_COPY = {
         '端口转发文档',
         '资源监控',
         '应用更新',
+        '远端文件编辑',
+        'WebDAV 备份',
         '主题开发',
         'SSH 客户端指南',
         '凭据库',
@@ -818,6 +837,7 @@ export const SITE_COPY = {
         { id: 'observability', label: '资源监控', meta: 'Linux 指标，best-effort' },
         { id: 'themes', label: '主题', meta: 'Registry / 插件 / 开发' },
         { id: 'updates', label: '更新', meta: 'Windows-first 发布链路' },
+        { id: 'backup', label: '备份', meta: 'WebDAV 远端恢复链路' },
         { id: 'security', label: '安全模型', meta: '凭据与 known hosts' }
       ],
       hero: {
@@ -840,7 +860,7 @@ export const SITE_COPY = {
         {
           id: 'connections',
           title: '连接',
-          summary: '覆盖保存服务器、quick connect、凭据引用、单跳 Jump Server、连接 phase、临时 tab 和 reconnect 行为，也不回避现有边界。',
+          summary: '覆盖保存服务器、quick connect、凭据引用、单跳 Jump Server、服务器身份元数据、连接 phase、临时 tab 和 reconnect 行为，也不回避现有边界。',
           status: '入口已亮灯',
           bullets: ['保存服务器', 'Jump Server', '连接阶段']
         },
@@ -855,9 +875,9 @@ export const SITE_COPY = {
         {
           id: 'sftp',
           title: 'SFTP',
-          summary: '组织远端目录浏览、传输、当前路径操作、递归上传目录、递归删除、多选和路径发送到终端这些真实能力，不让你靠猜测翻目录。',
+          summary: '组织远端目录浏览、远端文本文件打开保存、传输、当前路径操作、递归上传目录、递归删除、多选和路径发送到终端这些真实能力，不让你靠猜测翻目录。',
           status: '入口已亮灯',
-          bullets: ['目录浏览', '上传下载', '递归操作']
+          bullets: ['目录浏览', '远端文件编辑', '递归操作']
         },
         {
           id: 'port-forwarding',
@@ -1066,9 +1086,17 @@ export const SITE_COPY = {
           bullets: ['Windows-only updater', '手动下载流程', '发布渠道']
         },
         {
+          id: 'backup',
+          title: '备份',
+          summary:
+            '覆盖 WebDAV 备份配置、手动备份、远端备份列表、按选择恢复、远端备份删除，以及恢复完成后的 relaunch 行为。',
+          status: '入口已亮灯',
+          bullets: ['WebDAV 设置', '远端恢复列表', '删除与重启']
+        },
+        {
           id: 'security',
           title: '安全模型',
-          summary: '解释当前 keytar、服务器字段和 credential vault 并存的混合 secret 模型，不拿模糊话术遮边界。',
+          summary: '解释当前 keytar、服务器字段和 credential vault 并存的混合 secret 模型，明确 password/private key 凭据形态，也不拿模糊话术遮边界。',
           status: '入口已亮灯',
           bullets: ['Credential Vault', 'keytar 边界', 'Known hosts']
         }
