@@ -693,13 +693,7 @@ export function WorkbenchPrimarySidebar() {
         ...current,
         [group.id]: true
       }))
-      return
     }
-
-    setExpandedGroups((current) => ({
-      ...current,
-      [UNGROUPED_GROUP_ID]: true
-    }))
   }
 
   const handleServerDragStart = (serverId: string) => (event: DragEvent<HTMLDivElement>) => {
@@ -800,12 +794,7 @@ export function WorkbenchPrimarySidebar() {
     }
   }
 
-  const ungroupedExpanded = expandedGroups[UNGROUPED_GROUP_ID] ?? true
-  const toggleUngrouped = () =>
-    setExpandedGroups((current) => ({
-      ...current,
-      [UNGROUPED_GROUP_ID]: !(current[UNGROUPED_GROUP_ID] ?? true)
-    }))
+
 
   const clearServerSearch = () => {
     setServerSearchQuery('')
@@ -996,7 +985,7 @@ export function WorkbenchPrimarySidebar() {
                 <SectionHeader
                   title={t('workbench.primarySidebar.sections.groups')}
                   icon={<ServerIcon className="size-3.5" />}
-                  count={groups.length + 1}
+                  count={groups.length + ungroupedServers.length}
                   active={selectedExplorerNode === 'groups'}
                   collapsed={Boolean(collapsedSections.groups)}
                   onDoubleClick={() => toggleSection('groups')}
@@ -1019,63 +1008,27 @@ export function WorkbenchPrimarySidebar() {
                 />
                 {!collapsedSections.groups ? (
                   <div className="space-y-0.5">
-                    <div className="space-y-0.5">
-                      <TreeRow
-                        active={selectedExplorerNode === `group:${UNGROUPED_GROUP_ID}`}
+                    {ungroupedServers.map((server) => (
+                      <ServerRow
+                        key={server.id}
+                        active={selectedExplorerNode === `server:${server.id}`}
+                        connected={connectedServerIds.has(server.id)}
                         depth={1}
-                        onClick={() => setSelectedExplorerNode(`group:${UNGROUPED_GROUP_ID}`)}
-                        dropTarget={dropTargetGroupId === UNGROUPED_GROUP_ID}
-                        onDragLeave={handleGroupDragLeave(null)}
-                        onDragOver={handleGroupDragOver(null)}
-                        onDoubleClick={toggleUngrouped}
-                        onDrop={handleGroupDrop(null)}
-                      >
-                        <button
-                          type="button"
-                          className="flex size-4 items-center justify-center"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            toggleUngrouped()
-                          }}
-                        >
-                          {ungroupedExpanded ? (
-                            <CollapseIcon className="size-3.5" />
-                          ) : (
-                            <ExpandIcon className="size-3.5" />
-                          )}
-                        </button>
-                        <span className="size-2 rounded-full bg-muted-foreground/50" />
-                        <span className="flex-1 truncate">
-                          {t('workbench.primarySidebar.labels.ungrouped')}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {ungroupedServers.length}
-                        </span>
-                      </TreeRow>
-                      {ungroupedExpanded
-                        ? ungroupedServers.map((server) => (
-                            <ServerRow
-                              key={server.id}
-                              active={selectedExplorerNode === `server:${server.id}`}
-                              connected={connectedServerIds.has(server.id)}
-                              depth={2}
-                              dragging={draggedServerId === server.id}
-                              groups={groups}
-                              server={server}
-                              onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
-                              onConnect={() => void connectServer(server)}
-                              onDelete={() => setPendingDeleteServer(server)}
-                              onDragEnd={handleServerDragEnd}
-                              onDragStart={handleServerDragStart(server.id)}
-                              onEdit={() => openServerEditor(server.id)}
-                              onMoveToGroup={(currentServer, targetGroup) =>
-                                void handleMoveServerGroup(currentServer, targetGroup)
-                              }
-                              onToggleFavorite={() => void toggleFavorite(server.id)}
-                            />
-                          ))
-                        : null}
-                    </div>
+                        dragging={draggedServerId === server.id}
+                        groups={groups}
+                        server={server}
+                        onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
+                        onConnect={() => void connectServer(server)}
+                        onDelete={() => setPendingDeleteServer(server)}
+                        onDragEnd={handleServerDragEnd}
+                        onDragStart={handleServerDragStart(server.id)}
+                        onEdit={() => openServerEditor(server.id)}
+                        onMoveToGroup={(currentServer, targetGroup) =>
+                          void handleMoveServerGroup(currentServer, targetGroup)
+                        }
+                        onToggleFavorite={() => void toggleFavorite(server.id)}
+                      />
+                    ))}
                     {groupTree.map((node) => renderGroupNode(node, 1))}
                   </div>
                 ) : null}

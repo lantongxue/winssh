@@ -159,7 +159,7 @@ beforeEach(async () => {
 })
 
 describe('WorkbenchPrimarySidebar', () => {
-  it('shows an ungrouped node in server management and hides connected badges in recent', async () => {
+  it('shows ungrouped servers directly under server management and hides connected badges in recent', async () => {
     useSessionsStore.getState().addSession({
       connectedAt: new Date().toISOString(),
       currentPath: '/root',
@@ -194,7 +194,7 @@ describe('WorkbenchPrimarySidebar', () => {
     expect(within(managementSection as HTMLElement).getAllByText('Server Management')).toHaveLength(
       1
     )
-    expect(within(managementSection as HTMLElement).getAllByText('Ungrouped')).toHaveLength(1)
+    expect(within(managementSection as HTMLElement).queryByText('Ungrouped')).not.toBeInTheDocument()
     expect(within(recentSection as HTMLElement).getAllByText('Recent')).toHaveLength(1)
     expect(await screen.findAllByText('103.205.241.248')).toHaveLength(2)
     expect(await screen.findAllByText('Connected')).toHaveLength(2)
@@ -260,13 +260,54 @@ describe('WorkbenchPrimarySidebar', () => {
   })
 
   it('collapses top-level sections on double click', async () => {
+    // Clear favorites to simplify test (ungrouped servers only)
+    const noFavoritesServers = [
+      {
+        authType: 'password' as const,
+        brandId: null,
+        createdAt: '',
+        credentialId: null,
+        customIconDataUrl: null,
+        favorite: false,
+        group: null,
+        groupId: null,
+        hasPassphrase: false,
+        hasPassword: false,
+        host: '10.0.0.1',
+        id: 'ungrouped-only',
+        jumpServerId: null,
+        lastConnectedAt: null,
+        name: 'Ungrouped Only',
+        note: null,
+        port: 22,
+        privateKeyPath: null,
+        tags: [],
+        updatedAt: '',
+        username: 'root'
+      }
+    ]
+
+    window.winsshApi = createWinsshApiMock({
+      groups: {
+        list: vi.fn().mockResolvedValue([])
+      },
+      servers: {
+        list: vi.fn().mockResolvedValue(noFavoritesServers),
+        listRecent: vi.fn().mockResolvedValue([])
+      },
+      tags: {
+        list: vi.fn().mockResolvedValue([])
+      }
+    })
+
     renderPrimarySidebar()
 
     const managementLabel = await screen.findByText('Server Management')
-    expect(screen.getByText('Ungrouped')).toBeInTheDocument()
+    const serverLabel = await screen.findByText('Ungrouped Only')
+    expect(serverLabel).toBeInTheDocument()
 
     fireEvent.doubleClick(managementLabel)
-    expect(screen.queryByText('Ungrouped')).not.toBeInTheDocument()
+    expect(screen.queryByText('Ungrouped Only')).not.toBeInTheDocument()
   })
 
   it('toggles grouped children on double click', async () => {
@@ -701,6 +742,5 @@ describe('WorkbenchPrimarySidebar', () => {
 
     expect(await screen.findByText('Search Results')).toBeInTheDocument()
     expect(screen.getByText('No servers match "missing-server".')).toBeInTheDocument()
-    expect(screen.queryByText('Ungrouped')).not.toBeInTheDocument()
   })
 })
