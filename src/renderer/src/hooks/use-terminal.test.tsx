@@ -296,6 +296,23 @@ describe('useTerminal', () => {
     version: '1.0.0'
   })
 
+  const highContrastTheme = createThemeDefinition({
+    appearance: 'dark',
+    id: 'acme.accessible-dark',
+    label: 'High Contrast Dark',
+    pluginDisplayName: 'Tests',
+    pluginId: 'tests',
+    source: 'builtin',
+    terminal: {
+      background: '#000000',
+      foreground: '#ffffff',
+      cursor: '#ffff00',
+      selectionBackground: '#ffff00'
+    },
+    uiTheme: 'hc-black',
+    version: '1.0.0'
+  })
+
   beforeEach(() => {
     terminalInstances.length = 0
     fitAddonInstances.length = 0
@@ -431,6 +448,12 @@ describe('useTerminal', () => {
       background: pixelTheme.terminal.background
     })
     expect(fitAddonInstances[0]?.fit).toHaveBeenCalled()
+  })
+
+  it('enables xterm minimum contrast for high contrast themes', () => {
+    render(<TestTerminal settings={settings} theme={highContrastTheme} />)
+
+    expect(terminalInstances[0]?.initialOptions.minimumContrastRatio).toBe(4.5)
   })
 
   it('reformats the font stack and refreshes xterm glyph caches when typography changes', () => {

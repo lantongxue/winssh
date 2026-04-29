@@ -4,8 +4,9 @@ export const SYSTEM_THEME_ID = 'system'
 export const DEFAULT_LIGHT_THEME_ID = 'winssh.light-plus'
 export const DEFAULT_DARK_THEME_ID = 'winssh.dark-plus'
 export const DEFAULT_PIXEL_THEME_ID = 'winssh.pixel-crt'
+export const HIGH_CONTRAST_THEME_ID_PREFIX = 'winssh.high-contrast'
 
-export const THEME_UI_OPTIONS = ['vs', 'vs-dark'] as const
+export const THEME_UI_OPTIONS = ['vs', 'vs-dark', 'hc-light', 'hc-black'] as const
 export const THEME_APPEARANCE_OPTIONS = ['light', 'dark'] as const
 export const THEME_SOURCE_OPTIONS = ['builtin', 'user'] as const
 
@@ -155,6 +156,7 @@ export interface ThemeDefinitionInput {
   source: ThemeSource
   terminal?: ThemeTerminalOverrides
   terminalDefaults?: ThemeTerminalDefaults
+  uiTheme?: ThemeUiOption
   version: string
 }
 
@@ -169,6 +171,7 @@ export interface ThemeDefinition {
   source: ThemeSource
   terminal: ThemeTerminalMap
   terminalDefaults?: ThemeTerminalDefaults
+  uiTheme: ThemeUiOption
   version: string
 }
 
@@ -456,7 +459,15 @@ export const themeDocumentSchema = z.object({
 })
 
 export function resolveThemeAppearance(uiTheme: ThemeUiOption): ThemeAppearance {
-  return uiTheme === 'vs' ? 'light' : 'dark'
+  return uiTheme === 'vs' || uiTheme === 'hc-light' ? 'light' : 'dark'
+}
+
+export function isHighContrastThemeId(themeId: string): boolean {
+  return themeId.startsWith(HIGH_CONTRAST_THEME_ID_PREFIX)
+}
+
+export function isHighContrastTheme(theme: Pick<ThemeDefinition, 'uiTheme'>): boolean {
+  return theme.uiTheme === 'hc-light' || theme.uiTheme === 'hc-black'
 }
 
 export function getDefaultThemeId(appearance: ThemeAppearance): string {
@@ -485,6 +496,8 @@ export function createThemeDefinition(input: ThemeDefinitionInput): ThemeDefinit
       ...input.terminal
     },
     terminalDefaults: input.terminalDefaults,
+    uiTheme:
+      input.uiTheme ?? (input.appearance === 'dark' ? ('vs-dark' as const) : ('vs' as const)),
     version: input.version
   }
 }

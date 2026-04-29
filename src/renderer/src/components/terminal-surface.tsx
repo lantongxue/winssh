@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { ChevronDown, ChevronUp, Search, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import type { ThemeDefinition } from '@shared/themes'
+import { isHighContrastTheme, type ThemeDefinition } from '@shared/themes'
 import type { AppSettings } from '@shared/types'
 import {
   useTerminal,
@@ -79,6 +79,20 @@ export function TerminalSurface({
     }
 
     const terminalAppearance = resolveTerminalAppearance(settings, theme)
+    const highContrast = isHighContrastTheme(theme)
+
+    if (highContrast) {
+      return {
+        '--terminal-drop-border': theme.terminal.cursor,
+        '--terminal-drop-glow': 'none',
+        '--terminal-drop-muted': theme.colors['workbench-muted'],
+        '--terminal-drop-panel': theme.terminal.background,
+        '--terminal-drop-surface': theme.terminal.background,
+        '--terminal-font-family': formatTerminalFontFamily(terminalAppearance.fontFamily),
+        '--terminal-drop-text': theme.terminal.foreground,
+        backgroundColor: theme.terminal.background
+      } as CSSProperties
+    }
 
     return {
       '--terminal-drop-border': `color-mix(in srgb, ${theme.terminal.cursor} 70%, ${theme.terminal.foreground} 30%)`,
@@ -274,7 +288,7 @@ export function TerminalSurface({
       ) : null}
       {searchOpen ? (
         <div className="absolute right-4 top-4 z-20 w-[min(26rem,calc(100%-2rem))]">
-          <div className="flex items-center gap-1.5 rounded-lg border border-[var(--workbench-border)] bg-[color-mix(in_srgb,var(--workbench-editor)_88%,transparent)] px-2 py-2 shadow-lg backdrop-blur-sm">
+          <div className="terminal-search-overlay flex items-center gap-1.5 rounded-lg border border-[var(--workbench-border)] bg-[color-mix(in_srgb,var(--workbench-editor)_88%,transparent)] px-2 py-2 shadow-lg backdrop-blur-sm">
             <Search className="size-4 shrink-0 text-[var(--workbench-muted)]" />
             <Input
               ref={searchInputRef}

@@ -1,0 +1,27 @@
+{
+  "name": "cyber-retro-themes",
+  "displayName": "WinSSH Cyber Retro Themes",
+  "publisher": "winssh",
+  "version": "1.0.0",
+  "engines": {
+    "winssh": "^1.0.0"
+  },
+  "contributes": {
+    "themes": [
+      {
+        "id": "winssh.cyber-retro-light",
+        "label": "Cyber Retro Light",
+        "description": "A retro computing light theme inspired by 80s electronics, featuring CRT phosphor warmth and vintage circuit aesthetics.",
+        "uiTheme": "vs",
+        "path": "./themes/cyber-retro-light.json"
+      },
+      {
+        "id": "winssh.cyber-retro-dark",
+        "label": "Cyber Retro Dark",
+        "description": "A retro computing dark theme inspired by 80s arcade cabinets and CRT monitors, with neon phosphor glow.",
+        "uiTheme": "vs-dark",
+        "path": "./themes/cyber-retro-dark.json"
+      }
+    ]
+  }
+}

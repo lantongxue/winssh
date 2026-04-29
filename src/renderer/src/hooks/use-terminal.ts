@@ -7,7 +7,7 @@ import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { Terminal } from '@xterm/xterm'
-import type { ThemeDefinition } from '@shared/themes'
+import { isHighContrastTheme, type ThemeDefinition } from '@shared/themes'
 import type { AppSettings } from '@shared/types'
 import i18n from '@/i18n'
 import { formatTerminalFontFamily, resolveTerminalAppearance } from '@/lib/theme'
@@ -213,6 +213,7 @@ export function useTerminal(
       fontFamily: formatTerminalFontFamily(terminalAppearance.fontFamily),
       fontSize: terminalAppearance.fontSize,
       lineHeight: terminalAppearance.lineHeight,
+      minimumContrastRatio: isHighContrastTheme(theme) ? 4.5 : 1,
       theme: { ...terminalAppearance.theme }
     }
   }, [settings, theme])

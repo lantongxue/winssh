@@ -624,6 +624,7 @@ export class ThemeRegistry {
             source,
             terminal,
             terminalDefaults: themeDocument.terminalDefaults,
+            uiTheme: contribution.uiTheme,
             version: manifest.version
           })
         )

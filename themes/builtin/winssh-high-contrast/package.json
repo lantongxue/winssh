@@ -1,0 +1,27 @@
+{
+  "name": "high-contrast-themes",
+  "displayName": "WinSSH High Contrast Themes",
+  "publisher": "winssh",
+  "version": "1.0.0",
+  "engines": {
+    "winssh": "^1.0.0"
+  },
+  "contributes": {
+    "themes": [
+      {
+        "id": "winssh.high-contrast-light",
+        "label": "High Contrast Light",
+        "description": "A high contrast light theme for maximum readability.",
+        "uiTheme": "hc-light",
+        "path": "./themes/high-contrast-light.json"
+      },
+      {
+        "id": "winssh.high-contrast-dark",
+        "label": "High Contrast Dark",
+        "description": "A high contrast dark theme for maximum readability.",
+        "uiTheme": "hc-black",
+        "path": "./themes/high-contrast-dark.json"
+      }
+    ]
+  }
+}

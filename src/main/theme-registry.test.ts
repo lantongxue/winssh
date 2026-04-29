@@ -5,7 +5,12 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { DEFAULT_DARK_THEME_ID, DEFAULT_LIGHT_THEME_ID, SYSTEM_THEME_ID } from '@shared/themes'
+import {
+  DEFAULT_DARK_THEME_ID,
+  DEFAULT_LIGHT_THEME_ID,
+  resolveThemeAppearance,
+  SYSTEM_THEME_ID
+} from '@shared/themes'
 import { ThemeRegistry } from './theme-registry'
 
 const require = createRequire(import.meta.url)
@@ -123,6 +128,63 @@ describe('ThemeRegistry', () => {
     expect(themes[2]?.colors['workbench-card-radius']).toBe('18px')
     expect(themes[2]?.terminal.cursor).toBe('#73c2fb')
     expect(themes[2]?.terminal.background).toBe('#09090b')
+  })
+
+  it('accepts high contrast Monaco base theme declarations', () => {
+    const root = mkdtempSync(join(tmpdir(), 'winssh-theme-registry-'))
+    tempDirs.push(root)
+
+    writeDefaultThemes(root)
+
+    writeJson(join(root, 'builtin', 'high-contrast', 'package.json'), {
+      name: 'high-contrast-themes',
+      publisher: 'winssh',
+      version: '1.0.0',
+      contributes: {
+        themes: [
+          {
+            id: 'winssh.high-contrast-light',
+            label: 'High Contrast Light',
+            uiTheme: 'hc-light',
+            path: './themes/light.json'
+          },
+          {
+            id: 'winssh.high-contrast-dark',
+            label: 'High Contrast Dark',
+            uiTheme: 'hc-black',
+            path: './themes/dark.json'
+          }
+        ]
+      }
+    })
+    writeJson(join(root, 'builtin', 'high-contrast', 'themes', 'light.json'), {
+      colors: {
+        'workbench-bg': '#ffffff'
+      }
+    })
+    writeJson(join(root, 'builtin', 'high-contrast', 'themes', 'dark.json'), {
+      colors: {
+        'workbench-bg': '#000000'
+      }
+    })
+
+    const registry = new ThemeRegistry(join(root, 'builtin'), join(root, 'user'))
+    const themes = registry.listThemes()
+
+    expect(resolveThemeAppearance('hc-light')).toBe('light')
+    expect(resolveThemeAppearance('hc-black')).toBe('dark')
+    expect(themes.find((theme) => theme.id === 'winssh.high-contrast-light')?.appearance).toBe(
+      'light'
+    )
+    expect(themes.find((theme) => theme.id === 'winssh.high-contrast-light')?.uiTheme).toBe(
+      'hc-light'
+    )
+    expect(themes.find((theme) => theme.id === 'winssh.high-contrast-dark')?.appearance).toBe(
+      'dark'
+    )
+    expect(themes.find((theme) => theme.id === 'winssh.high-contrast-dark')?.uiTheme).toBe(
+      'hc-black'
+    )
   })
 
   it('normalizes invalid selections and resolves system defaults', () => {

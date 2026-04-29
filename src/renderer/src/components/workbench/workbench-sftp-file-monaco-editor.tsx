@@ -30,7 +30,7 @@ import { LoaderCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
-import type { ThemeDefinition } from '@shared/themes'
+import { isHighContrastTheme, isHighContrastThemeId, type ThemeDefinition } from '@shared/themes'
 import { queryKeys } from '@/features/shared/query-keys'
 import { settingsClient } from '@/features/settings/api/settings-client'
 import { sftpClient } from '@/features/sftp/api/sftp-client'
@@ -133,11 +133,28 @@ function normalizeMonacoColor(value: string | undefined, fallback: string) {
 }
 
 function getFallbackMonacoThemeId() {
+  const uiTheme = document.documentElement.dataset.themeUi
+  if (
+    uiTheme === 'hc-light' ||
+    uiTheme === 'hc-black' ||
+    isHighContrastThemeId(document.documentElement.dataset.theme ?? '')
+  ) {
+    return document.documentElement.dataset.themeAppearance === 'dark' ? 'hc-black' : 'hc-light'
+  }
+
   return document.documentElement.dataset.themeAppearance === 'dark' ? 'vs-dark' : 'vs'
 }
 
 function getMonacoThemeId(theme: ThemeDefinition) {
   return `winssh-${theme.id.replace(/[^a-z0-9_-]/gi, '-')}`
+}
+
+function getMonacoBaseTheme(theme: ThemeDefinition) {
+  if (isHighContrastTheme(theme)) {
+    return theme.appearance === 'dark' ? 'hc-black' : 'hc-light'
+  }
+
+  return theme.appearance === 'dark' ? 'vs-dark' : 'vs'
 }
 
 function defineMonacoTheme(theme: ThemeDefinition) {
@@ -154,7 +171,7 @@ function defineMonacoTheme(theme: ThemeDefinition) {
   const themeId = getMonacoThemeId(theme)
 
   monaco.editor.defineTheme(themeId, {
-    base: theme.appearance === 'dark' ? 'vs-dark' : 'vs',
+    base: getMonacoBaseTheme(theme),
     inherit: true,
     rules: [],
     colors: {

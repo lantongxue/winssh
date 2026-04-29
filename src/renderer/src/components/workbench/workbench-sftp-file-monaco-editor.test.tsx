@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
+import { DEFAULT_APP_SETTINGS } from '@shared/constants'
+import { createThemeDefinition } from '@shared/themes'
 import i18n from '@/i18n'
 import { WorkbenchSftpFileMonacoEditor } from '@/components/workbench/workbench-sftp-file-monaco-editor'
 import type { SftpFileEditorDocument } from '@/lib/workbench'
@@ -107,6 +110,23 @@ function renderEditor() {
   )
 }
 
+const highContrastDarkTheme = createThemeDefinition({
+  appearance: 'dark',
+  id: 'acme.accessible-dark',
+  label: 'High Contrast Dark',
+  pluginDisplayName: 'WinSSH High Contrast Themes',
+  pluginId: 'winssh.high-contrast-themes',
+  source: 'builtin',
+  terminal: {
+    background: '#000000',
+    foreground: '#ffffff',
+    cursor: '#ffff00',
+    selectionBackground: '#ffff00'
+  },
+  uiTheme: 'hc-black',
+  version: '1.0.0'
+})
+
 describe('WorkbenchSftpFileMonacoEditor', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('en-US')
@@ -124,6 +144,8 @@ describe('WorkbenchSftpFileMonacoEditor', () => {
     monacoEditor.onDidChangeModelContent.mockReset()
     monacoEditor.onDidChangeModelContent.mockReturnValue({ dispose: vi.fn() })
     monacoEditor.updateOptions.mockReset()
+    vi.mocked(monaco.editor.defineTheme).mockClear()
+    vi.mocked(monaco.editor.setTheme).mockClear()
     window.winsshApi = createWinsshApiMock({
       sftp: {
         readFile: vi.fn().mockResolvedValue('user nginx;')
@@ -135,12 +157,42 @@ describe('WorkbenchSftpFileMonacoEditor', () => {
     renderEditor()
 
     expect(await screen.findByText('prod-box')).toBeInTheDocument()
-    expect(screen.getByText('10.0.0.8:22')).toBeInTheDocument()
+    expect(screen.getByText('10.0.0.8')).toBeInTheDocument()
     expect(screen.getByText('nginx.conf')).toBeInTheDocument()
     expect(screen.getByText('/etc/nginx/nginx.conf')).toBeInTheDocument()
 
     await waitFor(() => {
       expect(monacoModel.setValue).toHaveBeenCalledWith('user nginx;')
+    })
+  })
+
+  it('defines Monaco themes on the native high contrast base', async () => {
+    window.winsshApi = createWinsshApiMock({
+      settings: {
+        get: vi.fn().mockResolvedValue({
+          ...DEFAULT_APP_SETTINGS,
+          language: 'en-US',
+          terminalFontFamily: 'Consolas',
+          theme: 'acme.accessible-dark'
+        })
+      },
+      sftp: {
+        readFile: vi.fn().mockResolvedValue('user nginx;')
+      },
+      themes: {
+        list: vi.fn().mockResolvedValue([highContrastDarkTheme])
+      }
+    })
+
+    renderEditor()
+
+    await waitFor(() => {
+      expect(monaco.editor.defineTheme).toHaveBeenCalledWith(
+        'winssh-acme-accessible-dark',
+        expect.objectContaining({
+          base: 'hc-black'
+        })
+      )
     })
   })
 })

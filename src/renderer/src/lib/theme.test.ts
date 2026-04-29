@@ -69,6 +69,25 @@ const themes = [
       lineHeight: 1.08
     },
     version: '1.0.0'
+  }),
+  createThemeDefinition({
+    appearance: 'dark',
+    id: 'acme.accessible-dark',
+    label: 'High Contrast Dark',
+    colors: {
+      'workbench-active': '#ffff00'
+    },
+    pluginDisplayName: 'WinSSH High Contrast Themes',
+    pluginId: 'winssh.high-contrast-themes',
+    source: 'builtin',
+    terminal: {
+      background: '#000000',
+      foreground: '#ffffff',
+      cursor: '#ffff00',
+      selectionBackground: '#ffff00'
+    },
+    uiTheme: 'hc-black',
+    version: '1.0.0'
   })
 ]
 
@@ -101,6 +120,19 @@ describe('theme helpers', () => {
     applyThemeToRoot(root, 'system', themes, true)
     expect(root.classList.contains('dark')).toBe(true)
     expect(root.dataset.theme).toBe(DEFAULT_DARK_THEME_ID)
+  })
+
+  it('marks high contrast themes on the root element', () => {
+    const root = document.createElement('html')
+
+    applyThemeToRoot(root, 'acme.accessible-dark', themes, false)
+
+    expect(root.classList.contains('dark')).toBe(true)
+    expect(root.classList.contains('theme-high-contrast')).toBe(true)
+    expect(root.classList.contains('theme-liquid-glass')).toBe(false)
+    expect(root.dataset.theme).toBe('acme.accessible-dark')
+    expect(root.dataset.themeUi).toBe('hc-black')
+    expect(root.style.getPropertyValue('--workbench-active')).toBe('#ffff00')
   })
 
   it('uses theme terminal defaults only when the user still has the base defaults', () => {

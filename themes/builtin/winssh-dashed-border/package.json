@@ -1,0 +1,27 @@
+{
+  "name": "dashed-border-themes",
+  "displayName": "WinSSH Dashed Border Themes",
+  "publisher": "winssh",
+  "version": "1.0.0",
+  "engines": {
+    "winssh": "^1.0.0"
+  },
+  "contributes": {
+    "themes": [
+      {
+        "id": "winssh.dashed-border-light",
+        "label": "Dashed Border Light",
+        "description": "A minimalist light theme with dashed border accents for a sketch-like, wireframe aesthetic.",
+        "uiTheme": "vs",
+        "path": "./themes/dashed-border-light.json"
+      },
+      {
+        "id": "winssh.dashed-border-dark",
+        "label": "Dashed Border Dark",
+        "description": "A minimalist dark theme with dashed border accents for a sketch-like, wireframe aesthetic.",
+        "uiTheme": "vs-dark",
+        "path": "./themes/dashed-border-dark.json"
+      }
+    ]
+  }
+}
