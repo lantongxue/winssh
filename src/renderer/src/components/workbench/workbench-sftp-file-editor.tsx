@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import i18n from '@/i18n'
 import type { SftpFileEditorDocument } from '@/lib/workbench'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useSessionsStore } from '@/store/sessions-store'
 
 async function loadMonacoNls() {
   const language = i18n.resolvedLanguage ?? i18n.language
@@ -29,6 +30,9 @@ interface WorkbenchSftpFileEditorProps {
 
 export function WorkbenchSftpFileEditor({ active = true, document }: WorkbenchSftpFileEditorProps) {
   const { t } = useTranslation()
+  const session = useSessionsStore(
+    (state) => state.tabs.find((tab) => tab.sessionId === document.sessionId) ?? null
+  )
 
   return (
     <Suspense
@@ -37,8 +41,14 @@ export function WorkbenchSftpFileEditor({ active = true, document }: WorkbenchSf
           <div className="liquid-glass-toolbar flex h-12 shrink-0 items-center border-b border-[var(--workbench-border)] px-3">
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium text-foreground">
-                {document.remotePath}
+                {session ? session.serverName : document.sessionId}
               </div>
+              <div className="truncate text-[11px] text-muted-foreground">
+                {session ? `${session.host}:${session.port}` : document.sessionId}
+              </div>
+            </div>
+            <div className="min-w-0 flex-1 text-right">
+              <div className="truncate text-sm font-medium text-foreground">{document.remotePath}</div>
               <div className="truncate text-[11px] text-muted-foreground">
                 {t('workbench.sftpFileEditor.loading')}
               </div>
