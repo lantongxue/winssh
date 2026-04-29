@@ -8,6 +8,7 @@ import { WorkbenchProvider } from '@/components/workbench/workbench-context'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import {
   createServerEditorDocument,
+  createSftpFileEditorDocument,
   createSessionEditorDocument,
   createSettingsEditorDocument,
   createUpdatesEditorDocument
@@ -244,6 +245,29 @@ describe('WorkbenchEditorTabs session context menu', () => {
     })
     expect(useSessionsStore.getState().tabs).toHaveLength(0)
     expect(useWorkbenchStore.getState().openDocuments).toEqual([])
+  })
+
+  it('shows a close context menu for non-session tabs', async () => {
+    window.winsshApi = createWinsshApiMock({
+      servers: {
+        list: vi.fn().mockResolvedValue([savedServer])
+      }
+    })
+
+    useWorkbenchStore.getState().openDocument(createSettingsEditorDocument())
+    useWorkbenchStore.getState().openDocument(
+      createSftpFileEditorDocument(sessionSummary.sessionId, '/etc/nginx/nginx.conf')
+    )
+    renderEditorTabs()
+
+    fireEvent.contextMenu(await screen.findByText('Settings'))
+    fireEvent.click(await screen.findByText('Close Tab'))
+
+    await waitFor(() => {
+      expect(
+        useWorkbenchStore.getState().openDocuments.map((document) => document.id)
+      ).toEqual(['sftp-file-editor:session-1:%2Fetc%2Fnginx%2Fnginx.conf'])
+    })
   })
 
   it('shows the server brand icon in both session and server editor tabs', async () => {

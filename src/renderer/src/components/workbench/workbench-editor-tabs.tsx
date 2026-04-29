@@ -122,6 +122,13 @@ export function WorkbenchEditorTabs() {
   const RenameIcon = actionIcons.rename
   const closeLabel = t('common.actions.close')
 
+  const renderCloseTabMenuItem = (document: WorkbenchDocument) => (
+    <ContextMenuItem variant="destructive" onClick={() => void handleCloseDocument(document)}>
+      <CloseIcon className="size-4" />
+      {t('workbench.editorTabs.actions.closeTab')}
+    </ContextMenuItem>
+  )
+
   const sessionNameMap = useMemo(
     () => new Map(sessions.map((session) => [session.sessionId, session.serverName])),
     [sessions]
@@ -372,35 +379,31 @@ export function WorkbenchEditorTabs() {
                 {dropIndicatorIndex === index ? (
                   <span className="absolute inset-y-1 left-0 z-10 w-px rounded-full bg-[var(--workbench-active)]" />
                 ) : null}
-                {document.kind === 'session-editor' ? (
-                  <ContextMenu>
-                    <ContextMenuTrigger asChild>{tabButton}</ContextMenuTrigger>
-                    <ContextMenuContent>
-                      <ContextMenuItem onClick={() => void handleCloneSession(document.sessionId)}>
-                        <CloneIcon className="size-4" />
-                        {t('workbench.editorTabs.actions.cloneSession')}
-                      </ContextMenuItem>
-                      <ContextMenuItem onClick={() => void copySessionIp(document.sessionId)}>
-                        <CopyIcon className="size-4" />
-                        {t('workbench.editorTabs.actions.copyIp')}
-                      </ContextMenuItem>
-                      <ContextMenuItem onClick={() => openRenameDialog(document)}>
-                        <RenameIcon className="size-4" />
-                        {t('workbench.editorTabs.actions.renameTab')}
-                      </ContextMenuItem>
-                      <ContextMenuSeparator />
-                      <ContextMenuItem
-                        variant="destructive"
-                        onClick={() => void handleCloseDocument(document)}
-                      >
-                        <CloseIcon className="size-4" />
-                        {t('workbench.editorTabs.actions.closeTab')}
-                      </ContextMenuItem>
-                    </ContextMenuContent>
-                  </ContextMenu>
-                ) : (
-                  tabButton
-                )}
+                <ContextMenu>
+                  <ContextMenuTrigger asChild>{tabButton}</ContextMenuTrigger>
+                  <ContextMenuContent>
+                    {document.kind === 'session-editor' ? (
+                      <>
+                        <ContextMenuItem onClick={() => void handleCloneSession(document.sessionId)}>
+                          <CloneIcon className="size-4" />
+                          {t('workbench.editorTabs.actions.cloneSession')}
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => void copySessionIp(document.sessionId)}>
+                          <CopyIcon className="size-4" />
+                          {t('workbench.editorTabs.actions.copyIp')}
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => openRenameDialog(document)}>
+                          <RenameIcon className="size-4" />
+                          {t('workbench.editorTabs.actions.renameTab')}
+                        </ContextMenuItem>
+                        <ContextMenuSeparator />
+                        {renderCloseTabMenuItem(document)}
+                      </>
+                    ) : (
+                      renderCloseTabMenuItem(document)
+                    )}
+                  </ContextMenuContent>
+                </ContextMenu>
               </div>
             )
           })}
