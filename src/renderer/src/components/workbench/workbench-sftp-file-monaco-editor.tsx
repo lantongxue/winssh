@@ -361,20 +361,34 @@ export function WorkbenchSftpFileMonacoEditor({
       }}
     >
       <div className="liquid-glass-toolbar flex min-h-[56px] shrink-0 items-center gap-3 border-b border-[var(--workbench-border)] px-3 py-2">
-        <div className="min-w-0 shrink-0 rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2.5 py-1.5">
-          <div className="truncate text-sm font-medium text-foreground">
-            {session?.serverName ?? document.sessionId}
+        <div className="grid min-w-[220px] shrink-0 gap-1 rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2.5 py-1.5">
+          <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+            <span className="shrink-0">
+              {t('workbench.sessionEditor.serverName')}
+            </span>
+            <span className="truncate font-mono">
+              {session?.serverName ?? document.sessionId}
+            </span>
           </div>
-          <div className="truncate text-[11px] text-muted-foreground">
-            {session ? `${session.host}:${session.port}` : document.sessionId}
+          <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+            <span className="shrink-0">{t('workbench.sessionEditor.serverAddress')}</span>
+            <span className="truncate font-mono">
+              {session ? `${session.host}` : document.sessionId}
+            </span>
           </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium text-foreground">
-            {getRemoteFileName(document.remotePath)}
+        <div className="min-w-0 flex-1 rounded-md border border-transparent px-1 py-1.5">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="shrink-0 text-[11px] text-muted-foreground">
+              {t('workbench.sftpFileEditor.labels.fileName')}
+            </span>
+            <span className="truncate text-sm font-medium text-foreground">
+              {getRemoteFileName(document.remotePath)}
+            </span>
           </div>
-          <div className="truncate font-mono text-[11px] text-muted-foreground">
-            {document.remotePath}
+          <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+            <span className="shrink-0">{t('workbench.sftpFileEditor.labels.path')}</span>
+            <span className="truncate font-mono">{document.remotePath}</span>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">

@@ -362,6 +362,8 @@ const workbench = {
         title: 'This session has already closed'
       },
       portForwards: 'Port Forwards',
+      serverAddress: 'Server Address',
+      serverName: 'Server Name',
       resourceMonitor: {
         linuxOnly: 'Linux only',
         metrics: {
@@ -733,6 +735,7 @@ const workbench = {
       },
       labels: {
         dirty: 'Unsaved',
+        fileName: 'File Name',
         language: 'Language',
         path: 'Remote path',
         saved: 'Saved'

@@ -355,6 +355,8 @@ const workbench = {
         title: '该会话已经关闭'
       },
       portForwards: '端口转发',
+      serverAddress: '服务器地址',
+      serverName: '服务器名称',
       resourceMonitor: {
         linuxOnly: '仅支持 Linux',
         metrics: {
@@ -712,6 +714,7 @@ const workbench = {
       },
       labels: {
         dirty: '未保存',
+        fileName: '文件名称',
         language: '语言',
         path: '远程路径',
         saved: '已保存'
