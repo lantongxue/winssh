@@ -106,14 +106,31 @@ const workbench = {
       clearProblems: '清除问题',
       clearTransfers: '清除传输记录',
       empty: {
+        logs: '暂无日志记录。',
         output: '连接日志和工作台输出会显示在这里。',
         problems: '当前没有工作台级问题。',
         transfers: '暂无传输任务。'
       },
       labels: {
+        logs: '日志',
         output: '输出',
         problems: '问题',
         transfers: '传输'
+      },
+      logs: {
+        actions: {
+          clear: '清空日志',
+          savePath: '保存路径'
+        },
+        description: '查看最近的应用日志、清空当前日志文件，或把后续日志写到新的文件路径。',
+        pathPlaceholder: 'C:\\path\\to\\winssh.log',
+        title: '应用日志',
+        toasts: {
+          cleared: '日志已清空。',
+          clearFailed: '清空日志失败。',
+          pathUpdated: '日志文件路径已更新。',
+          pathUpdateFailed: '更新日志文件路径失败。'
+        }
       },
       severities: {
         error: '错误',

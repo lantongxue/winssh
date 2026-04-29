@@ -1,6 +1,6 @@
 import type { ThemeSelection } from './themes'
 import type { ServerBrandId, ServerIconMimeType } from './server-brands'
-import type { ObservableSource } from './observability'
+import type { LogLevel, ObservableSource } from './observability'
 
 export type AuthType = 'password' | 'privateKey'
 export type CredentialKind = 'password' | 'privateKey'
@@ -104,6 +104,7 @@ export interface KnownHost {
 
 export interface AppSettings {
   language: AppLanguage
+  logFilePath: string | null
   theme: ThemeMode
   terminalFontSize: number
   terminalFontFamily: string
@@ -137,6 +138,19 @@ export interface AppInfo {
   version: string
   platform: string
   releaseChannel: ReleaseChannel
+}
+
+export interface LogsState {
+  logFilePath: string
+}
+
+export interface LogEntry {
+  id: string
+  level: LogLevel | null
+  message: string
+  raw: string
+  source: ObservableSource | null
+  timestamp: string | null
 }
 
 export interface UpdateVersionInfo {

@@ -4,7 +4,7 @@ import type { LucideIcon } from 'lucide-react'
 import { Files, Settings2, Terminal } from 'lucide-react'
 
 export type WorkbenchActivityId = 'explorer' | 'terminal' | 'settings'
-export type WorkbenchPanelId = 'output' | 'transfers' | 'problems'
+export type WorkbenchPanelId = 'output' | 'transfers' | 'problems' | 'logs'
 export type WorkbenchLegacyPath = '/servers' | '/sessions' | '/settings'
 export type WorkbenchExplorerSectionId = 'favorites' | 'recent' | 'groups' | 'tags' | 'all-servers'
 
@@ -131,7 +131,8 @@ export const workbenchActivities: WorkbenchActivityMeta[] = [
 export const workbenchPanels: WorkbenchPanelMeta[] = [
   { id: 'output' },
   { id: 'transfers' },
-  { id: 'problems' }
+  { id: 'problems' },
+  { id: 'logs' }
 ]
 
 export function createSettingsEditorDocument(): SettingsEditorDocument {

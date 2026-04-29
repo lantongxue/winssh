@@ -45,6 +45,7 @@ const persistedDarkSettings: AppSettings = {
   cursorStyle: 'block',
   experimentalTerminalWebgl: false,
   language: 'system',
+  logFilePath: '/tmp/winssh.log',
   localTerminalShell: 'zsh',
   terminalFontFamily: 'JetBrains Mono, Consolas, monospace',
   terminalFontSize: 14,

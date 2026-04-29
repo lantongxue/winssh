@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { useWorkbenchStore } from '@/store/workbench-store'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { WorkbenchLogsPanel } from '@/components/workbench/workbench-logs-panel'
 
 export function WorkbenchPanel() {
   const { t } = useTranslation()
@@ -162,6 +163,8 @@ export function WorkbenchPanel() {
             )}
           </div>
         ) : null}
+
+        {activePanelId === 'logs' ? <WorkbenchLogsPanel /> : null}
       </div>
     </section>
   )

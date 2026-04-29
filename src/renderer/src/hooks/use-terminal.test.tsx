@@ -260,6 +260,7 @@ describe('useTerminal', () => {
     cursorStyle: 'block',
     experimentalTerminalWebgl: false,
     language: 'en-US',
+    logFilePath: '/tmp/winssh.log',
     localTerminalShell: 'zsh',
     terminalFontFamily: 'Consolas',
     terminalFontSize: 14,

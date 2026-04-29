@@ -181,6 +181,7 @@ export const portForwardSchema = z.object({
 
 export const settingsSchema = z.object({
   language: z.enum(['system', 'zh-CN', 'en-US']),
+  logFilePath: z.string().trim().min(1).max(1024).nullable(),
   theme: z.string().trim().min(1).max(120),
   terminalFontSize: z.coerce.number().int().min(10).max(24),
   terminalFontFamily: z.string().trim().min(1).max(120),

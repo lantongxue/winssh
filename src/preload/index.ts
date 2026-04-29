@@ -94,6 +94,13 @@ const api: WinsshApi = {
     get: () => ipcRenderer.invoke('settings:get'),
     update: (input) => ipcRenderer.invoke('settings:update', input)
   },
+  logs: {
+    clear: () => ipcRenderer.invoke('logs:clear'),
+    getState: () => ipcRenderer.invoke('logs:getState'),
+    list: () => ipcRenderer.invoke('logs:list'),
+    updatePath: (logFilePath) => ipcRenderer.invoke('logs:updatePath', logFilePath),
+    write: (event) => ipcRenderer.invoke('logs:write', event)
+  },
   updates: {
     getState: () => ipcRenderer.invoke('updates:getState'),
     check: () => ipcRenderer.invoke('updates:check'),

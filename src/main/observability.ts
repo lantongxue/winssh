@@ -1,15 +1,13 @@
-import type { AppError, LogLevel, ObservableSource, OperationContext } from '@shared/observability'
+import type {
+  AppError,
+  AppLogEvent,
+  LogLevel,
+  ObservableSource,
+  OperationContext
+} from '@shared/observability'
 import { createRequestId } from '@shared/observability'
 
-export interface AppLogEvent {
-  context?: Partial<OperationContext>
-  data?: unknown
-  error?: unknown
-  level: LogLevel
-  message: string
-  source: ObservableSource
-  timestamp: string
-}
+let appLogSink: ((event: AppLogEvent) => void) | null = null
 
 function formatLogEvent(event: AppLogEvent) {
   return JSON.stringify(event, (_key, value) =>
@@ -37,6 +35,12 @@ function writeLog(level: LogLevel, event: AppLogEvent) {
   }
 
   console.info(line)
+
+  appLogSink?.(event)
+}
+
+export function setAppLogSink(sink: ((event: AppLogEvent) => void) | null) {
+  appLogSink = sink
 }
 
 export function createOperationContext(

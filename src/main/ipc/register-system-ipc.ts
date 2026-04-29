@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { extname } from 'node:path'
 import { app, dialog, ipcMain, type BrowserWindow, type OpenDialogOptions } from 'electron'
+import type { AppLogEvent } from '@shared/observability'
 import { isServerIconMimeType } from '@shared/server-brands'
 import { getDefaultThemeId, SYSTEM_THEME_ID, type ThemeAppearance } from '@shared/themes'
 import type { AppInfo, AppSettings } from '@shared/types'
@@ -8,6 +9,7 @@ import { settingsSchema } from '@shared/validation'
 import type { SettingsApplicationService } from '../application/settings-application-service'
 import type { DatabaseService } from '../database'
 import type { MainTranslator } from '../localization'
+import type { LogFileService } from '../log-file-service'
 import { createLogger } from '../observability'
 import type { SystemFontService } from '../system-fonts'
 import { ThemeRegistry, ThemeRegistryError } from '../theme-registry'
@@ -37,6 +39,7 @@ export function registerSystemIpc(options: {
   credentialStorageAvailable: () => Promise<boolean>
   database: DatabaseService
   getMainWindow: () => BrowserWindow | null
+  logFileService: LogFileService
   settingsService: SettingsApplicationService
   systemFontService: SystemFontService
   themeRegistry: ThemeRegistry
@@ -50,6 +53,7 @@ export function registerSystemIpc(options: {
     credentialStorageAvailable,
     database,
     getMainWindow,
+    logFileService,
     settingsService,
     systemFontService,
     themeRegistry,
@@ -191,6 +195,26 @@ export function registerSystemIpc(options: {
       return result
     }
   )
+  ipcMain.handle('logs:getState', () => ({
+    logFilePath: settingsService.getSettings().logFilePath ?? logFileService.getLogFilePath()
+  }))
+  ipcMain.handle('logs:list', () => logFileService.readEntries())
+  ipcMain.handle('logs:clear', () => logFileService.clear())
+  ipcMain.handle('logs:updatePath', async (_event, logFilePath: string) => {
+    const result = settingsService.updateSettings({
+      ...settingsService.getSettings(),
+      logFilePath
+    })
+
+    await logFileService.setLogFilePath(result.logFilePath ?? logFileService.getLogFilePath())
+
+    return {
+      logFilePath: logFileService.getLogFilePath()
+    }
+  })
+  ipcMain.handle('logs:write', async (_event, event: AppLogEvent) => {
+    await logFileService.writeFromRenderer(event)
+  })
   ipcMain.handle('updates:getState', () => updateService.getState())
   ipcMain.handle('updates:check', () => updateService.check())
   ipcMain.handle('updates:download', () => updateService.download())

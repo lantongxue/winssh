@@ -7,6 +7,8 @@ import type {
   CredentialUpsertInput,
   GroupInput,
   KnownHost,
+  LogEntry,
+  LogsState,
   LocalTerminalDataEvent,
   LocalTerminalExitEvent,
   LocalTerminalStateEvent,
@@ -37,6 +39,7 @@ import type {
   WebDAVBackupState,
   WindowState
 } from './types'
+import type { AppLogEvent } from './observability'
 import type { ServerIconMimeType } from './server-brands'
 import type { ThemeDefinition, ThemeDeleteResult, ThemeImportResult } from './themes'
 
@@ -118,6 +121,13 @@ export interface WinsshApi {
   settings: {
     get: () => Promise<AppSettings>
     update: (input: Partial<AppSettings>) => Promise<AppSettings>
+  }
+  logs: {
+    clear: () => Promise<void>
+    getState: () => Promise<LogsState>
+    list: () => Promise<LogEntry[]>
+    updatePath: (logFilePath: string) => Promise<LogsState>
+    write: (event: AppLogEvent) => Promise<void>
   }
   updates: {
     getState: () => Promise<UpdateState>

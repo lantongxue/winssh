@@ -9,8 +9,9 @@ import { createAppInfo } from './app-info'
 import { syncApplicationMenu } from './app-menu'
 import { DatabaseService } from './database'
 import { LocalTerminalManager } from './local-terminal-manager'
+import { LogFileService } from './log-file-service'
 import { createMainTranslator, resolveMainLanguage } from './localization'
-import { createLogger } from './observability'
+import { createLogger, setAppLogSink } from './observability'
 import { ServersApplicationService } from './application/servers-application-service'
 import { SessionsApplicationService } from './application/sessions-application-service'
 import { SettingsApplicationService } from './application/settings-application-service'
@@ -114,6 +115,7 @@ function createWindow(settings: AppSettings, themeRegistry: ThemeRegistry): Brow
 function normalizeAppSettingsForPlatform(settings: AppSettings): AppSettings {
   return {
     ...settings,
+    logFilePath: settings.logFilePath?.trim() || join(app.getPath('logs'), 'winssh.log'),
     localTerminalShell: normalizeLocalTerminalShell(
       settings.localTerminalShell,
       process.platform,
@@ -171,6 +173,12 @@ export async function bootstrap(): Promise<void> {
     },
     () => database.getSettings()
   )
+  const logFileService = new LogFileService(
+    normalizeAppSettingsForPlatform(database.getSettings()).logFilePath ?? join(app.getPath('logs'), 'winssh.log')
+  )
+  setAppLogSink((event) => {
+    logFileService.append(event)
+  })
 
   const serversService = new ServersApplicationService(database, secureStore)
   const sessionsService = new SessionsApplicationService(sessionManager, localTerminalManager)
@@ -215,6 +223,7 @@ export async function bootstrap(): Promise<void> {
     credentialStorageAvailable: () => secureStore.isAvailable(),
     database,
     getMainWindow: () => mainWindow,
+    logFileService,
     settingsService,
     systemFontService,
     themeRegistry,

@@ -1,13 +1,16 @@
-import type { LogLevel } from '@shared/observability'
+import type { AppLogEvent, LogLevel } from '@shared/observability'
+import { winsshClient } from '@/features/shared/api/winssh-client'
 
 function log(level: LogLevel, message: string, data?: unknown) {
-  const event = {
+  const event: AppLogEvent = {
     data,
     level,
     message,
     source: 'renderer',
     timestamp: new Date().toISOString()
   }
+
+  void winsshClient.logs.write(event).catch(() => undefined)
 
   if (level === 'error') {
     console.error(JSON.stringify(event))

@@ -313,6 +313,14 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       }),
       ...overrides.settings
     },
+    logs: {
+      clear: async () => undefined,
+      getState: async () => ({ logFilePath: '/tmp/winssh.log' }),
+      list: async () => [],
+      updatePath: async (logFilePath) => ({ logFilePath }),
+      write: async () => undefined,
+      ...overrides.logs
+    },
     backup: {
       backupNow: async () => undefined,
       delete: async () => undefined,

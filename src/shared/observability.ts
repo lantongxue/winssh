@@ -2,6 +2,16 @@ export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
 export type ObservableSource = 'main' | 'preload' | 'renderer'
 
+export interface AppLogEvent {
+  context?: Partial<OperationContext>
+  data?: unknown
+  error?: unknown
+  level: LogLevel
+  message: string
+  source: ObservableSource
+  timestamp: string
+}
+
 export interface OperationContext {
   action: string
   correlationId: string

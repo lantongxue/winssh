@@ -108,14 +108,32 @@ const workbench = {
       clearProblems: 'Clear Problems',
       clearTransfers: 'Clear Transfers',
       empty: {
+        logs: 'No log entries yet.',
         output: 'Connection logs and workbench output appear here.',
         problems: 'No workbench-level issues right now.',
         transfers: 'No transfers yet.'
       },
       labels: {
+        logs: 'Logs',
         output: 'Output',
         problems: 'Problems',
         transfers: 'Transfers'
+      },
+      logs: {
+        actions: {
+          clear: 'Clear Logs',
+          savePath: 'Save Path'
+        },
+        description:
+          'Read recent application logs, clear the current file, or move future logs to another file path.',
+        pathPlaceholder: 'C:\\path\\to\\winssh.log',
+        title: 'Application Logs',
+        toasts: {
+          cleared: 'Logs cleared.',
+          clearFailed: 'Failed to clear logs.',
+          pathUpdated: 'Log file path updated.',
+          pathUpdateFailed: 'Failed to update the log file path.'
+        }
       },
       severities: {
         error: 'Error',

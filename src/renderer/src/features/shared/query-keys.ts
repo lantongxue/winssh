@@ -4,6 +4,8 @@ export const queryKeys = {
   credentials: ['credentials'] as const,
   groups: ['groups'] as const,
   knownHosts: ['known-hosts'] as const,
+  logEntries: ['logs', 'entries'] as const,
+  logsState: ['logs', 'state'] as const,
   recentSessions: ['recent-sessions'] as const,
   servers: ['servers'] as const,
   settings: ['settings'] as const,

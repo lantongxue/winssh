@@ -27,6 +27,7 @@ export const COLOR_PRESETS = [
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   language: 'system',
+  logFilePath: null,
   theme: SYSTEM_THEME_ID,
   terminalFontSize: 14,
   terminalFontFamily: 'JetBrains Mono, Consolas, monospace',
