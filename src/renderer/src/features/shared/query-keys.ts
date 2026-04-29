@@ -13,5 +13,7 @@ export const queryKeys = {
   backupList: ['backup', 'list'] as const,
   backupState: ['backup', 'state'] as const,
   portForwards: (sessionId: string) => ['port-forwards', sessionId] as const,
-  serverSecrets: (serverId: string) => ['server-secrets', serverId] as const
+  serverSecrets: (serverId: string) => ['server-secrets', serverId] as const,
+  sftpFile: (sessionId: string, remotePath: string) =>
+    ['sftp', sessionId, 'file', remotePath] as const
 }

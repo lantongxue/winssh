@@ -32,7 +32,7 @@ interface WorkbenchSessionEditorProps {
 function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessionEditorProps) {
   const { t } = useTranslation()
   const prefersDark = usePrefersDark()
-  const { reconnectSession, disconnectSession } = useWorkbenchContext()
+  const { reconnectSession, disconnectSession, openSftpFileEditor } = useWorkbenchContext()
   const [monitorExpanded, setMonitorExpanded] = useState(true)
   const session = useSessionsStore(
     (state) => state.tabs.find((tab) => tab.sessionId === sessionId) ?? null
@@ -89,6 +89,7 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
       <SftpPanel
         session={session}
         className="liquid-glass-pane liquid-glass-panel-frame h-full overflow-hidden bg-[var(--workbench-sidebar)]"
+        onEditFile={(remotePath) => openSftpFileEditor(session.sessionId, remotePath)}
       />
     ) : auxView === 'port-forward' ? (
       <PortForwardPanel

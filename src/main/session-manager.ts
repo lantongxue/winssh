@@ -245,6 +245,26 @@ function sftpRead(
   })
 }
 
+function sftpWrite(
+  sftp: SFTPWrapper,
+  handle: Buffer,
+  buffer: Buffer,
+  offset: number,
+  length: number,
+  position: number
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    sftp.write(handle, buffer, offset, length, position, (error) => {
+      if (error) {
+        reject(error)
+        return
+      }
+
+      resolve()
+    })
+  })
+}
+
 async function sftpReadFile(sftp: SFTPWrapper, remotePath: string): Promise<string> {
   const handle = await sftpOpen(sftp, remotePath, 'r')
   const chunks: Buffer[] = []
@@ -267,6 +287,26 @@ async function sftpReadFile(sftp: SFTPWrapper, remotePath: string): Promise<stri
     }
 
     return Buffer.concat(chunks).toString('utf8')
+  } finally {
+    await sftpClose(sftp, handle).catch(() => undefined)
+  }
+}
+
+async function sftpWriteFile(
+  sftp: SFTPWrapper,
+  remotePath: string,
+  contents: string
+): Promise<void> {
+  const handle = await sftpOpen(sftp, remotePath, 'w')
+  const buffer = Buffer.from(contents, 'utf8')
+  let position = 0
+
+  try {
+    while (position < buffer.byteLength) {
+      const length = Math.min(32768, buffer.byteLength - position)
+      await sftpWrite(sftp, handle, buffer, position, length, position)
+      position += length
+    }
   } finally {
     await sftpClose(sftp, handle).catch(() => undefined)
   }
@@ -1025,6 +1065,24 @@ export class SessionManager {
   async createFile(sessionId: string, currentPath: string, name: string): Promise<void> {
     const runtime = this.requireSession(sessionId)
     await sftpCreateFile(runtime.sftp, posix.join(normalizeRemotePath(currentPath), name.trim()))
+  }
+
+  async readFile(sessionId: string, remotePath: string): Promise<string> {
+    const runtime = this.requireSession(sessionId)
+    const normalized = normalizeRemotePath(remotePath)
+    const stats = await sftpStat(runtime.sftp, normalized)
+
+    if (stats.isDirectory()) {
+      throw new Error(`Remote path is a directory: ${normalized}`)
+    }
+
+    return sftpReadFile(runtime.sftp, normalized)
+  }
+
+  async writeFile(sessionId: string, remotePath: string, contents: string): Promise<void> {
+    const runtime = this.requireSession(sessionId)
+    const normalized = normalizeRemotePath(remotePath)
+    await sftpWriteFile(runtime.sftp, normalized, contents)
   }
 
   async makeDirectory(sessionId: string, currentPath: string, name: string): Promise<void> {

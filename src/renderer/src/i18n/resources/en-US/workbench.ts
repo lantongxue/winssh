@@ -46,6 +46,7 @@ const workbench = {
     },
     documents: {
       localTerminal: 'Local Terminal',
+      remoteFile: 'Remote File',
       serverEditor: {
         newConnection: 'Untitled Connection'
       },
@@ -704,6 +705,23 @@ const workbench = {
         pathSendToTerminalFailed: 'Failed to send the path to the terminal.',
         pathSentToTerminal: 'Path sent to the terminal.',
         uploadFailed: 'Failed to upload the selected items.'
+      }
+    },
+    sftpFileEditor: {
+      empty: {
+        description: 'The file content could not be loaded for editing.',
+        title: 'Unable to open file'
+      },
+      labels: {
+        dirty: 'Unsaved',
+        language: 'Language',
+        path: 'Remote path',
+        saved: 'Saved'
+      },
+      loading: 'Loading remote file...',
+      toasts: {
+        saveFailed: 'Failed to save the remote file.',
+        saved: 'Remote file saved.'
       }
     },
     statusBar: {

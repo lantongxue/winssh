@@ -27,7 +27,10 @@ function createTestQueryClient() {
   })
 }
 
-function renderSftpPanel(session: SessionTab | null) {
+function renderSftpPanel(
+  session: SessionTab | null,
+  options: { onEditFile?: (remotePath: string) => void } = {}
+) {
   const queryClient = createTestQueryClient()
 
   return {
@@ -35,7 +38,7 @@ function renderSftpPanel(session: SessionTab | null) {
     ...render(
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <SftpPanel session={session} />
+          <SftpPanel session={session} onEditFile={options.onEditFile} />
         </TooltipProvider>
       </QueryClientProvider>
     )
@@ -115,6 +118,26 @@ describe('SftpPanel', () => {
     await waitFor(() => {
       expect(sessionsWrite).toHaveBeenCalledWith('session-1', '/var/www/config.json')
     })
+  })
+
+  it('opens a remote file editor from the context menu', async () => {
+    const onEditFile = vi.fn()
+
+    window.winsshApi = createWinsshApiMock({
+      sftp: {
+        list: vi.fn().mockResolvedValue({
+          entries,
+          path: '/var/www'
+        })
+      }
+    })
+
+    renderSftpPanel(session, { onEditFile })
+
+    fireEvent.contextMenu(await screen.findByText('config.json'))
+    fireEvent.click(await screen.findByText('Edit'))
+
+    expect(onEditFile).toHaveBeenCalledWith('/var/www/config.json')
   })
 
   it('keeps rendering when a loaded session becomes disconnected', async () => {

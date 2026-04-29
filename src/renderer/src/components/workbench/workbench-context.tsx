@@ -23,6 +23,7 @@ import {
   createLocalTerminalEditorDocument,
   createServerEditorDocument,
   createSessionEditorDocument,
+  createSftpFileEditorDocument,
   createSettingsEditorDocument,
   createUpdatesEditorDocument,
   createTerminalWelcomeDocument
@@ -116,6 +117,7 @@ interface WorkbenchContextValue {
   openLocalTerminal: () => Promise<void>
   openEntityQuickInput: (input: EntityQuickInputState) => void
   openServerEditor: (serverId?: string | null, options?: OpenServerEditorOptions) => void
+  openSftpFileEditor: (sessionId: string, remotePath: string) => void
   openSettingsEditor: () => void
   openUpdatesEditor: () => void
   quickInput: WorkbenchQuickInputState | null
@@ -301,6 +303,12 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     }
 
     openDocument(createServerEditorDocument(serverId, options))
+  }
+
+  const openSftpFileEditor = (sessionId: string, remotePath: string) => {
+    setActiveActivity('terminal')
+    openDocument(createSftpFileEditorDocument(sessionId, remotePath))
+    closeDocument('terminal-welcome')
   }
 
   const openLocalTerminal = async () => {
@@ -819,6 +827,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         openLocalTerminal,
         openEntityQuickInput,
         openServerEditor,
+        openSftpFileEditor,
         openSettingsEditor,
         openUpdatesEditor,
         quickInput,

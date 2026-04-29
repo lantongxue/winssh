@@ -1,4 +1,5 @@
 import type { TransferProgressEvent } from '@shared/types'
+import { normalizeRemotePath } from '@shared/sftp'
 import type { LucideIcon } from 'lucide-react'
 import { Files, Settings2, Terminal } from 'lucide-react'
 
@@ -28,6 +29,7 @@ export type WorkbenchDocumentId =
   | 'terminal-welcome'
   | `server-editor:${string}`
   | `session-editor:${string}`
+  | `sftp-file-editor:${string}`
   | `local-terminal-editor:${string}`
 
 export interface SettingsEditorDocument {
@@ -58,6 +60,13 @@ export interface SessionEditorDocument {
   sessionId: string
 }
 
+export interface SftpFileEditorDocument {
+  id: `sftp-file-editor:${string}`
+  kind: 'sftp-file-editor'
+  remotePath: string
+  sessionId: string
+}
+
 export interface LocalTerminalEditorDocument {
   id: `local-terminal-editor:${string}`
   kind: 'local-terminal-editor'
@@ -70,6 +79,7 @@ export type WorkbenchDocument =
   | TerminalWelcomeDocument
   | ServerEditorDocument
   | SessionEditorDocument
+  | SftpFileEditorDocument
   | LocalTerminalEditorDocument
 
 export interface WorkbenchActivityMeta {
@@ -166,6 +176,24 @@ export function createSessionEditorDocument(sessionId: string): SessionEditorDoc
   }
 }
 
+export function createSftpFileEditorDocument(
+  sessionId: string,
+  remotePath: string
+): SftpFileEditorDocument {
+  const normalizedPath = normalizeRemotePath(remotePath)
+
+  return {
+    id: `sftp-file-editor:${sessionId}:${encodeURIComponent(normalizedPath)}`,
+    kind: 'sftp-file-editor',
+    remotePath: normalizedPath,
+    sessionId
+  }
+}
+
+export function getSftpFileEditorFormId(documentId: SftpFileEditorDocument['id']) {
+  return `${documentId}:form`
+}
+
 export function createLocalTerminalEditorDocument(terminalId: string): LocalTerminalEditorDocument {
   return {
     id: `local-terminal-editor:${terminalId}`,
@@ -192,6 +220,7 @@ export function getDocumentActivity(document: WorkbenchDocument | null): Workben
 
   if (
     document.kind === 'session-editor' ||
+    document.kind === 'sftp-file-editor' ||
     document.kind === 'local-terminal-editor' ||
     document.kind === 'terminal-welcome'
   ) {
@@ -229,6 +258,8 @@ export function getDocumentFallbackTitle(document: WorkbenchDocument): string {
       return document.serverId ? 'Connection' : 'Untitled Connection'
     case 'session-editor':
       return 'Terminal'
+    case 'sftp-file-editor':
+      return 'Remote File'
     case 'local-terminal-editor':
       return 'Local Terminal'
     default:
@@ -248,6 +279,8 @@ export function getDocumentDescription(document: WorkbenchDocument): string {
       return document.serverId ? 'Edit saved SSH connection.' : 'Create a new SSH connection.'
     case 'session-editor':
       return 'Interactive SSH terminal.'
+    case 'sftp-file-editor':
+      return 'Remote file editor.'
     case 'local-terminal-editor':
       return 'Interactive local terminal.'
     default:

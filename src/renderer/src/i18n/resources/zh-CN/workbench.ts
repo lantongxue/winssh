@@ -46,6 +46,7 @@ const workbench = {
     },
     documents: {
       localTerminal: '本地终端',
+      remoteFile: '远程文件',
       serverEditor: {
         newConnection: '未命名连接'
       },
@@ -684,6 +685,23 @@ const workbench = {
         pathSendToTerminalFailed: '复制路径到终端失败。',
         pathSentToTerminal: '路径已发送到终端。',
         uploadFailed: '上传所选项目失败。'
+      }
+    },
+    sftpFileEditor: {
+      empty: {
+        description: '无法加载该文件内容进行编辑。',
+        title: '无法打开文件'
+      },
+      labels: {
+        dirty: '未保存',
+        language: '语言',
+        path: '远程路径',
+        saved: '已保存'
+      },
+      loading: '正在加载远程文件...',
+      toasts: {
+        saveFailed: '保存远程文件失败。',
+        saved: '远程文件已保存。'
       }
     },
     statusBar: {

@@ -96,6 +96,8 @@ export interface WinsshApi {
   sftp: {
     list: (sessionId: string, path: string) => Promise<SftpListResult>
     createFile: (sessionId: string, path: string, name: string) => Promise<void>
+    readFile: (sessionId: string, remotePath: string) => Promise<string>
+    writeFile: (sessionId: string, remotePath: string, contents: string) => Promise<void>
     mkdir: (sessionId: string, path: string, name: string) => Promise<void>
     rename: (sessionId: string, path: string, newName: string) => Promise<void>
     remove: (sessionId: string, path: string) => Promise<void>

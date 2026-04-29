@@ -281,11 +281,13 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       list: async () => ({ entries: [], path: '/' }),
       mkdir: async () => undefined,
       onTransferProgress: () => noopUnsubscribe,
+      readFile: async () => '',
       refresh: async () => ({ entries: [], path: '/' }),
       remove: async () => undefined,
       rename: async () => undefined,
       uploadFiles: async () => undefined,
       uploadPaths: async () => undefined,
+      writeFile: async () => undefined,
       ...overrides.sftp
     },
     portForwards: {

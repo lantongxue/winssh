@@ -1,6 +1,7 @@
 import type { DragEvent } from 'react'
 import { useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { FileText } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { Server } from '@shared/types'
@@ -46,6 +47,12 @@ function getBaseDocumentTitle(
 
   if (document.kind === 'session-editor') {
     return sessionNameMap.get(document.sessionId) ?? t('workbench.documents.terminal')
+  }
+
+  if (document.kind === 'sftp-file-editor') {
+    return (
+      document.remotePath.split('/').filter(Boolean).at(-1) ?? t('workbench.documents.remoteFile')
+    )
   }
 
   if (document.kind === 'server-editor') {
@@ -163,6 +170,11 @@ export function WorkbenchEditorTabs() {
     }
 
     if (document.kind === 'session-editor') {
+      const serverId = sessionServerIdMap.get(document.sessionId)
+      return serverId ? (serverMap.get(serverId) ?? null) : null
+    }
+
+    if (document.kind === 'sftp-file-editor') {
       const serverId = sessionServerIdMap.get(document.sessionId)
       return serverId ? (serverMap.get(serverId) ?? null) : null
     }
@@ -317,6 +329,9 @@ export function WorkbenchEditorTabs() {
                     customIconDataUrl={documentServer?.customIconDataUrl}
                     className="size-3.5 shrink-0 text-[var(--workbench-active)]"
                   />
+                ) : null}
+                {document.kind === 'sftp-file-editor' ? (
+                  <FileText className="size-3.5 shrink-0 text-[var(--workbench-active)]" />
                 ) : null}
                 <span className="truncate">{title}</span>
                 <Tooltip>

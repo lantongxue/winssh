@@ -39,6 +39,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 interface SftpPanelProps {
   session: SessionTab | null
   className?: string
+  onEditFile?: (remotePath: string) => void
 }
 
 type FileWithPath = File & {
@@ -113,7 +114,7 @@ function getDroppedLocalPaths(dataTransfer: DataTransfer | null | undefined) {
   return [...localPaths]
 }
 
-export function SftpPanel({ session, className }: SftpPanelProps) {
+export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const setCurrentPath = useSessionsStore((state) => state.setCurrentPath)
@@ -138,6 +139,7 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
   const NewFileIcon = actionIcons.newFile
   const NewFolderIcon = actionIcons.newFolder
   const DownloadIcon = actionIcons.download
+  const EditIcon = actionIcons.edit
   const RenameIcon = actionIcons.rename
   const DeleteIcon = actionIcons.delete
   const CancelIcon = actionIcons.cancel
@@ -733,6 +735,17 @@ export function SftpPanel({ session, className }: SftpPanelProps) {
                                 <Folder className="size-4" />
                                 {t('workbench.sftp.actions.openDirectory')}
                               </ContextMenuItem>
+                            ) : null}
+
+                            {singleContextTarget && singleContextTarget.kind !== 'directory' ? (
+                              onEditFile && singleContextTarget.kind === 'file' ? (
+                                <ContextMenuItem
+                                  onClick={() => onEditFile(singleContextTarget.path)}
+                                >
+                                  <EditIcon className="size-4" />
+                                  {t('common.actions.edit')}
+                                </ContextMenuItem>
+                              ) : null
                             ) : null}
 
                             {singleContextTarget && singleContextTarget.kind !== 'directory' ? (

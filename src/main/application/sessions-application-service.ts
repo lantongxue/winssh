@@ -58,6 +58,14 @@ export class SessionsApplicationService {
     return this.sessionManager.createFile(sessionId, remotePath, name)
   }
 
+  readFile(sessionId: string, remotePath: string) {
+    return this.sessionManager.readFile(sessionId, remotePath)
+  }
+
+  writeFile(sessionId: string, remotePath: string, contents: string) {
+    return this.sessionManager.writeFile(sessionId, remotePath, contents)
+  }
+
   makeDirectory(sessionId: string, remotePath: string, name: string) {
     return this.sessionManager.makeDirectory(sessionId, remotePath, name)
   }
@@ -118,4 +126,3 @@ export class SessionsApplicationService {
     return this.localTerminalManager.resize(terminalId, columns, rows)
   }
 }
-

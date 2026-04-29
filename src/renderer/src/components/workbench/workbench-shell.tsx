@@ -13,6 +13,7 @@ import {
   createTerminalWelcomeDocument,
   DEFAULT_WORKBENCH_BOTTOM_PANEL_SIZE_PX,
   getServerEditorFormId,
+  getSftpFileEditorFormId,
   getLegacyPathForActivity,
   getLegacyPathForDocument
 } from '@/lib/workbench'
@@ -33,6 +34,7 @@ import { WorkbenchQuickInput } from '@/components/workbench/workbench-quick-inpu
 import { WorkbenchLocalTerminalEditor } from '@/components/workbench/workbench-local-terminal-editor'
 import { WorkbenchServerEditor } from '@/components/workbench/workbench-server-editor'
 import { WorkbenchSessionEditor } from '@/components/workbench/workbench-session-editor'
+import { WorkbenchSftpFileEditor } from '@/components/workbench/workbench-sftp-file-editor'
 import { WorkbenchSettingsEditor } from '@/components/workbench/workbench-settings-editor'
 import { WorkbenchStatusBar } from '@/components/workbench/workbench-status-bar'
 import { WorkbenchTitlebar } from '@/components/workbench/workbench-titlebar'
@@ -40,6 +42,21 @@ import { WorkbenchUpdatesEditor } from '@/components/workbench/workbench-updates
 
 function submitServerEditorForm(documentId: `server-editor:${string}`) {
   const form = document.getElementById(getServerEditorFormId(documentId))
+
+  if (!(form instanceof HTMLFormElement)) {
+    return
+  }
+
+  if (typeof form.requestSubmit === 'function') {
+    form.requestSubmit()
+    return
+  }
+
+  form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+}
+
+function submitSftpFileEditorForm(documentId: `sftp-file-editor:${string}`) {
+  const form = document.getElementById(getSftpFileEditorFormId(documentId))
 
   if (!(form instanceof HTMLFormElement)) {
     return
@@ -126,6 +143,9 @@ function WorkbenchShellContent() {
     if (action === 'saveActiveDocument') {
       if (activeDocument?.kind === 'server-editor') {
         submitServerEditorForm(activeDocument.id)
+      }
+      if (activeDocument?.kind === 'sftp-file-editor') {
+        submitSftpFileEditorForm(activeDocument.id)
       }
       return
     }
@@ -223,6 +243,7 @@ function WorkbenchShellContent() {
 
     if (
       currentActiveDocument?.kind === 'session-editor' ||
+      currentActiveDocument?.kind === 'sftp-file-editor' ||
       currentActiveDocument?.kind === 'local-terminal-editor' ||
       currentActiveDocument?.kind === 'terminal-welcome'
     ) {
@@ -355,6 +376,9 @@ function WorkbenchShellContent() {
         {document.kind === 'server-editor' ? <WorkbenchServerEditor document={document} /> : null}
         {document.kind === 'session-editor' ? (
           <WorkbenchSessionEditor active={active} sessionId={document.sessionId} />
+        ) : null}
+        {document.kind === 'sftp-file-editor' ? (
+          <WorkbenchSftpFileEditor active={active} document={document} />
         ) : null}
         {document.kind === 'local-terminal-editor' ? (
           <WorkbenchLocalTerminalEditor active={active} terminalId={document.terminalId} />

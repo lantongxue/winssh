@@ -51,6 +51,14 @@ export function registerSessionIpc(service: SessionsApplicationService) {
   ipcMain.handle('sftp:createFile', (_event, sessionId: string, remotePath: string, name: string) =>
     service.createFile(sessionId, remotePath, name)
   )
+  ipcMain.handle('sftp:readFile', (_event, sessionId: string, remotePath: string) =>
+    service.readFile(sessionId, remotePath)
+  )
+  ipcMain.handle(
+    'sftp:writeFile',
+    (_event, sessionId: string, remotePath: string, contents: string) =>
+      service.writeFile(sessionId, remotePath, contents)
+  )
   ipcMain.handle('sftp:mkdir', (_event, sessionId: string, remotePath: string, name: string) =>
     service.makeDirectory(sessionId, remotePath, name)
   )
@@ -88,4 +96,3 @@ export function registerSessionIpc(service: SessionsApplicationService) {
     service.removePortForward(sessionId, ruleId)
   )
 }
-
