@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import type { Credential, Server, ServerSecrets, ServerUpsertInput, Tag } from '@shared/types'
+import type { Credential, Server, ServerGroup, ServerSecrets, ServerUpsertInput, Tag } from '@shared/types'
 import { serverSchema, tagSchema, type ServerFormValues } from '@shared/validation'
 import { credentialsClient } from '@/features/credentials/api/credentials-client'
 import { groupsClient } from '@/features/groups/api/groups-client'
@@ -231,6 +231,29 @@ function sortTagsByName(tags: Tag[]) {
   )
 }
 
+function buildGroupLabel(group: ServerGroup, groupsById: Map<string, ServerGroup>) {
+  const names = [group.name]
+  let parentId = group.parentId
+  const visited = new Set<string>([group.id])
+
+  while (parentId) {
+    if (visited.has(parentId)) {
+      break
+    }
+    visited.add(parentId)
+
+    const parent = groupsById.get(parentId)
+    if (!parent) {
+      break
+    }
+
+    names.unshift(parent.name)
+    parentId = parent.parentId
+  }
+
+  return names.join(' / ')
+}
+
 function ServerTagBadges({ tags }: { tags: Tag[] }) {
   if (tags.length === 0) {
     return null
@@ -424,13 +447,15 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     (item) => item.id !== document.serverId
   )
   const selectedJumpServer = availableJumpServers.find((item) => item.id === jumpServerId) ?? null
+  const groups = groupsQuery.data ?? []
+  const groupsById = new Map(groups.map((group) => [group.id, group]))
   const groupOptions = [
     {
       label: t('workbench.serverEditor.placeholders.ungrouped'),
       value: '__none__'
     },
-    ...(groupsQuery.data ?? []).map((group) => ({
-      label: group.name,
+    ...groups.map((group) => ({
+      label: buildGroupLabel(group, groupsById),
       value: group.id
     }))
   ]

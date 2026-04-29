@@ -42,6 +42,7 @@ export const SESSION_RESOURCE_MONITOR_UNAVAILABLE = 'session_resource_unavailabl
 export interface ServerGroup {
   id: string
   name: string
+  parentId: string | null
   color: string
   createdAt: string
   updatedAt: string
@@ -159,6 +160,7 @@ export interface UpdateState {
 export interface GroupInput {
   name: string
   color: string
+  parentId?: string | null
 }
 
 export interface TagInput {

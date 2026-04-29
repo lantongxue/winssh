@@ -14,7 +14,8 @@ export const groupSchema = z.object({
     .trim()
     .min(1, 'validation.group.name.required')
     .max(40, 'validation.group.name.max'),
-  color: colorSchema
+  color: colorSchema,
+  parentId: z.string().trim().nullable().optional()
 })
 
 export const tagSchema = z.object({

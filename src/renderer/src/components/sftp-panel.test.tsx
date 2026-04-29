@@ -89,6 +89,14 @@ describe('SftpPanel', () => {
       size: 32
     }
   ]
+  const directoryEntry: RemoteEntry = {
+    kind: 'directory',
+    modifiedAt: null,
+    name: 'assets',
+    path: '/var/www/assets',
+    permissions: null,
+    size: 0
+  }
 
   beforeEach(async () => {
     await i18n.changeLanguage('en-US')
@@ -138,6 +146,68 @@ describe('SftpPanel', () => {
     fireEvent.click(await screen.findByText('Edit'))
 
     expect(onEditFile).toHaveBeenCalledWith('/var/www/config.json')
+  })
+
+  it('renders directory icons with a stronger highlighted treatment than files', async () => {
+    window.winsshApi = createWinsshApiMock({
+      sftp: {
+        list: vi.fn().mockResolvedValue({
+          entries: [directoryEntry, ...entries],
+          path: '/var/www'
+        })
+      }
+    })
+
+    renderSftpPanel(session)
+
+    const directoryButton = (await screen.findByText('assets')).closest('button')
+    const fileButton = (await screen.findByText('config.json')).closest('button')
+    const directoryIcon = directoryButton?.querySelector('[data-entry-icon="directory"]')
+    const fileIcon = fileButton?.querySelector('[data-entry-icon="file"]')
+
+    expect(directoryIcon).not.toBeNull()
+    expect(fileIcon).not.toBeNull()
+    expect(directoryIcon?.getAttribute('class')).toContain('var(--workbench-active)')
+    expect(fileIcon?.getAttribute('class')).toContain('bg-muted')
+  })
+
+  it('opens a remote file editor when double-clicking a file', async () => {
+    const onEditFile = vi.fn()
+
+    window.winsshApi = createWinsshApiMock({
+      sftp: {
+        list: vi.fn().mockResolvedValue({
+          entries,
+          path: '/var/www'
+        })
+      }
+    })
+
+    renderSftpPanel(session, { onEditFile })
+
+    fireEvent.doubleClick(await screen.findByText('config.json'))
+
+    expect(onEditFile).toHaveBeenCalledWith('/var/www/config.json')
+  })
+
+  it('continues opening directories when double-clicking a directory', async () => {
+    useSessionsStore.getState().addSession(session)
+    window.winsshApi = createWinsshApiMock({
+      sftp: {
+        list: vi.fn().mockResolvedValue({
+          entries: [directoryEntry, ...entries],
+          path: '/var/www'
+        })
+      }
+    })
+
+    renderConnectedSftpPanel('session-1')
+
+    fireEvent.doubleClick(await screen.findByText('assets'))
+
+    await waitFor(() => {
+      expect(useSessionsStore.getState().tabs[0]?.currentPath).toBe('/var/www/assets')
+    })
   })
 
   it('keeps rendering when a loaded session becomes disconnected', async () => {

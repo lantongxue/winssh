@@ -73,6 +73,16 @@ function TooltipAction({
 const UNGROUPED_GROUP_ID = '__ungrouped__'
 const SERVER_DRAG_MIME = 'application/x-winssh-server-id'
 
+type GroupTreeNode = {
+  group: ServerGroup
+  children: GroupTreeNode[]
+}
+
+type FlatGroup = {
+  depth: number
+  group: ServerGroup
+}
+
 function normalizeSearchValue(value: string) {
   return value.trim().toLowerCase()
 }
@@ -102,6 +112,32 @@ function getServerSearchRank(server: Server, query: string) {
   }
 
   return null
+}
+
+function buildGroupTree(groups: ServerGroup[]): GroupTreeNode[] {
+  const nodes = new Map<string, GroupTreeNode>()
+  for (const group of groups) {
+    nodes.set(group.id, { group, children: [] })
+  }
+
+  const roots: GroupTreeNode[] = []
+  for (const node of nodes.values()) {
+    if (node.group.parentId && nodes.has(node.group.parentId)) {
+      nodes.get(node.group.parentId)?.children.push(node)
+      continue
+    }
+
+    roots.push(node)
+  }
+
+  return roots
+}
+
+function flattenGroupTree(nodes: GroupTreeNode[], depth = 0): FlatGroup[] {
+  return nodes.flatMap((node) => [
+    { depth, group: node.group },
+    ...flattenGroupTree(node.children, depth + 1)
+  ])
 }
 
 function SectionHeader({
@@ -283,6 +319,7 @@ function ServerRow({
   const hasTags = server.tags.length > 0
   const shouldShowHost = showHost && server.host.trim() !== '' && server.host !== server.name
   const hasMeta = hasTags || shouldShowHost
+  const groupMenuItems = flattenGroupTree(buildGroupTree(groups))
 
   const handleConnect = () => {
     onSelect?.()
@@ -404,13 +441,13 @@ function ServerRow({
             >
               {t('workbench.primarySidebar.labels.ungrouped')}
             </ContextMenuItem>
-            {groups.map((group) => (
+            {groupMenuItems.map(({ depth, group }) => (
               <ContextMenuItem
                 key={group.id}
                 disabled={server.groupId === group.id}
                 onClick={() => void onMoveToGroup(server, group)}
               >
-                {group.name}
+                {depth > 0 ? `${'— '.repeat(depth)}${group.name}` : group.name}
               </ContextMenuItem>
             ))}
           </ContextMenuSubContent>
@@ -432,6 +469,7 @@ function EntityNode({
   dropTarget = false,
   onClick,
   onCreateServer,
+  onCreateSubgroup,
   onDragLeave,
   onDragOver,
   onDoubleClick,
@@ -445,6 +483,7 @@ function EntityNode({
   dropTarget?: boolean
   onClick: () => void
   onCreateServer?: () => void
+  onCreateSubgroup?: () => void
   onDragLeave?: (event: DragEvent<HTMLDivElement>) => void
   onDragOver?: (event: DragEvent<HTMLDivElement>) => void
   onDoubleClick?: () => void
@@ -480,6 +519,12 @@ function EntityNode({
               <NewConnectionIcon className="size-4" />
               {t('common.actions.newConnection')}
             </ContextMenuItem>
+            {onCreateSubgroup ? (
+              <ContextMenuItem onClick={onCreateSubgroup}>
+                <Plus className="size-4" />
+                {t('workbench.primarySidebar.actions.createSubgroup')}
+              </ContextMenuItem>
+            ) : null}
             <ContextMenuSeparator />
           </>
         ) : null}
@@ -546,6 +591,7 @@ export function WorkbenchPrimarySidebar() {
 
   const servers = useMemo(() => serversQuery.data ?? [], [serversQuery.data])
   const groups = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data])
+  const groupTree = useMemo(() => buildGroupTree(groups), [groups])
   const tags = useMemo(() => tagsQuery.data ?? [], [tagsQuery.data])
   const recents = useMemo(() => recentQuery.data ?? [], [recentQuery.data])
   const favoriteServers = useMemo(() => servers.filter((server) => server.favorite), [servers])
@@ -765,6 +811,91 @@ export function WorkbenchPrimarySidebar() {
     setServerSearchQuery('')
   }
 
+  const renderGroupNode = (node: GroupTreeNode, depth: number): ReactNode => {
+    const { group } = node
+    const style = getColorStyle(group.color)
+    const active = selectedExplorerNode === `group:${group.id}`
+    const expanded = expandedGroups[group.id] ?? false
+    const groupServers = servers.filter((server) => server.groupId === group.id)
+
+    return (
+      <div key={group.id} className="space-y-0.5">
+        <EntityNode
+          active={active}
+          depth={depth}
+          dropTarget={dropTargetGroupId === group.id}
+          onClick={() => setSelectedExplorerNode(`group:${group.id}`)}
+          onCreateServer={() => openServerEditor(null, { initialGroupId: group.id })}
+          onCreateSubgroup={() =>
+            openEntityQuickInput({ entityType: 'group', mode: 'create', parentId: group.id })
+          }
+          onDragLeave={handleGroupDragLeave(group.id)}
+          onDragOver={handleGroupDragOver(group.id)}
+          onDoubleClick={() =>
+            setExpandedGroups((current) => ({
+              ...current,
+              [group.id]: !expanded
+            }))
+          }
+          onDrop={handleGroupDrop(group.id)}
+          onDelete={() => void handleDeleteGroup(group)}
+          onRename={() =>
+            openEntityQuickInput({
+              entityId: group.id,
+              entityType: 'group',
+              initialColor: group.color,
+              initialName: group.name,
+              mode: 'rename'
+            })
+          }
+        >
+          <button
+            type="button"
+            className="flex size-4 items-center justify-center"
+            onClick={(event) => {
+              event.stopPropagation()
+              setExpandedGroups((current) => ({
+                ...current,
+                [group.id]: !expanded
+              }))
+            }}
+          >
+            {expanded ? <CollapseIcon className="size-3.5" /> : <ExpandIcon className="size-3.5" />}
+          </button>
+          <span className={`size-2 rounded-full ${style.dot}`} />
+          <span className="flex-1 truncate">{group.name}</span>
+          <span className="text-xs text-muted-foreground">{groupCounts.get(group.id) ?? 0}</span>
+        </EntityNode>
+        {expanded
+          ? [
+              ...node.children.map((child) => renderGroupNode(child, depth + 1)),
+              ...groupServers.map((server) => (
+                <ServerRow
+                  key={server.id}
+                  active={selectedExplorerNode === `server:${server.id}`}
+                  connected={connectedServerIds.has(server.id)}
+                  depth={depth + 1}
+                  dragging={draggedServerId === server.id}
+                  groups={groups}
+                  server={server}
+                  onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
+                  onConnect={() => void connectServer(server)}
+                  onDelete={() => setPendingDeleteServer(server)}
+                  onDragEnd={handleServerDragEnd}
+                  onDragStart={handleServerDragStart(server.id)}
+                  onEdit={() => openServerEditor(server.id)}
+                  onMoveToGroup={(currentServer, targetGroup) =>
+                    void handleMoveServerGroup(currentServer, targetGroup)
+                  }
+                  onToggleFavorite={() => void toggleFavorite(server.id)}
+                />
+              ))
+            ]
+          : null}
+      </div>
+    )
+  }
+
   return (
     <>
       <aside className="liquid-glass-pane flex h-full min-h-0 flex-col bg-[var(--workbench-sidebar)]">
@@ -945,91 +1076,7 @@ export function WorkbenchPrimarySidebar() {
                           ))
                         : null}
                     </div>
-                    {groups.map((group) => {
-                      const style = getColorStyle(group.color)
-                      const active = selectedExplorerNode === `group:${group.id}`
-                      const expanded = expandedGroups[group.id] ?? false
-                      const groupServers = servers.filter((server) => server.groupId === group.id)
-
-                      return (
-                        <div key={group.id} className="space-y-0.5">
-                          <EntityNode
-                            active={active}
-                            depth={1}
-                            dropTarget={dropTargetGroupId === group.id}
-                            onClick={() => setSelectedExplorerNode(`group:${group.id}`)}
-                            onCreateServer={() =>
-                              openServerEditor(null, { initialGroupId: group.id })
-                            }
-                            onDragLeave={handleGroupDragLeave(group.id)}
-                            onDragOver={handleGroupDragOver(group.id)}
-                            onDoubleClick={() =>
-                              setExpandedGroups((current) => ({
-                                ...current,
-                                [group.id]: !expanded
-                              }))
-                            }
-                            onDrop={handleGroupDrop(group.id)}
-                            onDelete={() => void handleDeleteGroup(group)}
-                            onRename={() =>
-                              openEntityQuickInput({
-                                entityId: group.id,
-                                entityType: 'group',
-                                initialColor: group.color,
-                                initialName: group.name,
-                                mode: 'rename'
-                              })
-                            }
-                          >
-                            <button
-                              type="button"
-                              className="flex size-4 items-center justify-center"
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                setExpandedGroups((current) => ({
-                                  ...current,
-                                  [group.id]: !expanded
-                                }))
-                              }}
-                            >
-                              {expanded ? (
-                                <CollapseIcon className="size-3.5" />
-                              ) : (
-                                <ExpandIcon className="size-3.5" />
-                              )}
-                            </button>
-                            <span className={`size-2 rounded-full ${style.dot}`} />
-                            <span className="flex-1 truncate">{group.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {groupCounts.get(group.id) ?? 0}
-                            </span>
-                          </EntityNode>
-                          {expanded
-                            ? groupServers.map((server) => (
-                                <ServerRow
-                                  key={server.id}
-                                  active={selectedExplorerNode === `server:${server.id}`}
-                                  connected={connectedServerIds.has(server.id)}
-                                  depth={2}
-                                  dragging={draggedServerId === server.id}
-                                  groups={groups}
-                                  server={server}
-                                  onSelect={() => setSelectedExplorerNode(`server:${server.id}`)}
-                                  onConnect={() => void connectServer(server)}
-                                  onDelete={() => setPendingDeleteServer(server)}
-                                  onDragEnd={handleServerDragEnd}
-                                  onDragStart={handleServerDragStart(server.id)}
-                                  onEdit={() => openServerEditor(server.id)}
-                                  onMoveToGroup={(currentServer, targetGroup) =>
-                                    void handleMoveServerGroup(currentServer, targetGroup)
-                                  }
-                                  onToggleFavorite={() => void toggleFavorite(server.id)}
-                                />
-                              ))
-                            : null}
-                        </div>
-                      )
-                    })}
+                    {groupTree.map((node) => renderGroupNode(node, 1))}
                   </div>
                 ) : null}
               </section>

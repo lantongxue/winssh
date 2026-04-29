@@ -38,6 +38,7 @@ type EntityQuickInputState = {
   initialColor?: string
   initialName?: string
   mode: 'create' | 'rename'
+  parentId?: string | null
 }
 
 type CredentialsQuickInputBaseState = {

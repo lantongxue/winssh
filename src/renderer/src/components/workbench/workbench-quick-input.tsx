@@ -70,7 +70,7 @@ export function WorkbenchQuickInput() {
     try {
       if (quickInput.entityType === 'group') {
         if (quickInput.mode === 'create') {
-          await groupsClient.create({ color, name: name.trim() })
+          await groupsClient.create({ color, name: name.trim(), parentId: quickInput.parentId ?? null })
           toast.success(t('workbench.quickInput.toasts.groupCreated'))
         } else if (quickInput.entityId) {
           await groupsClient.update(quickInput.entityId, { color, name: name.trim() })

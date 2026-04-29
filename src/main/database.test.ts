@@ -167,6 +167,73 @@ describeDatabase('DatabaseService server persistence', () => {
     expect(service.getServerById(targetServer.id)?.jumpServerId).toBeNull()
   })
 
+  it('persists nested groups and keeps server assignment at any depth', () => {
+    if (!DatabaseService) {
+      return
+    }
+
+    const databasePath = createTempDatabasePath()
+    const service = new DatabaseService(databasePath)
+
+    const parent = service.createGroup({ color: 'red', name: 'Production' })
+    const child = service.createGroup({ color: 'blue', name: 'Web', parentId: parent.id })
+    const grandchild = service.createGroup({ color: 'green', name: 'API', parentId: child.id })
+    const server = service.createServer(createServerInput({ groupId: grandchild.id, name: 'API Host' }))
+
+    expect(service.listGroups()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: parent.id, parentId: null }),
+        expect.objectContaining({ id: child.id, parentId: parent.id }),
+        expect.objectContaining({ id: grandchild.id, parentId: child.id })
+      ])
+    )
+    expect(service.getServerById(server.id)).toMatchObject({
+      group: expect.objectContaining({ id: grandchild.id, parentId: child.id }),
+      groupId: grandchild.id
+    })
+  })
+
+  it('prevents self-parent and descendant cycles', () => {
+    if (!DatabaseService) {
+      return
+    }
+
+    const databasePath = createTempDatabasePath()
+    const service = new DatabaseService(databasePath)
+
+    const parent = service.createGroup({ color: 'red', name: 'Parent' })
+    const child = service.createGroup({ color: 'blue', name: 'Child', parentId: parent.id })
+
+    expect(() =>
+      service.updateGroup(parent.id, { color: parent.color, name: parent.name, parentId: parent.id })
+    ).toThrow(/own parent/i)
+    expect(() =>
+      service.updateGroup(parent.id, { color: parent.color, name: parent.name, parentId: child.id })
+    ).toThrow(/descendants/i)
+  })
+
+  it('promotes child groups to root when deleting a parent group', () => {
+    if (!DatabaseService) {
+      return
+    }
+
+    const databasePath = createTempDatabasePath()
+    const service = new DatabaseService(databasePath)
+
+    const parent = service.createGroup({ color: 'red', name: 'Parent' })
+    const child = service.createGroup({ color: 'blue', name: 'Child', parentId: parent.id })
+    const parentServer = service.createServer(
+      createServerInput({ groupId: parent.id, name: 'Parent Server' })
+    )
+    const childServer = service.createServer(createServerInput({ groupId: child.id, name: 'Child Server' }))
+
+    service.deleteGroup(parent.id)
+
+    expect(service.listGroups()).toEqual([expect.objectContaining({ id: child.id, parentId: null })])
+    expect(service.getServerById(parentServer.id)?.groupId).toBeNull()
+    expect(service.getServerById(childServer.id)?.groupId).toBe(child.id)
+  })
+
   it('stores custom icons as data URLs and keeps the detected brand when the icon is removed', () => {
     if (!DatabaseService) {
       return

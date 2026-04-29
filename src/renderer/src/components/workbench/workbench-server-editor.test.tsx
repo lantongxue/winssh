@@ -464,6 +464,54 @@ describe('WorkbenchServerEditor credentials field', () => {
     )
   })
 
+  it('shows nested group paths in the group selector and saves a subgroup assignment', async () => {
+    const createServer = vi.fn().mockResolvedValue({
+      ...savedServer,
+      groupId: 'group-child'
+    })
+
+    window.winsshApi = createWinsshApiMock({
+      groups: {
+        list: vi.fn().mockResolvedValue([
+          {
+            color: 'red',
+            createdAt: '',
+            id: 'group-parent',
+            name: 'Production',
+            parentId: null,
+            updatedAt: ''
+          },
+          {
+            color: 'blue',
+            createdAt: '',
+            id: 'group-child',
+            name: 'API',
+            parentId: 'group-parent',
+            updatedAt: ''
+          }
+        ])
+      },
+      servers: {
+        create: createServer
+      }
+    })
+
+    renderServerEditor()
+
+    const groupCombobox = await screen.findByRole('combobox', { name: 'Group' })
+    fireEvent.click(groupCombobox)
+    fireEvent.click(await screen.findByRole('option', { name: 'Production / API' }))
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'API Host' } })
+    fireEvent.change(screen.getByLabelText('Host'), { target: { value: '10.0.0.10' } })
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'root' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(createServer).toHaveBeenCalledWith(expect.objectContaining({ groupId: 'group-child' }))
+    })
+  })
+
   it('creates a new tag from the tags combobox and selects it', async () => {
     const createTag = vi.fn().mockResolvedValue(databaseTag)
 

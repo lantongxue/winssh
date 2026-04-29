@@ -136,6 +136,7 @@ const workbench = {
         clearRecent: 'Clear Recent Connections',
         connect: 'Connect',
         createGroup: 'New Group',
+        createSubgroup: 'New Subgroup',
         createTag: 'New Tag',
         edit: 'Edit',
         moveToGroup: 'Move to Group',

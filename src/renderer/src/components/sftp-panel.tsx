@@ -618,6 +618,7 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
                     const entry = entries[virtualItem.index]
                     const contextMenuTargets = resolveContextMenuTargets(entry)
                     const isSelected = selectedEntrySet.has(entry.path)
+                    const isDirectory = entry.kind === 'directory'
                     const isRemoving = removingEntrySet.has(entry.path)
                     const hasSingleContextTarget = contextMenuTargets.length === 1
                     const singleContextTarget = hasSingleContextTarget
@@ -671,8 +672,13 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
                                   additive: event.metaKey || event.ctrlKey,
                                   range: event.shiftKey
                                 })
-                                if (entry.kind === 'directory') {
+                                if (isDirectory) {
                                   openDirectory(entry.path)
+                                  return
+                                }
+
+                                if (entry.kind === 'file') {
+                                  onEditFile?.(entry.path)
                                 }
                               }}
                               onKeyDown={(event) => {
@@ -704,14 +710,17 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
                               <div
                                 className={cn(
                                   'mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-sm transition-colors',
-                                  isSelected
-                                    ? 'bg-[var(--workbench-hover)] text-foreground'
-                                    : 'bg-muted text-muted-foreground'
+                                  isDirectory
+                                    ? 'bg-[color-mix(in_srgb,var(--workbench-active)_14%,transparent)] text-[var(--workbench-active)] ring-1 ring-[color-mix(in_srgb,var(--workbench-active)_28%,transparent)]'
+                                    : isSelected
+                                      ? 'bg-[var(--workbench-hover)] text-foreground'
+                                      : 'bg-muted text-muted-foreground'
                                 )}
+                                data-entry-icon={isDirectory ? 'directory' : 'file'}
                               >
                                 {isRemoving ? (
                                   <LoaderCircle className="size-3.5 animate-spin" />
-                                ) : entry.kind === 'directory' ? (
+                                ) : isDirectory ? (
                                   <Folder className="size-3.5" />
                                 ) : (
                                   <File className="size-3.5" />

@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import i18n from '@/i18n'
 import { WorkbenchProvider } from '@/components/workbench/workbench-context'
 import { WorkbenchPrimarySidebar } from '@/components/workbench/workbench-primary-sidebar'
+import { WorkbenchQuickInput } from '@/components/workbench/workbench-quick-input'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { createWinsshApiMock } from '@/test/create-winssh-api'
 import { useSessionsStore } from '@/store/sessions-store'
@@ -115,6 +116,7 @@ function renderPrimarySidebar() {
       <TooltipProvider>
         <WorkbenchProvider>
           <WorkbenchPrimarySidebar />
+          <WorkbenchQuickInput />
         </WorkbenchProvider>
       </TooltipProvider>
     </QueryClientProvider>
@@ -536,6 +538,116 @@ describe('WorkbenchPrimarySidebar', () => {
       })
     ])
     expect(state.selectedExplorerNode).toBe('group:group-1')
+  })
+
+  it('renders nested groups and servers assigned to a subgroup', async () => {
+    window.winsshApi = createWinsshApiMock({
+      groups: {
+        list: vi.fn().mockResolvedValue([
+          {
+            color: 'red',
+            createdAt: '',
+            id: 'group-parent',
+            name: 'Production',
+            parentId: null,
+            updatedAt: ''
+          },
+          {
+            color: 'blue',
+            createdAt: '',
+            id: 'group-child',
+            name: 'API',
+            parentId: 'group-parent',
+            updatedAt: ''
+          }
+        ])
+      },
+      servers: {
+        list: vi.fn().mockResolvedValue([
+          {
+            ...servers[0],
+            group: {
+              color: 'blue',
+              createdAt: '',
+              id: 'group-child',
+              name: 'API',
+              parentId: 'group-parent',
+              updatedAt: ''
+            },
+            groupId: 'group-child',
+            name: 'API Host'
+          }
+        ]),
+        listRecent: vi.fn().mockResolvedValue([])
+      },
+      tags: {
+        list: vi.fn().mockResolvedValue([])
+      }
+    })
+
+    renderPrimarySidebar()
+
+    const parentLabel = await screen.findByText('Production')
+    expect(screen.queryByText('API')).not.toBeInTheDocument()
+
+    fireEvent.doubleClick(parentLabel)
+    const childLabel = await screen.findByText('API')
+    expect(screen.queryByText('API Host')).not.toBeInTheDocument()
+
+    fireEvent.doubleClick(childLabel)
+    expect(await screen.findByText('API Host')).toBeInTheDocument()
+  })
+
+  it('opens the new subgroup quick input from a group context menu', async () => {
+    const createGroup = vi.fn().mockResolvedValue({
+      color: 'blue',
+      createdAt: '',
+      id: 'group-child',
+      name: 'API',
+      parentId: 'group-1',
+      updatedAt: ''
+    })
+
+    window.winsshApi = createWinsshApiMock({
+      groups: {
+        create: createGroup,
+        list: vi.fn().mockResolvedValue([
+          {
+            color: 'red',
+            createdAt: '',
+            id: 'group-1',
+            name: 'Production',
+            parentId: null,
+            updatedAt: ''
+          }
+        ])
+      },
+      servers: {
+        list: vi.fn().mockResolvedValue([]),
+        listRecent: vi.fn().mockResolvedValue([])
+      },
+      tags: {
+        list: vi.fn().mockResolvedValue([])
+      }
+    })
+
+    renderPrimarySidebar()
+
+    const groupRow = (await screen.findByText('Production')).closest('[role="button"]')
+    expect(groupRow).toBeTruthy()
+
+    fireEvent.contextMenu(groupRow as HTMLElement)
+    fireEvent.click(await screen.findByText('New Subgroup'))
+    fireEvent.change(await screen.findByPlaceholderText('Production'), {
+      target: { value: 'API' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(createGroup).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'API', parentId: 'group-1' })
+      )
+    })
   })
 
   it('filters servers by name and host from the quick search input', async () => {

@@ -22,12 +22,19 @@ import type {
 type GroupRow = {
   id: string
   name: string
+  parent_id: string | null
   color: string
   created_at: string
   updated_at: string
 }
 
-type TagRow = GroupRow
+type TagRow = {
+  id: string
+  name: string
+  color: string
+  created_at: string
+  updated_at: string
+}
 
 type CredentialRow = {
   id: string
@@ -67,6 +74,7 @@ type ServerRow = {
   last_connected_at: string | null
   group_name: string | null
   group_color: string | null
+  group_parent_id: string | null
   group_created_at: string | null
   group_updated_at: string | null
 }
@@ -113,6 +121,7 @@ function mapGroup(row: GroupRow): ServerGroup {
   return {
     id: row.id,
     name: row.name,
+    parentId: row.parent_id,
     color: row.color,
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -160,6 +169,7 @@ function mapServer(row: ServerRow, tags: Tag[]): Server {
       ? {
           id: row.group_id,
           name: row.group_name ?? '',
+          parentId: row.group_parent_id ?? null,
           color: row.group_color ?? 'slate',
           createdAt: row.group_created_at ?? row.created_at,
           updatedAt: row.group_updated_at ?? row.updated_at
@@ -208,6 +218,7 @@ export class DatabaseService {
       CREATE TABLE IF NOT EXISTS server_groups (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL UNIQUE,
+        parent_id TEXT REFERENCES server_groups(id) ON DELETE SET NULL,
         color TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -282,6 +293,11 @@ export class DatabaseService {
       );
     `)
 
+    const groupColumns = this.db.prepare('PRAGMA table_info(server_groups)').all() as TableColumnRow[]
+    if (!groupColumns.some((column) => column.name === 'parent_id')) {
+      this.db.exec('ALTER TABLE server_groups ADD COLUMN parent_id TEXT REFERENCES server_groups(id) ON DELETE SET NULL')
+    }
+
     const serverColumns = this.db.prepare('PRAGMA table_info(servers)').all() as TableColumnRow[]
     if (!serverColumns.some((column) => column.name === 'private_key')) {
       this.db.exec('ALTER TABLE servers ADD COLUMN private_key TEXT')
@@ -318,19 +334,28 @@ export class DatabaseService {
   createGroup(input: GroupInput): ServerGroup {
     const id = randomUUID()
     const now = nowIso()
+    const parentId = input.parentId || null
+    this.assertValidGroupParent(id, parentId)
     this.db
       .prepare(
-        'INSERT INTO server_groups (id, name, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
+        'INSERT INTO server_groups (id, name, parent_id, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
       )
-      .run(id, input.name.trim(), input.color, now, now)
+      .run(id, input.name.trim(), parentId, input.color, now, now)
 
     return this.getGroupById(id) as ServerGroup
   }
 
   updateGroup(id: string, input: GroupInput): ServerGroup {
+    const existing = this.getGroupById(id)
+    if (!existing) {
+      throw new Error('Group not found')
+    }
+
+    const parentId = input.parentId === undefined ? existing.parentId : input.parentId || null
+    this.assertValidGroupParent(id, parentId)
     this.db
-      .prepare('UPDATE server_groups SET name = ?, color = ?, updated_at = ? WHERE id = ?')
-      .run(input.name.trim(), input.color, nowIso(), id)
+      .prepare('UPDATE server_groups SET name = ?, parent_id = ?, color = ?, updated_at = ? WHERE id = ?')
+      .run(input.name.trim(), parentId, input.color, nowIso(), id)
 
     return this.getGroupById(id) as ServerGroup
   }
@@ -338,6 +363,7 @@ export class DatabaseService {
   deleteGroup(id: string): void {
     const transaction = this.db.transaction((groupId: string) => {
       this.db.prepare('UPDATE servers SET group_id = NULL WHERE group_id = ?').run(groupId)
+      this.db.prepare('UPDATE server_groups SET parent_id = NULL WHERE parent_id = ?').run(groupId)
       this.db.prepare('DELETE FROM server_groups WHERE id = ?').run(groupId)
     })
 
@@ -349,6 +375,37 @@ export class DatabaseService {
       | GroupRow
       | undefined
     return row ? mapGroup(row) : null
+  }
+
+  private assertValidGroupParent(groupId: string, parentId: string | null): void {
+    if (!parentId) {
+      return
+    }
+
+    if (parentId === groupId) {
+      throw new Error('A group cannot be its own parent')
+    }
+
+    let currentParentId: string | null = parentId
+    const visited = new Set<string>()
+
+    while (currentParentId) {
+      if (currentParentId === groupId) {
+        throw new Error('A group cannot be moved inside one of its descendants')
+      }
+
+      if (visited.has(currentParentId)) {
+        throw new Error('Group hierarchy contains a cycle')
+      }
+      visited.add(currentParentId)
+
+      const parent = this.getGroupById(currentParentId)
+      if (!parent) {
+        throw new Error('Parent group not found')
+      }
+
+      currentParentId = parent.parentId
+    }
   }
 
   listTags(): Tag[] {
@@ -398,6 +455,7 @@ export class DatabaseService {
             servers.*,
             server_groups.name AS group_name,
             server_groups.color AS group_color,
+            server_groups.parent_id AS group_parent_id,
             server_groups.created_at AS group_created_at,
             server_groups.updated_at AS group_updated_at
           FROM servers
