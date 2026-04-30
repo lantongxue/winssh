@@ -1128,6 +1128,10 @@ button,
   outline-offset: 2px;
 }
 
+.theme-high-contrast [data-slot='command-input']:focus-visible {
+  outline: none;
+}
+
 .theme-high-contrast .terminal-search-overlay {
   background: var(--workbench-editor) !important;
   box-shadow: none !important;
