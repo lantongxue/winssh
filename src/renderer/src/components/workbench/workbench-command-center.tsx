@@ -285,6 +285,7 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
                   value={quickConnectQuery}
                   onSelect={() => {
                     setQuickOpenOpen(false)
+                    setQuickConnectQuery('')
                     void beginQuickConnect(quickConnectTarget)
                   }}
                 >
@@ -303,12 +304,13 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
 
           <CommandGroup heading={t('workbench.commandCenter.quickOpen.groups.connections')}>
             {(serversQuery.data ?? []).map((server) => (
-              <CommandItem
+                <CommandItem
                 key={server.id}
                 value={`${server.name} ${server.host} ${server.username}`}
                 onSelect={() => {
                   setQuickOpenOpen(false)
-                  openServerEditor(server.id)
+                  setQuickConnectQuery('')
+                  void connectServer(server)
                 }}
               >
                 <ServerBrandIcon
@@ -331,6 +333,7 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
                 value={`${session.serverName} ${session.host} ${session.port}`}
                 onSelect={() => {
                   setQuickOpenOpen(false)
+                  setQuickConnectQuery('')
                   openDocument(createSessionEditorDocument(session.sessionId))
                 }}
               >
@@ -347,6 +350,7 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
             <CommandItem
               onSelect={() => {
                 setQuickOpenOpen(false)
+                setQuickConnectQuery('')
                 openDocument(createSettingsEditorDocument())
               }}
             >
@@ -356,6 +360,7 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
             <CommandItem
               onSelect={() => {
                 setQuickOpenOpen(false)
+                setQuickConnectQuery('')
                 focusActivity('explorer')
               }}
             >
