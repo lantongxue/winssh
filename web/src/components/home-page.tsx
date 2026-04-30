@@ -229,7 +229,6 @@ export function HomePage() {
       >
         <div className="max-w-2xl">
           <div className="site-eyebrow">{copy.home.faq.eyebrow}</div>
-          <h2 className="site-section-title mt-3">{copy.home.faq.title}</h2>
         </div>
         <div className="site-card-grid mt-7 grid gap-4 lg:grid-cols-2">
           {copy.home.faq.items.map((item) => (

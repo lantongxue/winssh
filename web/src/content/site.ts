@@ -30,7 +30,7 @@ export const SITE_COPY = {
       themeLightLabel: 'Light+',
       themeDarkLabel: 'Dark+',
       languageLabel: 'Language',
-      tagline: 'The SSH workbench with a knowing wink.',
+      tagline: 'Your servers, one window.',
       statusVersionLabel: 'Version',
       statusPlatformLabel: 'Platforms',
       statusLanguageLabel: 'Language',
@@ -73,114 +73,114 @@ export const SITE_COPY = {
         { id: 'faq', label: 'FAQ', meta: 'Straight answers' }
       ],
       hero: {
-        eyebrow: 'Brand Site',
-        title: 'WinSSH is the SSH workbench with a knowing wink.',
+        eyebrow: 'Cross-Platform SSH Client',
+        title: 'SSH deserves a proper desk.',
         subtitle:
-          'A desktop-first SSH client that keeps SSH sessions, local shells, SFTP, jump servers, port forwarding, resource signals, credential vaults, and theme control in one calm workspace, so serious work feels a little less like infrastructure punishment.',
+          'WinSSH brings SSH sessions, local shells, SFTP, jump servers, port forwarding, and resource monitoring into one calm desktop workspace — so the serious stuff stays serious, and the interface keeps its head up.',
         primaryCta: 'See Download Plans',
         secondaryCta: 'Open Docs',
         tertiaryCta: 'Browse GitHub',
-        winkCardTitle: 'Why "win" quietly means "wink"',
+        winkCardTitle: 'Why "WinSSH"',
         winkCardBody:
-          'The product stays precise. The brand loosens the tie one notch. WinSSH is built for real SSH work, but it refuses to pretend every infrastructure tool has to scowl.',
+          'The product layer keeps its precision. The brand layer keeps a light touch. WinSSH is built for real infrastructure work — it just refuses to scowl while doing it.',
         signalsLabel: 'Workbench Signals',
         releaseNote: `${APP_VERSION} ${RELEASE_CHANNEL} · Cross-platform desktop preview`,
         bullets: [
-          'SSH sessions and local terminals share one workbench instead of splitting into separate tools.',
-          'Jump hosts, SFTP, transfers, and port forwards stay attached to the same session story.',
-          'Themes, fonts, updates, and live resource signals keep the desk operational, not ornamental.'
+          'SSH sessions and local terminals share one workbench instead of splitting across separate tools.',
+          'Jump hosts, SFTP transfers, and port forwards stay attached to the same session story.',
+          'Themes, fonts, updates, and live resource signals keep the desk operational — not ornamental.'
         ]
       },
       metrics: [
         {
           value: '3',
-          label: 'Core runtimes',
+          label: 'Core platforms',
           description:
-            'Windows, macOS, and Linux all get the same desktop manners from one codebase.'
+            'Windows, macOS, and Linux share the same workbench, the same codebase, and the same desktop manners.'
         },
         {
           value: '12',
           label: 'Capability tracks',
           description:
-            'Sessions, local terminals, jump hosts, SFTP, forwarding, themes, updates, branding, and more already ship in the desktop app.'
+            'Sessions, local terminals, jump hosts, SFTP, forwarding, themes, updates, brand detection, and more already ship in the desktop app.'
         },
         {
           value: '5',
-          label: 'Built-in desktop themes',
+          label: 'Built-in themes',
           description:
-            'Light+, Dark+, Pixel CRT, and both Liquid Glass variants are already part of the theme registry.'
+            'Light+, Dark+, Pixel CRT, and both Liquid Glass variants are live in the theme registry right now.'
         }
       ],
       features: {
         eyebrow: 'Capability Map',
         title: 'Serious tooling, less ceremony.',
         subtitle:
-          'WinSSH keeps the operational parts sober and lets the interface relax its shoulders. Every capability below is already in the desktop app today, not on a roadmap slide.',
+          'WinSSH keeps the runtime precise and the interface relaxed. Every capability below is already shipping in the desktop app — not sitting on a roadmap slide.',
         items: [
           {
             id: 'terminal',
             title: 'SSH Sessions',
             description:
-              'Structured connection phases, provisional tabs, reconnect flow, and reusable session identity keep command work readable instead of dramatic.',
+              'Connection phases, provisional tabs, reconnect flow, and reusable session identity keep the command line clear and the context easy to follow.',
             tag: 'SSH'
           },
           {
             id: 'local',
             title: 'Local Terminal',
             description:
-              'Local shells now sit beside SSH sessions on the same `TerminalSurface`, with shared fonts, renderer options, and shell settings.',
+              'Local shells sit beside SSH sessions on the same TerminalSurface, sharing fonts, renderer options, and shell settings across every tab.',
             tag: 'Local'
           },
           {
             id: 'connections',
             title: 'Connections and Vault',
             description:
-              'Saved servers, quick connect, credential references, single-hop jump servers, and the current hybrid secret model are all first-class parts of the desk.',
+              'Saved servers, quick connect, credential references, single-hop jump servers, and the hybrid secret model are all first-class parts of the workbench.',
             tag: 'Security'
           },
           {
             id: 'sftp',
             title: 'SFTP Workspace',
             description:
-              'Browse remote files, open and save remote text files, create and rename entries, upload whole directories, delete recursively, multi-select, and track transfers without playing window-juggling.',
+              'Browse remote directories, open and edit remote text files, create and rename entries, upload folders recursively, delete, multi-select, and track transfers — all inside the workbench.',
             tag: 'SFTP'
           },
           {
             id: 'forwarding',
             title: 'Port Forwarding',
             description:
-              'Local and remote forwarding rules stay at the session level, with runtime status, public bind warnings, and recovery after reconnect.',
+              'Local and remote forwarding rules live at the session level, with runtime status, public-bind warnings, and automatic recovery after reconnect.',
             tag: 'Networking'
           },
           {
             id: 'observability',
             title: 'Session Signals',
             description:
-              'Linux sessions can surface best-effort CPU, memory, network, and disk snapshots in the toolbar while connection phases keep the state machine legible.',
+              'Linux sessions surface best-effort CPU, memory, network, and disk snapshots in the toolbar. Connection phases keep the state machine visible and legible.',
             tag: 'Observability'
           },
           {
             id: 'themes',
             title: 'Themes, Fonts, and Identity',
             description:
-              'Theme registry, ZIP theme-pack import and delete, built-in theme plugins, integrated font settings, brand detection, and custom icons give the desktop client real visual manners.',
+              'A full theme registry with built-in and ZIP-imported packs, integrated font settings, brand detection, and custom server icons — so the visuals earn their seat at the table.',
             tag: 'Appearance'
           },
           {
             id: 'updates',
             title: 'Workbench and Updates',
             description:
-              'Activity bar, primary sidebar, tabs, local terminals, command palette, updates editor, status bar, and WebDAV backup flows give SSH work a proper desk instead of a toolbox spill.',
+              'Activity bar, sidebar, tabs, local terminals, command palette, updates editor, status bar, and WebDAV backup — everything SSH work needs, organized on one desk instead of scattered across tool windows.',
             tag: 'UX'
           }
         ]
       },
       preview: {
-        eyebrow: 'Workbench, In Public',
-        title: 'The homepage borrows the product\'s newer desk manners.',
+        eyebrow: 'Workbench Preview',
+        title: 'The site borrows the product\'s desk grammar.',
         subtitle:
-          'The site wears the same titlebar, activity rail, sidebar, editor, and status bar grammar that now carries SSH, local shells, updates, and session side tools.',
-        quickLabels: ['Quick Open', 'Command Palette', 'Theme Pack', 'Metrics Live'],
+          'This brand page wears the same titlebar, activity rail, sidebar, editor, and status bar layout that carries SSH sessions, local shells, updates, and session-side tools in the desktop app.',
+        quickLabels: ['Quick Open', 'Command Palette', 'Theme Pack', 'Live Metrics'],
         sidebarTitle: 'Workbench Shelf',
         sidebarItems: ['prod-eu-1', 'bastion-hk', 'local: PowerShell', 'updates'],
         sessionTitle: 'session-editor: prod-eu-1',
@@ -196,27 +196,27 @@ export const SITE_COPY = {
       },
       download: {
         eyebrow: 'Download',
-        title: 'Beta channels are mapped. The installer parade comes next.',
+        title: 'Beta channels mapped. Public installers are up next.',
         subtitle:
-          'The desktop app already targets Windows, macOS, and Linux, and the in-app updater path is now Windows-first. The site keeps the download story honest: platform intent first, public release packaging right after.',
+          'The desktop app already targets Windows, macOS, and Linux. The in-app updater is Windows-first today. The site keeps the download story honest: platform intent first, public release packaging right after.',
         ctaLabel: 'Open Repository',
         noteEyebrow: 'Docs',
-        noteTitle: 'Docs start as a front door, not a shrug.',
+        noteTitle: 'Docs start as a front door, not a placeholder.',
         noteBody:
-          'The docs landing already maps quick start, connections, local terminals, SFTP, port forwarding, observability, themes, updates, backup, and security. It opens the room instead of apologizing for being early.',
+          'The docs landing already maps quick start, connections, local terminals, SFTP, port forwarding, observability, themes, updates, backup, and security — it opens the room instead of making you wait at the gate.',
         noteCta: 'Open Docs Landing',
         cards: [
           {
             id: 'windows',
             title: 'Windows',
             description:
-              'NSIS delivery and the built-in updater flow are already wired up; public hosting is the remaining release step.',
+              'NSIS delivery and the built-in updater are wired up. Public hosting is the remaining distribution step.',
             status: 'Updater path implemented'
           },
           {
             id: 'macos',
             title: 'macOS',
-            description: 'DMG and ZIP targets already sit beside the native font-helper workflow.',
+            description: 'DMG and ZIP targets sit alongside the native font-helper pipeline.',
             status: 'Packaging path mapped'
           },
           {
@@ -230,32 +230,32 @@ export const SITE_COPY = {
       },
       faq: {
         eyebrow: 'FAQ',
-        title: 'What the first public site should say, plainly and with a wink.',
+        title: 'What a public site should say — plainly, and with personality.',
         items: [
           {
             question: 'What is WinSSH?',
             answer:
-              'WinSSH is a cross-platform desktop SSH client with a workbench layout, SSH and local terminals, jump servers, SFTP tooling with remote file editing, WebDAV backup and restore, session-level port forwarding, resource monitoring, a credential vault, theming, and settings surfaces.'
+              'WinSSH is a cross-platform desktop SSH client with a workbench layout. It brings together SSH and local terminals, jump servers, SFTP with remote file editing, WebDAV backup and restore, session-level port forwarding, resource monitoring, a credential vault, theming, and settings in one desktop app.'
           },
           {
             question: 'How does website theme switching work?',
             answer:
-              'By default, the website follows the system appearance and resolves to Light+ or Dark+. The titlebar also lets you switch manually between those two built-in site themes, even though the desktop app now ships a larger built-in theme registry and ZIP theme-pack support.'
+              'By default, the website follows your system appearance and resolves to Light+ or Dark+. The titlebar also lets you switch manually between those two built-in site themes. The desktop app ships a larger theme registry with ZIP pack support that the website does not replicate.'
           },
           {
             question: 'Are public installers available today?',
             answer:
-              'Not yet. The site shows platform intent and the current beta channel while download links stay pointed at the repository until release hosting is finalized.'
+              'Not yet. The site shows platform intent and the current beta channel while download links point to the repository until release hosting is finalized.'
           },
           {
             question: 'Does WinSSH already support app updates?',
             answer:
-              'Yes, but currently as a Windows-first desktop capability. The app can check, download, and install updates through its updater flow, while macOS and Linux still show as unsupported today.'
+              'Yes — currently as a Windows-first desktop feature. The app checks, downloads, and installs updates through its built-in updater flow. macOS and Linux still display as unsupported for automatic updates.'
           },
           {
-            question: 'What does the docs section include first?',
+            question: 'What does the docs section include right now?',
             answer:
-              'The first docs surface is a landing page that maps the product areas and points visitors toward the material that will expand next: quick start, connections, local terminals, SFTP, port forwarding, observability, themes, updates, backup, and security.'
+              'The docs landing maps every product area and points toward guides that will grow from here: quick start, connections, local terminals, SFTP, port forwarding, observability, themes, updates, backup, and security.'
           }
         ]
       }
@@ -286,18 +286,18 @@ export const SITE_COPY = {
         { id: 'connections', label: 'Connections', meta: 'Saved servers, jump hosts' },
         { id: 'local-terminal', label: 'Local Terminal', meta: 'Shells on the same desk' },
         { id: 'sftp', label: 'SFTP', meta: 'Remote files, fewer detours' },
-        { id: 'port-forwarding', label: 'Port Forwarding', meta: 'Session rules, live' },
+        { id: 'port-forwarding', label: 'Port Forwarding', meta: 'Session rules, live status' },
         { id: 'observability', label: 'Observability', meta: 'Linux signals, best effort' },
-        { id: 'themes', label: 'Themes', meta: 'Registry, plugins, dev' },
+        { id: 'themes', label: 'Themes', meta: 'Registry, plugins, development' },
         { id: 'updates', label: 'Updates', meta: 'Windows-first release flow' },
         { id: 'backup', label: 'Backup', meta: 'WebDAV restore flow' },
         { id: 'security', label: 'Security Model', meta: 'Vault, keytar, known hosts' }
       ],
       hero: {
         eyebrow: 'Docs Landing',
-        title: 'Start with the product map, then let the manuals stretch their legs.',
+        title: 'Start with the product map. Let the manuals grow from there.',
         subtitle:
-          'This docs landing page keeps the first pass useful: it shows what WinSSH already does, where the sharp edges are, and which guides should grow next.',
+          'This docs landing keeps the first pass useful: it shows what WinSSH already does, where the edges are, and which guides should expand next.',
         primaryCta: 'Back to Overview',
         secondaryCta: 'See Download Plans'
       },
@@ -315,7 +315,7 @@ export const SITE_COPY = {
           id: 'connections',
           title: 'Connections',
           summary:
-            'Explains saved servers, quick connect, credential references, single-hop jump servers, server identity metadata, connection phases, provisional tabs, and reconnect behavior without pretending the edges do not exist.',
+            'Explains saved servers, quick connect, credential references, single-hop jump servers, server identity metadata, connection phases, provisional tabs, and reconnect behavior — without pretending the edges do not exist.',
           status: 'Map ready',
           bullets: ['Saved servers', 'Jump hosts', 'Connection phases']
         },
@@ -323,7 +323,7 @@ export const SITE_COPY = {
           id: 'local-terminal',
           title: 'Local Terminal',
           summary:
-            'Maps the local shell runtime built on `node-pty`, the shared terminal surface used by SSH and local tabs, platform-specific shell choices, and shell-setting normalization.',
+            'Maps the local shell runtime built on node-pty, the shared terminal surface used by SSH and local tabs, platform-specific shell choices, and shell-setting normalization.',
           status: 'Map ready',
           bullets: ['Shared terminal surface', 'Platform shell choices', 'Settings behavior']
         },
@@ -331,7 +331,7 @@ export const SITE_COPY = {
           id: 'sftp',
           title: 'SFTP',
           summary:
-            'Maps remote file browsing, remote text file open and save, transfers, current path actions, multi-select, recursive directory upload, recursive delete, and path-to-terminal actions without the usual scavenger hunt.',
+            'Maps remote file browsing, remote text file open and save, transfers, current-path actions, multi-select, recursive upload, recursive delete, and path-to-terminal actions — all in one place.',
           status: 'Map ready',
           bullets: ['Directory browsing', 'Remote file editing', 'Recursive operations']
         },
@@ -339,7 +339,7 @@ export const SITE_COPY = {
           id: 'port-forwarding',
           title: 'Port Forwarding',
           summary:
-            'Documents local and remote forwards, runtime rule states, recovery on reconnect, and public bind warnings in one pass.',
+            'Documents local and remote forwards, runtime rule states, recovery on reconnect, and public-bind warnings in one pass.',
           status: 'Map ready',
           bullets: ['Local forward', 'Remote forward', 'Runtime recovery']
         },
@@ -347,9 +347,9 @@ export const SITE_COPY = {
           id: 'observability',
           title: 'Observability',
           summary:
-            'Describes the Linux-only best-effort resource monitor in the session toolbar, including CPU, memory, network, and disk snapshots, first-sample caveats, and unavailable-state behavior.',
+            'Describes the Linux-only best-effort resource monitor in the session toolbar: CPU, memory, network, and disk snapshots, first-sample caveats, and unavailable-state behavior.',
           status: 'Map ready',
-          bullets: ['Toolbar monitor', 'Linux-only behavior', 'Sampling caveats']
+          bullets: ['Toolbar monitor', 'Linux-only scope', 'Sampling caveats']
         },
         {
           id: 'themes',
@@ -538,7 +538,7 @@ export const SITE_COPY = {
           id: 'updates',
           title: 'Updates',
           summary:
-            'Documents the Windows-only updater subsystem, its state machine, manual download and install flow, unsupported states on other platforms, and the release-channel information surfaced in the UI.',
+            'Documents the Windows-only updater subsystem: state machine, manual download and install flow, unsupported states on other platforms, and the release-channel information surfaced in the UI.',
           status: 'Map ready',
           bullets: ['Windows-only updater', 'Manual download flow', 'Release channels']
         },
@@ -554,13 +554,13 @@ export const SITE_COPY = {
           id: 'security',
           title: 'Security Model',
           summary:
-            'Clarifies the current hybrid secret model across keytar, server fields, and the credential vault, including password and private-key credentials plus known hosts trust behavior without hand-waving.',
+            'Clarifies the hybrid secret model across keytar, server fields, and the credential vault — including password and private-key credentials plus known-hosts trust behavior — without hand-waving.',
           status: 'Map ready',
           bullets: ['Credential vault', 'Keytar boundaries', 'Known hosts']
         }
       ],
       footerNote:
-        'Docs begin as a useful front door, not a decorative promise. The tree already covers local shells, updates, and observability now, and it can keep growing from here without changing its footing.'
+        'Docs begin as a useful front door, not a decorative promise. The map already covers local shells, updates, and observability — and it can keep growing from here without changing its footing.'
     }
   },
   'zh-CN': {
@@ -584,7 +584,7 @@ export const SITE_COPY = {
       themeLightLabel: 'Light+',
       themeDarkLabel: 'Dark+',
       languageLabel: '语言',
-      tagline: '认真做 SSH，顺手眨一下眼。',
+      tagline: '你的服务器，一个窗口就够了。',
       statusVersionLabel: '版本',
       statusPlatformLabel: '平台',
       statusLanguageLabel: '语言',
@@ -627,111 +627,111 @@ export const SITE_COPY = {
         { id: 'faq', label: 'FAQ', meta: '把话说清' }
       ],
       hero: {
-        eyebrow: '品牌官网',
-        title: 'WinSSH 是一个会眨一下眼的 SSH workbench。',
+        eyebrow: '跨平台 SSH 客户端',
+        title: '你的服务器，一个窗口就够了。',
         subtitle:
-          '它把桌面端 SSH 会话、本地 shell、SFTP、Jump Server、端口转发、资源信号、凭据管理和主题控制收进同一个冷静清晰的工作台，让严肃工作不必再配上一张冷脸。',
+          'WinSSH 把 SSH 会话、本地 Shell、SFTP、Jump Server、端口转发和资源监控收进同一个冷静的工作台——严肃的部分继续严肃，界面只管挺直了说话。',
         primaryCta: '查看下载计划',
         secondaryCta: '打开文档入口',
         tertiaryCta: '浏览 GitHub',
-        winkCardTitle: '为什么说 "win" 其实是在 "wink"',
+        winkCardTitle: '为什么叫 "WinSSH"',
         winkCardBody:
-          '产品层面继续保持专业和克制，品牌层面只把领口松开半格。WinSSH 做的仍然是严肃的 SSH 工作，只是不想假装每个基础设施工具都必须板着脸。',
+          '产品层保持克制，品牌层留一点轻松。WinSSH 做的是真实的基础设施工作——只是不想跟着板脸而已。',
         signalsLabel: 'Workbench 信号',
         releaseNote: `${APP_VERSION} ${RELEASE_CHANNEL} · 跨平台桌面预览版`,
         bullets: [
-          'SSH 会话和本地终端共用同一张桌子，不再在多个工具之间跳来跳去。',
-          'Jump Server、SFTP、传输和端口转发都挂在同一条会话故事线上。',
-          '主题、字体、更新和资源信号都已经进场，桌面不只看起来整洁，也更会干活。'
+          'SSH 会话和本地终端共用一张桌子，不用在多个工具之间跳来跳去。',
+          'Jump Server、SFTP 传输和端口转发挂在同一条会话故事线上。',
+          '主题、字体、更新和资源信号都已经进场——不只整洁，更会干活。'
         ]
       },
       metrics: [
         {
           value: '3',
           label: '核心平台',
-          description: 'Windows、macOS、Linux 共用一套桌面礼貌和同一条代码主线。'
+          description: 'Windows、macOS、Linux 共用一套桌面礼貌、一条代码主线。'
         },
         {
           value: '12',
           label: '能力主线',
           description:
-            '会话、本地终端、Jump Server、SFTP、转发、主题、更新、品牌识别等关键能力都已经在桌面端落地。'
+            '会话、本地终端、Jump Server、SFTP、转发、主题、更新、品牌识别——都已经在桌面端落地。'
         },
         {
           value: '5',
-          label: '内置桌面主题',
+          label: '内置主题',
           description:
-            'Light+、Dark+、Pixel CRT，以及两套 Liquid Glass 主题都已经在 theme registry 里。'
+            'Light+、Dark+、Pixel CRT，以及两套 Liquid Glass 主题，已经全部在 theme registry 里跑起来了。'
         }
       ],
       features: {
         eyebrow: '能力地图',
         title: '工具可以严肃，界面不必板着。',
-        subtitle: 'WinSSH 把该严肃的部分留给运行时，把更轻一点的节奏留给界面。下面每一项能力都已经在桌面端落地，不是路线图上的占位符。',
+        subtitle: 'WinSSH 把该严肃的部分留给运行时，把轻松的节奏留给界面。下面的每一项能力都已经在桌面端落地——不是路线图上的占位符。',
         items: [
           {
             id: 'terminal',
             title: 'SSH 会话',
             description:
-              '连接 phase、provisional tab、重连流转和可复用 session identity 让命令行工作清楚推进，不再像演事故片。',
+              '连接 phase、临时 tab、重连流转和可复用的 session identity，让命令行工作清晰推进，不再像演事故片。',
             tag: 'SSH'
           },
           {
             id: 'local',
             title: '本地终端',
             description:
-              '本地 shell 已经是正式能力，和 SSH 共用同一套 `TerminalSurface`、字体设置和终端渲染栈。',
+              '本地 Shell 已经是正式能力，和 SSH 共用同一套终端渲染面、字体设置和 Shell 选项，无缝切换。',
             tag: 'Local'
           },
           {
             id: 'connections',
             title: '连接与凭据',
             description:
-              '保存服务器、quick connect、凭据引用、单跳 Jump Server 和当前混合 secret 模型，都已经是桌面主流程的一部分。',
+              '保存服务器、快速连接、凭据引用、单跳 Jump Server 和混合 secret 模型，都已经是工作台的核心流程。',
             tag: '安全'
           },
           {
             id: 'sftp',
             title: 'SFTP 工作区',
             description:
-              '远端目录浏览、远端文本文件打开保存、创建、重命名、递归上传目录、递归删除、多选和传输进度都留在 workbench 里，不用边干活边找窗。',
+              '远端目录浏览、远端文本文件编辑保存、递归上传、递归删除、多选和传输进度——全在 workbench 里完成，不用边干活边找窗。',
             tag: 'SFTP'
           },
           {
             id: 'forwarding',
             title: '端口转发',
             description:
-              '本地与远程转发都是会话级能力，状态回传清楚，公开监听会提示 warning，断线后也会尽量把规则接回来。',
+              '本地和远程转发都是会话级能力，状态实时回传，公开监听有 warning 提示，断线后自动恢复已启用规则。',
             tag: '网络'
           },
           {
             id: 'observability',
             title: '会话信号',
             description:
-              'Linux 会话已经能在 toolbar 里展示 CPU、内存、网络和磁盘快照，同时 phase 状态机会把连接过程说清楚。',
+              'Linux 会话在 toolbar 里展示 CPU、内存、网络和磁盘快照。连接 phase 状态机让整个过程一目了然。',
             tag: '观测'
           },
           {
             id: 'themes',
             title: '主题、字体与身份',
             description:
-              'Theme registry、ZIP 主题包导入删除、内置字体设置、服务器品牌识别和自定义图标都已经接入，视觉层终于不是附属物。',
+              '完整的主题 registry、ZIP 包导入删除、内置字体设置、品牌识别和自定义图标——视觉层终于不是附属物。',
             tag: '外观'
           },
           {
             id: 'updates',
             title: 'Workbench 与更新',
             description:
-              '活动栏、侧边栏、标签区、本地终端、命令面板、updates editor、状态栏和 WebDAV 备份流转，让 SSH 工作终于有了一张完整桌子。',
+              '活动栏、侧边栏、标签区、本地终端、命令面板、更新面板、状态栏和 WebDAV 备份——SSH 工作终于有了一张完整的桌子。',
             tag: '体验'
           }
         ]
       },
       preview: {
         eyebrow: 'Workbench 上桌',
-        title: '官网借用了产品更新后的桌面腔调。',
+        title: '官网借用了产品本体的桌面腔调。',
         subtitle:
-          '这个品牌站穿上了和 WinSSH 本体同一套 titlebar、activity rail、sidebar、editor 与 status bar 语法，现在也把本地终端、更新和会话侧工具一起摆上桌。',
+          '这个品牌站穿上了和 WinSSH 同一套 titlebar、activity rail、sidebar、editor 和 status bar 的界面语法，现在也把本地终端、更新和会话侧工具一起摆上桌。',
         quickLabels: ['快速打开', '命令面板', '主题包', '指标在线'],
         sidebarTitle: '工作台侧栏',
         sidebarItems: ['prod-eu-1', 'bastion-hk', 'local: PowerShell', 'updates'],
@@ -748,64 +748,64 @@ export const SITE_COPY = {
       },
       download: {
         eyebrow: '下载',
-        title: 'Beta 渠道先排好队，安装器稍后登场。',
+        title: 'Beta 渠道先排好队，公开安装包稍后就到。',
         subtitle:
-          '桌面应用已经具备 Windows、macOS、Linux 的打包目标，而内置更新链路当前先落在 Windows。官网先把下载故事讲诚实：先讲平台方向，再接公开分发。',
+          '桌面应用已经具备 Windows、macOS、Linux 的打包目标。内置更新链路目前 Windows 先行。官网先把下载故事讲清楚：平台方向在先，公开分发紧随其后。',
         ctaLabel: '打开仓库',
         noteEyebrow: '文档',
         noteTitle: '文档先做前门，不做一句"敬请期待"。',
         noteBody:
-          'docs landing 已经把快速开始、连接、本地终端、SFTP、端口转发、资源监控、主题、更新、备份和安全都各自开了门，不会只剩一句客气占位。',
+          'docs landing 已经把快速开始、连接、本地终端、SFTP、端口转发、资源监控、主题、更新、备份和安全都各自开了入口——不会只剩一句客气的占位。',
         noteCta: '打开文档入口',
         cards: [
           {
             id: 'windows',
             title: 'Windows',
-            description: 'NSIS 分发和内置更新流已经接好，剩下主要是公开托管和发布承载方式。',
+            description: 'NSIS 分发和内置更新流已经接好，剩下主要是公开托管和发布承载。',
             status: '更新链路已实现'
           },
           {
             id: 'macos',
             title: 'macOS',
-            description: 'DMG 和 ZIP 目标已经具备，同时保留字体 helper 的原生适配路径。',
+            description: 'DMG 和 ZIP 目标已具备，同时保留字体 helper 的原生适配路径。',
             status: '打包路径已明确'
           },
           {
             id: 'linux',
             title: 'Linux',
-            description: 'AppImage 与 DEB 让 Linux 一直留在发布桌上，等待公开托管方式接上。',
+            description: 'AppImage 与 DEB 让 Linux 始终在发布桌上，等公开托管接上。',
             status: '打包路径已明确'
           }
         ]
       },
       faq: {
         eyebrow: 'FAQ',
-        title: '官网首版要把正经话说清，也顺手眨一下眼。',
+        title: '官网首版——把正经话说清，也顺手眨一下眼。',
         items: [
           {
             question: 'WinSSH 是什么？',
             answer:
-              'WinSSH 是一款跨平台桌面 SSH 客户端，已经具备 workbench 布局、SSH 与本地终端、Jump Server、带远端文件编辑的 SFTP、WebDAV 备份恢复、会话级端口转发、资源监控、凭据库、主题系统和设置中心。'
+              'WinSSH 是一款跨平台桌面 SSH 客户端，具备 workbench 布局、SSH 与本地终端、Jump Server、带远端文件编辑的 SFTP、WebDAV 备份恢复、会话级端口转发、资源监控、凭据库、主题系统和设置中心。'
           },
           {
             question: '官网主题切换是怎么工作的？',
             answer:
-              '官网默认跟随系统外观，并解析到 Light+ 或 Dark+。标题栏也提供了手动切换入口，但官网当前只支持这两个站点内置主题；桌面端则已经有更完整的内置主题集和 ZIP 主题包能力。'
+              '官网默认跟随系统外观，解析为 Light+ 或 Dark+。标题栏也提供了手动切换入口，但官网当前只支持这两个站点内置主题；桌面端则有更完整的内置主题集和 ZIP 主题包能力。'
           },
           {
             question: '现在能直接下载正式安装包吗？',
             answer:
-              '还不能。官网会先展示平台计划和当前 Beta 渠道，下载按钮暂时指向仓库，等公开发布承载方式明确后再接正式安装入口。'
+              '还不能。官网先展示平台计划和当前 Beta 渠道，下载按钮暂时指向仓库，等公开发布承载方式明确后再接正式安装入口。'
           },
           {
             question: 'WinSSH 现在已经支持应用更新了吗？',
             answer:
-              '支持，但当前是 Windows-first。桌面端已经有检查、下载和安装更新的完整链路，macOS 和 Linux 现在仍会明确显示为 unsupported。'
+              '支持，但当前是 Windows 先行。桌面端已经有检查、下载和安装更新的完整链路，macOS 和 Linux 仍会显示为暂不支持自动更新。'
           },
           {
             question: '文档入口首版包含什么？',
             answer:
-              '首版文档页是一个产品地图，围绕快速开始、连接、本地终端、SFTP、端口转发、资源监控、主题、更新、备份和安全模型这些方向组织后续文档扩展。'
+              '首版文档页是一张产品地图，围绕快速开始、连接、本地终端、SFTP、端口转发、资源监控、主题、更新、备份和安全模型这些方向，组织后续文档的扩展。'
           }
         ]
       }
@@ -845,9 +845,9 @@ export const SITE_COPY = {
       ],
       hero: {
         eyebrow: '文档入口',
-        title: '先把产品地图摊开，再让说明书慢慢长出来。',
+        title: '先把产品地图摊开，再让说明书慢慢长。',
         subtitle:
-          '这版 docs 先保证有用：告诉你 WinSSH 已经做到哪、边界在哪、下一批说明该往哪里长。',
+          '这版 docs 先保证实用：告诉你 WinSSH 已经做到哪、边界在哪、下一批说明该往哪个方向延伸。',
         primaryCta: '返回总览',
         secondaryCta: '查看下载计划'
       },
@@ -857,7 +857,7 @@ export const SITE_COPY = {
           id: 'quick-start',
           title: '快速开始',
           summary:
-            '说明安装预期、首次启动、标题栏策略、本地 shell 默认值以及 workbench 如何避免桌面端常见的散乱感。',
+            '说明安装预期、首次启动、标题栏策略、本地 Shell 默认值，以及 workbench 如何避免桌面端常见的散乱感。',
           status: '入口已亮灯',
           bullets: ['平台目标', 'Workbench 架构', '首次启动预期']
         },
@@ -865,7 +865,7 @@ export const SITE_COPY = {
           id: 'connections',
           title: '连接',
           summary:
-            '覆盖保存服务器、quick connect、凭据引用、单跳 Jump Server、服务器身份元数据、连接 phase、临时 tab 和 reconnect 行为，也不回避现有边界。',
+            '覆盖保存服务器、快速连接、凭据引用、单跳 Jump Server、服务器身份元数据、连接 phase、临时 tab 和 reconnect 行为——也不回避现有边界。',
           status: '入口已亮灯',
           bullets: ['保存服务器', 'Jump Server', '连接阶段']
         },
@@ -873,22 +873,22 @@ export const SITE_COPY = {
           id: 'local-terminal',
           title: '本地终端',
           summary:
-            '整理基于 `node-pty` 的本地 shell runtime、SSH 与本地标签共享的终端表面、按平台区分的 shell 选项，以及 shell 设置归一化规则。',
+            '整理基于 node-pty 的本地 Shell 运行时、SSH 与本地标签共享的终端表面、按平台的 Shell 选项，以及 Shell 设置归一化规则。',
           status: '入口已亮灯',
-          bullets: ['共享终端表面', '平台 shell 选项', '设置行为']
+          bullets: ['共享终端表面', '平台 Shell 选项', '设置行为']
         },
         {
           id: 'sftp',
           title: 'SFTP',
           summary:
-            '组织远端目录浏览、远端文本文件打开保存、传输、当前路径操作、递归上传目录、递归删除、多选和路径发送到终端这些真实能力，不让你靠猜测翻目录。',
+            '组织远端目录浏览、远端文本文件编辑保存、传输、当前路径操作、递归上传、递归删除、多选和路径发送到终端——这些真实能力，不用靠猜翻目录。',
           status: '入口已亮灯',
           bullets: ['目录浏览', '远端文件编辑', '递归操作']
         },
         {
           id: 'port-forwarding',
           title: '端口转发',
-          summary: '描述本地与远程转发、运行时状态、重连恢复和公开监听 warning，一页先把主线讲清。',
+          summary: '描述本地与远程转发、运行时状态、重连恢复和公开监听 warning，一页讲清主线。',
           status: '入口已亮灯',
           bullets: ['本地转发', '远程转发', '运行时恢复']
         },
@@ -896,9 +896,9 @@ export const SITE_COPY = {
           id: 'observability',
           title: '资源监控',
           summary:
-            '说明 session toolbar 里的 Linux-only best-effort 资源监控，包括 CPU、内存、网络和磁盘快照、首次采样 caveat，以及 unavailable 状态的返回方式。',
+            '说明 session toolbar 里的 Linux-only best-effort 资源监控：CPU、内存、网络和磁盘快照、首次采样 caveat，以及 unavailable 状态的返回方式。',
           status: '入口已亮灯',
-          bullets: ['Toolbar 监控', 'Linux-only 行为', '采样 caveat']
+          bullets: ['Toolbar 监控', 'Linux-only 限定', '采样 caveat']
         },
         {
           id: 'themes',
@@ -1083,7 +1083,7 @@ export const SITE_COPY = {
           id: 'updates',
           title: '更新',
           summary:
-            '整理当前 Windows-only 的更新子系统，包括状态机、手动下载与安装流程、其他平台的 unsupported 状态，以及 UI 里暴露的发布渠道信息。',
+            '整理当前 Windows-only 更新子系统：状态机、手动下载与安装流程、其他平台的暂不支持状态，以及 UI 里暴露的发布渠道信息。',
           status: '入口已亮灯',
           bullets: ['Windows-only updater', '手动下载流程', '发布渠道']
         },
@@ -1099,13 +1099,13 @@ export const SITE_COPY = {
           id: 'security',
           title: '安全模型',
           summary:
-            '解释当前 keytar、服务器字段和 credential vault 并存的混合 secret 模型，明确 password/private key 凭据形态，也不拿模糊话术遮边界。',
+            '解释当前 keytar、服务器字段和 credential vault 并存的混合 secret 模型——明确 password/private key 凭据形态，不拿模糊话术遮边界。',
           status: '入口已亮灯',
           bullets: ['Credential Vault', 'keytar 边界', 'Known hosts']
         }
       ],
       footerNote:
-        'Docs 首版先做有用的前门，不做装饰性的承诺。现在本地终端、更新和资源监控也都已经进图上，后面的文档树可以继续往上长，不必先推翻导航。'
+        'Docs 首版先做有用的前门，不做装饰性的承诺。现在本地终端、更新和资源监控也都已经进图，后面的文档树可以继续往上长——不必先推翻导航。'
     }
   }
 } as const
