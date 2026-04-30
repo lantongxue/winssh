@@ -127,6 +127,10 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
         <SessionResourceMonitor
           active={active}
           expanded={monitorExpanded}
+          refetchIntervalMs={
+            settingsQuery.data?.resourceMonitorIntervalMs ??
+            DEFAULT_APP_SETTINGS.resourceMonitorIntervalMs
+          }
           session={session}
         />
         <div className="flex shrink-0 items-center gap-2">

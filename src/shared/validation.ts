@@ -199,7 +199,8 @@ export const settingsSchema = z.object({
   webdavUrl: z.string().trim().max(512).nullable(),
   webdavUsername: z.string().trim().max(120).nullable(),
   webdavBackupIntervalMinutes: z.coerce.number().int().min(15).max(10080),
-  webdavBackupPath: z.string().trim().max(512).nullable()
+  webdavBackupPath: z.string().trim().max(512).nullable(),
+  resourceMonitorIntervalMs: z.coerce.number().int().min(500).max(30000)
 })
 
 export type ServerFormValues = z.infer<typeof serverSchema>

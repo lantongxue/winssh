@@ -55,6 +55,7 @@ const persistedDarkSettings: AppSettings = {
   webdavBackupEnabled: false,
   webdavBackupIntervalMinutes: 60,
   webdavBackupPath: '/winssh-backup/',
+  resourceMonitorIntervalMs: 2000,
   webdavUrl: null,
   webdavUsername: null,
   windowTitleBarStyle: 'custom'
@@ -323,6 +324,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
       webdavBackupEnabled: false,
       webdavBackupIntervalMinutes: 60,
       webdavBackupPath: '/winssh-backup/',
+      resourceMonitorIntervalMs: 2000,
       webdavUrl: null,
       webdavUsername: null,
       windowTitleBarStyle: 'custom'

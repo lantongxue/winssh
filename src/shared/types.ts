@@ -123,6 +123,7 @@ export interface AppSettings {
   webdavUsername: string | null
   webdavBackupIntervalMinutes: number
   webdavBackupPath: string | null
+  resourceMonitorIntervalMs: number
 }
 
 export interface WebDAVBackupState {

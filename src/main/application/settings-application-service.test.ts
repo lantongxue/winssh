@@ -16,6 +16,7 @@ function createSettings(overrides: Partial<AppSettings> = {}): AppSettings {
     terminalFontId: 'cascadia-mono',
     terminalFontSize: 14,
     theme: 'system',
+    resourceMonitorIntervalMs: 2000,
     webdavBackupEnabled: false,
     webdavBackupIntervalMinutes: 60,
     webdavBackupPath: '/winssh-backup/',

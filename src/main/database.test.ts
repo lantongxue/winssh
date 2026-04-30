@@ -289,4 +289,24 @@ describeDatabase('DatabaseService server persistence', () => {
     expect(updated.autoUpdateCheckEnabled).toBe(false)
     expect(service.getSettings().autoUpdateCheckEnabled).toBe(false)
   })
+
+  it('persists the resource monitor interval setting', () => {
+    if (!DatabaseService) {
+      return
+    }
+
+    const databasePath = createTempDatabasePath()
+    const service = new DatabaseService(databasePath)
+
+    expect(service.getSettings().resourceMonitorIntervalMs).toBe(
+      DEFAULT_APP_SETTINGS.resourceMonitorIntervalMs
+    )
+
+    const updated = service.updateSettings({
+      resourceMonitorIntervalMs: 5000
+    })
+
+    expect(updated.resourceMonitorIntervalMs).toBe(5000)
+    expect(service.getSettings().resourceMonitorIntervalMs).toBe(5000)
+  })
 })

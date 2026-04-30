@@ -933,6 +933,53 @@ export function WorkbenchSettingsEditor() {
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="resourceMonitorIntervalMs"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {t('workbench.settings.form.resourceMonitorInterval')}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={500}
+                            max={30000}
+                            step={100}
+                            {...field}
+                            onBlur={() => {
+                              field.onBlur()
+                              const parsed = settingsSchema.shape.resourceMonitorIntervalMs.safeParse(
+                                form.getValues('resourceMonitorIntervalMs')
+                              )
+                              if (!parsed.success) {
+                                resetSavedField(
+                                  'resourceMonitorIntervalMs',
+                                  savedSettingsRef.current?.resourceMonitorIntervalMs ??
+                                    DEFAULT_SETTINGS_FORM_VALUES.resourceMonitorIntervalMs
+                                )
+                                toast.error(
+                                  t('workbench.settings.validation.failed')
+                                )
+                                return
+                              }
+                              void handleSettingSave(
+                                'resourceMonitorIntervalMs',
+                                parsed.data
+                              )
+                            }}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          {t(
+                            'workbench.settings.form.resourceMonitorIntervalDescription'
+                          )}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </section>
             ) : null}

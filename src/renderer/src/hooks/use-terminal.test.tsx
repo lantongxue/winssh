@@ -282,6 +282,7 @@ describe('useTerminal', () => {
     webdavBackupEnabled: false,
     webdavBackupIntervalMinutes: 60,
     webdavBackupPath: '/winssh-backup/',
+    resourceMonitorIntervalMs: 2000,
     webdavUrl: null,
     webdavUsername: null,
     windowTitleBarStyle: 'custom'

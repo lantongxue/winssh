@@ -49,5 +49,6 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   webdavUrl: null,
   webdavUsername: null,
   webdavBackupIntervalMinutes: 60,
-  webdavBackupPath: '/winssh-backup/'
+  webdavBackupPath: '/winssh-backup/',
+  resourceMonitorIntervalMs: 2000
 }

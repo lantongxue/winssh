@@ -1,3 +1,4 @@
+import { useCallback, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import {
@@ -10,13 +11,14 @@ import { cn } from '@/lib/utils'
 import type { SessionTab } from '@/store/sessions-store'
 import { Skeleton } from '@/components/ui/skeleton'
 
-const RESOURCE_MONITOR_REFETCH_INTERVAL_MS = 2_000
+const RESOURCE_MONITOR_DEFAULT_REFETCH_INTERVAL_MS = 2_000
 
 interface SessionResourceMonitorProps {
   session: SessionTab
   expanded: boolean
   active?: boolean
   className?: string
+  refetchIntervalMs?: number
 }
 
 interface MetricPillProps {
@@ -101,7 +103,8 @@ export function SessionResourceMonitor({
   session,
   expanded,
   active = true,
-  className
+  className,
+  refetchIntervalMs = RESOURCE_MONITOR_DEFAULT_REFETCH_INTERVAL_MS
 }: SessionResourceMonitorProps) {
   const { t } = useTranslation()
   const monitorReady = !session.provisional && session.status === 'ready'
@@ -109,9 +112,21 @@ export function SessionResourceMonitor({
     enabled: monitorReady && active,
     queryFn: () => sessionsClient.getResourceSnapshot(session.sessionId),
     queryKey: ['session-resource-snapshot', session.sessionId],
-    refetchInterval: monitorReady && active ? RESOURCE_MONITOR_REFETCH_INTERVAL_MS : false,
+    refetchInterval: monitorReady && active ? refetchIntervalMs : false,
     retry: false
   })
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  const handleWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return
+
+    container.scrollLeft += event.deltaY
+    event.preventDefault()
+  }, [])
 
   const errorMessage =
     monitorQuery.error instanceof Error ? monitorQuery.error.message : undefined
@@ -131,7 +146,11 @@ export function SessionResourceMonitor({
         data-testid="session-resource-monitor-content"
       >
         {expanded ? (
-          <div className="no-scrollbar min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
+          <div
+            ref={scrollContainerRef}
+            onWheel={handleWheel}
+            className="no-scrollbar min-w-0 flex-1 overflow-x-auto overflow-y-hidden"
+          >
             <div
               className="inline-flex min-w-full justify-end"
               data-testid="session-resource-monitor-viewport"
