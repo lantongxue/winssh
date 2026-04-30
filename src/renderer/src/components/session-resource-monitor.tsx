@@ -49,17 +49,19 @@ function MetricPill({ label, value, detail, className }: MetricPillProps) {
   return (
     <div
       className={cn(
-        'flex shrink-0 items-baseline gap-1.5 rounded-md border border-[var(--workbench-border)] bg-[color-mix(in_srgb,var(--workbench-sidebar)_78%,transparent)] px-2.5 py-1.5',
+        'flex h-8 shrink-0 items-center rounded-md border border-[var(--workbench-border)] bg-[color-mix(in_srgb,var(--workbench-sidebar)_78%,transparent)] px-2.5',
         className
       )}
     >
-      <div className="shrink-0 text-[10px] leading-none font-medium uppercase tracking-[0.12em] text-muted-foreground">
-        {label}
+      <div className="flex min-w-0 items-baseline gap-1.5">
+        <div className="shrink-0 text-[10px] leading-none font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          {label}
+        </div>
+        <div className="shrink-0 text-xs leading-none font-semibold text-foreground">{value}</div>
+        {detail ? (
+          <div className="truncate text-[11px] leading-none text-muted-foreground">{detail}</div>
+        ) : null}
       </div>
-      <div className="shrink-0 text-xs leading-none font-semibold text-foreground">{value}</div>
-      {detail ? (
-        <div className="truncate text-[11px] leading-none text-muted-foreground">{detail}</div>
-      ) : null}
     </div>
   )
 }
