@@ -371,7 +371,9 @@ describe('SftpPanel', () => {
 
     const dialog = await screen.findByRole('dialog')
     expect(
-      within(dialog).getByText('Are you sure you want to delete this item? This action cannot be undone.')
+      within(dialog).getByText(
+        'Are you sure you want to delete this item? This action cannot be undone.'
+      )
     ).toBeInTheDocument()
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
@@ -407,5 +409,98 @@ describe('SftpPanel', () => {
     expect(dataTransfer.effectAllowed).toBe('copy')
     expect(setData).toHaveBeenCalledWith(TERMINAL_PATH_DRAG_MIME, '/var/www/config.json')
     expect(setData).toHaveBeenCalledWith('text/plain', '/var/www/config.json')
+  })
+
+  it('uses static rows for typical directories and keeps virtualization for large lists', async () => {
+    const largeEntries = Array.from({ length: 240 }, (_, index) => ({
+      kind: 'file' as const,
+      modifiedAt: null,
+      name: `file-${index}.txt`,
+      path: `/var/www/file-${index}.txt`,
+      permissions: null,
+      size: index + 1
+    }))
+    const list = vi
+      .fn()
+      .mockResolvedValueOnce({
+        entries,
+        path: '/var/www'
+      })
+      .mockResolvedValueOnce({
+        entries: largeEntries,
+        path: '/var/www'
+      })
+
+    window.winsshApi = createWinsshApiMock({
+      sftp: {
+        list
+      }
+    })
+
+    const smallRender = renderSftpPanel(session)
+
+    await screen.findByText('config.json')
+    expect(screen.getByTestId('sftp-entry-list')).toHaveAttribute('data-render-mode', 'static')
+
+    smallRender.unmount()
+
+    const originalClientHeight = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      'clientHeight'
+    )
+    const originalOffsetHeight = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      'offsetHeight'
+    )
+    const originalOffsetWidth = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      'offsetWidth'
+    )
+
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+      configurable: true,
+      get() {
+        return 480
+      }
+    })
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+      configurable: true,
+      get() {
+        return 480
+      }
+    })
+    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+      configurable: true,
+      get() {
+        return 320
+      }
+    })
+
+    try {
+      renderSftpPanel(session)
+
+      await screen.findByText('file-0.txt')
+      await waitFor(() => {
+        expect(screen.getByTestId('sftp-entry-list')).toHaveAttribute('data-render-mode', 'virtual')
+      })
+    } finally {
+      if (originalClientHeight) {
+        Object.defineProperty(HTMLElement.prototype, 'clientHeight', originalClientHeight)
+      } else {
+        Reflect.deleteProperty(HTMLElement.prototype, 'clientHeight')
+      }
+
+      if (originalOffsetHeight) {
+        Object.defineProperty(HTMLElement.prototype, 'offsetHeight', originalOffsetHeight)
+      } else {
+        Reflect.deleteProperty(HTMLElement.prototype, 'offsetHeight')
+      }
+
+      if (originalOffsetWidth) {
+        Object.defineProperty(HTMLElement.prototype, 'offsetWidth', originalOffsetWidth)
+      } else {
+        Reflect.deleteProperty(HTMLElement.prototype, 'offsetWidth')
+      }
+    }
   })
 })
