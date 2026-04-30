@@ -80,7 +80,7 @@ export const SITE_COPY = {
         primaryCta: 'See Download Plans',
         secondaryCta: 'Open Docs',
         tertiaryCta: 'Browse GitHub',
-        winkCardTitle: 'Why “win” quietly means “wink”',
+        winkCardTitle: 'Why "win" quietly means "wink"',
         winkCardBody:
           'The product stays precise. The brand loosens the tie one notch. WinSSH is built for real SSH work, but it refuses to pretend every infrastructure tool has to scowl.',
         signalsLabel: 'Workbench Signals',
@@ -115,7 +115,7 @@ export const SITE_COPY = {
         eyebrow: 'Capability Map',
         title: 'Serious tooling, less ceremony.',
         subtitle:
-          'WinSSH keeps the operational parts sober and lets the interface relax its shoulders.',
+          'WinSSH keeps the operational parts sober and lets the interface relax its shoulders. Every capability below is already in the desktop app today, not on a roadmap slide.',
         items: [
           {
             id: 'terminal',
@@ -177,7 +177,7 @@ export const SITE_COPY = {
       },
       preview: {
         eyebrow: 'Workbench, In Public',
-        title: 'The homepage borrows the product’s newer desk manners.',
+        title: 'The homepage borrows the product\'s newer desk manners.',
         subtitle:
           'The site wears the same titlebar, activity rail, sidebar, editor, and status bar grammar that now carries SSH, local shells, updates, and session side tools.',
         quickLabels: ['Quick Open', 'Command Palette', 'Theme Pack', 'Metrics Live'],
@@ -634,7 +634,7 @@ export const SITE_COPY = {
         primaryCta: '查看下载计划',
         secondaryCta: '打开文档入口',
         tertiaryCta: '浏览 GitHub',
-        winkCardTitle: '为什么说 “win” 其实是在 “wink”',
+        winkCardTitle: '为什么说 "win" 其实是在 "wink"',
         winkCardBody:
           '产品层面继续保持专业和克制，品牌层面只把领口松开半格。WinSSH 做的仍然是严肃的 SSH 工作，只是不想假装每个基础设施工具都必须板着脸。',
         signalsLabel: 'Workbench 信号',
@@ -667,7 +667,7 @@ export const SITE_COPY = {
       features: {
         eyebrow: '能力地图',
         title: '工具可以严肃，界面不必板着。',
-        subtitle: 'WinSSH 把该严肃的部分留给运行时，把更轻一点的节奏留给界面。',
+        subtitle: 'WinSSH 把该严肃的部分留给运行时，把更轻一点的节奏留给界面。下面每一项能力都已经在桌面端落地，不是路线图上的占位符。',
         items: [
           {
             id: 'terminal',
@@ -753,7 +753,7 @@ export const SITE_COPY = {
           '桌面应用已经具备 Windows、macOS、Linux 的打包目标，而内置更新链路当前先落在 Windows。官网先把下载故事讲诚实：先讲平台方向，再接公开分发。',
         ctaLabel: '打开仓库',
         noteEyebrow: '文档',
-        noteTitle: '文档先做前门，不做一句“敬请期待”。',
+        noteTitle: '文档先做前门，不做一句"敬请期待"。',
         noteBody:
           'docs landing 已经把快速开始、连接、本地终端、SFTP、端口转发、资源监控、主题、更新、备份和安全都各自开了门，不会只剩一句客气占位。',
         noteCta: '打开文档入口',
