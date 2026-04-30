@@ -6,7 +6,7 @@ import { request as httpsRequest } from 'node:https'
 import type { SecretKind, WebDAVBackupEntry, WebDAVBackupState } from '@shared/types'
 import { createLogger, createOperationContext } from './observability'
 import type { SettingsApplicationService } from './application/settings-application-service'
-import type { DatabaseService } from './database'
+import { DatabaseService } from './database'
 import type { SecureStoreService } from './secure-store'
 
 interface WebDAVConfig {
@@ -402,7 +402,6 @@ export class WebDAVBackupService {
 
       try {
         renameSync(restorePath, databasePath)
-        const { DatabaseService } = await import('./database')
         const probeDatabase = new DatabaseService(databasePath)
         probeDatabase.close()
       } catch (error) {
