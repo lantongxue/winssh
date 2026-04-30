@@ -66,6 +66,8 @@ const api: WinsshApi = {
     createFile: (sessionId, remotePath, name) =>
       ipcRenderer.invoke('sftp:createFile', sessionId, remotePath, name),
     readFile: (sessionId, remotePath) => ipcRenderer.invoke('sftp:readFile', sessionId, remotePath),
+    cancelReadFile: (sessionId, remotePath) =>
+      ipcRenderer.send('sftp:cancelReadFile', sessionId, remotePath),
     writeFile: (sessionId, remotePath, contents) =>
       ipcRenderer.invoke('sftp:writeFile', sessionId, remotePath, contents),
     mkdir: (sessionId, remotePath, name) =>

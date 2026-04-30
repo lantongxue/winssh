@@ -62,6 +62,10 @@ export class SessionsApplicationService {
     return this.sessionManager.readFile(sessionId, remotePath)
   }
 
+  cancelReadFile(sessionId: string, remotePath: string): void {
+    this.sessionManager.cancelReadFile(sessionId, remotePath)
+  }
+
   writeFile(sessionId: string, remotePath: string, contents: string) {
     return this.sessionManager.writeFile(sessionId, remotePath, contents)
   }

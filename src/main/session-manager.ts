@@ -265,14 +265,33 @@ function sftpWrite(
   })
 }
 
-async function sftpReadFile(sftp: SFTPWrapper, remotePath: string): Promise<string> {
+type SftpReadFileProgressCallback = (transferred: number, total: number) => void
+
+class SftpReadCancelledError extends Error {
+  constructor() {
+    super('SFTP read cancelled')
+    this.name = 'SftpReadCancelledError'
+  }
+}
+
+async function sftpReadFile(
+  sftp: SFTPWrapper,
+  remotePath: string,
+  onProgress?: SftpReadFileProgressCallback,
+  totalSize?: number,
+  signal?: AbortSignal
+): Promise<string> {
   const handle = await sftpOpen(sftp, remotePath, 'r')
   const chunks: Buffer[] = []
   let position = 0
 
   try {
     while (true) {
-      const chunk = Buffer.allocUnsafe(4096)
+      if (signal?.aborted) {
+        throw new SftpReadCancelledError()
+      }
+
+      const chunk = Buffer.allocUnsafe(32768)
       const bytesRead = await sftpRead(sftp, handle, chunk, 0, chunk.byteLength, position)
       if (bytesRead <= 0) {
         break
@@ -281,9 +300,17 @@ async function sftpReadFile(sftp: SFTPWrapper, remotePath: string): Promise<stri
       chunks.push(chunk.subarray(0, bytesRead))
       position += bytesRead
 
+      if (onProgress && totalSize !== undefined) {
+        onProgress(position, totalSize)
+      }
+
       if (bytesRead < chunk.byteLength) {
         break
       }
+    }
+
+    if (onProgress && totalSize !== undefined) {
+      onProgress(totalSize, totalSize)
     }
 
     return Buffer.concat(chunks).toString('utf8')
@@ -784,6 +811,7 @@ export class SessionManager {
   private readonly portForwardSnapshots = new Map<string, PortForwardRule[]>()
   private readonly resourceCpuBaselines = new Map<string, CpuTimesSample>()
   private readonly resourceNetworkBaselines = new Map<string, NetworkBytesSample>()
+  private readonly editorReadControllers = new Map<string, AbortController>()
 
   constructor(
     private readonly database: DatabaseService,
@@ -1076,7 +1104,80 @@ export class SessionManager {
       throw new Error(`Remote path is a directory: ${normalized}`)
     }
 
-    return sftpReadFile(runtime.sftp, normalized)
+    const totalSize = stats.size ?? 0
+    const fileName = path.posix.basename(normalized)
+    let lastEmittedTransferred = 0
+    const controllerKey = `${sessionId}:${normalized}`
+    const controller = new AbortController()
+    this.editorReadControllers.set(controllerKey, controller)
+
+    try {
+      const content = await sftpReadFile(
+        runtime.sftp,
+        normalized,
+        (transferred, total) => {
+          if (transferred === lastEmittedTransferred) {
+            return
+          }
+
+          lastEmittedTransferred = transferred
+          this.emitToRenderer('sftp:transfer', this.withObservableMetadata(sessionId, {
+            sessionId,
+            direction: 'download',
+            fileName,
+            localPath: '__editor__',
+            remotePath: normalized,
+            transferred,
+            total,
+            status: 'running'
+          }))
+        },
+        totalSize,
+        controller.signal
+      )
+
+      this.emitToRenderer('sftp:transfer', this.withObservableMetadata(sessionId, {
+        sessionId,
+        direction: 'download',
+        fileName,
+        localPath: '__editor__',
+        remotePath: normalized,
+        transferred: totalSize,
+        total: totalSize,
+        status: 'completed'
+      }))
+
+      return content
+    } catch (error) {
+      if (!(error instanceof SftpReadCancelledError)) {
+        this.emitToRenderer('sftp:transfer', this.withObservableMetadata(sessionId, {
+          sessionId,
+          direction: 'download',
+          fileName,
+          localPath: '__editor__',
+          remotePath: normalized,
+          transferred: 0,
+          total: totalSize,
+          status: 'error',
+          error: error instanceof Error ? error.message : String(error)
+        }))
+      }
+      throw error
+    } finally {
+      if (this.editorReadControllers.get(controllerKey) === controller) {
+        this.editorReadControllers.delete(controllerKey)
+      }
+    }
+  }
+
+  cancelReadFile(sessionId: string, remotePath: string): void {
+    const normalized = normalizeRemotePath(remotePath)
+    const controllerKey = `${sessionId}:${normalized}`
+    const controller = this.editorReadControllers.get(controllerKey)
+    if (controller) {
+      controller.abort()
+      this.editorReadControllers.delete(controllerKey)
+    }
   }
 
   async writeFile(sessionId: string, remotePath: string, contents: string): Promise<void> {

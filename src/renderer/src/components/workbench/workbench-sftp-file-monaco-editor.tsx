@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
 import 'monaco-editor/esm/vs/basic-languages/bat/bat.contribution.js'
@@ -26,9 +26,11 @@ import 'monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution.
 import 'monaco-editor/esm/vs/basic-languages/xml/xml.contribution.js'
 import 'monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution.js'
 import 'monaco-editor/min/vs/editor/editor.main.css'
-import { LoaderCircle } from 'lucide-react'
+import { formatFileSize } from '@/i18n/format'
+import { Download, LoaderCircle, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import type { TransferProgressEvent } from '@shared/types'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import { isHighContrastTheme, isHighContrastThemeId, type ThemeDefinition } from '@shared/themes'
 import { queryKeys } from '@/features/shared/query-keys'
@@ -43,8 +45,8 @@ import { getSftpFileEditorFormId } from '@/lib/workbench'
 import { actionIcons } from '@/lib/action-icons'
 import { getRemoteFileLanguage, getRemoteFileName } from '@/lib/remote-file-language'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { useSessionsStore } from '@/store/sessions-store'
+import { useWorkbenchStore } from '@/store/workbench-store'
 
 type MonacoEnvironmentTarget = typeof globalThis & {
   MonacoEnvironment?: {
@@ -230,6 +232,7 @@ export function WorkbenchSftpFileMonacoEditor({
     mutationFn: (contents: string) =>
       sftpClient.writeFile(document.sessionId, document.remotePath, contents)
   })
+  const closeDocument = useWorkbenchStore((state) => state.closeDocument)
   const resolvedTheme = resolveThemeDefinition(
     settingsQuery.data.theme,
     themesQuery.data ?? [],
@@ -249,6 +252,37 @@ export function WorkbenchSftpFileMonacoEditor({
   const SaveIcon = actionIcons.save
   const RefreshIcon = actionIcons.refresh
   const isDirty = editorContent !== savedContent
+  const [downloadProgress, setDownloadProgress] = useState<TransferProgressEvent | null>(null)
+
+  const isEditorTransfer = useCallback(
+    (event: TransferProgressEvent) =>
+      event.sessionId === document.sessionId &&
+      event.direction === 'download' &&
+      event.localPath === '__editor__' &&
+      event.remotePath === document.remotePath,
+    [document.sessionId, document.remotePath]
+  )
+
+  useEffect(() => {
+    return sftpClient.onTransferProgress((event) => {
+      if (!isEditorTransfer(event)) {
+        return
+      }
+
+      if (event.status === 'completed') {
+        setDownloadProgress(null)
+        return
+      }
+
+      setDownloadProgress(event)
+    })
+  }, [isEditorTransfer])
+
+  useEffect(() => {
+    return () => {
+      sftpClient.cancelReadFile(document.sessionId, document.remotePath)
+    }
+  }, [document.sessionId, document.remotePath])
 
   useEffect(() => {
     const container = containerRef.current
@@ -476,8 +510,50 @@ export function WorkbenchSftpFileMonacoEditor({
       <div className="min-h-0 flex-1">
         <div className="relative h-full overflow-hidden bg-[var(--workbench-editor)]">
           {fileQuery.isLoading ? (
-            <div className="absolute inset-0 z-10 bg-[var(--workbench-editor)] p-3">
-              <Skeleton className="h-full rounded-none" />
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-[var(--workbench-editor)]">
+              {downloadProgress && downloadProgress.total > 0 ? (
+                <div className="flex w-full max-w-sm flex-col items-center gap-4 px-4">
+                  <Download className="size-8 text-muted-foreground animate-pulse" />
+                  <div className="w-full space-y-2">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="font-medium">
+                        {t('workbench.sftpFileEditor.loading')}
+                      </span>
+                      <span>
+                        {formatFileSize(downloadProgress.transferred)} / {formatFileSize(downloadProgress.total)}
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--workbench-border)]">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all duration-200 ease-out"
+                        style={{ width: `${Math.min(100, (downloadProgress.transferred / downloadProgress.total) * 100)}%` }}
+                      />
+                    </div>
+                    <div className="text-center text-[11px] text-muted-foreground">
+                      {Math.round((downloadProgress.transferred / downloadProgress.total) * 100)}%
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-3">
+                  <LoaderCircle className="size-6 animate-spin text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">
+                    {t('workbench.sftpFileEditor.loading')}
+                  </span>
+                </div>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  sftpClient.cancelReadFile(document.sessionId, document.remotePath)
+                  closeDocument(document.id)
+                }}
+              >
+                <X className="size-4" />
+                {t('common.actions.cancel')}
+              </Button>
             </div>
           ) : null}
           <div ref={containerRef} className="h-full w-full" />

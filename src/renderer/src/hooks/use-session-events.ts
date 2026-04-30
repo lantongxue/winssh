@@ -74,6 +74,10 @@ export function useSessionEvents() {
     })
 
     const unsubscribeTransfer = sftpClient.onTransferProgress((event) => {
+      if (event.localPath === '__editor__') {
+        return
+      }
+
       upsertTransfer(event)
 
       if (event.direction === 'upload' && event.status === 'running') {

@@ -279,6 +279,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       mkdir: async () => undefined,
       onTransferProgress: () => noopUnsubscribe,
       readFile: async () => '',
+      cancelReadFile: () => undefined,
       refresh: async () => ({ entries: [], path: '/' }),
       remove: async () => undefined,
       rename: async () => undefined,

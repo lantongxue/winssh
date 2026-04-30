@@ -54,6 +54,9 @@ export function registerSessionIpc(service: SessionsApplicationService) {
   ipcMain.handle('sftp:readFile', (_event, sessionId: string, remotePath: string) =>
     service.readFile(sessionId, remotePath)
   )
+  ipcMain.on('sftp:cancelReadFile', (_event, sessionId: string, remotePath: string) =>
+    service.cancelReadFile(sessionId, remotePath)
+  )
   ipcMain.handle(
     'sftp:writeFile',
     (_event, sessionId: string, remotePath: string, contents: string) =>
