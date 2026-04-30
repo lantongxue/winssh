@@ -84,7 +84,22 @@ describe('WorkbenchCommandCenter quick connect', () => {
     expect(await screen.findByText('Connect to root@127.0.0.1')).toBeInTheDocument()
   })
 
-  it('keeps saved server items on the existing open-editor behavior', async () => {
+  it('connects to server when selecting a saved server from quick open', async () => {
+    const connect = vi.fn().mockResolvedValue({
+      ok: true,
+      summary: {
+        createdAt: '',
+        host: '127.0.0.1',
+        port: 22,
+        serverId: 'server-1',
+        serverName: 'alpha',
+        sessionId: 'session-1',
+        status: 'ready' as const,
+        updatedAt: '',
+        username: 'root'
+      }
+    })
+
     window.winsshApi = createWinsshApiMock({
       servers: {
         list: vi.fn().mockResolvedValue([
@@ -110,6 +125,9 @@ describe('WorkbenchCommandCenter quick connect', () => {
             username: 'root'
           }
         ])
+      },
+      sessions: {
+        connect
       }
     })
 
@@ -119,7 +137,7 @@ describe('WorkbenchCommandCenter quick connect', () => {
     fireEvent.click(await screen.findByText('alpha'))
 
     await waitFor(() => {
-      expect(useWorkbenchStore.getState().activeDocumentId).toBe('server-editor:server-1')
+      expect(connect).toHaveBeenCalledTimes(1)
     })
     expect(useWorkbenchStore.getState().quickOpenOpen).toBe(false)
   })
