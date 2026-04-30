@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { INTEGRATED_FONT_IDS } from './integrated-fonts'
 import { COLOR_PRESETS } from './constants'
 import { MAX_SERVER_ICON_BYTES, SERVER_ICON_MIME_TYPES } from './server-brands'
 
@@ -184,7 +185,9 @@ export const settingsSchema = z.object({
   logFilePath: z.string().trim().min(1).max(1024).nullable(),
   theme: z.string().trim().min(1).max(120),
   terminalFontSize: z.coerce.number().int().min(10).max(24),
-  terminalFontFamily: z.string().trim().min(1).max(120),
+  uiFontId: z.enum(INTEGRATED_FONT_IDS),
+  terminalFontId: z.enum(INTEGRATED_FONT_IDS),
+  editorFontId: z.enum(INTEGRATED_FONT_IDS).nullable(),
   autoUpdateCheckEnabled: z.boolean(),
   experimentalTerminalWebgl: z.boolean(),
   cursorStyle: z.enum(['block', 'underline', 'bar']),

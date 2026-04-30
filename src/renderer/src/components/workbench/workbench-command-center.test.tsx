@@ -132,7 +132,7 @@ describe('WorkbenchCommandCenter quick connect', () => {
       cursorStyle: 'block',
       language: 'en-US',
       localTerminalShell: 'zsh',
-      terminalFontFamily: 'Consolas',
+      terminalFontId: 'cascadia-mono',
       terminalFontSize: 14,
       theme: DEFAULT_PIXEL_THEME_ID,
       windowTitleBarStyle: 'custom'

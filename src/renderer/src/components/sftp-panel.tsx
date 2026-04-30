@@ -121,6 +121,7 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
   const setAuxView = useSessionsStore((state) => state.setAuxView)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const dragDepthRef = useRef(0)
+  const mountedRef = useRef(true)
   const [selectedEntryPaths, setSelectedEntryPaths] = useState<string[]>([])
   const [selectionAnchorPath, setSelectionAnchorPath] = useState<string | null>(null)
   const [newFileOpen, setNewFileOpen] = useState(false)
@@ -156,6 +157,12 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
   })
   const currentPath = listingQuery.data?.path ?? session?.currentPath ?? '/'
   const [pathInputValue, setPathInputValue] = useState(currentPath)
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   useEffect(() => {
     if (session && listingQuery.data?.path && listingQuery.data.path !== session.currentPath) {
@@ -456,10 +463,16 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
       }
 
       await refresh()
+    } catch {
+      if (mountedRef.current) {
+        toast.error(t('workbench.sftp.toasts.deleteFailed'))
+      }
     } finally {
-      setRemovingEntryPaths((current) =>
-        current.filter((currentPath) => !targetPaths.includes(currentPath))
-      )
+      if (mountedRef.current) {
+        setRemovingEntryPaths((current) =>
+          current.filter((currentPath) => !targetPaths.includes(currentPath))
+        )
+      }
     }
   }
 

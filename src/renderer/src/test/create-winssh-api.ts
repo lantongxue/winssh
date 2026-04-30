@@ -102,7 +102,7 @@ const defaultThemes = [
       yellow: '#d8ff72'
     },
     terminalDefaults: {
-      fontFamily: 'Lucida Console, Cascadia Mono, Consolas, monospace',
+      fontId: 'cascadia-mono',
       fontSize: 13,
       lineHeight: 1.08
     },
@@ -122,7 +122,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
   const defaultSettings = {
     ...DEFAULT_APP_SETTINGS,
     language: 'en-US',
-    terminalFontFamily: 'Consolas',
+    terminalFontId: 'cascadia-mono',
     windowTitleBarStyle: 'custom'
   } as const
   const systemOverrides = overrides.system
@@ -166,9 +166,6 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
         return maybePath?.trim() ? maybePath : null
       }),
     getKnownHosts: systemOverrides?.getKnownHosts ?? (async () => []),
-    listFonts:
-      systemOverrides?.listFonts ??
-      (async () => ['Consolas', 'JetBrains Mono', 'Cascadia Mono', 'IBM Plex Mono']),
     removeKnownHost: systemOverrides?.removeKnownHost ?? (async () => undefined),
     pickPrivateKey: systemOverrides?.pickPrivateKey ?? (async () => null),
     pickServerIcon: systemOverrides?.pickServerIcon ?? (async () => null),

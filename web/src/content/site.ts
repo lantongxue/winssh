@@ -95,7 +95,8 @@ export const SITE_COPY = {
         {
           value: '3',
           label: 'Core runtimes',
-          description: 'Windows, macOS, and Linux all get the same desktop manners from one codebase.'
+          description:
+            'Windows, macOS, and Linux all get the same desktop manners from one codebase.'
         },
         {
           value: '12',
@@ -162,7 +163,7 @@ export const SITE_COPY = {
             id: 'themes',
             title: 'Themes, Fonts, and Identity',
             description:
-              'Theme registry, ZIP theme-pack import and delete, built-in theme plugins, system font enumeration, brand detection, and custom icons give the desktop client real visual manners.',
+              'Theme registry, ZIP theme-pack import and delete, built-in theme plugins, integrated font settings, brand detection, and custom icons give the desktop client real visual manners.',
             tag: 'Appearance'
           },
           {
@@ -221,7 +222,8 @@ export const SITE_COPY = {
           {
             id: 'linux',
             title: 'Linux',
-            description: 'AppImage and DEB keep Linux in scope while public release hosting catches up.',
+            description:
+              'AppImage and DEB keep Linux in scope while public release hosting catches up.',
             status: 'Packaging path mapped'
           }
         ]
@@ -355,12 +357,15 @@ export const SITE_COPY = {
           summary:
             'Summarizes the current desktop theme implementation defined in `docs/theme-dev.md`: built-in themes, ZIP theme-pack import and delete, selection and resolution, `package.json` format, theme JSON format, renderer application details, and merge and fallback rules.',
           status: 'Technical summary',
-          bullets: ['Theme packs and registry', '`package.json` and theme JSON', 'Renderer and fallback'],
+          bullets: [
+            'Theme packs and registry',
+            '`package.json` and theme JSON',
+            'Renderer and fallback'
+          ],
           details: {
             eyebrow: 'Theme Development',
             title: 'Theme development summary',
-            lead:
-              'This section is derived from `docs/theme-dev.md` and describes current repository behavior. It does not define a separate web-only theme runtime.',
+            lead: 'This section is derived from `docs/theme-dev.md` and describes current repository behavior. It does not define a separate web-only theme runtime.',
             sections: [
               {
                 title: 'Current theme system overview',
@@ -408,8 +413,7 @@ export const SITE_COPY = {
     themes/
       nebula.json`
                 },
-                note:
-                  'Theme packs imported or deleted from the settings UI refresh immediately. Restart WinSSH after editing a user theme package directly on disk.'
+                note: 'Theme packs imported or deleted from the settings UI refresh immediately. Restart WinSSH after editing a user theme package directly on disk.'
               },
               {
                 title: '`package.json` format',
@@ -443,7 +447,7 @@ export const SITE_COPY = {
                 paragraphs: [
                   'A theme JSON document uses three top-level fields: `colors`, `terminal`, and optional `terminalDefaults`.',
                   '`colors` keys are defined by `THEME_COLOR_KEYS` in `src/shared/themes.ts`. They cover base UI tokens, sidebar tokens, workbench tokens, toast tokens, glass tokens, terminal overlay tokens, and scanline tokens.',
-                  '`terminal` keys are defined by `TERMINAL_COLOR_KEYS` in `src/shared/themes.ts` and map to the xterm.js palette. `terminalDefaults` provides recommended terminal font settings only when the user still uses the application defaults.'
+                  '`terminal` keys are defined by `TERMINAL_COLOR_KEYS` in `src/shared/themes.ts` and map to the xterm.js palette. `terminalDefaults.fontId` provides a recommended integrated terminal font only when the user still uses the application defaults.'
                 ],
                 bullets: [
                   'Unknown top-level fields are ignored.',
@@ -482,7 +486,7 @@ export const SITE_COPY = {
     "brightBlue": "#a7dbff"
   },
   "terminalDefaults": {
-    "fontFamily": "Cascadia Mono, Consolas, monospace",
+    "fontId": "cascadia-mono",
     "fontSize": 13,
     "lineHeight": 1.1
   }
@@ -500,8 +504,7 @@ export const SITE_COPY = {
                   '`data-theme` stores the resolved theme id.',
                   '`data-theme-selection` stores the saved selection value.'
                 ],
-                note:
-                  'Extending Liquid Glass behavior to third-party themes requires renderer changes in addition to theme JSON changes.'
+                note: 'Extending Liquid Glass behavior to third-party themes requires renderer changes in addition to theme JSON changes.'
               },
               {
                 title: 'Merge, priority, and fallback rules',
@@ -514,8 +517,7 @@ export const SITE_COPY = {
                   'Within each root, plugin folders are loaded in sorted order.',
                   'When two themes share an id, the first loaded definition wins.'
                 ],
-                note:
-                  '`contributes.themes[].path` cannot escape the plugin package root. Invalid paths are ignored.'
+                note: '`contributes.themes[].path` cannot escape the plugin package root. Invalid paths are ignored.'
               },
               {
                 title: 'Suggested development flow',
@@ -658,7 +660,8 @@ export const SITE_COPY = {
         {
           value: '5',
           label: '内置桌面主题',
-          description: 'Light+、Dark+、Pixel CRT，以及两套 Liquid Glass 主题都已经在 theme registry 里。'
+          description:
+            'Light+、Dark+、Pixel CRT，以及两套 Liquid Glass 主题都已经在 theme registry 里。'
         }
       ],
       features: {
@@ -712,7 +715,7 @@ export const SITE_COPY = {
             id: 'themes',
             title: '主题、字体与身份',
             description:
-              'Theme registry、ZIP 主题包导入删除、系统字体枚举、服务器品牌识别和自定义图标都已经接入，视觉层终于不是附属物。',
+              'Theme registry、ZIP 主题包导入删除、内置字体设置、服务器品牌识别和自定义图标都已经接入，视觉层终于不是附属物。',
             tag: '外观'
           },
           {
@@ -853,14 +856,16 @@ export const SITE_COPY = {
         {
           id: 'quick-start',
           title: '快速开始',
-          summary: '说明安装预期、首次启动、标题栏策略、本地 shell 默认值以及 workbench 如何避免桌面端常见的散乱感。',
+          summary:
+            '说明安装预期、首次启动、标题栏策略、本地 shell 默认值以及 workbench 如何避免桌面端常见的散乱感。',
           status: '入口已亮灯',
           bullets: ['平台目标', 'Workbench 架构', '首次启动预期']
         },
         {
           id: 'connections',
           title: '连接',
-          summary: '覆盖保存服务器、quick connect、凭据引用、单跳 Jump Server、服务器身份元数据、连接 phase、临时 tab 和 reconnect 行为，也不回避现有边界。',
+          summary:
+            '覆盖保存服务器、quick connect、凭据引用、单跳 Jump Server、服务器身份元数据、连接 phase、临时 tab 和 reconnect 行为，也不回避现有边界。',
           status: '入口已亮灯',
           bullets: ['保存服务器', 'Jump Server', '连接阶段']
         },
@@ -875,7 +880,8 @@ export const SITE_COPY = {
         {
           id: 'sftp',
           title: 'SFTP',
-          summary: '组织远端目录浏览、远端文本文件打开保存、传输、当前路径操作、递归上传目录、递归删除、多选和路径发送到终端这些真实能力，不让你靠猜测翻目录。',
+          summary:
+            '组织远端目录浏览、远端文本文件打开保存、传输、当前路径操作、递归上传目录、递归删除、多选和路径发送到终端这些真实能力，不让你靠猜测翻目录。',
           status: '入口已亮灯',
           bullets: ['目录浏览', '远端文件编辑', '递归操作']
         },
@@ -904,8 +910,7 @@ export const SITE_COPY = {
           details: {
             eyebrow: '主题开发',
             title: '主题开发摘要',
-            lead:
-              '本节直接依据 `docs/theme-dev.md`，描述当前仓库的实际行为，不定义独立的 web 主题运行时。',
+            lead: '本节直接依据 `docs/theme-dev.md`，描述当前仓库的实际行为，不定义独立的 web 主题运行时。',
             sections: [
               {
                 title: '当前主题系统概览',
@@ -953,8 +958,7 @@ export const SITE_COPY = {
     themes/
       nebula.json`
                 },
-                note:
-                  '通过设置页导入或删除主题包会立即刷新；如果是直接改磁盘上的用户主题包，则需要重启 WinSSH 重新加载。'
+                note: '通过设置页导入或删除主题包会立即刷新；如果是直接改磁盘上的用户主题包，则需要重启 WinSSH 重新加载。'
               },
               {
                 title: '`package.json` 格式',
@@ -988,7 +992,7 @@ export const SITE_COPY = {
                 paragraphs: [
                   '主题 JSON 只使用三个顶层字段：`colors`、`terminal` 和可选的 `terminalDefaults`。',
                   '`colors` 的键集合由 `src/shared/themes.ts` 中的 `THEME_COLOR_KEYS` 定义，覆盖基础界面、sidebar、workbench、toast、glass、terminal overlay 和 scanline 这些 token。',
-                  '`terminal` 的键集合由 `src/shared/themes.ts` 中的 `TERMINAL_COLOR_KEYS` 定义，对应 xterm.js 调色板。`terminalDefaults` 只会在用户仍使用应用默认字体族与字号时提供建议默认值。'
+                  '`terminal` 的键集合由 `src/shared/themes.ts` 中的 `TERMINAL_COLOR_KEYS` 定义，对应 xterm.js 调色板。`terminalDefaults.fontId` 只会在用户仍使用应用默认值时提供建议内置终端字体。'
                 ],
                 bullets: [
                   '未知顶层字段会被忽略。',
@@ -1027,7 +1031,7 @@ export const SITE_COPY = {
     "brightBlue": "#a7dbff"
   },
   "terminalDefaults": {
-    "fontFamily": "Cascadia Mono, Consolas, monospace",
+    "fontId": "cascadia-mono",
     "fontSize": 13,
     "lineHeight": 1.1
   }
@@ -1045,8 +1049,7 @@ export const SITE_COPY = {
                   '`data-theme` 保存解析后的主题 id。',
                   '`data-theme-selection` 保存设置里的选择值。'
                 ],
-                note:
-                  '如果要把 Liquid Glass 的额外行为扩展到第三方主题，必须同时修改渲染层代码。'
+                note: '如果要把 Liquid Glass 的额外行为扩展到第三方主题，必须同时修改渲染层代码。'
               },
               {
                 title: '合并、优先级与回退规则',
@@ -1059,8 +1062,7 @@ export const SITE_COPY = {
                   '每个根目录内部按插件文件夹名排序加载。',
                   '两个主题使用相同 id 时，先加载到的定义生效。'
                 ],
-                note:
-                  '`contributes.themes[].path` 不能跳出插件包根目录。非法路径会被忽略。'
+                note: '`contributes.themes[].path` 不能跳出插件包根目录。非法路径会被忽略。'
               },
               {
                 title: '开发新主题的建议流程',
@@ -1096,7 +1098,8 @@ export const SITE_COPY = {
         {
           id: 'security',
           title: '安全模型',
-          summary: '解释当前 keytar、服务器字段和 credential vault 并存的混合 secret 模型，明确 password/private key 凭据形态，也不拿模糊话术遮边界。',
+          summary:
+            '解释当前 keytar、服务器字段和 credential vault 并存的混合 secret 模型，明确 password/private key 凭据形态，也不拿模糊话术遮边界。',
           status: '入口已亮灯',
           bullets: ['Credential Vault', 'keytar 边界', 'Known hosts']
         }

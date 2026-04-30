@@ -1,4 +1,10 @@
 import { z } from 'zod'
+import {
+  INTEGRATED_FONT_IDS,
+  isIntegratedFontId,
+  resolveLegacyTerminalFontIdOrNull,
+  type IntegratedFontId
+} from './integrated-fonts'
 
 export const SYSTEM_THEME_ID = 'system'
 export const DEFAULT_LIGHT_THEME_ID = 'winssh.light-plus'
@@ -140,9 +146,13 @@ export type ThemeColorMap = Record<ThemeColorKey, string>
 export type ThemeTerminalMap = Record<TerminalColorKey, string>
 
 export interface ThemeTerminalDefaults {
-  fontFamily?: string
+  fontId?: IntegratedFontId
   fontSize?: number
   lineHeight?: number
+}
+
+interface ThemeTerminalDefaultsInput extends ThemeTerminalDefaults {
+  fontFamily?: string
 }
 
 export interface ThemeDefinitionInput {
@@ -155,7 +165,7 @@ export interface ThemeDefinitionInput {
   pluginId: string
   source: ThemeSource
   terminal?: ThemeTerminalOverrides
-  terminalDefaults?: ThemeTerminalDefaults
+  terminalDefaults?: ThemeTerminalDefaultsInput
   uiTheme?: ThemeUiOption
   version: string
 }
@@ -214,7 +224,7 @@ export interface ThemePluginManifest {
 export interface ThemeDocument {
   colors: Record<string, string>
   terminal: Record<string, string>
-  terminalDefaults?: ThemeTerminalDefaults
+  terminalDefaults?: ThemeTerminalDefaultsInput
 }
 
 export const lightThemeColors = {
@@ -451,6 +461,7 @@ export const themeDocumentSchema = z.object({
   terminal: z.record(z.string().trim().min(1), z.string().trim().min(1)).default({}),
   terminalDefaults: z
     .object({
+      fontId: z.enum(INTEGRATED_FONT_IDS).optional(),
       fontFamily: z.string().trim().min(1).max(120).optional(),
       fontSize: z.number().int().min(10).max(24).optional(),
       lineHeight: z.number().min(1).max(2).optional()
@@ -479,6 +490,29 @@ export function getBaseThemeColors(appearance: ThemeAppearance): ThemeColorMap {
 }
 
 export function createThemeDefinition(input: ThemeDefinitionInput): ThemeDefinition {
+  const terminalDefaults = input.terminalDefaults
+    ? {
+        fontId:
+          input.terminalDefaults.fontId ??
+          (input.terminalDefaults.fontFamily
+            ? resolveLegacyTerminalFontIdOrNull(input.terminalDefaults.fontFamily)
+            : undefined),
+        fontSize: input.terminalDefaults.fontSize,
+        lineHeight: input.terminalDefaults.lineHeight
+      }
+    : undefined
+  const normalizedTerminalDefaults =
+    terminalDefaults?.fontId ||
+    terminalDefaults?.fontSize !== undefined ||
+    terminalDefaults?.lineHeight !== undefined
+      ? {
+          ...terminalDefaults,
+          fontId: isIntegratedFontId(terminalDefaults.fontId)
+            ? terminalDefaults.fontId
+            : undefined
+        }
+      : undefined
+
   return {
     appearance: input.appearance,
     colors: {
@@ -495,7 +529,7 @@ export function createThemeDefinition(input: ThemeDefinitionInput): ThemeDefinit
       ...defaultTerminalColors,
       ...input.terminal
     },
-    terminalDefaults: input.terminalDefaults,
+    terminalDefaults: normalizedTerminalDefaults,
     uiTheme:
       input.uiTheme ?? (input.appearance === 'dark' ? ('vs-dark' as const) : ('vs' as const)),
     version: input.version

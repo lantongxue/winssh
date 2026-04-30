@@ -274,7 +274,9 @@ describe('useTerminal', () => {
     language: 'en-US',
     logFilePath: '/tmp/winssh.log',
     localTerminalShell: 'zsh',
-    terminalFontFamily: 'Consolas',
+    uiFontId: 'inter',
+    terminalFontId: 'cascadia-mono',
+    editorFontId: null,
     terminalFontSize: 14,
     theme: 'system',
     webdavBackupEnabled: false,
@@ -470,7 +472,9 @@ describe('useTerminal', () => {
     expect(terminalInstances[0]?.loadAddon).toHaveBeenCalledWith(unicode11AddonInstances[0])
     expect(terminalInstances[0]?.initialOptions.allowTransparency).toBe(false)
     expect(terminalInstances[0]?.initialOptions.allowProposedApi).toBe(true)
-    expect(terminalInstances[0]?.initialOptions.fontFamily).toBe('Consolas, monospace')
+    expect(terminalInstances[0]?.initialOptions.fontFamily).toBe(
+      '"WinSSH Cascadia Mono", monospace'
+    )
     expect(terminalInstances[0]?.unicode.activeVersion).toBe('11')
     expect(terminalInstances[0]?.options.theme).toMatchObject({
       background: darkTheme.terminal.background
@@ -512,13 +516,15 @@ describe('useTerminal', () => {
 
     rerender(
       <TestTerminal
-        settings={{ ...settings, terminalFontFamily: 'IBM Plex Mono', terminalFontSize: 16 }}
+        settings={{ ...settings, terminalFontId: 'ibm-plex-mono', terminalFontSize: 16 }}
         theme={darkTheme}
       />
     )
 
     expect(terminalInstances).toHaveLength(1)
-    expect(terminalInstances[0]?.options.fontFamily).toBe('"IBM Plex Mono", monospace')
+    expect(terminalInstances[0]?.options.fontFamily).toBe(
+      '"WinSSH IBM Plex Mono", monospace'
+    )
     expect(terminalInstances[0]?.options.fontSize).toBe(16)
     await waitFor(() => {
       expect(webFontsAddonInstances[0]?.relayout).toHaveBeenCalled()

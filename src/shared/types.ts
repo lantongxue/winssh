@@ -1,6 +1,7 @@
 import type { ThemeSelection } from './themes'
 import type { ServerBrandId, ServerIconMimeType } from './server-brands'
 import type { LogLevel, ObservableSource } from './observability'
+import type { IntegratedFontId } from './integrated-fonts'
 
 export type AuthType = 'password' | 'privateKey'
 export type CredentialKind = 'password' | 'privateKey'
@@ -107,7 +108,9 @@ export interface AppSettings {
   logFilePath: string | null
   theme: ThemeMode
   terminalFontSize: number
-  terminalFontFamily: string
+  uiFontId: IntegratedFontId
+  terminalFontId: IntegratedFontId
+  editorFontId: IntegratedFontId | null
   autoUpdateCheckEnabled: boolean
   experimentalTerminalWebgl: boolean
   cursorStyle: CursorStyle

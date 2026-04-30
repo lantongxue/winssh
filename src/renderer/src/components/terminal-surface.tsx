@@ -17,8 +17,9 @@ import {
   type TerminalSearchResultsState,
   type TerminalTransport
 } from '@/hooks/use-terminal'
+import { getTerminalFontStack } from '@/lib/integrated-font-loader'
 import { hasTerminalPathDragData, readTerminalPathDragData } from '@/lib/terminal-path-dnd'
-import { formatTerminalFontFamily, resolveTerminalAppearance } from '@/lib/theme'
+import { resolveTerminalAppearance } from '@/lib/theme'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -88,7 +89,7 @@ export function TerminalSurface({
         '--terminal-drop-muted': theme.colors['workbench-muted'],
         '--terminal-drop-panel': theme.terminal.background,
         '--terminal-drop-surface': theme.terminal.background,
-        '--terminal-font-family': formatTerminalFontFamily(terminalAppearance.fontFamily),
+        '--terminal-font-family': getTerminalFontStack(terminalAppearance.fontId),
         '--terminal-drop-text': theme.terminal.foreground,
         backgroundColor: theme.terminal.background
       } as CSSProperties
@@ -100,7 +101,7 @@ export function TerminalSurface({
       '--terminal-drop-muted': `color-mix(in srgb, ${theme.terminal.foreground} 72%, ${theme.colors['workbench-muted']} 28%)`,
       '--terminal-drop-panel': `color-mix(in srgb, ${theme.terminal.background} 86%, ${theme.colors['workbench-editor']} 14%)`,
       '--terminal-drop-surface': `color-mix(in srgb, ${theme.terminal.background} 76%, transparent)`,
-      '--terminal-font-family': formatTerminalFontFamily(terminalAppearance.fontFamily),
+      '--terminal-font-family': getTerminalFontStack(terminalAppearance.fontId),
       '--terminal-drop-text': theme.terminal.foreground,
       backgroundColor: theme.terminal.background
     } as CSSProperties

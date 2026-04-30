@@ -115,7 +115,7 @@
     "brightWhite": "#ffffff"
   },
   "terminalDefaults": {
-    "fontFamily": "VT323, Cascadia Mono, Consolas, monospace",
+    "fontId": "vt323",
     "fontSize": 15,
     "lineHeight": 1.15
   }

@@ -115,7 +115,7 @@
     "brightWhite": "#ffffff"
   },
   "terminalDefaults": {
-    "fontFamily": "Cascadia Mono, Consolas, monospace",
+    "fontId": "cascadia-mono",
     "fontSize": 14,
     "lineHeight": 1.3
   }

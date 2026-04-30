@@ -6,11 +6,7 @@ import {
   DEFAULT_LIGHT_THEME_ID,
   DEFAULT_PIXEL_THEME_ID
 } from '@shared/themes'
-import {
-  applyThemeToRoot,
-  formatTerminalFontFamily,
-  resolveTerminalAppearance
-} from '@/lib/theme'
+import { applyThemeToRoot, resolveTerminalAppearance } from '@/lib/theme'
 
 const themes = [
   createThemeDefinition({
@@ -64,7 +60,7 @@ const themes = [
       selectionBackground: 'rgba(125,255,155,0.22)'
     },
     terminalDefaults: {
-      fontFamily: 'Lucida Console, Cascadia Mono, Consolas, monospace',
+      fontId: 'cascadia-mono',
       fontSize: 13,
       lineHeight: 1.08
     },
@@ -144,7 +140,7 @@ describe('theme helpers', () => {
       themes[2]
     )
 
-    expect(appearance.fontFamily).toBe('Lucida Console, Cascadia Mono, Consolas, monospace')
+    expect(appearance.fontId).toBe('cascadia-mono')
     expect(appearance.fontSize).toBe(13)
     expect(appearance.lineHeight).toBe(1.08)
     expect(appearance.theme.background).toBe('#0b1811')
@@ -154,14 +150,14 @@ describe('theme helpers', () => {
     const appearance = resolveTerminalAppearance(
       {
         ...DEFAULT_APP_SETTINGS,
-        terminalFontFamily: 'IBM Plex Mono',
+        terminalFontId: 'ibm-plex-mono',
         terminalFontSize: 16,
         theme: DEFAULT_PIXEL_THEME_ID
       },
       themes[2]
     )
 
-    expect(appearance.fontFamily).toBe('IBM Plex Mono')
+    expect(appearance.fontId).toBe('ibm-plex-mono')
     expect(appearance.fontSize).toBe(16)
     expect(appearance.lineHeight).toBe(1.2)
   })
@@ -175,7 +171,7 @@ describe('theme helpers', () => {
       themes[1]
     )
 
-    expect(appearance.fontFamily).toBe(DEFAULT_APP_SETTINGS.terminalFontFamily)
+    expect(appearance.fontId).toBe(DEFAULT_APP_SETTINGS.terminalFontId)
     expect(appearance.fontSize).toBe(DEFAULT_APP_SETTINGS.terminalFontSize)
     expect(appearance.theme.background).toBe('#181a1f')
     expect(appearance.theme.cursor).toBe('#3794ff')
@@ -194,13 +190,4 @@ describe('theme helpers', () => {
     expect(appearance.theme.foreground).toBe('#1f2328')
   })
 
-  it('formats terminal font stacks so xterm can reliably apply named fonts', () => {
-    expect(formatTerminalFontFamily('IBM Plex Mono')).toBe('"IBM Plex Mono", monospace')
-    expect(formatTerminalFontFamily('JetBrains Mono, Consolas, monospace')).toBe(
-      '"JetBrains Mono", Consolas, monospace'
-    )
-    expect(formatTerminalFontFamily('"Cascadia Code", ui-monospace')).toBe(
-      '"Cascadia Code", ui-monospace'
-    )
-  })
 })

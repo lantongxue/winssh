@@ -3,6 +3,12 @@ import { randomUUID } from 'node:crypto'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
+import {
+  normalizeIntegratedEditorFontId,
+  normalizeIntegratedTerminalFontId,
+  normalizeIntegratedUiFontId,
+  resolveLegacyTerminalFontId
+} from '@shared/integrated-fonts'
 import type { ServerBrandId, ServerIconMimeType } from '@shared/server-brands'
 import type {
   AppSettings,
@@ -107,6 +113,10 @@ type KnownHostRow = {
 type SettingsRow = {
   key: string
   value: string
+}
+
+type StoredSettings = Partial<AppSettings> & {
+  terminalFontFamily?: string
 }
 
 type TableColumnRow = {
@@ -293,9 +303,13 @@ export class DatabaseService {
       );
     `)
 
-    const groupColumns = this.db.prepare('PRAGMA table_info(server_groups)').all() as TableColumnRow[]
+    const groupColumns = this.db
+      .prepare('PRAGMA table_info(server_groups)')
+      .all() as TableColumnRow[]
     if (!groupColumns.some((column) => column.name === 'parent_id')) {
-      this.db.exec('ALTER TABLE server_groups ADD COLUMN parent_id TEXT REFERENCES server_groups(id) ON DELETE SET NULL')
+      this.db.exec(
+        'ALTER TABLE server_groups ADD COLUMN parent_id TEXT REFERENCES server_groups(id) ON DELETE SET NULL'
+      )
     }
 
     const serverColumns = this.db.prepare('PRAGMA table_info(servers)').all() as TableColumnRow[]
@@ -354,7 +368,9 @@ export class DatabaseService {
     const parentId = input.parentId === undefined ? existing.parentId : input.parentId || null
     this.assertValidGroupParent(id, parentId)
     this.db
-      .prepare('UPDATE server_groups SET name = ?, parent_id = ?, color = ?, updated_at = ? WHERE id = ?')
+      .prepare(
+        'UPDATE server_groups SET name = ?, parent_id = ?, color = ?, updated_at = ? WHERE id = ?'
+      )
       .run(input.name.trim(), parentId, input.color, nowIso(), id)
 
     return this.getGroupById(id) as ServerGroup
@@ -748,9 +764,17 @@ export class DatabaseService {
     }
 
     try {
+      const parsed = JSON.parse(row.value) as StoredSettings
+      const { terminalFontFamily: _legacyTerminalFontFamily, ...settings } = parsed
+      const legacyTerminalFontId =
+        parsed.terminalFontId ?? resolveLegacyTerminalFontId(_legacyTerminalFontFamily)
+
       return {
         ...DEFAULT_APP_SETTINGS,
-        ...(JSON.parse(row.value) as Partial<AppSettings>)
+        ...settings,
+        uiFontId: normalizeIntegratedUiFontId(parsed.uiFontId),
+        terminalFontId: normalizeIntegratedTerminalFontId(legacyTerminalFontId),
+        editorFontId: normalizeIntegratedEditorFontId(parsed.editorFontId)
       }
     } catch {
       return DEFAULT_APP_SETTINGS

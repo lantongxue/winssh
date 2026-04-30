@@ -36,11 +36,8 @@ import { settingsClient } from '@/features/settings/api/settings-client'
 import { sftpClient } from '@/features/sftp/api/sftp-client'
 import { themesClient } from '@/features/themes/api/themes-client'
 import { usePrefersDark } from '@/hooks/use-prefers-dark'
-import {
-  formatTerminalFontFamily,
-  resolveTerminalAppearance,
-  resolveThemeDefinition
-} from '@/lib/theme'
+import { getTerminalFontStack, loadTerminalFontStack } from '@/lib/integrated-font-loader'
+import { resolveTerminalAppearance, resolveThemeDefinition } from '@/lib/theme'
 import type { SftpFileEditorDocument } from '@/lib/workbench'
 import { getSftpFileEditorFormId } from '@/lib/workbench'
 import { actionIcons } from '@/lib/action-icons'
@@ -241,9 +238,10 @@ export function WorkbenchSftpFileMonacoEditor({
   const terminalAppearance = resolvedTheme
     ? resolveTerminalAppearance(settingsQuery.data, resolvedTheme)
     : {
-        fontFamily: settingsQuery.data.terminalFontFamily,
+        fontId: settingsQuery.data.terminalFontId,
         fontSize: settingsQuery.data.terminalFontSize
       }
+  const editorFontId = settingsQuery.data.editorFontId ?? terminalAppearance.fontId
   const language = useMemo(() => getRemoteFileLanguage(document.remotePath), [document.remotePath])
   const session = useSessionsStore(
     (state) => state.tabs.find((tab) => tab.sessionId === document.sessionId) ?? null
@@ -269,7 +267,7 @@ export function WorkbenchSftpFileMonacoEditor({
     const editor = monaco.editor.create(container, {
       ariaLabel: t('workbench.documents.remoteFile'),
       automaticLayout: false,
-      fontFamily: formatTerminalFontFamily(terminalAppearance.fontFamily),
+      fontFamily: getTerminalFontStack(editorFontId),
       fontSize: terminalAppearance.fontSize,
       language,
       minimap: { enabled: false },
@@ -292,6 +290,14 @@ export function WorkbenchSftpFileMonacoEditor({
     resizeObserver?.observe(container)
     editorRef.current = editor
     modelRef.current = model
+    void loadTerminalFontStack(editorFontId).then(() => {
+      if (editorRef.current !== editor) {
+        return
+      }
+
+      editor.updateOptions({ fontFamily: getTerminalFontStack(editorFontId) })
+      editor.layout()
+    })
 
     return () => {
       resizeObserver?.disconnect()
@@ -331,11 +337,27 @@ export function WorkbenchSftpFileMonacoEditor({
   }, [resolvedTheme])
 
   useEffect(() => {
-    editorRef.current?.updateOptions({
-      fontFamily: formatTerminalFontFamily(terminalAppearance.fontFamily),
-      fontSize: terminalAppearance.fontSize
+    const editor = editorRef.current
+    if (!editor) {
+      return
+    }
+
+    let cancelled = false
+    void loadTerminalFontStack(editorFontId).then(() => {
+      if (cancelled || editorRef.current !== editor) {
+        return
+      }
+
+      editor.updateOptions({
+        fontFamily: getTerminalFontStack(editorFontId),
+        fontSize: terminalAppearance.fontSize
+      })
     })
-  }, [terminalAppearance.fontFamily, terminalAppearance.fontSize])
+
+    return () => {
+      cancelled = true
+    }
+  }, [editorFontId, terminalAppearance.fontSize])
 
   useEffect(() => {
     if (!active) {
@@ -380,12 +402,8 @@ export function WorkbenchSftpFileMonacoEditor({
       <div className="liquid-glass-toolbar flex min-h-[56px] shrink-0 items-center gap-3 border-b border-[var(--workbench-border)] px-3 py-2">
         <div className="grid min-w-[220px] shrink-0 gap-1 rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2.5 py-1.5">
           <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
-            <span className="shrink-0">
-              {t('workbench.sessionEditor.serverName')}
-            </span>
-            <span className="truncate font-mono">
-              {session?.serverName ?? document.sessionId}
-            </span>
+            <span className="shrink-0">{t('workbench.sessionEditor.serverName')}</span>
+            <span className="truncate font-mono">{session?.serverName ?? document.sessionId}</span>
           </div>
           <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
             <span className="shrink-0">{t('workbench.sessionEditor.serverAddress')}</span>

@@ -266,7 +266,7 @@ body,
 
 body {
   @apply bg-background text-foreground antialiased;
-  font-family: 'Segoe UI Variable Text', 'Segoe UI', 'Microsoft YaHei UI', sans-serif;
+  font-family: var(--app-font-family, 'WinSSH UI Default', sans-serif);
   overflow: hidden;
 }
 
@@ -814,8 +814,16 @@ button,
 .terminal-surface {
   background: var(--terminal-surface-bg);
   overflow: hidden;
-  --terminal-scrollbar-track: color-mix(in srgb, var(--terminal-surface-bg) 84%, var(--foreground) 16%);
-  --terminal-scrollbar-thumb: color-mix(in srgb, var(--workbench-active) 34%, var(--terminal-surface-bg) 66%);
+  --terminal-scrollbar-track: color-mix(
+    in srgb,
+    var(--terminal-surface-bg) 84%,
+    var(--foreground) 16%
+  );
+  --terminal-scrollbar-thumb: color-mix(
+    in srgb,
+    var(--workbench-active) 34%,
+    var(--terminal-surface-bg) 66%
+  );
   --terminal-scrollbar-thumb-hover: color-mix(
     in srgb,
     var(--workbench-active) 48%,
@@ -826,7 +834,11 @@ button,
     var(--workbench-active) 64%,
     var(--foreground) 36%
   );
-  --terminal-scrollbar-corner: color-mix(in srgb, var(--terminal-surface-bg) 92%, var(--foreground) 8%);
+  --terminal-scrollbar-corner: color-mix(
+    in srgb,
+    var(--terminal-surface-bg) 92%,
+    var(--foreground) 8%
+  );
 }
 
 .terminal-surface::after {

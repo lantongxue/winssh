@@ -11,7 +11,6 @@ import type { DatabaseService } from '../database'
 import type { MainTranslator } from '../localization'
 import type { LogFileService } from '../log-file-service'
 import { createLogger } from '../observability'
-import type { SystemFontService } from '../system-fonts'
 import { ThemeRegistry, ThemeRegistryError } from '../theme-registry'
 import type { UpdateService } from '../update-service'
 import type { WebDAVBackupService } from '../webdav-backup-service'
@@ -41,7 +40,6 @@ export function registerSystemIpc(options: {
   getMainWindow: () => BrowserWindow | null
   logFileService: LogFileService
   settingsService: SettingsApplicationService
-  systemFontService: SystemFontService
   themeRegistry: ThemeRegistry
   translate: MainTranslator
   updateService: UpdateService
@@ -55,7 +53,6 @@ export function registerSystemIpc(options: {
     getMainWindow,
     logFileService,
     settingsService,
-    systemFontService,
     themeRegistry,
     translate,
     updateService,
@@ -287,7 +284,6 @@ export function registerSystemIpc(options: {
       mimeType
     }
   })
-  ipcMain.handle('system:listFonts', () => systemFontService.listFonts())
   ipcMain.handle('system:getKnownHosts', () => database.listKnownHosts())
   ipcMain.handle('system:removeKnownHost', (_event, host: string, port: number) => {
     database.deleteKnownHost(host, port)

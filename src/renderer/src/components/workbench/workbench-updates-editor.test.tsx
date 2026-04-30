@@ -66,7 +66,7 @@ describe('WorkbenchUpdatesEditor', () => {
       experimentalTerminalWebgl: false,
       language: 'en-US',
       localTerminalShell: 'zsh',
-      terminalFontFamily: 'Consolas',
+      terminalFontId: 'cascadia-mono',
       terminalFontSize: 14,
       theme: 'system',
       windowTitleBarStyle: 'custom'
@@ -82,7 +82,7 @@ describe('WorkbenchUpdatesEditor', () => {
           experimentalTerminalWebgl: false,
           language: 'en-US',
           localTerminalShell: 'zsh',
-          terminalFontFamily: 'Consolas',
+          terminalFontId: 'cascadia-mono',
           terminalFontSize: 14,
           theme: 'system',
           windowTitleBarStyle: 'custom'
@@ -99,7 +99,7 @@ describe('WorkbenchUpdatesEditor', () => {
       experimentalTerminalWebgl: false,
       language: 'en-US',
       localTerminalShell: 'zsh',
-      terminalFontFamily: 'Consolas',
+      terminalFontId: 'cascadia-mono',
       terminalFontSize: 14,
       theme: 'system',
       windowTitleBarStyle: 'custom'
@@ -139,7 +139,7 @@ describe('WorkbenchUpdatesEditor', () => {
           experimentalTerminalWebgl: false,
           language: 'en-US',
           localTerminalShell: 'zsh',
-          terminalFontFamily: 'Consolas',
+          terminalFontId: 'cascadia-mono',
           terminalFontSize: 14,
           theme: 'system',
           windowTitleBarStyle: 'custom'
@@ -168,7 +168,7 @@ describe('WorkbenchUpdatesEditor', () => {
       experimentalTerminalWebgl: false,
       language: 'en-US',
       localTerminalShell: 'zsh',
-      terminalFontFamily: 'Consolas',
+      terminalFontId: 'cascadia-mono',
       terminalFontSize: 14,
       theme: 'system',
       windowTitleBarStyle: 'custom'

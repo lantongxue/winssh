@@ -27,6 +27,7 @@ import { resolveAppLanguage } from '@/i18n/format'
 import { actionIcons } from '@/lib/action-icons'
 import { rendererLogger } from '@/lib/logger'
 import { applyThemeToRoot } from '@/lib/theme'
+import { getUiFontStack, loadUiFontStack } from '@/lib/integrated-font-loader'
 import { useUpdateDialogStore } from '@/store/update-dialog-store'
 
 function applyTheme(theme: ThemeMode, themes: ThemeDefinition[], prefersDark: boolean) {
@@ -55,7 +56,8 @@ function UpdateDialog() {
   }, [queryClient])
 
   const updateState = updatesQuery.data
-  const availableVersion = updateState?.phase === 'available' ? updateState.availableUpdate?.version : null
+  const availableVersion =
+    updateState?.phase === 'available' ? updateState.availableUpdate?.version : null
   const releaseNotes =
     typeof updateState?.availableUpdate?.releaseNotes === 'string' &&
     updateState.availableUpdate.releaseNotes.trim()
@@ -124,7 +126,7 @@ function UpdateDialog() {
             : updateState?.phase === 'downloaded'
               ? t('workbench.updateDialog.descriptions.downloaded')
               : updateState?.phase === 'error'
-                ? updateState.errorMessage ?? t('workbench.updateDialog.descriptions.error')
+                ? (updateState.errorMessage ?? t('workbench.updateDialog.descriptions.error'))
                 : updateState?.phase === 'unsupported'
                   ? t('workbench.updateDialog.descriptions.unsupported')
                   : t('workbench.updateDialog.descriptions.idle')
@@ -231,6 +233,18 @@ export default function App() {
 
     applyTheme(settingsQuery.data.theme, themesQuery.data, prefersDark)
   }, [prefersDark, settingsQuery.data?.theme, themesQuery.data])
+
+  useEffect(() => {
+    if (!settingsQuery.data?.uiFontId) {
+      return
+    }
+
+    const fontId = settingsQuery.data.uiFontId
+    document.documentElement.style.setProperty('--app-font-family', getUiFontStack(fontId))
+    void loadUiFontStack(fontId).then((fontStack) => {
+      document.documentElement.style.setProperty('--app-font-family', fontStack)
+    })
+  }, [settingsQuery.data?.uiFontId])
 
   useEffect(() => {
     if (!settingsQuery.data) {

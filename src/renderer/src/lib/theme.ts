@@ -1,5 +1,9 @@
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import {
+  normalizeIntegratedTerminalFontId,
+  type IntegratedFontId
+} from '@shared/integrated-fonts'
+import {
   getDefaultThemeId,
   isHighContrastTheme,
   SYSTEM_THEME_ID,
@@ -12,75 +16,6 @@ import type { AppSettings, ThemeMode } from '@shared/types'
 export interface ResolvedThemeState {
   selection: ThemeMode
   theme: ThemeDefinition
-}
-
-const GENERIC_FONT_FAMILIES = new Set([
-  'cursive',
-  'emoji',
-  'fangsong',
-  'fantasy',
-  'math',
-  'monospace',
-  'sans-serif',
-  'serif',
-  'system-ui',
-  'ui-monospace',
-  'ui-rounded',
-  'ui-sans-serif',
-  'ui-serif'
-])
-
-function stripWrappingQuotes(value: string) {
-  const trimmed = value.trim()
-
-  if (
-    trimmed.length >= 2 &&
-    ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-      (trimmed.startsWith("'") && trimmed.endsWith("'")))
-  ) {
-    return trimmed.slice(1, -1)
-  }
-
-  return trimmed
-}
-
-function formatTerminalFontFamilyToken(value: string) {
-  const normalizedValue = stripWrappingQuotes(value)
-
-  if (!normalizedValue) {
-    return null
-  }
-
-  if (GENERIC_FONT_FAMILIES.has(normalizedValue.toLowerCase())) {
-    return normalizedValue.toLowerCase()
-  }
-
-  if (/^[A-Za-z0-9_-]+$/.test(normalizedValue)) {
-    return normalizedValue
-  }
-
-  return `"${normalizedValue.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
-}
-
-export function formatTerminalFontFamily(fontFamily: string) {
-  const resolvedFamilies = fontFamily
-    .split(',')
-    .map((token) => formatTerminalFontFamilyToken(token))
-    .filter((token): token is string => Boolean(token))
-
-  if (resolvedFamilies.length === 0) {
-    return 'monospace'
-  }
-
-  if (
-    !resolvedFamilies.some((token) =>
-      GENERIC_FONT_FAMILIES.has(stripWrappingQuotes(token).toLowerCase())
-    )
-  ) {
-    resolvedFamilies.push('monospace')
-  }
-
-  return [...new Set(resolvedFamilies)].join(', ')
 }
 
 function getThemeById(themes: ThemeDefinition[], themeId: string) {
@@ -120,7 +55,10 @@ export function applyThemeToRoot(
   }
 
   root.classList.toggle('dark', resolvedTheme.appearance === 'dark')
-  root.classList.toggle('theme-liquid-glass', resolvedTheme.pluginId === 'winssh.liquid-glass-themes')
+  root.classList.toggle(
+    'theme-liquid-glass',
+    resolvedTheme.pluginId === 'winssh.liquid-glass-themes'
+  )
   root.classList.toggle('theme-high-contrast', isHighContrastTheme(resolvedTheme))
   root.dataset.theme = resolvedTheme.id
   root.dataset.themeAppearance = resolvedTheme.appearance
@@ -136,7 +74,11 @@ export function applyThemeToRoot(
   return resolvedTheme
 }
 
-export function getThemeSelectionLabel(selection: ThemeMode, themes: ThemeDefinition[], systemLabel: string) {
+export function getThemeSelectionLabel(
+  selection: ThemeMode,
+  themes: ThemeDefinition[],
+  systemLabel: string
+) {
   if (selection === SYSTEM_THEME_ID) {
     return systemLabel
   }
@@ -147,22 +89,23 @@ export function getThemeSelectionLabel(selection: ThemeMode, themes: ThemeDefini
 function shouldUseThemeTerminalDefaults(settings: AppSettings, theme: ThemeDefinition) {
   return (
     Boolean(theme.terminalDefaults) &&
-    settings.terminalFontFamily === DEFAULT_APP_SETTINGS.terminalFontFamily &&
+    settings.terminalFontId === DEFAULT_APP_SETTINGS.terminalFontId &&
     settings.terminalFontSize === DEFAULT_APP_SETTINGS.terminalFontSize
   )
 }
 
 export function resolveTerminalAppearance(settings: AppSettings, theme: ThemeDefinition) {
   const useThemeDefaults = shouldUseThemeTerminalDefaults(settings, theme)
+  const fontId: IntegratedFontId = useThemeDefaults
+    ? normalizeIntegratedTerminalFontId(theme.terminalDefaults?.fontId ?? settings.terminalFontId)
+    : settings.terminalFontId
 
   return {
-    fontFamily: useThemeDefaults
-      ? theme.terminalDefaults?.fontFamily ?? settings.terminalFontFamily
-      : settings.terminalFontFamily,
+    fontId,
     fontSize: useThemeDefaults
-      ? theme.terminalDefaults?.fontSize ?? settings.terminalFontSize
+      ? (theme.terminalDefaults?.fontSize ?? settings.terminalFontSize)
       : settings.terminalFontSize,
-    lineHeight: useThemeDefaults ? theme.terminalDefaults?.lineHeight ?? 1.2 : 1.2,
+    lineHeight: useThemeDefaults ? (theme.terminalDefaults?.lineHeight ?? 1.2) : 1.2,
     theme: theme.terminal
   }
 }

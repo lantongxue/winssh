@@ -172,7 +172,7 @@ describe('WorkbenchSftpFileMonacoEditor', () => {
         get: vi.fn().mockResolvedValue({
           ...DEFAULT_APP_SETTINGS,
           language: 'en-US',
-          terminalFontFamily: 'Consolas',
+          terminalFontId: 'cascadia-mono',
           theme: 'acme.accessible-dark'
         })
       },

@@ -2,16 +2,18 @@ import type { AppSettings } from '@shared/types'
 import { SettingsApplicationService } from './settings-application-service'
 
 function createSettings(overrides: Partial<AppSettings> = {}): AppSettings {
-  return {
+  const settings: AppSettings = {
     autoUpdateCheckEnabled: true,
     copyOnSelect: true,
     cursorBlink: true,
     cursorStyle: 'block',
+    editorFontId: null,
     experimentalTerminalWebgl: false,
     language: 'en-US',
     logFilePath: '/tmp/winssh.log',
     localTerminalShell: 'zsh',
-    terminalFontFamily: 'Consolas',
+    uiFontId: 'inter',
+    terminalFontId: 'cascadia-mono',
     terminalFontSize: 14,
     theme: 'system',
     webdavBackupEnabled: false,
@@ -19,7 +21,11 @@ function createSettings(overrides: Partial<AppSettings> = {}): AppSettings {
     webdavBackupPath: '/winssh-backup/',
     webdavUrl: null,
     webdavUsername: null,
-    windowTitleBarStyle: 'custom',
+    windowTitleBarStyle: 'custom'
+  }
+
+  return {
+    ...settings,
     ...overrides
   }
 }

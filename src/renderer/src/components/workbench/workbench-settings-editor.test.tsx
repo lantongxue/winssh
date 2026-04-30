@@ -47,7 +47,9 @@ const persistedDarkSettings: AppSettings = {
   language: 'system',
   logFilePath: '/tmp/winssh.log',
   localTerminalShell: 'zsh',
-  terminalFontFamily: 'JetBrains Mono, Consolas, monospace',
+  uiFontId: 'inter',
+  terminalFontId: 'jetbrains-mono',
+  editorFontId: null,
   terminalFontSize: 14,
   theme: DEFAULT_DARK_THEME_ID,
   webdavBackupEnabled: false,
@@ -107,7 +109,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
           experimentalTerminalWebgl: false,
           language: 'system',
           localTerminalShell: 'zsh',
-          terminalFontFamily: 'JetBrains Mono, Consolas, monospace',
+          terminalFontId: 'jetbrains-mono',
           terminalFontSize: 14,
           theme: DEFAULT_DARK_THEME_ID,
           windowTitleBarStyle: 'custom'
@@ -137,7 +139,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
           experimentalTerminalWebgl: false,
           language: 'en-US',
           localTerminalShell: 'zsh',
-          terminalFontFamily: 'Consolas',
+          terminalFontId: 'cascadia-mono',
           terminalFontSize: 14,
           theme: DEFAULT_PIXEL_THEME_ID,
           windowTitleBarStyle: 'custom'
@@ -167,7 +169,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
       experimentalTerminalWebgl: false,
       language: 'en-US',
       localTerminalShell: 'zsh',
-      terminalFontFamily: 'Consolas',
+      terminalFontId: 'cascadia-mono',
       terminalFontSize: 14,
       theme: DEFAULT_PIXEL_THEME_ID,
       windowTitleBarStyle: 'custom'
@@ -183,7 +185,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
           experimentalTerminalWebgl: false,
           language: 'en-US',
           localTerminalShell: 'zsh',
-          terminalFontFamily: 'Consolas',
+          terminalFontId: 'cascadia-mono',
           terminalFontSize: 14,
           theme: 'system',
           windowTitleBarStyle: 'custom'
@@ -303,57 +305,76 @@ describe('WorkbenchSettingsEditor theme selection', () => {
     })
   })
 
-  it('uses a searchable combobox to save terminal font settings immediately', async () => {
-    const updateSettings = vi.fn().mockResolvedValue({
+  it('uses the same integrated font list for UI, terminal, and editor settings', async () => {
+    let persistedSettings: AppSettings = {
       autoUpdateCheckEnabled: true,
       copyOnSelect: true,
       cursorBlink: true,
       cursorStyle: 'block',
+      editorFontId: null,
       experimentalTerminalWebgl: false,
       language: 'en-US',
+      logFilePath: '/tmp/winssh.log',
       localTerminalShell: 'zsh',
-      terminalFontFamily: 'IBM Plex Mono',
+      terminalFontId: 'cascadia-mono',
       terminalFontSize: 14,
       theme: DEFAULT_DARK_THEME_ID,
+      uiFontId: 'inter',
+      webdavBackupEnabled: false,
+      webdavBackupIntervalMinutes: 60,
+      webdavBackupPath: '/winssh-backup/',
+      webdavUrl: null,
+      webdavUsername: null,
       windowTitleBarStyle: 'custom'
+    }
+    const updateSettings = vi.fn().mockImplementation(async (patch: Partial<AppSettings>) => {
+      persistedSettings = {
+        ...persistedSettings,
+        ...patch
+      }
+      return persistedSettings
     })
 
     window.winsshApi = createWinsshApiMock({
       settings: {
-        get: vi.fn().mockResolvedValue({
-          autoUpdateCheckEnabled: true,
-          copyOnSelect: true,
-          cursorBlink: true,
-          cursorStyle: 'block',
-          experimentalTerminalWebgl: false,
-          language: 'en-US',
-          localTerminalShell: 'zsh',
-          terminalFontFamily: 'Consolas',
-          terminalFontSize: 14,
-          theme: DEFAULT_DARK_THEME_ID,
-          windowTitleBarStyle: 'custom'
-        }),
+        get: vi.fn().mockResolvedValue(persistedSettings),
         update: updateSettings
-      },
-      system: {
-        listFonts: vi.fn().mockResolvedValue(['Consolas', 'IBM Plex Mono'])
       }
     })
 
     renderSettingsEditor()
 
+    const uiFontSelect = await screen.findByRole('combobox', { name: 'Interface font' })
+    fireEvent.click(uiFontSelect)
+    fireEvent.click((await screen.findAllByRole('option', { name: 'Fira Code' })).at(-1) as HTMLElement)
+
+    await waitFor(() => {
+      expect(updateSettings).toHaveBeenCalledWith({
+        uiFontId: 'fira-code'
+      })
+    })
+
     fireEvent.click(await screen.findByRole('button', { name: 'Terminal' }))
 
     const fontSelect = screen.getByRole('combobox', { name: 'Terminal font' })
     fireEvent.click(fontSelect)
-    fireEvent.change(screen.getByPlaceholderText('Search system fonts or type a custom stack'), {
-      target: { value: 'IBM Plex Mono' }
-    })
-    fireEvent.click(await screen.findByText('IBM Plex Mono'))
+    fireEvent.click((await screen.findAllByRole('option', { name: 'Open Sans' })).at(-1) as HTMLElement)
 
     await waitFor(() => {
       expect(updateSettings).toHaveBeenCalledWith({
-        terminalFontFamily: 'IBM Plex Mono'
+        terminalFontId: 'open-sans'
+      })
+    })
+
+    const editorFontSelect = screen.getByRole('combobox', { name: 'Editor font' })
+    fireEvent.click(editorFontSelect)
+    fireEvent.click(
+      (await screen.findAllByRole('option', { name: 'Source Sans Pro' })).at(-1) as HTMLElement
+    )
+
+    await waitFor(() => {
+      expect(updateSettings).toHaveBeenCalledWith({
+        editorFontId: 'source-sans-pro'
       })
     })
   })
@@ -372,7 +393,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
       experimentalTerminalWebgl: false,
       language: 'en-US',
       localTerminalShell: 'powershell',
-      terminalFontFamily: 'Consolas',
+      terminalFontId: 'cascadia-mono',
       terminalFontSize: 14,
       theme: DEFAULT_DARK_THEME_ID,
       windowTitleBarStyle: 'custom'
@@ -388,7 +409,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
           experimentalTerminalWebgl: false,
           language: 'en-US',
           localTerminalShell: 'cmd',
-          terminalFontFamily: 'Consolas',
+          terminalFontId: 'cascadia-mono',
           terminalFontSize: 14,
           theme: DEFAULT_DARK_THEME_ID,
           windowTitleBarStyle: 'custom'
@@ -435,9 +456,11 @@ describe('WorkbenchSettingsEditor theme selection', () => {
           : persistedDarkSettings.experimentalTerminalWebgl,
       language: persistedDarkSettings.language,
       localTerminalShell: persistedDarkSettings.localTerminalShell,
-      terminalFontFamily: persistedDarkSettings.terminalFontFamily,
+      editorFontId: persistedDarkSettings.editorFontId,
+      terminalFontId: persistedDarkSettings.terminalFontId,
       terminalFontSize: persistedDarkSettings.terminalFontSize,
       theme: persistedDarkSettings.theme,
+      uiFontId: persistedDarkSettings.uiFontId,
       windowTitleBarStyle: persistedDarkSettings.windowTitleBarStyle
     }))
 
@@ -478,7 +501,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
       experimentalTerminalWebgl: true,
       language: 'en-US',
       localTerminalShell: 'zsh',
-      terminalFontFamily: 'Consolas',
+      terminalFontId: 'cascadia-mono',
       terminalFontSize: 14,
       theme: DEFAULT_DARK_THEME_ID,
       windowTitleBarStyle: 'custom'
@@ -494,7 +517,7 @@ describe('WorkbenchSettingsEditor theme selection', () => {
           experimentalTerminalWebgl: false,
           language: 'en-US',
           localTerminalShell: 'zsh',
-          terminalFontFamily: 'Consolas',
+          terminalFontId: 'cascadia-mono',
           terminalFontSize: 14,
           theme: DEFAULT_DARK_THEME_ID,
           windowTitleBarStyle: 'custom'

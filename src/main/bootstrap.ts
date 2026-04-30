@@ -20,7 +20,6 @@ import { registerSessionIpc } from './ipc/register-session-ipc'
 import { registerSystemIpc } from './ipc/register-system-ipc'
 import { SecureStoreService } from './secure-store'
 import { SessionManager } from './session-manager'
-import { SystemFontService } from './system-fonts'
 import { ThemeRegistry } from './theme-registry'
 import { UpdateService } from './update-service'
 import { WebDAVBackupService } from './webdav-backup-service'
@@ -138,7 +137,6 @@ export async function bootstrap(): Promise<void> {
     join(app.getPath('userData'), 'themes')
   )
   const secureStore = new SecureStoreService()
-  const systemFontService = new SystemFontService()
   const translate = createMainTranslator(() =>
     resolveMainLanguage(database.getSettings().language, app.getLocale())
   )
@@ -174,7 +172,8 @@ export async function bootstrap(): Promise<void> {
     () => database.getSettings()
   )
   const logFileService = new LogFileService(
-    normalizeAppSettingsForPlatform(database.getSettings()).logFilePath ?? join(app.getPath('logs'), 'winssh.log')
+    normalizeAppSettingsForPlatform(database.getSettings()).logFilePath ??
+      join(app.getPath('logs'), 'winssh.log')
   )
   setAppLogSink((event) => {
     logFileService.append(event)
@@ -225,7 +224,6 @@ export async function bootstrap(): Promise<void> {
     getMainWindow: () => mainWindow,
     logFileService,
     settingsService,
-    systemFontService,
     themeRegistry,
     translate,
     updateService,

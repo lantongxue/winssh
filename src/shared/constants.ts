@@ -1,5 +1,10 @@
 import type { AppSettings } from './types'
 import { SYSTEM_THEME_ID } from './themes'
+import {
+  DEFAULT_EDITOR_FONT_ID,
+  DEFAULT_TERMINAL_FONT_ID,
+  DEFAULT_UI_FONT_ID
+} from './integrated-fonts'
 
 export const APP_ID = 'com.winssh.app'
 export const APP_NAME = 'WinSSH'
@@ -30,7 +35,9 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   logFilePath: null,
   theme: SYSTEM_THEME_ID,
   terminalFontSize: 14,
-  terminalFontFamily: 'JetBrains Mono, Consolas, monospace',
+  uiFontId: DEFAULT_UI_FONT_ID,
+  terminalFontId: DEFAULT_TERMINAL_FONT_ID,
+  editorFontId: DEFAULT_EDITOR_FONT_ID,
   autoUpdateCheckEnabled: true,
   experimentalTerminalWebgl: false,
   cursorStyle: 'block',

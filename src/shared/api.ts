@@ -154,7 +154,6 @@ export interface WinsshApi {
     getPathForFile: (file: File) => string | null
     pickPrivateKey: () => Promise<string | null>
     pickServerIcon: () => Promise<{ mimeType: ServerIconMimeType; data: Uint8Array } | null>
-    listFonts: () => Promise<string[]>
     getKnownHosts: () => Promise<KnownHost[]>
     removeKnownHost: (host: string, port: number) => Promise<void>
     getCapabilities: () => Promise<RuntimeCapabilities>

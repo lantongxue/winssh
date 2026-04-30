@@ -11,7 +11,12 @@ import { Terminal } from '@xterm/xterm'
 import { isHighContrastTheme, type ThemeDefinition } from '@shared/themes'
 import type { AppSettings } from '@shared/types'
 import i18n from '@/i18n'
-import { formatTerminalFontFamily, resolveTerminalAppearance } from '@/lib/theme'
+import {
+  canLoadIntegratedFonts,
+  getTerminalFontStack,
+  loadTerminalFontStack
+} from '@/lib/integrated-font-loader'
+import { resolveTerminalAppearance } from '@/lib/theme'
 
 type TerminalDisposable = { dispose: () => void }
 type Unsubscribe = () => void
@@ -284,14 +289,22 @@ export function useTerminal(
       allowTransparency: shouldAllowTerminalTransparency(terminalAppearance.theme.background),
       cursorBlink: settings.cursorBlink,
       cursorStyle: settings.cursorStyle,
-      fontFamily: formatTerminalFontFamily(terminalAppearance.fontFamily),
+      fontFamily: getTerminalFontStack(terminalAppearance.fontId),
       fontSize: terminalAppearance.fontSize,
       lineHeight: terminalAppearance.lineHeight,
       minimumContrastRatio: isHighContrastTheme(theme) ? 4.5 : 1,
       theme: { ...terminalAppearance.theme }
     }
   }, [settings, theme])
+  const terminalFontId = useMemo(() => {
+    if (!theme) {
+      return settings.terminalFontId
+    }
+
+    return resolveTerminalAppearance(settings, theme).fontId
+  }, [settings, theme])
   const readTerminalOptions = useEffectEvent(() => terminalOptions)
+  const readTerminalFontId = useEffectEvent(() => terminalFontId)
   const focusTerminal = useEffectEvent(() => {
     const terminal = terminalRef.current
 
@@ -348,128 +361,151 @@ export function useTerminal(
         return
       }
 
-      void webFontsAddon.relayout().catch(() => undefined).finally(refreshTerminal)
+      void webFontsAddon
+        .relayout()
+        .catch(() => undefined)
+        .finally(refreshTerminal)
     }
   )
 
   useEffect(() => {
     const initialTerminalOptions = readTerminalOptions()
+    const initialTerminalFontId = readTerminalFontId()
+    let disposed = false
+    let cleanup: (() => void) | null = null
 
     if (!enabled || !transport || !containerRef.current || !initialTerminalOptions) {
       return
     }
 
-    const container = containerRef.current
-    const shouldFocusOnMount = active && focusKey === null
-    const terminal = new Terminal({
-      allowProposedApi: true,
-      convertEol: true,
-      scrollback: 5000,
-      ...initialTerminalOptions
-    })
+    const mountTerminal = () => {
+      if (disposed || !containerRef.current) {
+        return
+      }
 
-    const fitAddon = new FitAddon()
-    terminalRef.current = terminal
-    fitAddonRef.current = fitAddon
-    terminal.loadAddon(fitAddon)
-    const disposeProgressAddon = enableOscProgressTracking(terminal)
-    const disposeImageAddon = enableInlineImageRendering(terminal)
-    const { webFontsAddon, dispose: disposeWebFontsAddon } = enableWebFontLoading(terminal)
-    webFontsAddonRef.current = webFontsAddon
-    const { searchAddon, dispose: disposeSearchAddon } = enableTerminalSearch(
-      terminal,
-      onSearchResultsChange
-    )
-    searchAddonRef.current = searchAddon
-    const disposeWebLinksAddon = enableWebLinks(terminal, container, onLinkTooltipChange)
-    const disposeUnicode11Addon = enableUnicode11Support(terminal)
-    terminal.open(container)
-    const disposeWebglRenderer = settings.experimentalTerminalWebgl
-      ? enableExperimentalWebglRenderer(terminal)
-      : () => undefined
+      const container = containerRef.current
+      const shouldFocusOnMount = active && focusKey === null
+      const terminal = new Terminal({
+        allowProposedApi: true,
+        convertEol: true,
+        scrollback: 5000,
+        ...initialTerminalOptions
+      })
 
-    const handleContextMenu = (event: MouseEvent) => {
-      event.preventDefault()
-      event.stopPropagation()
+      const fitAddon = new FitAddon()
+      terminalRef.current = terminal
+      fitAddonRef.current = fitAddon
+      terminal.loadAddon(fitAddon)
+      const disposeProgressAddon = enableOscProgressTracking(terminal)
+      const disposeImageAddon = enableInlineImageRendering(terminal)
+      const { webFontsAddon, dispose: disposeWebFontsAddon } = enableWebFontLoading(terminal)
+      webFontsAddonRef.current = webFontsAddon
+      const { searchAddon, dispose: disposeSearchAddon } = enableTerminalSearch(
+        terminal,
+        onSearchResultsChange
+      )
+      searchAddonRef.current = searchAddon
+      const disposeWebLinksAddon = enableWebLinks(terminal, container, onLinkTooltipChange)
+      const disposeUnicode11Addon = enableUnicode11Support(terminal)
+      terminal.open(container)
+      const disposeWebglRenderer = settings.experimentalTerminalWebgl
+        ? enableExperimentalWebglRenderer(terminal)
+        : () => undefined
 
-      void (async () => {
-        const selection = terminal.getSelection()
+      const handleContextMenu = (event: MouseEvent) => {
+        event.preventDefault()
+        event.stopPropagation()
 
-        if (selection) {
+        void (async () => {
+          const selection = terminal.getSelection()
+
+          if (selection) {
+            try {
+              await navigator.clipboard.writeText(selection)
+              terminal.clearSelection()
+            } catch {
+              // Ignore clipboard permission/runtime failures and keep terminal input usable.
+            } finally {
+              terminal.focus()
+            }
+            return
+          }
+
           try {
-            await navigator.clipboard.writeText(selection)
-            terminal.clearSelection()
+            const clipboardText = await navigator.clipboard.readText()
+            if (clipboardText) {
+              terminal.paste(clipboardText)
+            }
           } catch {
             // Ignore clipboard permission/runtime failures and keep terminal input usable.
           } finally {
             terminal.focus()
           }
-          return
-        }
+        })()
+      }
 
-        try {
-          const clipboardText = await navigator.clipboard.readText()
-          if (clipboardText) {
-            terminal.paste(clipboardText)
-          }
-        } catch {
-          // Ignore clipboard permission/runtime failures and keep terminal input usable.
-        } finally {
-          terminal.focus()
+      container.addEventListener('contextmenu', handleContextMenu, true)
+
+      const writeDisposable = terminal.onData((data) => {
+        void transport.write(data)
+      })
+
+      const unsubscribeData = transport.onData((data) => {
+        terminal.write(data)
+      })
+
+      const resizeObserver = new ResizeObserver(() => {
+        syncGeometry()
+      })
+      resizeObserver.observe(container)
+      queueMicrotask(() => {
+        syncGeometry()
+
+        if (shouldFocusOnMount) {
+          focusTerminal()
         }
-      })()
+      })
+
+      cleanup = () => {
+        resizeObserver.disconnect()
+        container.removeEventListener('contextmenu', handleContextMenu, true)
+        unsubscribeData()
+        selectionDisposableRef.current?.dispose()
+        selectionDisposableRef.current = null
+        writeDisposable.dispose()
+        disposeWebglRenderer()
+        disposeUnicode11Addon()
+        disposeWebLinksAddon()
+        disposeSearchAddon()
+        disposeWebFontsAddon()
+        disposeImageAddon()
+        disposeProgressAddon()
+        terminal.dispose()
+        lastSentGeometryRef.current = null
+        if (terminalRef.current === terminal) {
+          terminalRef.current = null
+        }
+        if (fitAddonRef.current === fitAddon) {
+          fitAddonRef.current = null
+        }
+        if (searchAddonRef.current === searchAddon) {
+          searchAddonRef.current = null
+        }
+        if (webFontsAddonRef.current === webFontsAddon) {
+          webFontsAddonRef.current = null
+        }
+      }
     }
 
-    container.addEventListener('contextmenu', handleContextMenu, true)
-
-    const writeDisposable = terminal.onData((data) => {
-      void transport.write(data)
-    })
-
-    const unsubscribeData = transport.onData((data) => {
-      terminal.write(data)
-    })
-
-    const resizeObserver = new ResizeObserver(() => {
-      syncGeometry()
-    })
-    resizeObserver.observe(container)
-    queueMicrotask(() => {
-      syncGeometry()
-
-      if (shouldFocusOnMount) {
-        focusTerminal()
-      }
-    })
+    if (canLoadIntegratedFonts()) {
+      void loadTerminalFontStack(initialTerminalFontId).then(mountTerminal)
+    } else {
+      mountTerminal()
+    }
 
     return () => {
-      resizeObserver.disconnect()
-      container.removeEventListener('contextmenu', handleContextMenu, true)
-      unsubscribeData()
-      selectionDisposableRef.current?.dispose()
-      selectionDisposableRef.current = null
-      writeDisposable.dispose()
-      disposeWebglRenderer()
-      disposeUnicode11Addon()
-      disposeWebLinksAddon()
-      disposeSearchAddon()
-      disposeWebFontsAddon()
-      disposeImageAddon()
-      disposeProgressAddon()
-      terminal.dispose()
-      lastSentGeometryRef.current = null
-      if (terminalRef.current === terminal) {
-        terminalRef.current = null
-      }
-      if (fitAddonRef.current === fitAddon) {
-        fitAddonRef.current = null
-      }
-      if (searchAddonRef.current === searchAddon) {
-        searchAddonRef.current = null
-      }
-      if (webFontsAddonRef.current === webFontsAddon) {
-        webFontsAddonRef.current = null
-      }
+      disposed = true
+      cleanup?.()
     }
   }, [
     enabled,
@@ -491,10 +527,26 @@ export function useTerminal(
       return
     }
 
-    terminal.options = terminalOptions
+    let cancelled = false
+    const applyTerminalOptions = () => {
+      if (cancelled || terminalRef.current !== terminal) {
+        return
+      }
 
-    relayoutWebFonts(terminal, webFontsAddonRef.current)
-  }, [terminalOptions])
+      terminal.options = terminalOptions
+      relayoutWebFonts(terminal, webFontsAddonRef.current)
+    }
+
+    if (canLoadIntegratedFonts()) {
+      void loadTerminalFontStack(terminalFontId).then(applyTerminalOptions)
+    } else {
+      applyTerminalOptions()
+    }
+
+    return () => {
+      cancelled = true
+    }
+  }, [terminalFontId, terminalOptions])
 
   useEffect(() => {
     if (active && !lastActiveRef.current) {

@@ -6,7 +6,6 @@ import { SYSTEM_THEME_ID, type ThemeDefinition } from '@shared/themes'
 import type { AppSettings, ReleaseChannel, WebDAVBackupEntry } from '@shared/types'
 import {
   Check,
-  ChevronsUpDown,
   CircleHelp,
   Cloud,
   KeyRound,
@@ -15,6 +14,7 @@ import {
   SlidersHorizontal,
   TerminalSquare
 } from 'lucide-react'
+import { INTEGRATED_FONTS } from '@shared/integrated-fonts'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -31,13 +31,6 @@ import { actionIcons } from '@/lib/action-icons'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList
-} from '@/components/ui/command'
 import {
   Dialog,
   DialogContent,
@@ -56,7 +49,6 @@ import {
   FormMessage
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
@@ -94,12 +86,6 @@ const settingsSectionIcons = {
 } as const
 
 const DEFAULT_SETTINGS_FORM_VALUES: SettingsFormValues = DEFAULT_APP_SETTINGS
-
-function getTerminalFontOptions(fonts: string[] | undefined, currentValue: string) {
-  return [...new Set([currentValue.trim(), ...(fonts ?? []).map((font) => font.trim())])]
-    .filter(Boolean)
-    .map((font) => ({ label: font, value: font }))
-}
 
 type UserThemePack = {
   pluginDisplayName: string
@@ -163,93 +149,6 @@ function getReleaseChannelLabel(
   return t(`workbench.settings.about.channels.${releaseChannel}`)
 }
 
-type TerminalFontFamilyComboboxProps = {
-  value: string
-  onChange: (value: string) => void
-  options: Array<{ label: string; value: string }>
-}
-
-function TerminalFontFamilyCombobox({ value, onChange, options }: TerminalFontFamilyComboboxProps) {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState('')
-
-  const normalizedQuery = query.trim()
-  const hasExactMatch = options.some(
-    (option) => option.value.toLowerCase() === normalizedQuery.toLowerCase()
-  )
-
-  const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen)
-    if (!nextOpen) {
-      setQuery('')
-    }
-  }
-
-  const handleSelect = (nextValue: string) => {
-    onChange(nextValue)
-    setOpen(false)
-    setQuery('')
-  }
-
-  return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
-      <FormControl>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="w-full justify-between bg-transparent px-3 font-normal"
-          >
-            <span className="truncate text-left" style={{ fontFamily: value }}>
-              {value}
-            </span>
-            <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-      </FormControl>
-      <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
-        <Command>
-          <CommandInput
-            value={query}
-            onValueChange={setQuery}
-            placeholder={t('workbench.settings.form.terminalFontFamilySearchPlaceholder')}
-          />
-          <CommandList className="max-h-72">
-            <CommandEmpty>{t('workbench.settings.form.terminalFontFamilyEmpty')}</CommandEmpty>
-            {normalizedQuery && !hasExactMatch ? (
-              <CommandItem value={normalizedQuery} onSelect={() => handleSelect(normalizedQuery)}>
-                <Check
-                  className={cn('size-4', value === normalizedQuery ? 'opacity-100' : 'opacity-0')}
-                />
-                <span className="truncate">
-                  {t('workbench.settings.form.terminalFontFamilyUseCustom', {
-                    value: normalizedQuery
-                  })}
-                </span>
-              </CommandItem>
-            ) : null}
-            {options.map((option) => (
-              <CommandItem
-                key={option.value}
-                value={option.value}
-                onSelect={() => handleSelect(option.value)}
-              >
-                <Check
-                  className={cn('size-4', value === option.value ? 'opacity-100' : 'opacity-0')}
-                />
-                <span className="truncate">{option.label}</span>
-              </CommandItem>
-            ))}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  )
-}
-
 export function WorkbenchSettingsEditor() {
   const { t } = useTranslation()
   const platform = getPlatform()
@@ -291,10 +190,6 @@ export function WorkbenchSettingsEditor() {
   const appInfoQuery = useQuery({
     queryKey: queryKeys.appInfo,
     queryFn: () => systemClient.getAppInfo()
-  })
-  const systemFontsQuery = useQuery({
-    queryKey: ['system-fonts'],
-    queryFn: () => systemClient.listFonts()
   })
   const userThemePacks = getUserThemePacks(themesQuery.data)
 
@@ -642,6 +537,36 @@ export function WorkbenchSettingsEditor() {
                     />
                     <FormField
                       control={form.control}
+                      name="uiFontId"
+                      render={({ field }) => (
+                        <FormItem className="max-w-sm">
+                          <FormLabel>{t('workbench.settings.form.uiFont')}</FormLabel>
+                          <Select
+                            value={field.value}
+                            onValueChange={(value) => {
+                              field.onChange(value)
+                              void handleSettingSave('uiFontId', value as AppSettings['uiFontId'])
+                            }}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {INTEGRATED_FONTS.map((font) => (
+                                <SelectItem key={font.id} value={font.id}>
+                                  {font.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
                       name="windowTitleBarStyle"
                       render={({ field }) => (
                         <FormItem className="max-w-sm">
@@ -785,25 +710,73 @@ export function WorkbenchSettingsEditor() {
                   />
                   <FormField
                     control={form.control}
-                    name="terminalFontFamily"
-                    render={({ field }) => {
-                      const fontOptions = getTerminalFontOptions(systemFontsQuery.data, field.value)
-
-                      return (
-                        <FormItem>
-                          <FormLabel>{t('workbench.settings.form.terminalFontFamily')}</FormLabel>
-                          <TerminalFontFamilyCombobox
-                            value={field.value}
-                            onChange={(value) => {
-                              field.onChange(value)
-                              void handleSettingSave('terminalFontFamily', value)
-                            }}
-                            options={fontOptions}
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )
-                    }}
+                    name="terminalFontId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('workbench.settings.form.terminalFont')}</FormLabel>
+                        <Select
+                          value={field.value}
+                          onValueChange={(value) => {
+                            field.onChange(value)
+                            void handleSettingSave(
+                              'terminalFontId',
+                              value as AppSettings['terminalFontId']
+                            )
+                          }}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {INTEGRATED_FONTS.map((font) => (
+                              <SelectItem key={font.id} value={font.id}>
+                                {font.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="editorFontId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('workbench.settings.form.editorFont')}</FormLabel>
+                        <Select
+                          value={field.value ?? 'follow-terminal'}
+                          onValueChange={(value) => {
+                            const nextValue =
+                              value === 'follow-terminal'
+                                ? null
+                                : (value as AppSettings['editorFontId'])
+                            field.onChange(nextValue)
+                            void handleSettingSave('editorFontId', nextValue)
+                          }}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="follow-terminal">
+                              {t('workbench.settings.form.editorFontFollowTerminal')}
+                            </SelectItem>
+                            {INTEGRATED_FONTS.map((font) => (
+                              <SelectItem key={font.id} value={font.id}>
+                                {font.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                   <FormField
                     control={form.control}

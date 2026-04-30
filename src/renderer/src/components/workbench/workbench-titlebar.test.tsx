@@ -172,7 +172,7 @@ describe('WorkbenchTitlebar', () => {
         experimentalTerminalWebgl: false,
         language: 'en-US',
         localTerminalShell: 'powershell',
-        terminalFontFamily: 'Consolas',
+        terminalFontId: 'cascadia-mono',
         terminalFontSize: 14,
         theme: 'system',
         windowTitleBarStyle: 'native'
