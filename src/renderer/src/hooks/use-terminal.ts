@@ -4,6 +4,7 @@ import { ImageAddon } from '@xterm/addon-image'
 import { ProgressAddon } from '@xterm/addon-progress'
 import { SearchAddon, type ISearchOptions } from '@xterm/addon-search'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
+import { WebFontsAddon } from '@xterm/addon-web-fonts'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { Terminal } from '@xterm/xterm'
@@ -62,6 +63,77 @@ function enableExperimentalWebglRenderer(terminal: Terminal) {
   return () => {
     contextLossDisposable?.dispose()
     webglAddon?.dispose()
+  }
+}
+
+function parseCssAlpha(alpha: string | undefined) {
+  if (!alpha) {
+    return 1
+  }
+
+  const normalizedAlpha = alpha.trim()
+
+  if (normalizedAlpha.endsWith('%')) {
+    const percentAlpha = Number(normalizedAlpha.slice(0, -1))
+    return Number.isFinite(percentAlpha) ? percentAlpha / 100 : 1
+  }
+
+  const numericAlpha = Number(normalizedAlpha)
+  return Number.isFinite(numericAlpha) ? numericAlpha : 1
+}
+
+function shouldAllowTerminalTransparency(background: string | undefined) {
+  const normalizedBackground = background?.trim().toLowerCase()
+
+  if (!normalizedBackground) {
+    return false
+  }
+
+  if (normalizedBackground === 'transparent') {
+    return true
+  }
+
+  const shortHexColor = /^#([0-9a-f]{4})$/u.exec(normalizedBackground)
+  if (shortHexColor) {
+    return shortHexColor[1]?.[3] !== 'f'
+  }
+
+  const longHexColor = /^#([0-9a-f]{8})$/u.exec(normalizedBackground)
+  if (longHexColor) {
+    return longHexColor[1]?.slice(6) !== 'ff'
+  }
+
+  const slashAlphaColor = /^(?:rgb|hsl)a?\([^/]+\/\s*([^)]+)\)$/u.exec(normalizedBackground)
+  if (slashAlphaColor) {
+    return parseCssAlpha(slashAlphaColor[1]) < 1
+  }
+
+  const commaAlphaColor = /^(?:rgb|hsl)a?\((.+)\)$/u.exec(normalizedBackground)
+  if (commaAlphaColor) {
+    const alpha = commaAlphaColor[1]?.split(',').at(3)
+    return parseCssAlpha(alpha) < 1
+  }
+
+  return false
+}
+
+function enableWebFontLoading(terminal: Terminal) {
+  let webFontsAddon: WebFontsAddon | null = null
+
+  try {
+    webFontsAddon = new WebFontsAddon(false)
+    terminal.loadAddon(webFontsAddon)
+  } catch {
+    // Font relayout is best-effort; a failure should not prevent the terminal from mounting.
+    webFontsAddon?.dispose()
+    webFontsAddon = null
+  }
+
+  return {
+    webFontsAddon,
+    dispose: () => {
+      webFontsAddon?.dispose()
+    }
   }
 }
 
@@ -169,6 +241,7 @@ export function useTerminal(
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const searchAddonRef = useRef<SearchAddon | null>(null)
+  const webFontsAddonRef = useRef<WebFontsAddon | null>(null)
   const selectionDisposableRef = useRef<TerminalDisposable | null>(null)
   const lastSentGeometryRef = useRef<{ cols: number; rows: number } | null>(null)
   const lastActiveRef = useRef(active)
@@ -208,6 +281,7 @@ export function useTerminal(
     const terminalAppearance = resolveTerminalAppearance(settings, theme)
 
     return {
+      allowTransparency: shouldAllowTerminalTransparency(terminalAppearance.theme.background),
       cursorBlink: settings.cursorBlink,
       cursorStyle: settings.cursorStyle,
       fontFamily: formatTerminalFontFamily(terminalAppearance.fontFamily),
@@ -257,6 +331,26 @@ export function useTerminal(
     lastSentGeometryRef.current = nextGeometry
     void transport.resize(nextGeometry.cols, nextGeometry.rows)
   })
+  const relayoutWebFonts = useEffectEvent(
+    (terminal: Terminal, webFontsAddon: WebFontsAddon | null) => {
+      const refreshTerminal = () => {
+        if (terminalRef.current !== terminal) {
+          return
+        }
+
+        terminal.clearTextureAtlas?.()
+        terminal.refresh?.(0, terminal.rows - 1)
+        syncGeometry()
+      }
+
+      if (!webFontsAddon) {
+        refreshTerminal()
+        return
+      }
+
+      void webFontsAddon.relayout().catch(() => undefined).finally(refreshTerminal)
+    }
+  )
 
   useEffect(() => {
     const initialTerminalOptions = readTerminalOptions()
@@ -269,7 +363,6 @@ export function useTerminal(
     const shouldFocusOnMount = active && focusKey === null
     const terminal = new Terminal({
       allowProposedApi: true,
-      allowTransparency: true,
       convertEol: true,
       scrollback: 5000,
       ...initialTerminalOptions
@@ -281,6 +374,8 @@ export function useTerminal(
     terminal.loadAddon(fitAddon)
     const disposeProgressAddon = enableOscProgressTracking(terminal)
     const disposeImageAddon = enableInlineImageRendering(terminal)
+    const { webFontsAddon, dispose: disposeWebFontsAddon } = enableWebFontLoading(terminal)
+    webFontsAddonRef.current = webFontsAddon
     const { searchAddon, dispose: disposeSearchAddon } = enableTerminalSearch(
       terminal,
       onSearchResultsChange
@@ -358,6 +453,7 @@ export function useTerminal(
       disposeUnicode11Addon()
       disposeWebLinksAddon()
       disposeSearchAddon()
+      disposeWebFontsAddon()
       disposeImageAddon()
       disposeProgressAddon()
       terminal.dispose()
@@ -370,6 +466,9 @@ export function useTerminal(
       }
       if (searchAddonRef.current === searchAddon) {
         searchAddonRef.current = null
+      }
+      if (webFontsAddonRef.current === webFontsAddon) {
+        webFontsAddonRef.current = null
       }
     }
   }, [
@@ -393,10 +492,8 @@ export function useTerminal(
     }
 
     terminal.options = terminalOptions
-    terminal.clearTextureAtlas?.()
-    terminal.refresh?.(0, terminal.rows - 1)
 
-    syncGeometry()
+    relayoutWebFonts(terminal, webFontsAddonRef.current)
   }, [terminalOptions])
 
   useEffect(() => {

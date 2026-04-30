@@ -16,6 +16,7 @@ const imageAddonInstances: MockImageAddon[] = []
 const progressAddonInstances: MockProgressAddon[] = []
 const searchAddonInstances: MockSearchAddon[] = []
 const unicode11AddonInstances: MockUnicode11Addon[] = []
+const webFontsAddonInstances: MockWebFontsAddon[] = []
 const webLinksAddonInstances: MockWebLinksAddon[] = []
 const webglAddonInstances: MockWebglAddon[] = []
 const clipboard = {
@@ -104,6 +105,11 @@ class MockUnicode11Addon {
   dispose = vi.fn()
 }
 
+class MockWebFontsAddon {
+  dispose = vi.fn()
+  relayout = vi.fn(async () => undefined)
+}
+
 class MockWebLinksAddon {
   handler: ((event: MouseEvent, uri: string) => void) | undefined
   options:
@@ -164,6 +170,7 @@ const {
   progressAddonConstructor,
   searchAddonConstructor,
   unicode11AddonConstructor,
+  webFontsAddonConstructor,
   webLinksAddonConstructor,
   webglAddonConstructor
 } = vi.hoisted(() => ({
@@ -171,6 +178,7 @@ const {
   progressAddonConstructor: vi.fn(),
   searchAddonConstructor: vi.fn(),
   unicode11AddonConstructor: vi.fn(),
+  webFontsAddonConstructor: vi.fn(),
   webLinksAddonConstructor: vi.fn(),
   webglAddonConstructor: vi.fn()
 }))
@@ -205,6 +213,10 @@ vi.mock('@xterm/addon-search', () => ({
 
 vi.mock('@xterm/addon-unicode11', () => ({
   Unicode11Addon: unicode11AddonConstructor
+}))
+
+vi.mock('@xterm/addon-web-fonts', () => ({
+  WebFontsAddon: webFontsAddonConstructor
 }))
 
 vi.mock('@xterm/addon-web-links', () => ({
@@ -313,6 +325,19 @@ describe('useTerminal', () => {
     version: '1.0.0'
   })
 
+  const translucentTheme = createThemeDefinition({
+    appearance: 'dark',
+    id: 'test.translucent',
+    label: 'Translucent',
+    pluginDisplayName: 'Tests',
+    pluginId: 'tests',
+    source: 'builtin',
+    terminal: {
+      background: 'rgba(24, 26, 31, 0.72)'
+    },
+    version: '1.0.0'
+  })
+
   beforeEach(() => {
     terminalInstances.length = 0
     fitAddonInstances.length = 0
@@ -320,6 +345,7 @@ describe('useTerminal', () => {
     progressAddonInstances.length = 0
     searchAddonInstances.length = 0
     unicode11AddonInstances.length = 0
+    webFontsAddonInstances.length = 0
     webLinksAddonInstances.length = 0
     webglAddonInstances.length = 0
     resizeObserverInstances.length = 0
@@ -350,6 +376,12 @@ describe('useTerminal', () => {
     unicode11AddonConstructor.mockImplementation(() => {
       const instance = new MockUnicode11Addon()
       unicode11AddonInstances.push(instance)
+      return instance
+    })
+    webFontsAddonConstructor.mockReset()
+    webFontsAddonConstructor.mockImplementation(() => {
+      const instance = new MockWebFontsAddon()
+      webFontsAddonInstances.push(instance)
       return instance
     })
     webLinksAddonConstructor.mockReset()
@@ -420,7 +452,7 @@ describe('useTerminal', () => {
     }
   })
 
-  it('updates terminal theme without recreating the instance', () => {
+  it('updates terminal theme without recreating the instance', async () => {
     const { rerender } = render(<TestTerminal settings={settings} theme={darkTheme} />)
 
     expect(terminalInstances).toHaveLength(1)
@@ -428,12 +460,15 @@ describe('useTerminal', () => {
     expect(progressAddonInstances).toHaveLength(1)
     expect(searchAddonInstances).toHaveLength(1)
     expect(unicode11AddonInstances).toHaveLength(1)
+    expect(webFontsAddonInstances).toHaveLength(1)
     expect(webLinksAddonInstances).toHaveLength(1)
     expect(terminalInstances[0]?.loadAddon).toHaveBeenCalledWith(imageAddonInstances[0])
     expect(terminalInstances[0]?.loadAddon).toHaveBeenCalledWith(progressAddonInstances[0])
     expect(terminalInstances[0]?.loadAddon).toHaveBeenCalledWith(searchAddonInstances[0])
+    expect(terminalInstances[0]?.loadAddon).toHaveBeenCalledWith(webFontsAddonInstances[0])
     expect(terminalInstances[0]?.loadAddon).toHaveBeenCalledWith(webLinksAddonInstances[0])
     expect(terminalInstances[0]?.loadAddon).toHaveBeenCalledWith(unicode11AddonInstances[0])
+    expect(terminalInstances[0]?.initialOptions.allowTransparency).toBe(false)
     expect(terminalInstances[0]?.initialOptions.allowProposedApi).toBe(true)
     expect(terminalInstances[0]?.initialOptions.fontFamily).toBe('Consolas, monospace')
     expect(terminalInstances[0]?.unicode.activeVersion).toBe('11')
@@ -447,7 +482,9 @@ describe('useTerminal', () => {
     expect(terminalInstances[0]?.options.theme).toMatchObject({
       background: pixelTheme.terminal.background
     })
-    expect(fitAddonInstances[0]?.fit).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(fitAddonInstances[0]?.fit).toHaveBeenCalled()
+    })
   })
 
   it('enables xterm minimum contrast for high contrast themes', () => {
@@ -456,11 +493,22 @@ describe('useTerminal', () => {
     expect(terminalInstances[0]?.initialOptions.minimumContrastRatio).toBe(4.5)
   })
 
-  it('reformats the font stack and refreshes xterm glyph caches when typography changes', () => {
+  it('only enables xterm transparent rendering for transparent terminal backgrounds', () => {
+    render(<TestTerminal settings={settings} theme={translucentTheme} />)
+
+    expect(terminalInstances[0]?.initialOptions.allowTransparency).toBe(true)
+  })
+
+  it('reformats the font stack and refreshes xterm glyph caches when typography changes', async () => {
     const { rerender } = render(<TestTerminal settings={settings} theme={darkTheme} />)
+
+    await waitFor(() => {
+      expect(webFontsAddonInstances[0]?.relayout).toHaveBeenCalled()
+    })
 
     terminalInstances[0]?.clearTextureAtlas.mockClear()
     terminalInstances[0]?.refresh.mockClear()
+    webFontsAddonInstances[0]?.relayout.mockClear()
 
     rerender(
       <TestTerminal
@@ -472,8 +520,11 @@ describe('useTerminal', () => {
     expect(terminalInstances).toHaveLength(1)
     expect(terminalInstances[0]?.options.fontFamily).toBe('"IBM Plex Mono", monospace')
     expect(terminalInstances[0]?.options.fontSize).toBe(16)
-    expect(terminalInstances[0]?.clearTextureAtlas).toHaveBeenCalledOnce()
-    expect(terminalInstances[0]?.refresh).toHaveBeenCalledWith(0, 23)
+    await waitFor(() => {
+      expect(webFontsAddonInstances[0]?.relayout).toHaveBeenCalled()
+      expect(terminalInstances[0]?.clearTextureAtlas).toHaveBeenCalled()
+      expect(terminalInstances[0]?.refresh).toHaveBeenCalledWith(0, 23)
+    })
   })
 
   it('recreates the terminal and loads the WebGL addon when experimental WebGL rendering is enabled', () => {
@@ -491,8 +542,10 @@ describe('useTerminal', () => {
     expect(progressAddonInstances).toHaveLength(2)
     expect(searchAddonInstances).toHaveLength(2)
     expect(unicode11AddonInstances).toHaveLength(2)
+    expect(webFontsAddonInstances).toHaveLength(2)
     expect(webLinksAddonInstances).toHaveLength(2)
     expect(webglAddonInstances).toHaveLength(1)
+    expect(terminalInstances[1]?.loadAddon).toHaveBeenCalledWith(webFontsAddonInstances[1])
     expect(terminalInstances[1]?.loadAddon).toHaveBeenCalledWith(webglAddonInstances[0])
   })
 
@@ -554,8 +607,9 @@ describe('useTerminal', () => {
     expect(progressAddonInstances).toHaveLength(1)
     expect(searchAddonInstances).toHaveLength(1)
     expect(unicode11AddonInstances).toHaveLength(1)
+    expect(webFontsAddonInstances).toHaveLength(1)
     expect(webLinksAddonInstances).toHaveLength(1)
-    expect(terminalInstances[0]?.loadAddon).toHaveBeenCalledTimes(6)
+    expect(terminalInstances[0]?.loadAddon).toHaveBeenCalledTimes(7)
     expect(webglAddonInstances).toHaveLength(0)
   })
 
