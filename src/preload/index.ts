@@ -1,13 +1,201 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import type { LocalTerminalDataEvent, SessionDataEvent } from '@shared/types'
 import type { WinsshApi } from '@shared/api'
+import type {
+  IpcCallback,
+  IpcChannel,
+  IpcPayload
+} from '@shared/ipc-channels'
+import type {
+  LocalTerminalDataEvent,
+  SessionDataEvent
+} from '@shared/types'
 
-function subscribe<T>(channel: string, callback: (payload: T) => void) {
-  const listener = (_event: Electron.IpcRendererEvent, payload: T) => callback(payload)
-  ipcRenderer.on(channel, listener)
-  return () => ipcRenderer.off(channel, listener)
+// ============================================================
+// 1. 静态 ID 提取器注册表 —— 每个需要过滤的 channel 只定义一次
+// ============================================================
+type IdExtractor = (payload: unknown) => string | undefined
+
+const CHANNEL_ID_EXTRACTORS: Partial<Record<IpcChannel, IdExtractor>> = {
+  'sessions:data':       (p) => (p as SessionDataEvent).sessionId,
+  'localTerminals:data': (p) => (p as LocalTerminalDataEvent).terminalId,
 }
 
+// ============================================================
+// 2. 内部 Hub 结构 —— 全局 + 按 ID 索引，双轨分发
+// ============================================================
+interface ChannelHub {
+  globalCallbacks: Set<(payload: unknown) => void>
+  keyedCallbacks: Map<string, Set<(payload: unknown) => void>>
+  idExtractor: IdExtractor | undefined
+  listener: (...args: unknown[]) => void
+  dispatching: boolean
+}
+
+const hubs = new Map<IpcChannel, ChannelHub>()
+
+function getOrCreateHub(channel: IpcChannel): ChannelHub {
+  const existing = hubs.get(channel)
+  if (existing) return existing
+
+  const idExtractor = CHANNEL_ID_EXTRACTORS[channel]
+
+  const hub: ChannelHub = {
+    globalCallbacks: new Set(),
+    keyedCallbacks: new Map(),
+    idExtractor,
+    dispatching: false,
+
+    listener(_event: unknown, payload: unknown) {
+      hub.dispatching = true
+
+      // --- 全局回调 ---
+      for (const cb of hub.globalCallbacks) {
+        try {
+          cb(payload)
+        } catch (err) {
+          console.error(
+            `[preload] subscriber error on channel "${channel}":`, err
+          )
+        }
+      }
+
+      // --- 按 ID 索引的回调 (O(1) 查找) ---
+      if (hub.idExtractor) {
+        const id = hub.idExtractor(payload)
+        if (id) {
+          const cbs = hub.keyedCallbacks.get(id)
+          if (cbs) {
+            for (const cb of cbs) {
+              try {
+                cb(payload)
+              } catch (err) {
+                console.error(
+                  `[preload] subscriber error on channel "${channel}" id="${id}":`, err
+                )
+              }
+            }
+          }
+        }
+      }
+
+      hub.dispatching = false
+    },
+  }
+
+  hubs.set(channel, hub)
+  ipcRenderer.on(channel, hub.listener)
+  return hub
+}
+
+// ============================================================
+// 3. 安全的取消订阅 —— dispatch 期间延迟到 microtask
+// ============================================================
+function removeFromSet<T>(set: Set<T>, item: T) {
+  set.delete(item)
+}
+
+/**
+ * 确保在 dispatch 循环之外执行清理，避免迭代器失效
+ */
+function safeCleanup(channel: IpcChannel, hub: ChannelHub, action: () => void) {
+  if (hub.dispatching) {
+    queueMicrotask(() => {
+      action()
+      cleanupIfEmpty(channel, hub)
+    })
+  } else {
+    action()
+    cleanupIfEmpty(channel, hub)
+  }
+}
+
+function cleanupIfEmpty(channel: IpcChannel, hub: ChannelHub) {
+  if (hub.globalCallbacks.size === 0 && hub.keyedCallbacks.size === 0) {
+    ipcRenderer.removeListener(channel, hub.listener)
+    hubs.delete(channel)
+  }
+}
+
+// ============================================================
+// 4. 公共 API
+// ============================================================
+
+function subscribe<C extends IpcChannel>(
+  channel: C,
+  callback: IpcCallback<C>
+): () => void {
+  const hub = getOrCreateHub(channel)
+  const cb = callback as (payload: unknown) => void
+  hub.globalCallbacks.add(cb)
+
+  return () => {
+    safeCleanup(channel, hub, () => hub.globalCallbacks.delete(cb))
+  }
+}
+
+function subscribeById<C extends IpcChannel>(
+  channel: C,
+  id: string,
+  callback: IpcCallback<C>
+): () => void {
+  const hub = getOrCreateHub(channel)
+  const cb = callback as (payload: unknown) => void
+
+  let set = hub.keyedCallbacks.get(id)
+  if (!set) {
+    set = new Set()
+    hub.keyedCallbacks.set(id, set)
+  }
+  set.add(cb)
+
+  return () => {
+    safeCleanup(channel, hub, () => {
+      const s = hub.keyedCallbacks.get(id)
+      if (s) {
+        s.delete(cb)
+        if (s.size === 0) {
+          hub.keyedCallbacks.delete(id)
+        }
+      }
+    })
+  }
+}
+
+export function once<C extends IpcChannel>(
+  channel: C,
+  callback: IpcCallback<C>
+): () => void {
+  let unsubscribed = false
+  const unsubscribe = subscribe(channel, ((payload: IpcPayload<C>) => {
+    if (!unsubscribed) {
+      unsubscribed = true
+      unsubscribe()
+      callback(payload)
+    }
+  }) as IpcCallback<C>)
+
+  // 返回 no-op：外部调用不会产生副作用
+  return () => {
+    if (!unsubscribed) {
+      unsubscribed = true
+      unsubscribe()
+    }
+  }
+}
+
+// ============================================================
+// 5. 全局销毁 (调试/热重载用)
+// ============================================================
+export function destroyAllSubscriptions() {
+  for (const [channel, hub] of hubs) {
+    ipcRenderer.removeListener(channel, hub.listener)
+  }
+  hubs.clear()
+}
+
+// ============================================================
+// 6. API 组装 —— 与原来完全兼容，只是 subscribeFiltered → subscribeById
+// ============================================================
 const api: WinsshApi = {
   groups: {
     list: () => ipcRenderer.invoke('groups:list'),
@@ -44,15 +232,11 @@ const api: WinsshApi = {
     reconnect: (sessionId) => ipcRenderer.invoke('sessions:reconnect', sessionId),
     getResourceSnapshot: (sessionId) =>
       ipcRenderer.invoke('sessions:getResourceSnapshot', sessionId),
-    write: (sessionId, data) => ipcRenderer.send('sessions:write', sessionId, data),
+    write: (sessionId, data) => ipcRenderer.invoke('sessions:write', sessionId, data),
     resize: (sessionId, columns, rows) =>
       ipcRenderer.invoke('sessions:resize', sessionId, columns, rows),
     onData: (sessionId, callback) =>
-      subscribe('sessions:data', (payload: SessionDataEvent) => {
-        if (payload.sessionId === sessionId) {
-          callback(payload)
-        }
-      }),
+      subscribeById('sessions:data', sessionId, callback),
     onExit: (callback) => subscribe('sessions:exit', callback),
     onStateChange: (callback) => subscribe('sessions:state', callback),
     onError: (callback) => subscribe('sessions:error', callback)
@@ -64,11 +248,7 @@ const api: WinsshApi = {
     resize: (terminalId, columns, rows) =>
       ipcRenderer.invoke('localTerminals:resize', terminalId, columns, rows),
     onData: (terminalId, callback) =>
-      subscribe('localTerminals:data', (payload: LocalTerminalDataEvent) => {
-        if (payload.terminalId === terminalId) {
-          callback(payload)
-        }
-      }),
+      subscribeById('localTerminals:data', terminalId, callback),
     onExit: (callback) => subscribe('localTerminals:exit', callback),
     onStateChange: (callback) => subscribe('localTerminals:state', callback)
   },

@@ -22,7 +22,7 @@ export function registerSessionIpc(service: SessionsApplicationService) {
   ipcMain.handle('sessions:getResourceSnapshot', (_event, sessionId: string) =>
     service.getResourceSnapshot(sessionId)
   )
-  ipcMain.on('sessions:write', (_event, sessionId: string, data: string) => {
+  ipcMain.handle('sessions:write', (_event, sessionId: string, data: string) => {
     service.write(sessionId, data)
   })
   ipcMain.handle('sessions:resize', (_event, sessionId: string, columns: number, rows: number) =>
