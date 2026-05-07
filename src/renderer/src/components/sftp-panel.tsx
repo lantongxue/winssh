@@ -9,7 +9,7 @@ import type { RemoteEntry } from '@shared/types'
 import { sessionsClient } from '@/features/sessions/api/sessions-client'
 import { sftpClient } from '@/features/sftp/api/sftp-client'
 import { systemClient } from '@/features/system/api/system-client'
-import { formatFileSize } from '@/i18n/format'
+import { formatFileSize, getResolvedLocale } from '@/i18n/format'
 import { actionIcons } from '@/lib/action-icons'
 import { writeTerminalPathDragData } from '@/lib/terminal-path-dnd'
 import type { SessionTab } from '@/store/sessions-store'
@@ -475,15 +475,32 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
       ? `${entry.permissions.octal} / ${entry.permissions.symbolic}`
       : t('common.labels.none')
 
-    if (entry.kind === 'directory') {
-      return `${permissionText} · ${t('workbench.sftp.kinds.directory')}`
-    }
+    const modifiedText = entry.modifiedAt
+      ? new Intl.DateTimeFormat(getResolvedLocale(), {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        }).format(new Date(entry.modifiedAt))
+      : null
+    const kindText =
+      entry.kind === 'directory'
+        ? t('workbench.sftp.kinds.directory')
+        : entry.kind === 'symlink'
+          ? t('workbench.sftp.kinds.symlink')
+          : null
 
-    if (entry.kind === 'symlink') {
-      return `${permissionText} · ${t('workbench.sftp.kinds.symlink')}`
-    }
+    const sizeText = entry.kind === 'file' ? formatFileSize(Math.max(entry.size, 0)) : null
 
-    return `${permissionText} · ${formatFileSize(Math.max(entry.size, 0))}`
+    const parts = [permissionText]
+    if (modifiedText) parts.push(modifiedText)
+    if (kindText) parts.push(kindText)
+    if (sizeText) parts.push(sizeText)
+
+    return parts.join(' · ')
   }
 
   const renderEntryRow = (entry: RemoteEntry, wrapperStyle?: CSSProperties) => {
