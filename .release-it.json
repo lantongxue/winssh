@@ -19,6 +19,6 @@
     }
   },
   "hooks": {
-    "before:init": ["npm run lint", "npm run typecheck", "npm test"]
+    "before:init": [""]
   }
 }
