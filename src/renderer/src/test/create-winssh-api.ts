@@ -252,7 +252,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
         throw new Error('not implemented')
       },
       resize: async () => undefined,
-      write: async () => undefined,
+      write: () => undefined,
       ...overrides.sessions
     },
     localTerminals: {
@@ -269,7 +269,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       onExit: () => noopUnsubscribe,
       onStateChange: () => noopUnsubscribe,
       resize: async () => undefined,
-      write: async () => undefined,
+      write: () => undefined,
       ...overrides.localTerminals
     },
     sftp: {

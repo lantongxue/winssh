@@ -246,12 +246,8 @@ export function TerminalSurface({
       return
     }
 
-    void transport
-      .write(droppedPath)
-      .then(focusTerminal)
-      .catch(() => {
-        resetPathDropState()
-      })
+    transport.write(droppedPath)
+    focusTerminal()
   }
 
   return (

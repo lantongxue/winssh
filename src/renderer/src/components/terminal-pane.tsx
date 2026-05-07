@@ -145,10 +145,8 @@ function TerminalPaneImpl({
         ? null
         : {
             onData: (callback: (data: string) => void) =>
-              sessionsClient.onData((event) => {
-                if (event.sessionId === session.sessionId) {
-                  callback(event.data)
-                }
+              sessionsClient.onData(session.sessionId, (event) => {
+                callback(event.data)
               }),
             resize: (columns: number, rows: number) =>
               sessionsClient.resize(session.sessionId, columns, rows),

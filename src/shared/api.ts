@@ -80,9 +80,9 @@ export interface WinsshApi {
     disconnect: (sessionId: string) => Promise<void>
     reconnect: (sessionId: string) => Promise<SessionSummary>
     getResourceSnapshot: (sessionId: string) => Promise<SessionResourceSnapshot>
-    write: (sessionId: string, data: string) => Promise<void>
+    write: (sessionId: string, data: string) => void
     resize: (sessionId: string, columns: number, rows: number) => Promise<void>
-    onData: (callback: (event: SessionDataEvent) => void) => Unsubscribe
+    onData: (sessionId: string, callback: (event: SessionDataEvent) => void) => Unsubscribe
     onExit: (callback: (event: SessionExitEvent) => void) => Unsubscribe
     onStateChange: (callback: (event: SessionStateEvent) => void) => Unsubscribe
     onError: (callback: (event: SessionErrorEvent) => void) => Unsubscribe
@@ -90,9 +90,9 @@ export interface WinsshApi {
   localTerminals: {
     create: () => Promise<LocalTerminalSummary>
     close: (terminalId: string) => Promise<void>
-    write: (terminalId: string, data: string) => Promise<void>
+    write: (terminalId: string, data: string) => void
     resize: (terminalId: string, columns: number, rows: number) => Promise<void>
-    onData: (callback: (event: LocalTerminalDataEvent) => void) => Unsubscribe
+    onData: (terminalId: string, callback: (event: LocalTerminalDataEvent) => void) => Unsubscribe
     onExit: (callback: (event: LocalTerminalExitEvent) => void) => Unsubscribe
     onStateChange: (callback: (event: LocalTerminalStateEvent) => void) => Unsubscribe
   }

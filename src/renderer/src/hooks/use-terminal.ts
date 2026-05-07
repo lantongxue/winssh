@@ -43,7 +43,7 @@ export interface TerminalSearchController {
 export interface TerminalTransport {
   onData: (callback: (data: string) => void) => Unsubscribe
   resize: (columns: number, rows: number) => Promise<void>
-  write: (data: string) => Promise<void>
+  write: (data: string) => void
 }
 
 function enableExperimentalWebglRenderer(terminal: Terminal) {
@@ -447,7 +447,7 @@ export function useTerminal(
       container.addEventListener('contextmenu', handleContextMenu, true)
 
       const writeDisposable = terminal.onData((data) => {
-        void transport.write(data)
+        transport.write(data)
       })
 
       const unsubscribeData = transport.onData((data) => {

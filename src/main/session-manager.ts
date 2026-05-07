@@ -87,6 +87,8 @@ interface SessionRuntime {
   lastError?: string
   lastExit?: SessionExitEvent
   finalizing?: boolean
+  pendingData: string
+  flushTimer: ReturnType<typeof setTimeout> | null
 }
 
 interface ExecResult {
@@ -114,6 +116,8 @@ const RESOURCE_MONITOR_MARKERS = {
   procNetDev: '__WINSSH_PROC_NET_DEV__',
   procStat: '__WINSSH_PROC_STAT__'
 } as const
+
+const SESSION_DATA_BATCH_MS = 16
 
 const LINUX_RESOURCE_SNAPSHOT_COMMAND = `LC_ALL=C sh -lc '
 set -eu
@@ -1003,22 +1007,19 @@ export class SessionManager {
         shell,
         sftp,
         summary,
-        portForwards: new Map()
+        portForwards: new Map(),
+        pendingData: '',
+        flushTimer: null
       }
 
       shell.on('data', (chunk: Buffer | string) => {
-        this.emitToRenderer('sessions:data', this.withObservableMetadata(sessionId, {
-          sessionId,
-          data: chunk.toString()
-        }))
+        this.bufferSessionData(runtime, chunk.toString())
       })
       shell.stderr.on('data', (chunk: Buffer | string) => {
-        this.emitToRenderer('sessions:data', this.withObservableMetadata(sessionId, {
-          sessionId,
-          data: chunk.toString()
-        }))
+        this.bufferSessionData(runtime, chunk.toString())
       })
       shell.on('close', (code?: number, signal?: string) => {
+        this.flushSessionData(runtime)
         runtime.lastExit = this.withObservableMetadata(sessionId, { sessionId, code, signal })
         client?.end()
       })
@@ -1056,6 +1057,7 @@ export class SessionManager {
 
     if (runtime) {
       runtime.finalizing = true
+      this.flushSessionData(runtime)
       await this.releaseSessionPortForwards(sessionId)
       this.releaseRuntimeClients(runtime)
       this.sessions.delete(sessionId)
@@ -1069,9 +1071,40 @@ export class SessionManager {
     this.emitSessionState(sessionId, 'disconnected', undefined, this.t('session.closed'))
   }
 
-  async write(sessionId: string, data: string): Promise<void> {
+  write(sessionId: string, data: string): void {
     const runtime = this.requireSession(sessionId)
     runtime.shell.write(data)
+  }
+
+  private bufferSessionData(runtime: SessionRuntime, data: string): void {
+    runtime.pendingData += data
+
+    if (runtime.flushTimer) {
+      return
+    }
+
+    runtime.flushTimer = setTimeout(() => {
+      runtime.flushTimer = null
+      this.flushSessionData(runtime)
+    }, SESSION_DATA_BATCH_MS)
+  }
+
+  private flushSessionData(runtime: SessionRuntime): void {
+    if (runtime.flushTimer) {
+      clearTimeout(runtime.flushTimer)
+      runtime.flushTimer = null
+    }
+
+    if (!runtime.pendingData) {
+      return
+    }
+
+    const data = runtime.pendingData
+    runtime.pendingData = ''
+    this.emitToRenderer('sessions:data', this.withObservableMetadata(runtime.sessionId, {
+      sessionId: runtime.sessionId,
+      data
+    }))
   }
 
   async resize(sessionId: string, columns: number, rows: number): Promise<void> {
@@ -2197,6 +2230,7 @@ export class SessionManager {
     }
 
     runtime.finalizing = true
+    this.flushSessionData(runtime)
     await this.releaseSessionPortForwards(sessionId)
     this.releaseRuntimeClients(runtime)
     this.sessions.delete(sessionId)

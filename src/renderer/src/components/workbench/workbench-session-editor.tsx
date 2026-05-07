@@ -2,6 +2,7 @@ import { memo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { useShallow } from 'zustand/react/shallow'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import { queryKeys } from '@/features/shared/query-keys'
 import { settingsClient } from '@/features/settings/api/settings-client'
@@ -35,7 +36,7 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
   const { reconnectSession, disconnectSession, openSftpFileEditor } = useWorkbenchContext()
   const [monitorExpanded, setMonitorExpanded] = useState(true)
   const session = useSessionsStore(
-    (state) => state.tabs.find((tab) => tab.sessionId === sessionId) ?? null
+    useShallow((state) => state.tabs.find((tab) => tab.sessionId === sessionId) ?? null)
   )
   const setAuxView = useSessionsStore((state) => state.setAuxView)
   const settingsQuery = useQuery({

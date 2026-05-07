@@ -1,6 +1,7 @@
 import { memo, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { useShallow } from 'zustand/react/shallow'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import { localTerminalsClient } from '@/features/local-terminals/api/local-terminals-client'
 import { queryKeys } from '@/features/shared/query-keys'
@@ -27,7 +28,7 @@ function WorkbenchLocalTerminalEditorImpl({
   const prefersDark = usePrefersDark()
   const { closeLocalTerminal } = useWorkbenchContext()
   const terminal = useLocalTerminalsStore(
-    (state) => state.tabs.find((tab) => tab.terminalId === terminalId) ?? null
+    useShallow((state) => state.tabs.find((tab) => tab.terminalId === terminalId) ?? null)
   )
   const settingsQuery = useQuery({
     queryKey: queryKeys.settings,
@@ -43,10 +44,8 @@ function WorkbenchLocalTerminalEditorImpl({
   const transport = useMemo(
     () => ({
       onData: (callback: (data: string) => void) =>
-        localTerminalsClient.onData((event) => {
-          if (event.terminalId === terminalId) {
-            callback(event.data)
-          }
+        localTerminalsClient.onData(terminalId, (event) => {
+          callback(event.data)
         }),
       resize: (columns: number, rows: number) =>
         localTerminalsClient.resize(terminalId, columns, rows),

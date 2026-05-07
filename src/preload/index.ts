@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
+import type { LocalTerminalDataEvent, SessionDataEvent } from '@shared/types'
 import type { WinsshApi } from '@shared/api'
 
 function subscribe<T>(channel: string, callback: (payload: T) => void) {
@@ -43,10 +44,15 @@ const api: WinsshApi = {
     reconnect: (sessionId) => ipcRenderer.invoke('sessions:reconnect', sessionId),
     getResourceSnapshot: (sessionId) =>
       ipcRenderer.invoke('sessions:getResourceSnapshot', sessionId),
-    write: (sessionId, data) => ipcRenderer.invoke('sessions:write', sessionId, data),
+    write: (sessionId, data) => ipcRenderer.send('sessions:write', sessionId, data),
     resize: (sessionId, columns, rows) =>
       ipcRenderer.invoke('sessions:resize', sessionId, columns, rows),
-    onData: (callback) => subscribe('sessions:data', callback),
+    onData: (sessionId, callback) =>
+      subscribe('sessions:data', (payload: SessionDataEvent) => {
+        if (payload.sessionId === sessionId) {
+          callback(payload)
+        }
+      }),
     onExit: (callback) => subscribe('sessions:exit', callback),
     onStateChange: (callback) => subscribe('sessions:state', callback),
     onError: (callback) => subscribe('sessions:error', callback)
@@ -54,10 +60,15 @@ const api: WinsshApi = {
   localTerminals: {
     create: () => ipcRenderer.invoke('localTerminals:create'),
     close: (terminalId) => ipcRenderer.invoke('localTerminals:close', terminalId),
-    write: (terminalId, data) => ipcRenderer.invoke('localTerminals:write', terminalId, data),
+    write: (terminalId, data) => ipcRenderer.send('localTerminals:write', terminalId, data),
     resize: (terminalId, columns, rows) =>
       ipcRenderer.invoke('localTerminals:resize', terminalId, columns, rows),
-    onData: (callback) => subscribe('localTerminals:data', callback),
+    onData: (terminalId, callback) =>
+      subscribe('localTerminals:data', (payload: LocalTerminalDataEvent) => {
+        if (payload.terminalId === terminalId) {
+          callback(payload)
+        }
+      }),
     onExit: (callback) => subscribe('localTerminals:exit', callback),
     onStateChange: (callback) => subscribe('localTerminals:state', callback)
   },

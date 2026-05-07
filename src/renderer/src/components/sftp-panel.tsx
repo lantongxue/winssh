@@ -321,9 +321,9 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
     }
   }
 
-  const sendPathToTerminal = async (path: string) => {
+  const sendPathToTerminal = (path: string) => {
     try {
-      await sessionsClient.write(session.sessionId, path)
+      sessionsClient.write(session.sessionId, path)
       toast.success(t('workbench.sftp.toasts.pathSentToTerminal'))
     } catch {
       toast.error(t('workbench.sftp.toasts.pathSendToTerminalFailed'))

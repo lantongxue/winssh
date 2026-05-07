@@ -42,8 +42,8 @@ export class SessionsApplicationService {
     return this.sessionManager.getResourceSnapshot(sessionId)
   }
 
-  write(sessionId: string, data: string) {
-    return this.sessionManager.write(sessionId, data)
+  write(sessionId: string, data: string): void {
+    this.sessionManager.write(sessionId, data)
   }
 
   resize(sessionId: string, columns: number, rows: number) {
