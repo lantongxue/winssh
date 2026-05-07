@@ -87,13 +87,6 @@ function getOrCreateHub(channel: IpcChannel): ChannelHub {
   return hub
 }
 
-// ============================================================
-// 3. 安全的取消订阅 —— dispatch 期间延迟到 microtask
-// ============================================================
-function removeFromSet<T>(set: Set<T>, item: T) {
-  set.delete(item)
-}
-
 /**
  * 确保在 dispatch 循环之外执行清理，避免迭代器失效
  */
