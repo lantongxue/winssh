@@ -129,12 +129,7 @@ describeDatabase('DatabaseService server persistence', () => {
     migrated.close()
 
     expect(columns.map((column) => column.name)).toEqual(
-      expect.arrayContaining([
-        'brand_id',
-        'custom_icon',
-        'custom_icon_mime_type',
-        'jump_server_id'
-      ])
+      expect.arrayContaining(['brand_id', 'custom_icon', 'custom_icon_mime_type', 'jump_server_id'])
     )
   })
 
@@ -178,7 +173,9 @@ describeDatabase('DatabaseService server persistence', () => {
     const parent = service.createGroup({ color: 'red', name: 'Production' })
     const child = service.createGroup({ color: 'blue', name: 'Web', parentId: parent.id })
     const grandchild = service.createGroup({ color: 'green', name: 'API', parentId: child.id })
-    const server = service.createServer(createServerInput({ groupId: grandchild.id, name: 'API Host' }))
+    const server = service.createServer(
+      createServerInput({ groupId: grandchild.id, name: 'API Host' })
+    )
 
     expect(service.listGroups()).toEqual(
       expect.arrayContaining([
@@ -205,7 +202,11 @@ describeDatabase('DatabaseService server persistence', () => {
     const child = service.createGroup({ color: 'blue', name: 'Child', parentId: parent.id })
 
     expect(() =>
-      service.updateGroup(parent.id, { color: parent.color, name: parent.name, parentId: parent.id })
+      service.updateGroup(parent.id, {
+        color: parent.color,
+        name: parent.name,
+        parentId: parent.id
+      })
     ).toThrow(/own parent/i)
     expect(() =>
       service.updateGroup(parent.id, { color: parent.color, name: parent.name, parentId: child.id })
@@ -225,11 +226,15 @@ describeDatabase('DatabaseService server persistence', () => {
     const parentServer = service.createServer(
       createServerInput({ groupId: parent.id, name: 'Parent Server' })
     )
-    const childServer = service.createServer(createServerInput({ groupId: child.id, name: 'Child Server' }))
+    const childServer = service.createServer(
+      createServerInput({ groupId: child.id, name: 'Child Server' })
+    )
 
     service.deleteGroup(parent.id)
 
-    expect(service.listGroups()).toEqual([expect.objectContaining({ id: child.id, parentId: null })])
+    expect(service.listGroups()).toEqual([
+      expect.objectContaining({ id: child.id, parentId: null })
+    ])
     expect(service.getServerById(parentServer.id)?.groupId).toBeNull()
     expect(service.getServerById(childServer.id)?.groupId).toBe(child.id)
   })

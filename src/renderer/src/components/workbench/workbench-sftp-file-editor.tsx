@@ -48,7 +48,9 @@ export function WorkbenchSftpFileEditor({ active = true, document }: WorkbenchSf
               </div>
             </div>
             <div className="min-w-0 flex-1 text-right">
-              <div className="truncate text-sm font-medium text-foreground">{document.remotePath}</div>
+              <div className="truncate text-sm font-medium text-foreground">
+                {document.remotePath}
+              </div>
               <div className="truncate text-[11px] text-muted-foreground">
                 {t('workbench.sftpFileEditor.loading')}
               </div>

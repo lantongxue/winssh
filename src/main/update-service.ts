@@ -74,11 +74,7 @@ function resolveUnsupportedReason(options: UpdateServiceOptions): UpdateUnsuppor
 
 function prepareDevUpdateConfig(filePath: string, feedUrl: string) {
   mkdirSync(dirname(filePath), { recursive: true })
-  writeFileSync(
-    filePath,
-    ['provider: generic', `url: ${feedUrl}`].join('\n') + '\n',
-    'utf8'
-  )
+  writeFileSync(filePath, ['provider: generic', `url: ${feedUrl}`].join('\n') + '\n', 'utf8')
 }
 
 function createUpdater(feedUrl: string): UpdaterAdapter {

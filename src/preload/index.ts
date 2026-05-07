@@ -1,14 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { WinsshApi } from '@shared/api'
-import type {
-  IpcCallback,
-  IpcChannel,
-  IpcPayload
-} from '@shared/ipc-channels'
-import type {
-  LocalTerminalDataEvent,
-  SessionDataEvent
-} from '@shared/types'
+import type { IpcCallback, IpcChannel, IpcPayload } from '@shared/ipc-channels'
+import type { LocalTerminalDataEvent, SessionDataEvent } from '@shared/types'
 
 // ============================================================
 // 1. 静态 ID 提取器注册表 —— 每个需要过滤的 channel 只定义一次
@@ -16,8 +9,8 @@ import type {
 type IdExtractor = (payload: unknown) => string | undefined
 
 const CHANNEL_ID_EXTRACTORS: Partial<Record<IpcChannel, IdExtractor>> = {
-  'sessions:data':       (p) => (p as SessionDataEvent).sessionId,
-  'localTerminals:data': (p) => (p as LocalTerminalDataEvent).terminalId,
+  'sessions:data': (p) => (p as SessionDataEvent).sessionId,
+  'localTerminals:data': (p) => (p as LocalTerminalDataEvent).terminalId
 }
 
 // ============================================================
@@ -53,9 +46,7 @@ function getOrCreateHub(channel: IpcChannel): ChannelHub {
         try {
           cb(payload)
         } catch (err) {
-          console.error(
-            `[preload] subscriber error on channel "${channel}":`, err
-          )
+          console.error(`[preload] subscriber error on channel "${channel}":`, err)
         }
       }
 
@@ -69,9 +60,7 @@ function getOrCreateHub(channel: IpcChannel): ChannelHub {
               try {
                 cb(payload)
               } catch (err) {
-                console.error(
-                  `[preload] subscriber error on channel "${channel}" id="${id}":`, err
-                )
+                console.error(`[preload] subscriber error on channel "${channel}" id="${id}":`, err)
               }
             }
           }
@@ -79,7 +68,7 @@ function getOrCreateHub(channel: IpcChannel): ChannelHub {
       }
 
       hub.dispatching = false
-    },
+    }
   }
 
   hubs.set(channel, hub)
@@ -113,10 +102,7 @@ function cleanupIfEmpty(channel: IpcChannel, hub: ChannelHub) {
 // 4. 公共 API
 // ============================================================
 
-function subscribe<C extends IpcChannel>(
-  channel: C,
-  callback: IpcCallback<C>
-): () => void {
+function subscribe<C extends IpcChannel>(channel: C, callback: IpcCallback<C>): () => void {
   const hub = getOrCreateHub(channel)
   const cb = callback as (payload: unknown) => void
   hub.globalCallbacks.add(cb)
@@ -154,10 +140,7 @@ function subscribeById<C extends IpcChannel>(
   }
 }
 
-export function once<C extends IpcChannel>(
-  channel: C,
-  callback: IpcCallback<C>
-): () => void {
+export function once<C extends IpcChannel>(channel: C, callback: IpcCallback<C>): () => void {
   let unsubscribed = false
   const unsubscribe = subscribe(channel, ((payload: IpcPayload<C>) => {
     if (!unsubscribed) {
@@ -228,8 +211,7 @@ const api: WinsshApi = {
     write: (sessionId, data) => ipcRenderer.invoke('sessions:write', sessionId, data),
     resize: (sessionId, columns, rows) =>
       ipcRenderer.invoke('sessions:resize', sessionId, columns, rows),
-    onData: (sessionId, callback) =>
-      subscribeById('sessions:data', sessionId, callback),
+    onData: (sessionId, callback) => subscribeById('sessions:data', sessionId, callback),
     onExit: (callback) => subscribe('sessions:exit', callback),
     onStateChange: (callback) => subscribe('sessions:state', callback),
     onError: (callback) => subscribe('sessions:error', callback)
@@ -240,8 +222,7 @@ const api: WinsshApi = {
     write: (terminalId, data) => ipcRenderer.send('localTerminals:write', terminalId, data),
     resize: (terminalId, columns, rows) =>
       ipcRenderer.invoke('localTerminals:resize', terminalId, columns, rows),
-    onData: (terminalId, callback) =>
-      subscribeById('localTerminals:data', terminalId, callback),
+    onData: (terminalId, callback) => subscribeById('localTerminals:data', terminalId, callback),
     onExit: (callback) => subscribe('localTerminals:exit', callback),
     onStateChange: (callback) => subscribe('localTerminals:state', callback)
   },

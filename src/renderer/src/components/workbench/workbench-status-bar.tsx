@@ -46,7 +46,9 @@ export function WorkbenchStatusBar() {
       </div>
 
       <div className="hidden items-center gap-3 md:flex">
-        <span>{t(sidebarOpen ? 'workbench.statusBar.sidebarOn' : 'workbench.statusBar.sidebarOff')}</span>
+        <span>
+          {t(sidebarOpen ? 'workbench.statusBar.sidebarOn' : 'workbench.statusBar.sidebarOff')}
+        </span>
         <span>{t(panelOpen ? 'workbench.statusBar.panelOn' : 'workbench.statusBar.panelOff')}</span>
         <span>{t('workbench.statusBar.theme', { value: themeLabel })}</span>
         <span>{getWorkbenchShortcutLabel('toggleSidebar', isMac)}</span>

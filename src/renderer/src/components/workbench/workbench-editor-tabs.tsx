@@ -384,7 +384,9 @@ export function WorkbenchEditorTabs() {
                   <ContextMenuContent>
                     {document.kind === 'session-editor' ? (
                       <>
-                        <ContextMenuItem onClick={() => void handleCloneSession(document.sessionId)}>
+                        <ContextMenuItem
+                          onClick={() => void handleCloneSession(document.sessionId)}
+                        >
                           <CloneIcon className="size-4" />
                           {t('workbench.editorTabs.actions.cloneSession')}
                         </ContextMenuItem>

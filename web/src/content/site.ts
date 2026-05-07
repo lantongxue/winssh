@@ -107,8 +107,7 @@ export const SITE_COPY = {
         {
           value: '5',
           label: 'Built-in themes',
-          description:
-            'Light+, Dark+, and Pixel CRT are live in the theme registry right now.'
+          description: 'Light+, Dark+, and Pixel CRT are live in the theme registry right now.'
         }
       ],
       features: {
@@ -177,7 +176,7 @@ export const SITE_COPY = {
       },
       preview: {
         eyebrow: 'Workbench Preview',
-        title: 'The site borrows the product\'s desk grammar.',
+        title: "The site borrows the product's desk grammar.",
         subtitle:
           'This brand page wears the same titlebar, activity rail, sidebar, editor, and status bar layout that carries SSH sessions, local shells, updates, and session-side tools in the desktop app.',
         quickLabels: ['Quick Open', 'Command Palette', 'Theme Pack', 'Live Metrics'],
@@ -501,7 +500,7 @@ export const SITE_COPY = {
                 bullets: [
                   '`data-theme` stores the resolved theme id.',
                   '`data-theme-selection` stores the saved selection value.'
-                ],
+                ]
               },
               {
                 title: 'Merge, priority, and fallback rules',
@@ -657,14 +656,14 @@ export const SITE_COPY = {
         {
           value: '5',
           label: '内置主题',
-          description:
-            'Light+、Dark+、Pixel CRT 主题已经在 theme registry 里上线了。'
+          description: 'Light+、Dark+、Pixel CRT 主题已经在 theme registry 里上线了。'
         }
       ],
       features: {
         eyebrow: '能力地图',
         title: '工具可以严肃，界面不必板着。',
-        subtitle: 'WinSSH 把该严肃的部分留给运行时，把轻松的节奏留给界面。下面的每一项能力都已经在桌面端落地——不是路线图上的占位符。',
+        subtitle:
+          'WinSSH 把该严肃的部分留给运行时，把轻松的节奏留给界面。下面的每一项能力都已经在桌面端落地——不是路线图上的占位符。',
         items: [
           {
             id: 'terminal',
@@ -1043,7 +1042,7 @@ export const SITE_COPY = {
                 bullets: [
                   '`data-theme` 保存解析后的主题 id。',
                   '`data-theme-selection` 保存设置里的选择值。'
-                ],
+                ]
               },
               {
                 title: '合并、优先级与回退规则',

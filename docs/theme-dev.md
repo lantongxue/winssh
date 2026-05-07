@@ -92,19 +92,19 @@
 
 主题文件里只需要写覆盖项，运行时会生成完整 `ThemeDefinition`。标准化后的主题对象会带这些字段：
 
-| 字段 | 说明 |
-| --- | --- |
-| `id` | 主题 id |
-| `label` | 主题显示名 |
-| `description` | 主题描述，可选 |
-| `appearance` | `light` 或 `dark` |
-| `pluginId` | 由 `publisher.name` 组合出的插件 id |
-| `pluginDisplayName` | 插件显示名 |
-| `source` | `builtin` 或 `user` |
-| `version` | 主题包版本 |
-| `colors` | 完整 UI token 集合 |
-| `terminal` | 完整终端调色板 |
-| `terminalDefaults` | 主题建议的终端字体配置，可选 |
+| 字段                | 说明                                |
+| ------------------- | ----------------------------------- |
+| `id`                | 主题 id                             |
+| `label`             | 主题显示名                          |
+| `description`       | 主题描述，可选                      |
+| `appearance`        | `light` 或 `dark`                   |
+| `pluginId`          | 由 `publisher.name` 组合出的插件 id |
+| `pluginDisplayName` | 插件显示名                          |
+| `source`            | `builtin` 或 `user`                 |
+| `version`           | 主题包版本                          |
+| `colors`            | 完整 UI token 集合                  |
+| `terminal`          | 完整终端调色板                      |
+| `terminalDefaults`  | 主题建议的终端字体配置，可选        |
 
 ## 4. 主题插件包目录结构
 
@@ -165,18 +165,18 @@ Windows 下通常会落在类似下面的位置：
 
 字段说明：
 
-| 字段 | 必填 | 说明 |
-| --- | --- | --- |
-| `name` | 是 | 插件名 |
-| `displayName` | 否 | 插件显示名，不填时回退到 `name` |
-| `publisher` | 是 | 发布者 |
-| `version` | 是 | 插件版本 |
-| `contributes.themes` | 是 | 主题列表，至少 1 项 |
-| `contributes.themes[].id` | 是 | 主题全局唯一 id |
-| `contributes.themes[].label` | 是 | 设置页和命令中心显示名 |
-| `contributes.themes[].description` | 否 | 主题说明 |
-| `contributes.themes[].uiTheme` | 是 | `vs` 或 `vs-dark` |
-| `contributes.themes[].path` | 是 | 相对插件包目录的主题 JSON 路径 |
+| 字段                               | 必填 | 说明                            |
+| ---------------------------------- | ---- | ------------------------------- |
+| `name`                             | 是   | 插件名                          |
+| `displayName`                      | 否   | 插件显示名，不填时回退到 `name` |
+| `publisher`                        | 是   | 发布者                          |
+| `version`                          | 是   | 插件版本                        |
+| `contributes.themes`               | 是   | 主题列表，至少 1 项             |
+| `contributes.themes[].id`          | 是   | 主题全局唯一 id                 |
+| `contributes.themes[].label`       | 是   | 设置页和命令中心显示名          |
+| `contributes.themes[].description` | 否   | 主题说明                        |
+| `contributes.themes[].uiTheme`     | 是   | `vs` 或 `vs-dark`               |
+| `contributes.themes[].path`        | 是   | 相对插件包目录的主题 JSON 路径  |
 
 运行时会派生：
 
@@ -251,129 +251,129 @@ Windows 下通常会落在类似下面的位置：
 
 ### 7.1 基础界面 Token
 
-| Token | 说明 |
-| --- | --- |
-| `background` | 应用主背景 |
-| `foreground` | 应用主文本色 |
-| `card` | 卡片背景 |
-| `card-foreground` | 卡片文本 |
-| `popover` | 浮层背景 |
-| `popover-foreground` | 浮层文本 |
-| `primary` | 主操作色 |
-| `primary-foreground` | 主操作文本色 |
-| `secondary` | 次级背景 |
-| `secondary-foreground` | 次级文本色 |
-| `muted` | 弱对比背景 |
-| `muted-foreground` | 弱对比文本 |
-| `accent` | 强调背景 |
-| `accent-foreground` | 强调文本 |
-| `destructive` | 危险色 |
-| `destructive-foreground` | 危险文本色 |
-| `border` | 默认边框色 |
-| `input` | 输入框背景 |
-| `ring` | 焦点高亮色 |
-| `radius` | 默认圆角值 |
+| Token                    | 说明         |
+| ------------------------ | ------------ |
+| `background`             | 应用主背景   |
+| `foreground`             | 应用主文本色 |
+| `card`                   | 卡片背景     |
+| `card-foreground`        | 卡片文本     |
+| `popover`                | 浮层背景     |
+| `popover-foreground`     | 浮层文本     |
+| `primary`                | 主操作色     |
+| `primary-foreground`     | 主操作文本色 |
+| `secondary`              | 次级背景     |
+| `secondary-foreground`   | 次级文本色   |
+| `muted`                  | 弱对比背景   |
+| `muted-foreground`       | 弱对比文本   |
+| `accent`                 | 强调背景     |
+| `accent-foreground`      | 强调文本     |
+| `destructive`            | 危险色       |
+| `destructive-foreground` | 危险文本色   |
+| `border`                 | 默认边框色   |
+| `input`                  | 输入框背景   |
+| `ring`                   | 焦点高亮色   |
+| `radius`                 | 默认圆角值   |
 
 ### 7.2 Sidebar Token
 
-| Token | 说明 |
-| --- | --- |
-| `sidebar` | 主侧栏背景 |
-| `sidebar-foreground` | 主侧栏文本 |
-| `sidebar-primary` | 主侧栏强调色 |
-| `sidebar-primary-foreground` | 主侧栏强调文本 |
-| `sidebar-accent` | 主侧栏 hover / 强调背景 |
-| `sidebar-accent-foreground` | 主侧栏强调文本 |
-| `sidebar-border` | 主侧栏边框 |
-| `sidebar-ring` | 主侧栏焦点色 |
+| Token                        | 说明                    |
+| ---------------------------- | ----------------------- |
+| `sidebar`                    | 主侧栏背景              |
+| `sidebar-foreground`         | 主侧栏文本              |
+| `sidebar-primary`            | 主侧栏强调色            |
+| `sidebar-primary-foreground` | 主侧栏强调文本          |
+| `sidebar-accent`             | 主侧栏 hover / 强调背景 |
+| `sidebar-accent-foreground`  | 主侧栏强调文本          |
+| `sidebar-border`             | 主侧栏边框              |
+| `sidebar-ring`               | 主侧栏焦点色            |
 
 ### 7.3 Workbench Token
 
-| Token | 说明 |
-| --- | --- |
-| `workbench-bg` | 整体 workbench 背景 |
-| `workbench-titlebar` | 标题栏背景 |
-| `workbench-activity-bar` | Activity Bar 背景 |
-| `workbench-sidebar` | Explorer / Settings 侧栏背景 |
-| `workbench-tabs` | 编辑器标签栏背景 |
-| `workbench-editor` | 编辑区背景 |
-| `workbench-panel` | 底部面板背景 |
-| `workbench-border` | workbench 通用边框 |
-| `workbench-hover` | hover 背景 |
-| `workbench-active` | 激活态强调色 |
-| `workbench-logo` | 标题栏 logo 主色 |
-| `workbench-statusbar` | 状态栏背景 |
-| `workbench-statusbar-foreground` | 状态栏文本 |
-| `workbench-muted` | workbench 弱化文本 |
-| `workbench-input` | workbench 输入框背景 |
-| `workbench-card-radius` | workbench 卡片圆角 |
-| `workbench-hero-radius` | hero 区块圆角 |
-| `workbench-list-radius` | 列表项圆角 |
-| `workbench-metric-radius` | 指标卡片圆角 |
-| `workbench-panel-frame-radius` | 面板容器圆角 |
-| `workbench-tab-radius` | 标签圆角 |
+| Token                            | 说明                         |
+| -------------------------------- | ---------------------------- |
+| `workbench-bg`                   | 整体 workbench 背景          |
+| `workbench-titlebar`             | 标题栏背景                   |
+| `workbench-activity-bar`         | Activity Bar 背景            |
+| `workbench-sidebar`              | Explorer / Settings 侧栏背景 |
+| `workbench-tabs`                 | 编辑器标签栏背景             |
+| `workbench-editor`               | 编辑区背景                   |
+| `workbench-panel`                | 底部面板背景                 |
+| `workbench-border`               | workbench 通用边框           |
+| `workbench-hover`                | hover 背景                   |
+| `workbench-active`               | 激活态强调色                 |
+| `workbench-logo`                 | 标题栏 logo 主色             |
+| `workbench-statusbar`            | 状态栏背景                   |
+| `workbench-statusbar-foreground` | 状态栏文本                   |
+| `workbench-muted`                | workbench 弱化文本           |
+| `workbench-input`                | workbench 输入框背景         |
+| `workbench-card-radius`          | workbench 卡片圆角           |
+| `workbench-hero-radius`          | hero 区块圆角                |
+| `workbench-list-radius`          | 列表项圆角                   |
+| `workbench-metric-radius`        | 指标卡片圆角                 |
+| `workbench-panel-frame-radius`   | 面板容器圆角                 |
+| `workbench-tab-radius`           | 标签圆角                     |
 
 ### 7.4 Toast Token
 
-| Token | 说明 |
-| --- | --- |
-| `toast-info` | 信息 toast 强调色 |
-| `toast-success` | 成功 toast 强调色 |
-| `toast-warning` | 警告 toast 强调色 |
-| `toast-shadow` | toast 阴影 |
-| `toast-highlight` | toast 内高光 |
-| `toast-radius` | toast 圆角 |
-| `toast-button-radius` | toast 按钮圆角 |
+| Token                 | 说明               |
+| --------------------- | ------------------ |
+| `toast-info`          | 信息 toast 强调色  |
+| `toast-success`       | 成功 toast 强调色  |
+| `toast-warning`       | 警告 toast 强调色  |
+| `toast-shadow`        | toast 阴影         |
+| `toast-highlight`     | toast 内高光       |
+| `toast-radius`        | toast 圆角         |
+| `toast-button-radius` | toast 按钮圆角     |
 | `toast-backdrop-blur` | toast 背景模糊强度 |
 
 ### 7.5 Glass Token
 
 这组 token 可用于自定义玻璃视觉语言效果：
 
-| Token | 说明 |
-| --- | --- |
-| `glass-surface` | 玻璃表层基础底色 |
-| `glass-surface-strong` | 更强的玻璃底色 |
-| `glass-surface-elevated` | 更高层级的玻璃底色 |
-| `glass-surface-interactive` | 交互态玻璃底色 |
-| `glass-surface-interactive-hover` | 交互态 hover 底色 |
-| `glass-border` | 玻璃边框 |
-| `glass-border-strong` | 强化玻璃边框 |
-| `glass-highlight` | 高光 |
-| `glass-shadow` | 常规玻璃阴影 |
-| `glass-shadow-strong` | 更强的玻璃阴影 |
-| `glass-glow` | 发光描边 / 外发光 |
-| `glass-blur` | 玻璃模糊强度 |
-| `glass-saturate` | 玻璃饱和度增强 |
+| Token                             | 说明               |
+| --------------------------------- | ------------------ |
+| `glass-surface`                   | 玻璃表层基础底色   |
+| `glass-surface-strong`            | 更强的玻璃底色     |
+| `glass-surface-elevated`          | 更高层级的玻璃底色 |
+| `glass-surface-interactive`       | 交互态玻璃底色     |
+| `glass-surface-interactive-hover` | 交互态 hover 底色  |
+| `glass-border`                    | 玻璃边框           |
+| `glass-border-strong`             | 强化玻璃边框       |
+| `glass-highlight`                 | 高光               |
+| `glass-shadow`                    | 常规玻璃阴影       |
+| `glass-shadow-strong`             | 更强的玻璃阴影     |
+| `glass-glow`                      | 发光描边 / 外发光  |
+| `glass-blur`                      | 玻璃模糊强度       |
+| `glass-saturate`                  | 玻璃饱和度增强     |
 
 ### 7.6 终端表层与连接遮罩 Token
 
-| Token | 说明 |
-| --- | --- |
-| `terminal-surface-bg` | 终端容器表层背景 |
-| `terminal-overlay-backdrop` | 连接中 / 重连遮罩背景 |
-| `terminal-overlay-panel` | 遮罩面板背景 |
-| `terminal-overlay-border` | 遮罩边框 |
-| `terminal-overlay-text` | 遮罩主文本 |
-| `terminal-overlay-muted` | 遮罩弱文本 |
-| `terminal-overlay-label` | 阶段标签文本 |
-| `terminal-overlay-accent` | 遮罩强调文本 |
-| `terminal-overlay-accent-strong` | 遮罩强强调色 |
-| `terminal-overlay-accent-soft` | 遮罩柔和强调背景 |
-| `terminal-overlay-progress` | 进度条颜色 |
-| `terminal-overlay-step-border` | 步骤边框 |
-| `terminal-overlay-warning` | 警告色 |
-| `terminal-overlay-warning-soft` | 警告背景 |
-| `terminal-overlay-radius` | 遮罩圆角 |
-| `terminal-overlay-backdrop-blur` | 遮罩背景模糊强度 |
+| Token                            | 说明                  |
+| -------------------------------- | --------------------- |
+| `terminal-surface-bg`            | 终端容器表层背景      |
+| `terminal-overlay-backdrop`      | 连接中 / 重连遮罩背景 |
+| `terminal-overlay-panel`         | 遮罩面板背景          |
+| `terminal-overlay-border`        | 遮罩边框              |
+| `terminal-overlay-text`          | 遮罩主文本            |
+| `terminal-overlay-muted`         | 遮罩弱文本            |
+| `terminal-overlay-label`         | 阶段标签文本          |
+| `terminal-overlay-accent`        | 遮罩强调文本          |
+| `terminal-overlay-accent-strong` | 遮罩强强调色          |
+| `terminal-overlay-accent-soft`   | 遮罩柔和强调背景      |
+| `terminal-overlay-progress`      | 进度条颜色            |
+| `terminal-overlay-step-border`   | 步骤边框              |
+| `terminal-overlay-warning`       | 警告色                |
+| `terminal-overlay-warning-soft`  | 警告背景              |
+| `terminal-overlay-radius`        | 遮罩圆角              |
+| `terminal-overlay-backdrop-blur` | 遮罩背景模糊强度      |
 
 ### 7.7 扫描线 Token
 
-| Token | 说明 |
-| --- | --- |
+| Token                       | 说明             |
+| --------------------------- | ---------------- |
 | `terminal-scanline-opacity` | 终端扫描线透明度 |
-| `terminal-scanline-color` | 扫描线颜色 |
-| `terminal-scanline-size` | 扫描线间距 |
+| `terminal-scanline-color`   | 扫描线颜色       |
+| `terminal-scanline-size`    | 扫描线间距       |
 
 如果不需要扫描线效果，最直接的做法是：
 
@@ -384,28 +384,28 @@ Windows 下通常会落在类似下面的位置：
 
 `terminal` 字段支持的键与 `TERMINAL_COLOR_KEYS` 一致：
 
-| Token | 说明 |
-| --- | --- |
-| `background` | 终端背景色 |
-| `foreground` | 终端前景色 |
-| `cursor` | 光标颜色 |
+| Token                 | 说明         |
+| --------------------- | ------------ |
+| `background`          | 终端背景色   |
+| `foreground`          | 终端前景色   |
+| `cursor`              | 光标颜色     |
 | `selectionBackground` | 终端选区背景 |
-| `black` | ANSI 黑 |
-| `red` | ANSI 红 |
-| `green` | ANSI 绿 |
-| `yellow` | ANSI 黄 |
-| `blue` | ANSI 蓝 |
-| `magenta` | ANSI 洋红 |
-| `cyan` | ANSI 青 |
-| `white` | ANSI 白 |
-| `brightBlack` | ANSI 亮黑 |
-| `brightRed` | ANSI 亮红 |
-| `brightGreen` | ANSI 亮绿 |
-| `brightYellow` | ANSI 亮黄 |
-| `brightBlue` | ANSI 亮蓝 |
-| `brightMagenta` | ANSI 亮洋红 |
-| `brightCyan` | ANSI 亮青 |
-| `brightWhite` | ANSI 亮白 |
+| `black`               | ANSI 黑      |
+| `red`                 | ANSI 红      |
+| `green`               | ANSI 绿      |
+| `yellow`              | ANSI 黄      |
+| `blue`                | ANSI 蓝      |
+| `magenta`             | ANSI 洋红    |
+| `cyan`                | ANSI 青      |
+| `white`               | ANSI 白      |
+| `brightBlack`         | ANSI 亮黑    |
+| `brightRed`           | ANSI 亮红    |
+| `brightGreen`         | ANSI 亮绿    |
+| `brightYellow`        | ANSI 亮黄    |
+| `brightBlue`          | ANSI 亮蓝    |
+| `brightMagenta`       | ANSI 亮洋红  |
+| `brightCyan`          | ANSI 亮青    |
+| `brightWhite`         | ANSI 亮白    |
 
 ## 9. 渲染层应用细节
 
@@ -413,11 +413,11 @@ Windows 下通常会落在类似下面的位置：
 
 1. 根据 `appearance` 切换 `.dark`
 2. 设置 `data-theme`
-4. 设置 `data-theme-appearance`
-5. 设置 `data-theme-plugin`
-6. 设置 `data-theme-selection`
-7. 设置 `color-scheme`
-8. 把全部 UI token 写入 CSS 变量
+3. 设置 `data-theme-appearance`
+4. 设置 `data-theme-plugin`
+5. 设置 `data-theme-selection`
+6. 设置 `color-scheme`
+7. 把全部 UI token 写入 CSS 变量
 
 ## 10. `terminalDefaults` 的真实行为
 

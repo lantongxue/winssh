@@ -83,8 +83,11 @@ vi.mock('ssh2', () => ({
     sftp = vi.fn((callback: (error: undefined, sftp: unknown) => void) => {
       callback(undefined, {
         close: (_handle: Buffer, next: (error?: Error) => void) => next(),
-        open: (remotePath: string, _flags: string, next: (error: undefined, handle: Buffer) => void) =>
-          next(undefined, Buffer.from(remotePath)),
+        open: (
+          remotePath: string,
+          _flags: string,
+          next: (error: undefined, handle: Buffer) => void
+        ) => next(undefined, Buffer.from(remotePath)),
         read: (
           handle: Buffer,
           buffer: Buffer,

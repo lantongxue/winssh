@@ -42,8 +42,7 @@ function CommandDialog({
 }) {
   const { t } = useTranslation()
   const resolvedTitle = title ?? t('common.actions.commandPalette')
-  const resolvedDescription =
-    description ?? t('workbench.commandCenter.commandPalette.description')
+  const resolvedDescription = description ?? t('workbench.commandCenter.commandPalette.description')
 
   return (
     <Dialog {...props}>

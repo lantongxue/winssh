@@ -50,16 +50,17 @@ describe('ServersApplicationService', () => {
       typeof ServersApplicationService
     >[0]
     const secureStore = {
-      listStatuses: vi.fn(async () =>
-        new Map([
-          [
-            'server-1',
-            {
-              hasPassphrase: false,
-              hasPassword: true
-            }
-          ]
-        ])
+      listStatuses: vi.fn(
+        async () =>
+          new Map([
+            [
+              'server-1',
+              {
+                hasPassphrase: false,
+                hasPassword: true
+              }
+            ]
+          ])
       )
     } satisfies SecureStoreDouble as unknown as ConstructorParameters<
       typeof ServersApplicationService
@@ -120,16 +121,17 @@ describe('ServersApplicationService', () => {
     >[0]
     const secureStore = {
       deleteSecret: vi.fn(async () => undefined),
-      listStatuses: vi.fn(async () =>
-        new Map([
-          [
-            'server-1',
-            {
-              hasPassphrase: false,
-              hasPassword: true
-            }
-          ]
-        ])
+      listStatuses: vi.fn(
+        async () =>
+          new Map([
+            [
+              'server-1',
+              {
+                hasPassphrase: false,
+                hasPassword: true
+              }
+            ]
+          ])
       ),
       setSecret: vi.fn(async () => undefined)
     } satisfies SecureStoreDouble as unknown as ConstructorParameters<

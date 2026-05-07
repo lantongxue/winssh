@@ -120,9 +120,7 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
         >
           <div className="flex min-w-0 items-baseline gap-1.5 text-[11px] leading-none text-muted-foreground">
             <span className="shrink-0">{t('workbench.sessionEditor.serverAddress')}</span>
-            <span className="truncate font-mono">
-              {session.host}
-            </span>
+            <span className="truncate font-mono">{session.host}</span>
           </div>
         </button>
         <SessionResourceMonitor

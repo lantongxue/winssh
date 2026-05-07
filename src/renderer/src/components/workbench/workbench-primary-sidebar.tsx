@@ -794,8 +794,6 @@ export function WorkbenchPrimarySidebar() {
     }
   }
 
-
-
   const clearServerSearch = () => {
     setServerSearchQuery('')
   }

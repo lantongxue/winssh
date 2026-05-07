@@ -136,4 +136,3 @@ function isAppErrorLike(error: unknown): error is AppError {
     'recoverable' in error
   )
 }
-

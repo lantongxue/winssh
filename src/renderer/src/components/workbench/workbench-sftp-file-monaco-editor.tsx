@@ -516,17 +516,18 @@ export function WorkbenchSftpFileMonacoEditor({
                   <Download className="size-8 text-muted-foreground animate-pulse" />
                   <div className="w-full space-y-2">
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="font-medium">
-                        {t('workbench.sftpFileEditor.loading')}
-                      </span>
+                      <span className="font-medium">{t('workbench.sftpFileEditor.loading')}</span>
                       <span>
-                        {formatFileSize(downloadProgress.transferred)} / {formatFileSize(downloadProgress.total)}
+                        {formatFileSize(downloadProgress.transferred)} /{' '}
+                        {formatFileSize(downloadProgress.total)}
                       </span>
                     </div>
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--workbench-border)]">
                       <div
                         className="h-full rounded-full bg-primary transition-all duration-200 ease-out"
-                        style={{ width: `${Math.min(100, (downloadProgress.transferred / downloadProgress.total) * 100)}%` }}
+                        style={{
+                          width: `${Math.min(100, (downloadProgress.transferred / downloadProgress.total) * 100)}%`
+                        }}
                       />
                     </div>
                     <div className="text-center text-[11px] text-muted-foreground">

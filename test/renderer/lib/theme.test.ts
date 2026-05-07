@@ -188,5 +188,4 @@ describe('theme helpers', () => {
     expect(appearance.theme.background).toBe('#ffffff')
     expect(appearance.theme.foreground).toBe('#1f2328')
   })
-
 })

@@ -194,9 +194,9 @@ describe('WorkbenchQuickInput quick connect flow', () => {
 
     await waitFor(() => {
       expect(useSessionsStore.getState().activeSessionId).toBe('session-1')
-      expect(
-        useSessionsStore.getState().tabs.some((tab) => tab.sessionId === 'session-1')
-      ).toBe(true)
+      expect(useSessionsStore.getState().tabs.some((tab) => tab.sessionId === 'session-1')).toBe(
+        true
+      )
     })
 
     expect(serversCreate).toHaveBeenCalledTimes(1)

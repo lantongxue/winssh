@@ -7,7 +7,14 @@ import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import type { Credential, Server, ServerGroup, ServerSecrets, ServerUpsertInput, Tag } from '@shared/types'
+import type {
+  Credential,
+  Server,
+  ServerGroup,
+  ServerSecrets,
+  ServerUpsertInput,
+  Tag
+} from '@shared/types'
 import { serverSchema, tagSchema, type ServerFormValues } from '@shared/validation'
 import { credentialsClient } from '@/features/credentials/api/credentials-client'
 import { groupsClient } from '@/features/groups/api/groups-client'
@@ -393,12 +400,9 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
 
   const form = useForm<ServerFormValues>({
     resolver: zodResolver(serverSchema as never),
-    defaultValues: toDefaultValues(
-      server,
-      credentialStorageAvailable,
-      serverSecretsQuery.data,
-      { initialGroupId: document.initialGroupId }
-    )
+    defaultValues: toDefaultValues(server, credentialStorageAvailable, serverSecretsQuery.data, {
+      initialGroupId: document.initialGroupId
+    })
   })
   const jumpServerForm = useForm<JumpServerFormInputValues, unknown, JumpServerFormValues>({
     resolver: zodResolver(jumpServerSchema),
@@ -406,9 +410,11 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   })
 
   useEffect(() => {
-    form.reset(toDefaultValues(server, credentialStorageAvailable, undefined, {
-      initialGroupId: document.initialGroupId
-    }))
+    form.reset(
+      toDefaultValues(server, credentialStorageAvailable, undefined, {
+        initialGroupId: document.initialGroupId
+      })
+    )
   }, [credentialStorageAvailable, document.id, document.initialGroupId, form, server])
 
   useEffect(() => {
@@ -1287,7 +1293,9 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                   <FormLabel className="sr-only">
                     {t('workbench.serverEditor.fields.jumpServer')}
                   </FormLabel>
-                  <FormDescription>{t('workbench.serverEditor.descriptions.jumpServer')}</FormDescription>
+                  <FormDescription>
+                    {t('workbench.serverEditor.descriptions.jumpServer')}
+                  </FormDescription>
                   <Select
                     value={field.value ?? '__none__'}
                     onValueChange={(value) => field.onChange(value === '__none__' ? null : value)}

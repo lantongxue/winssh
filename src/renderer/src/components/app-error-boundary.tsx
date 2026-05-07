@@ -39,4 +39,3 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
     return this.props.children
   }
 }
-

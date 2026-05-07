@@ -1,10 +1,7 @@
 import { act, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  SESSION_RESOURCE_MONITOR_LINUX_ONLY,
-  type SessionResourceSnapshot
-} from '@shared/types'
+import { SESSION_RESOURCE_MONITOR_LINUX_ONLY, type SessionResourceSnapshot } from '@shared/types'
 import i18n from '@/i18n'
 import { SessionResourceMonitor } from '@/components/session-resource-monitor'
 import { createWinsshApiMock } from '@test/renderer/helpers/create-winssh-api'
@@ -70,11 +67,7 @@ function renderMonitor({
 } = {}) {
   return render(
     <QueryClientProvider client={queryClient}>
-      <SessionResourceMonitor
-        active={active}
-        expanded={expanded}
-        session={session}
-      />
+      <SessionResourceMonitor active={active} expanded={expanded} session={session} />
     </QueryClientProvider>
   )
 }
@@ -105,11 +98,7 @@ describe('SessionResourceMonitor', () => {
     await act(async () => {
       rerender(
         <QueryClientProvider client={queryClient}>
-          <SessionResourceMonitor
-            active
-            expanded
-            session={baseSession}
-          />
+          <SessionResourceMonitor active expanded session={baseSession} />
         </QueryClientProvider>
       )
       await Promise.resolve()
@@ -125,11 +114,7 @@ describe('SessionResourceMonitor', () => {
     await act(async () => {
       rerender(
         <QueryClientProvider client={queryClient}>
-          <SessionResourceMonitor
-            active={false}
-            expanded
-            session={baseSession}
-          />
+          <SessionResourceMonitor active={false} expanded session={baseSession} />
         </QueryClientProvider>
       )
       await Promise.resolve()

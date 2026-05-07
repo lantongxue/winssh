@@ -312,7 +312,9 @@ const ComboboxChips = React.forwardRef<HTMLDivElement, ComboboxChipsProps>(
                         )}
                       </Button>
                     ) : null}
-                    <Check className={cn('size-4 shrink-0', selected ? 'opacity-100' : 'opacity-0')} />
+                    <Check
+                      className={cn('size-4 shrink-0', selected ? 'opacity-100' : 'opacity-0')}
+                    />
                   </CommandItem>
                 )
               })}

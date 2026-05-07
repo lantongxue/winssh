@@ -37,7 +37,9 @@ const themeColorKeys = Array.from(
 )
 
 function isValidSiteThemeSelection(value: string | null): value is SiteThemeSelection {
-  return value === SITE_THEME_SYSTEM || value === SITE_LIGHT_THEME_ID || value === SITE_DARK_THEME_ID
+  return (
+    value === SITE_THEME_SYSTEM || value === SITE_LIGHT_THEME_ID || value === SITE_DARK_THEME_ID
+  )
 }
 
 export function resolveSystemThemeAppearance(): SiteThemeAppearance {

@@ -108,7 +108,10 @@ export class LogFileService {
       .map((line) => line.trim())
       .filter(Boolean)
 
-    return lines.slice(-limit).reverse().map((line, index) => parseLogEntry(line, index))
+    return lines
+      .slice(-limit)
+      .reverse()
+      .map((line, index) => parseLogEntry(line, index))
   }
 
   async clear() {

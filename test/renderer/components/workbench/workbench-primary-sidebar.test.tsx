@@ -194,7 +194,9 @@ describe('WorkbenchPrimarySidebar', () => {
     expect(within(managementSection as HTMLElement).getAllByText('Server Management')).toHaveLength(
       1
     )
-    expect(within(managementSection as HTMLElement).queryByText('Ungrouped')).not.toBeInTheDocument()
+    expect(
+      within(managementSection as HTMLElement).queryByText('Ungrouped')
+    ).not.toBeInTheDocument()
     expect(within(recentSection as HTMLElement).getAllByText('Recent')).toHaveLength(1)
     expect(await screen.findAllByText('103.205.241.248')).toHaveLength(2)
     expect(await screen.findAllByText('Connected')).toHaveLength(2)

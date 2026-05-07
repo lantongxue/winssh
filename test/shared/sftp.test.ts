@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { getParentRemotePath, joinRemotePath, normalizeRemotePath, sortRemoteEntries } from '@shared/sftp'
+import {
+  getParentRemotePath,
+  joinRemotePath,
+  normalizeRemotePath,
+  sortRemoteEntries
+} from '@shared/sftp'
 
 describe('sftp path helpers', () => {
   it('normalizes empty and nested paths', () => {

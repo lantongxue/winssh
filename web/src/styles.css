@@ -51,7 +51,9 @@ body {
   margin: 0;
   background: var(--workbench-bg);
   color: var(--foreground);
-  font-family: 'Source Sans 3', 'Segoe UI Variable Text', 'Segoe UI', 'Microsoft YaHei UI', system-ui, sans-serif;
+  font-family:
+    'Source Sans 3', 'Segoe UI Variable Text', 'Segoe UI', 'Microsoft YaHei UI', system-ui,
+    sans-serif;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -63,8 +65,16 @@ body::before {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 80% 50% at 85% 0%, color-mix(in srgb, var(--workbench-active) 8%, transparent) 0, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 10% 20%, color-mix(in srgb, var(--workbench-active) 5%, transparent) 0, transparent 50%);
+    radial-gradient(
+      ellipse 80% 50% at 85% 0%,
+      color-mix(in srgb, var(--workbench-active) 8%, transparent) 0,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 60% 40% at 10% 20%,
+      color-mix(in srgb, var(--workbench-active) 5%, transparent) 0,
+      transparent 50%
+    );
   opacity: 0.85;
   z-index: -1;
 }

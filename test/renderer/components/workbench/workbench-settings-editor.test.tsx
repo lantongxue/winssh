@@ -348,7 +348,9 @@ describe('WorkbenchSettingsEditor theme selection', () => {
 
     const uiFontSelect = await screen.findByRole('combobox', { name: 'Interface font' })
     fireEvent.click(uiFontSelect)
-    fireEvent.click((await screen.findAllByRole('option', { name: 'Fira Code' })).at(-1) as HTMLElement)
+    fireEvent.click(
+      (await screen.findAllByRole('option', { name: 'Fira Code' })).at(-1) as HTMLElement
+    )
 
     await waitFor(() => {
       expect(updateSettings).toHaveBeenCalledWith({
@@ -360,7 +362,9 @@ describe('WorkbenchSettingsEditor theme selection', () => {
 
     const fontSelect = screen.getByRole('combobox', { name: 'Terminal font' })
     fireEvent.click(fontSelect)
-    fireEvent.click((await screen.findAllByRole('option', { name: 'Open Sans' })).at(-1) as HTMLElement)
+    fireEvent.click(
+      (await screen.findAllByRole('option', { name: 'Open Sans' })).at(-1) as HTMLElement
+    )
 
     await waitFor(() => {
       expect(updateSettings).toHaveBeenCalledWith({

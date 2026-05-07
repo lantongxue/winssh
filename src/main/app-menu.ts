@@ -1,8 +1,4 @@
-import {
-  Menu,
-  type BrowserWindow,
-  type MenuItemConstructorOptions
-} from 'electron'
+import { Menu, type BrowserWindow, type MenuItemConstructorOptions } from 'electron'
 import type { SystemMenuAction } from '@shared/types'
 import type { MainTranslator } from './localization'
 import type { UpdateService } from './update-service'

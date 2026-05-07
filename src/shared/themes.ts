@@ -507,9 +507,7 @@ export function createThemeDefinition(input: ThemeDefinitionInput): ThemeDefinit
     terminalDefaults?.lineHeight !== undefined
       ? {
           ...terminalDefaults,
-          fontId: isIntegratedFontId(terminalDefaults.fontId)
-            ? terminalDefaults.fontId
-            : undefined
+          fontId: isIntegratedFontId(terminalDefaults.fontId) ? terminalDefaults.fontId : undefined
         }
       : undefined
 

@@ -25,7 +25,10 @@ export function WorkbenchPanel() {
 
   const batchEntries = Object.values(batchProgress)
   const batchTotalFiles = batchEntries.reduce((sum, b) => sum + b.total, 0)
-  const batchCompletedFiles = batchEntries.reduce((sum, b) => sum + Math.min(b.completed, b.total), 0)
+  const batchCompletedFiles = batchEntries.reduce(
+    (sum, b) => sum + Math.min(b.completed, b.total),
+    0
+  )
   const hasActiveBatch = batchTotalFiles > 0 && batchCompletedFiles < batchTotalFiles
   const batchRatio = batchTotalFiles > 0 ? Math.min(batchCompletedFiles / batchTotalFiles, 1) : 0
 
@@ -97,7 +100,9 @@ export function WorkbenchPanel() {
                 <div key={entry.id} className="bg-[var(--workbench-panel)] px-4 py-3 text-sm">
                   <div className="flex items-center justify-between gap-3">
                     <div className="font-medium text-foreground">{entry.message}</div>
-                    <div className="text-[11px] text-muted-foreground">{formatTime(entry.createdAt)}</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {formatTime(entry.createdAt)}
+                    </div>
                   </div>
                   {entry.detail ? (
                     <div className="mt-1 text-xs text-muted-foreground">{entry.detail}</div>

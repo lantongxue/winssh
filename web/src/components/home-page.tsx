@@ -75,7 +75,9 @@ export function HomePage() {
         <div className="space-y-4">
           <div className="site-card-hover border border-[var(--workbench-border)] bg-[var(--workbench-bg)] p-5">
             <div className="site-eyebrow">{copy.meta.winkMeaning}</div>
-            <div className="mt-3 text-xl font-bold tracking-[-0.01em]">{copy.home.hero.winkCardTitle}</div>
+            <div className="mt-3 text-xl font-bold tracking-[-0.01em]">
+              {copy.home.hero.winkCardTitle}
+            </div>
             <p className="mt-3 text-sm leading-[1.7] text-[var(--workbench-muted)]">
               {copy.home.hero.winkCardBody}
             </p>
@@ -210,7 +212,9 @@ export function HomePage() {
 
           <aside className="site-card-hover border border-[var(--workbench-border)] bg-[var(--workbench-sidebar)] p-5">
             <div className="site-eyebrow">{copy.home.download.noteEyebrow}</div>
-            <div className="mt-3 text-xl font-bold tracking-[-0.01em]">{copy.home.download.noteTitle}</div>
+            <div className="mt-3 text-xl font-bold tracking-[-0.01em]">
+              {copy.home.download.noteTitle}
+            </div>
             <p className="mt-3 text-sm leading-[1.7] text-[var(--workbench-muted)]">
               {copy.home.download.noteBody}
             </p>

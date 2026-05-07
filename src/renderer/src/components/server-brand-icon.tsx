@@ -42,7 +42,10 @@ export function ServerBrandIcon({
 
   return (
     <span
-      className={cn('inline-flex shrink-0 items-center justify-center text-[var(--workbench-muted)]', className)}
+      className={cn(
+        'inline-flex shrink-0 items-center justify-center text-[var(--workbench-muted)]',
+        className
+      )}
       aria-hidden="true"
       {...props}
     >

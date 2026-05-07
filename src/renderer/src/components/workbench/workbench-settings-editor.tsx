@@ -950,31 +950,25 @@ export function WorkbenchSettingsEditor() {
                             {...field}
                             onBlur={() => {
                               field.onBlur()
-                              const parsed = settingsSchema.shape.resourceMonitorIntervalMs.safeParse(
-                                form.getValues('resourceMonitorIntervalMs')
-                              )
+                              const parsed =
+                                settingsSchema.shape.resourceMonitorIntervalMs.safeParse(
+                                  form.getValues('resourceMonitorIntervalMs')
+                                )
                               if (!parsed.success) {
                                 resetSavedField(
                                   'resourceMonitorIntervalMs',
                                   savedSettingsRef.current?.resourceMonitorIntervalMs ??
                                     DEFAULT_SETTINGS_FORM_VALUES.resourceMonitorIntervalMs
                                 )
-                                toast.error(
-                                  t('workbench.settings.validation.failed')
-                                )
+                                toast.error(t('workbench.settings.validation.failed'))
                                 return
                               }
-                              void handleSettingSave(
-                                'resourceMonitorIntervalMs',
-                                parsed.data
-                              )
+                              void handleSettingSave('resourceMonitorIntervalMs', parsed.data)
                             }}
                           />
                         </FormControl>
                         <FormDescription>
-                          {t(
-                            'workbench.settings.form.resourceMonitorIntervalDescription'
-                          )}
+                          {t('workbench.settings.form.resourceMonitorIntervalDescription')}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

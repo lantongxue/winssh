@@ -17,7 +17,9 @@ export function registerSessionIpc(service: SessionsApplicationService) {
   ipcMain.handle('sessions:connect', (_event, request: ConnectionRequest) =>
     service.connect(parseInput(connectionRequestSchema, request))
   )
-  ipcMain.handle('sessions:disconnect', (_event, sessionId: string) => service.disconnect(sessionId))
+  ipcMain.handle('sessions:disconnect', (_event, sessionId: string) =>
+    service.disconnect(sessionId)
+  )
   ipcMain.handle('sessions:reconnect', (_event, sessionId: string) => service.reconnect(sessionId))
   ipcMain.handle('sessions:getResourceSnapshot', (_event, sessionId: string) =>
     service.getResourceSnapshot(sessionId)

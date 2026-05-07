@@ -255,18 +255,18 @@ describe('WorkbenchEditorTabs session context menu', () => {
     })
 
     useWorkbenchStore.getState().openDocument(createSettingsEditorDocument())
-    useWorkbenchStore.getState().openDocument(
-      createSftpFileEditorDocument(sessionSummary.sessionId, '/etc/nginx/nginx.conf')
-    )
+    useWorkbenchStore
+      .getState()
+      .openDocument(createSftpFileEditorDocument(sessionSummary.sessionId, '/etc/nginx/nginx.conf'))
     renderEditorTabs()
 
     fireEvent.contextMenu(await screen.findByText('Settings'))
     fireEvent.click(await screen.findByText('Close Tab'))
 
     await waitFor(() => {
-      expect(
-        useWorkbenchStore.getState().openDocuments.map((document) => document.id)
-      ).toEqual(['sftp-file-editor:session-1:%2Fetc%2Fnginx%2Fnginx.conf'])
+      expect(useWorkbenchStore.getState().openDocuments.map((document) => document.id)).toEqual([
+        'sftp-file-editor:session-1:%2Fetc%2Fnginx%2Fnginx.conf'
+      ])
     })
   })
 

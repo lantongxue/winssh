@@ -31,4 +31,3 @@ export const rendererLogger = {
   info: (message: string, data?: unknown) => log('info', message, data),
   warn: (message: string, data?: unknown) => log('warn', message, data)
 }
-

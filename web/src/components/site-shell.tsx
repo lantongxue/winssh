@@ -370,12 +370,17 @@ function SiteShellContent({
       <footer className="flex h-7 shrink-0 items-center justify-between gap-3 overflow-x-auto bg-[var(--workbench-statusbar)] px-3 text-[11px] text-[var(--workbench-statusbar-foreground)]">
         <div className="flex min-w-max items-center gap-3">
           <span className="font-semibold">{copy.meta.appName}</span>
-          <span>{copy.shell.statusChannelLabel}: {copy.meta.releaseChannel}</span>
-          <span>{copy.shell.statusVersionLabel}: {copy.meta.version}</span>
+          <span>
+            {copy.shell.statusChannelLabel}: {copy.meta.releaseChannel}
+          </span>
+          <span>
+            {copy.shell.statusVersionLabel}: {copy.meta.version}
+          </span>
         </div>
         <div className="flex min-w-max items-center gap-3">
           <span>
-            {copy.shell.statusPlatformLabel}: {copy.meta.platforms.map((platform) => platform.label).join(' / ')}
+            {copy.shell.statusPlatformLabel}:{' '}
+            {copy.meta.platforms.map((platform) => platform.label).join(' / ')}
           </span>
           <span>
             {copy.shell.statusLanguageLabel}: {locale}

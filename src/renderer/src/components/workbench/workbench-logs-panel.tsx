@@ -91,10 +91,20 @@ export function WorkbenchLogsPanel() {
             >
               {t('workbench.panel.logs.actions.savePath')}
             </Button>
-            <Button size="sm" variant="outline" disabled={isBusy} onClick={() => void refreshLogs()}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isBusy}
+              onClick={() => void refreshLogs()}
+            >
               {t('common.actions.refresh')}
             </Button>
-            <Button size="sm" variant="ghost" disabled={isBusy} onClick={() => clearMutation.mutate()}>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={isBusy}
+              onClick={() => clearMutation.mutate()}
+            >
               {t('workbench.panel.logs.actions.clear')}
             </Button>
           </div>

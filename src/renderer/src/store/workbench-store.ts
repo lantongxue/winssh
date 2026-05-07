@@ -388,7 +388,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
             const completed = (current?.completed ?? 0) + 1
             nextBatchProgress = {
               ...state.batchProgress,
-              [entry.batchId!]: { total: entry.batchTotal ?? (current?.total ?? 0), completed }
+              [entry.batchId!]: { total: entry.batchTotal ?? current?.total ?? 0, completed }
             }
           }
 

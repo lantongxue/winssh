@@ -123,10 +123,7 @@ function resolveServeDirectory(options) {
 
 function createIndexHtml({ host, port, serveDirectory, files }) {
   const encodedFiles = files
-    .map(
-      (file) =>
-        `<li><a href="/${encodeURI(file)}">${file}</a></li>`
-    )
+    .map((file) => `<li><a href="/${encodeURI(file)}">${file}</a></li>`)
     .join('\n')
 
   return `<!doctype html>

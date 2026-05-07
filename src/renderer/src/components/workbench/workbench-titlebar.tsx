@@ -150,7 +150,9 @@ export function WorkbenchTitlebar() {
   const QuickOpenIcon = actionIcons.quickOpen
   const OpenTerminalIcon = actionIcons.openTerminal
   const CommandPaletteIcon = actionIcons.commandPalette
-  const ToggleSidebarIcon = sidebarOpen ? actionIcons.toggleSidebarOpen : actionIcons.toggleSidebarClosed
+  const ToggleSidebarIcon = sidebarOpen
+    ? actionIcons.toggleSidebarOpen
+    : actionIcons.toggleSidebarClosed
   const TogglePanelIcon = panelOpen ? actionIcons.togglePanelOpen : actionIcons.togglePanelClosed
   const MinimizeWindowIcon = actionIcons.minimizeWindow
   const MaximizeWindowIcon = isMaximized ? actionIcons.restoreWindow : actionIcons.maximizeWindow

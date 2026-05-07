@@ -1,10 +1,7 @@
 import { useCallback, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import {
-  SESSION_RESOURCE_MONITOR_LINUX_ONLY,
-  type SessionResourceSnapshot
-} from '@shared/types'
+import { SESSION_RESOURCE_MONITOR_LINUX_ONLY, type SessionResourceSnapshot } from '@shared/types'
 import { sessionsClient } from '@/features/sessions/api/sessions-client'
 import { formatFileSize, getResolvedLocale } from '@/i18n/format'
 import { cn } from '@/lib/utils'
@@ -128,8 +125,7 @@ export function SessionResourceMonitor({
     event.preventDefault()
   }, [])
 
-  const errorMessage =
-    monitorQuery.error instanceof Error ? monitorQuery.error.message : undefined
+  const errorMessage = monitorQuery.error instanceof Error ? monitorQuery.error.message : undefined
   const inlineMessage =
     errorMessage === SESSION_RESOURCE_MONITOR_LINUX_ONLY
       ? t('workbench.sessionEditor.resourceMonitor.linuxOnly')

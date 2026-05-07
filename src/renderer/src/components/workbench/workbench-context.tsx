@@ -257,7 +257,9 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   }
 
   const getServers = async (options?: { force?: boolean }) => {
-    const cached = !options?.force ? queryClient.getQueryData<Server[]>(queryKeys.servers) : undefined
+    const cached = !options?.force
+      ? queryClient.getQueryData<Server[]>(queryKeys.servers)
+      : undefined
     if (cached) {
       return cached
     }

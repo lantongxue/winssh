@@ -31,15 +31,21 @@ describe('HomePage', () => {
     )
 
     expect(screen.getByRole('heading', { level: 1, name: /knowing wink/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 2, name: /serious tooling, less ceremony/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 2, name: /installer parade comes next/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 2, name: /plainly and with a wink/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 2, name: /serious tooling, less ceremony/i })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 2, name: /installer parade comes next/i })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 2, name: /plainly and with a wink/i })
+    ).toBeInTheDocument()
     expect(screen.getByText(/open and save remote text files/i)).toBeInTheDocument()
     expect(screen.getByText(/WebDAV backup flows/i)).toBeInTheDocument()
     expect(document.title).toBe('WinSSH')
-    expect(document.head.querySelector('meta[name="description"]')?.getAttribute('content')).toMatch(
-      /WebDAV backup and restore/i
-    )
+    expect(
+      document.head.querySelector('meta[name="description"]')?.getAttribute('content')
+    ).toMatch(/WebDAV backup and restore/i)
     expect(document.head.querySelector('meta[name="keywords"]')?.getAttribute('content')).toMatch(
       /SSH client/i
     )

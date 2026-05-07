@@ -108,7 +108,9 @@ export function WorkbenchPreview() {
                 </div>
               </div>
               <div className="px-4 py-3">
-                <div className="text-[11px] text-[var(--workbench-muted)]">{preview.sessionMeta}</div>
+                <div className="text-[11px] text-[var(--workbench-muted)]">
+                  {preview.sessionMeta}
+                </div>
               </div>
               <div className="flex-1 border border-[var(--workbench-border)] bg-[var(--background)] mx-4 mb-4 p-4 font-mono text-[13px] leading-[1.65] text-[var(--foreground)]">
                 {preview.terminalLines.map((line, index) => (
@@ -176,7 +178,9 @@ export function WorkbenchPreview() {
                 <span className="site-status-dot" style={{ background: '#ffffff' }} />
                 WinSSH
               </span>
-              <span>{copy.meta.version} {copy.meta.releaseChannel}</span>
+              <span>
+                {copy.meta.version} {copy.meta.releaseChannel}
+              </span>
             </div>
             <div className="flex items-center gap-3">
               <span>{preview.quickLabels[2]}</span>

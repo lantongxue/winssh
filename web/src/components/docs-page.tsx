@@ -55,7 +55,9 @@ export function DocsPage() {
               </span>
             </div>
             <h2 className="mt-4 text-xl font-bold tracking-[-0.01em]">{card.title}</h2>
-            <p className="mt-3 text-sm leading-[1.7] text-[var(--workbench-muted)]">{card.summary}</p>
+            <p className="mt-3 text-sm leading-[1.7] text-[var(--workbench-muted)]">
+              {card.summary}
+            </p>
             <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--workbench-active)]">
               {card.title}
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
@@ -75,7 +77,9 @@ export function DocsPage() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex items-start gap-4">
                 <div className="mt-1 flex size-10 shrink-0 items-center justify-center border border-[var(--workbench-border)] bg-[var(--workbench-hover)] text-[var(--workbench-active)]">
-                  <span className="text-sm font-bold">{String(cardIndex + 1).padStart(2, '0')}</span>
+                  <span className="text-sm font-bold">
+                    {String(cardIndex + 1).padStart(2, '0')}
+                  </span>
                 </div>
                 <div>
                   <div className="site-eyebrow">{card.status}</div>
@@ -124,7 +128,9 @@ export function DocsPage() {
                           <span className="mt-0.5 text-xs font-bold text-[var(--workbench-muted)]">
                             {String(sectionIndex + 1).padStart(2, '0')}
                           </span>
-                          <h4 className="text-base font-bold tracking-[-0.01em]">{section.title}</h4>
+                          <h4 className="text-base font-bold tracking-[-0.01em]">
+                            {section.title}
+                          </h4>
                         </div>
                         {section.paragraphs?.map((paragraph) => (
                           <p
@@ -176,7 +182,9 @@ export function DocsPage() {
 
       {/* ── Footer note ── */}
       <section className="site-entrance site-entrance-4 border border-dashed border-[var(--workbench-border)] bg-[var(--workbench-bg)] p-6">
-        <div className="text-sm leading-[1.75] text-[var(--workbench-muted)]">{copy.docs.footerNote}</div>
+        <div className="text-sm leading-[1.75] text-[var(--workbench-muted)]">
+          {copy.docs.footerNote}
+        </div>
       </section>
     </SiteShell>
   )

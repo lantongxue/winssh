@@ -63,7 +63,9 @@ export function useSettingsAutoSave(settings: AppSettings | undefined) {
           options.onSuccess?.(nextSettings, previousSettings)
           return true
         } catch (error) {
-          options.onRevert?.((savedSettingsRef.current?.[field] ?? previousSettings[field]) as AppSettings[K])
+          options.onRevert?.(
+            (savedSettingsRef.current?.[field] ?? previousSettings[field]) as AppSettings[K]
+          )
           toast.error(
             error instanceof Error ? error.message : t('workbench.settings.validation.failed')
           )

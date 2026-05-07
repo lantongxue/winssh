@@ -304,7 +304,7 @@ export function WorkbenchCommandCenter({ activeDocument }: WorkbenchCommandCente
 
           <CommandGroup heading={t('workbench.commandCenter.quickOpen.groups.connections')}>
             {(serversQuery.data ?? []).map((server) => (
-                <CommandItem
+              <CommandItem
                 key={server.id}
                 value={`${server.name} ${server.host} ${server.username}`}
                 onSelect={() => {

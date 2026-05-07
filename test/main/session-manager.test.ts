@@ -24,10 +24,7 @@ class MockClient extends EventEmitter {
   exec = vi.fn(
     (
       _command: string,
-      callback?: (
-        error: Error | undefined,
-        channel: PassThrough & { stderr: PassThrough }
-      ) => void
+      callback?: (error: Error | undefined, channel: PassThrough & { stderr: PassThrough }) => void
     ) => {
       const behavior = execBehaviors.shift() ?? { error: new Error('missing exec behavior') }
       if ('error' in behavior) {
@@ -242,9 +239,11 @@ afterEach(async () => {
   vi.useRealTimers()
   execBehaviors.length = 0
   await Promise.all(
-    temporaryPaths.splice(0).map((targetPath) =>
-      fs.rm(targetPath, { recursive: true, force: true }).catch(() => undefined)
-    )
+    temporaryPaths
+      .splice(0)
+      .map((targetPath) =>
+        fs.rm(targetPath, { recursive: true, force: true }).catch(() => undefined)
+      )
   )
 })
 
@@ -442,7 +441,12 @@ describe('SessionManager port forwarding', () => {
     await manager.uploadPaths('session-1', '/deploy', [localProjectPath])
 
     expect(remoteDirectories).toEqual(
-      new Set(['/deploy', '/deploy/project', '/deploy/project/nested', '/deploy/project/nested/empty'])
+      new Set([
+        '/deploy',
+        '/deploy/project',
+        '/deploy/project/nested',
+        '/deploy/project/nested/empty'
+      ])
     )
     expect(uploadedFiles.map((entry) => entry.remotePath).sort()).toEqual([
       '/deploy/project/README.md',
@@ -492,48 +496,50 @@ describe('SessionManager port forwarding', () => {
           callback(new Error('ENOENT'))
         }
       ),
-      readdir: vi.fn((remotePath: string, callback: (error?: Error, entries?: unknown[]) => void) => {
-        if (remotePath === '/deploy/project') {
-          callback(undefined, [
-            {
-              attrs: {
-                isDirectory: () => false,
-                isSymbolicLink: () => false,
-                mtime: 0,
-                size: 7
+      readdir: vi.fn(
+        (remotePath: string, callback: (error?: Error, entries?: unknown[]) => void) => {
+          if (remotePath === '/deploy/project') {
+            callback(undefined, [
+              {
+                attrs: {
+                  isDirectory: () => false,
+                  isSymbolicLink: () => false,
+                  mtime: 0,
+                  size: 7
+                },
+                filename: 'README.md'
               },
-              filename: 'README.md'
-            },
-            {
-              attrs: {
-                isDirectory: () => true,
-                isSymbolicLink: () => false,
-                mtime: 0,
-                size: 0
-              },
-              filename: 'nested'
-            }
-          ])
-          return
-        }
+              {
+                attrs: {
+                  isDirectory: () => true,
+                  isSymbolicLink: () => false,
+                  mtime: 0,
+                  size: 0
+                },
+                filename: 'nested'
+              }
+            ])
+            return
+          }
 
-        if (remotePath === '/deploy/project/nested') {
-          callback(undefined, [
-            {
-              attrs: {
-                isDirectory: () => false,
-                isSymbolicLink: () => false,
-                mtime: 0,
-                size: 15
-              },
-              filename: 'config.json'
-            }
-          ])
-          return
-        }
+          if (remotePath === '/deploy/project/nested') {
+            callback(undefined, [
+              {
+                attrs: {
+                  isDirectory: () => false,
+                  isSymbolicLink: () => false,
+                  mtime: 0,
+                  size: 15
+                },
+                filename: 'config.json'
+              }
+            ])
+            return
+          }
 
-        callback(undefined, [])
-      }),
+          callback(undefined, [])
+        }
+      ),
       rmdir: vi.fn((remotePath: string, callback: (error?: Error) => void) => {
         removedDirectories.push(remotePath)
         remoteDirectories.delete(remotePath)

@@ -523,9 +523,7 @@ describe('useTerminal', () => {
     )
 
     expect(terminalInstances).toHaveLength(1)
-    expect(terminalInstances[0]?.options.fontFamily).toBe(
-      '"WinSSH IBM Plex Mono", monospace'
-    )
+    expect(terminalInstances[0]?.options.fontFamily).toBe('"WinSSH IBM Plex Mono", monospace')
     expect(terminalInstances[0]?.options.fontSize).toBe(16)
     await waitFor(() => {
       expect(webFontsAddonInstances[0]?.relayout).toHaveBeenCalled()

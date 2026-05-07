@@ -1,11 +1,6 @@
 import { ipcMain } from 'electron'
 import type { CredentialUpsertInput, GroupInput, ServerUpsertInput, TagInput } from '@shared/types'
-import {
-  credentialSchema,
-  groupSchema,
-  serverSchema,
-  tagSchema
-} from '@shared/validation'
+import { credentialSchema, groupSchema, serverSchema, tagSchema } from '@shared/validation'
 import type { ServersApplicationService } from '../application/servers-application-service'
 import type { DatabaseService } from '../database'
 import { createLogger } from '../observability'
@@ -79,4 +74,3 @@ export function registerServerIpc(options: {
     serversService.clearRecentSessions()
   })
 }
-

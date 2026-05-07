@@ -90,10 +90,9 @@ export function resolveServerBrandFromOsRelease(content: string): ServerBrandId 
     values.set(key, stripWrappingQuotes(value))
   }
 
-  const identifiers = [
-    values.get('ID'),
-    ...(values.get('ID_LIKE')?.split(/\s+/u) ?? [])
-  ].filter((value): value is string => Boolean(value?.trim()))
+  const identifiers = [values.get('ID'), ...(values.get('ID_LIKE')?.split(/\s+/u) ?? [])].filter(
+    (value): value is string => Boolean(value?.trim())
+  )
 
   for (const identifier of identifiers) {
     const brandId = resolveServerBrandIdentifier(identifier)

@@ -4,7 +4,10 @@ import { createRequire } from 'node:module'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import { spawn, type IPty } from 'node-pty'
-import { normalizeLocalTerminalShell, getSupportedLocalTerminalShells } from '@shared/local-terminal-shells'
+import {
+  normalizeLocalTerminalShell,
+  getSupportedLocalTerminalShells
+} from '@shared/local-terminal-shells'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import type {
   AppSettings,
@@ -138,18 +141,24 @@ export class LocalTerminalManager {
         status: 'exited'
       }
 
-      this.emitToRenderer('localTerminals:state', this.withObservableMetadata(terminalId, {
-        code: 'local_terminal_exited',
-        message: lastMessage,
-        recoverable: false,
-        status: 'exited',
-        terminalId
-      }))
-      this.emitToRenderer('localTerminals:exit', this.withObservableMetadata(terminalId, {
-        exitCode,
-        signal,
-        terminalId
-      }))
+      this.emitToRenderer(
+        'localTerminals:state',
+        this.withObservableMetadata(terminalId, {
+          code: 'local_terminal_exited',
+          message: lastMessage,
+          recoverable: false,
+          status: 'exited',
+          terminalId
+        })
+      )
+      this.emitToRenderer(
+        'localTerminals:exit',
+        this.withObservableMetadata(terminalId, {
+          exitCode,
+          signal,
+          terminalId
+        })
+      )
     })
 
     record.disposeListeners = () => {
@@ -187,7 +196,10 @@ export class LocalTerminalManager {
     }
   }
 
-  private withObservableMetadata<TPayload extends object>(correlationId: string, payload: TPayload) {
+  private withObservableMetadata<TPayload extends object>(
+    correlationId: string,
+    payload: TPayload
+  ) {
     return {
       ...payload,
       correlationId,
@@ -234,10 +246,13 @@ export class LocalTerminalManager {
 
     const data = record.pendingData
     record.pendingData = ''
-    this.emitToRenderer('localTerminals:data', this.withObservableMetadata(terminalId, {
-      data,
-      terminalId
-    }))
+    this.emitToRenderer(
+      'localTerminals:data',
+      this.withObservableMetadata(terminalId, {
+        data,
+        terminalId
+      })
+    )
   }
 
   private clearPendingTerminalData(record: LocalTerminalRecord) {
@@ -372,10 +387,7 @@ export class LocalTerminalManager {
   private getShellCandidates(shell: string) {
     if (process.platform === 'win32') {
       if (shell === 'powershell') {
-        return [
-          'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
-          'powershell.exe'
-        ]
+        return ['C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', 'powershell.exe']
       }
 
       const comSpec = process.env['ComSpec']?.trim()

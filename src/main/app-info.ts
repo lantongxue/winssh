@@ -12,11 +12,7 @@ export function getReleaseChannel(version: string): ReleaseChannel {
   return 'latest'
 }
 
-export function createAppInfo(input: {
-  name: string
-  platform: string
-  version: string
-}): AppInfo {
+export function createAppInfo(input: { name: string; platform: string; version: string }): AppInfo {
   return {
     name: input.name,
     platform: input.platform,

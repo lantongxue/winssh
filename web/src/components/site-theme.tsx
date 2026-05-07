@@ -26,8 +26,8 @@ export function SiteThemeProvider({
   const [selection, setSelection] = useState<SiteThemeSelection>(
     () => initialSelection ?? resolveInitialSiteThemeSelection()
   )
-  const [systemAppearance, setSystemAppearance] = useState<SiteThemeAppearance>(
-    () => resolveSystemThemeAppearance()
+  const [systemAppearance, setSystemAppearance] = useState<SiteThemeAppearance>(() =>
+    resolveSystemThemeAppearance()
   )
 
   useEffect(() => {

@@ -1,8 +1,5 @@
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
-import {
-  normalizeIntegratedTerminalFontId,
-  type IntegratedFontId
-} from '@shared/integrated-fonts'
+import { normalizeIntegratedTerminalFontId, type IntegratedFontId } from '@shared/integrated-fonts'
 import {
   getDefaultThemeId,
   isHighContrastTheme,

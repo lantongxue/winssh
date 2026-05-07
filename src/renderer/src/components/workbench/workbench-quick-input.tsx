@@ -70,7 +70,11 @@ export function WorkbenchQuickInput() {
     try {
       if (quickInput.entityType === 'group') {
         if (quickInput.mode === 'create') {
-          await groupsClient.create({ color, name: name.trim(), parentId: quickInput.parentId ?? null })
+          await groupsClient.create({
+            color,
+            name: name.trim(),
+            parentId: quickInput.parentId ?? null
+          })
           toast.success(t('workbench.quickInput.toasts.groupCreated'))
         } else if (quickInput.entityId) {
           await groupsClient.update(quickInput.entityId, { color, name: name.trim() })
@@ -99,8 +103,7 @@ export function WorkbenchQuickInput() {
     }
   }
 
-  const isPassword =
-    quickInput.kind === 'credentials' && quickInput.secretKind === 'password'
+  const isPassword = quickInput.kind === 'credentials' && quickInput.secretKind === 'password'
   const credentialTargetName =
     quickInput.kind === 'credentials'
       ? quickInput.source === 'server'

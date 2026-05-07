@@ -102,11 +102,7 @@ const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
           className={cn('w-[var(--radix-popover-trigger-width)] p-0', contentClassName)}
         >
           <Command>
-            <CommandInput
-              value={query}
-              onValueChange={setQuery}
-              placeholder={searchPlaceholder}
-            />
+            <CommandInput value={query} onValueChange={setQuery} placeholder={searchPlaceholder} />
             <CommandList className="max-h-72">
               <CommandEmpty>{emptyText}</CommandEmpty>
               {options.map((option) => {

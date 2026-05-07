@@ -544,7 +544,11 @@ function parseSectionedOutput(stdout: string): Map<string, string> {
 
   for (const line of stdout.split(/\r?\n/)) {
     const candidate = line.trim()
-    if (markers.has(candidate as (typeof RESOURCE_MONITOR_MARKERS)[keyof typeof RESOURCE_MONITOR_MARKERS])) {
+    if (
+      markers.has(
+        candidate as (typeof RESOURCE_MONITOR_MARKERS)[keyof typeof RESOURCE_MONITOR_MARKERS]
+      )
+    ) {
       currentMarker = candidate
       sections.set(candidate, [])
       continue
@@ -882,7 +886,9 @@ export class SessionManager {
       const sampledAtMs = Date.parse(sampledAt)
       const cpuTimes = parseCpuTimes(sections.get(RESOURCE_MONITOR_MARKERS.procStat) ?? '')
       const memory = parseMemInfo(sections.get(RESOURCE_MONITOR_MARKERS.procMeminfo) ?? '')
-      const networkBytes = parseNetworkBytes(sections.get(RESOURCE_MONITOR_MARKERS.procNetDev) ?? '')
+      const networkBytes = parseNetworkBytes(
+        sections.get(RESOURCE_MONITOR_MARKERS.procNetDev) ?? ''
+      )
       const disk = parseDiskUsage(sections.get(RESOURCE_MONITOR_MARKERS.df) ?? '')
 
       const previousCpuTimes = this.resourceCpuBaselines.get(sessionId)
@@ -1073,10 +1079,13 @@ export class SessionManager {
       return
     }
 
-    this.emitToRenderer('sessions:data', this.withObservableMetadata(runtime.sessionId, {
-      sessionId: runtime.sessionId,
-      data
-    }))
+    this.emitToRenderer(
+      'sessions:data',
+      this.withObservableMetadata(runtime.sessionId, {
+        sessionId: runtime.sessionId,
+        data
+      })
+    )
   }
 
   async resize(sessionId: string, columns: number, rows: number): Promise<void> {
@@ -1126,46 +1135,55 @@ export class SessionManager {
           }
 
           lastEmittedTransferred = transferred
-          this.emitToRenderer('sftp:transfer', this.withObservableMetadata(sessionId, {
-            sessionId,
-            direction: 'download',
-            fileName,
-            localPath: '__editor__',
-            remotePath: normalized,
-            transferred,
-            total,
-            status: 'running'
-          }))
+          this.emitToRenderer(
+            'sftp:transfer',
+            this.withObservableMetadata(sessionId, {
+              sessionId,
+              direction: 'download',
+              fileName,
+              localPath: '__editor__',
+              remotePath: normalized,
+              transferred,
+              total,
+              status: 'running'
+            })
+          )
         },
         totalSize,
         controller.signal
       )
 
-      this.emitToRenderer('sftp:transfer', this.withObservableMetadata(sessionId, {
-        sessionId,
-        direction: 'download',
-        fileName,
-        localPath: '__editor__',
-        remotePath: normalized,
-        transferred: totalSize,
-        total: totalSize,
-        status: 'completed'
-      }))
-
-      return content
-    } catch (error) {
-      if (!(error instanceof SftpReadCancelledError)) {
-        this.emitToRenderer('sftp:transfer', this.withObservableMetadata(sessionId, {
+      this.emitToRenderer(
+        'sftp:transfer',
+        this.withObservableMetadata(sessionId, {
           sessionId,
           direction: 'download',
           fileName,
           localPath: '__editor__',
           remotePath: normalized,
-          transferred: 0,
+          transferred: totalSize,
           total: totalSize,
-          status: 'error',
-          error: error instanceof Error ? error.message : String(error)
-        }))
+          status: 'completed'
+        })
+      )
+
+      return content
+    } catch (error) {
+      if (!(error instanceof SftpReadCancelledError)) {
+        this.emitToRenderer(
+          'sftp:transfer',
+          this.withObservableMetadata(sessionId, {
+            sessionId,
+            direction: 'download',
+            fileName,
+            localPath: '__editor__',
+            remotePath: normalized,
+            transferred: 0,
+            total: totalSize,
+            status: 'error',
+            error: error instanceof Error ? error.message : String(error)
+          })
+        )
       }
       throw error
     } finally {
@@ -1254,12 +1272,21 @@ export class SessionManager {
     ]
 
     const batchId = `upload:${sessionId}:${randomUUID()}`
-    const counts = await Promise.all(uniqueLocalPaths.map((localPath) => this.countLocalFiles(localPath)))
+    const counts = await Promise.all(
+      uniqueLocalPaths.map((localPath) => this.countLocalFiles(localPath))
+    )
     const batchTotal = counts.reduce((sum, count) => sum + count, 0)
 
     for (const localPath of uniqueLocalPaths) {
       const remotePath = posix.join(normalizedTargetPath, basename(localPath))
-      await this.uploadLocalEntry(sessionId, runtime.sftp, localPath, remotePath, batchId, batchTotal)
+      await this.uploadLocalEntry(
+        sessionId,
+        runtime.sftp,
+        localPath,
+        remotePath,
+        batchId,
+        batchTotal
+      )
     }
   }
 
@@ -1286,45 +1313,54 @@ export class SessionManager {
         saveResult.filePath as string,
         {
           step: (transferred, _chunk, total) => {
-            this.emitToRenderer('sftp:transfer', this.withObservableMetadata(sessionId, {
-              sessionId,
-              direction: 'download',
-              fileName,
-              localPath: saveResult.filePath as string,
-              remotePath: normalized,
-              transferred,
-              total,
-              status: 'running'
-            }))
+            this.emitToRenderer(
+              'sftp:transfer',
+              this.withObservableMetadata(sessionId, {
+                sessionId,
+                direction: 'download',
+                fileName,
+                localPath: saveResult.filePath as string,
+                remotePath: normalized,
+                transferred,
+                total,
+                status: 'running'
+              })
+            )
           }
         },
         (error) => {
           if (error) {
-            this.emitToRenderer('sftp:transfer', this.withObservableMetadata(sessionId, {
+            this.emitToRenderer(
+              'sftp:transfer',
+              this.withObservableMetadata(sessionId, {
+                sessionId,
+                direction: 'download',
+                fileName,
+                localPath: saveResult.filePath as string,
+                remotePath: normalized,
+                transferred: 0,
+                total: 0,
+                status: 'error',
+                error: error.message
+              })
+            )
+            reject(error)
+            return
+          }
+
+          this.emitToRenderer(
+            'sftp:transfer',
+            this.withObservableMetadata(sessionId, {
               sessionId,
               direction: 'download',
               fileName,
               localPath: saveResult.filePath as string,
               remotePath: normalized,
-              transferred: 0,
-              total: 0,
-              status: 'error',
-              error: error.message
-            }))
-            reject(error)
-            return
-          }
-
-          this.emitToRenderer('sftp:transfer', this.withObservableMetadata(sessionId, {
-            sessionId,
-            direction: 'download',
-            fileName,
-            localPath: saveResult.filePath as string,
-            remotePath: normalized,
-            transferred: 1,
-            total: 1,
-            status: 'completed'
-          }))
+              transferred: 1,
+              total: 1,
+              status: 'completed'
+            })
+          )
           resolve()
         }
       )
@@ -1490,7 +1526,9 @@ export class SessionManager {
   }> {
     const requestSecrets = request.secrets?.[server.id]
     const password =
-      requestSecrets?.password ?? (await this.secureStore.getSecret(server.id, 'password')) ?? undefined
+      requestSecrets?.password ??
+      (await this.secureStore.getSecret(server.id, 'password')) ??
+      undefined
     const passphrase =
       requestSecrets?.passphrase ??
       (await this.secureStore.getSecret(server.id, 'passphrase')) ??
@@ -1758,7 +1796,15 @@ export class SessionManager {
       throw new Error(`Unsupported local upload entry: ${localPath}`)
     }
 
-    await this.uploadLocalFile(sessionId, sftp, localPath, normalizedRemotePath, localStats, batchId, batchTotal)
+    await this.uploadLocalFile(
+      sessionId,
+      sftp,
+      localPath,
+      normalizedRemotePath,
+      localStats,
+      batchId,
+      batchTotal
+    )
   }
 
   private async uploadLocalFile(
@@ -1784,48 +1830,57 @@ export class SessionManager {
           step: (nextTransferred, _chunk, nextTotal) => {
             transferred = nextTransferred
             total = Math.max(nextTotal, 1)
-            this.emitToRenderer('sftp:transfer', this.withObservableMetadata(sessionId, {
-              sessionId,
-              direction: 'upload',
-              fileName,
-              localPath,
-              remotePath,
-              transferred,
-              total,
-              status: 'running',
-              ...batchInfo
-            }))
+            this.emitToRenderer(
+              'sftp:transfer',
+              this.withObservableMetadata(sessionId, {
+                sessionId,
+                direction: 'upload',
+                fileName,
+                localPath,
+                remotePath,
+                transferred,
+                total,
+                status: 'running',
+                ...batchInfo
+              })
+            )
           }
         },
         (error) => {
           if (error) {
-            this.emitToRenderer('sftp:transfer', this.withObservableMetadata(sessionId, {
+            this.emitToRenderer(
+              'sftp:transfer',
+              this.withObservableMetadata(sessionId, {
+                sessionId,
+                direction: 'upload',
+                fileName,
+                localPath,
+                remotePath,
+                transferred,
+                total,
+                status: 'error',
+                error: error.message,
+                ...batchInfo
+              })
+            )
+            reject(error)
+            return
+          }
+
+          this.emitToRenderer(
+            'sftp:transfer',
+            this.withObservableMetadata(sessionId, {
               sessionId,
               direction: 'upload',
               fileName,
               localPath,
               remotePath,
-              transferred,
+              transferred: total,
               total,
-              status: 'error',
-              error: error.message,
+              status: 'completed',
               ...batchInfo
-            }))
-            reject(error)
-            return
-          }
-
-          this.emitToRenderer('sftp:transfer', this.withObservableMetadata(sessionId, {
-            sessionId,
-            direction: 'upload',
-            fileName,
-            localPath,
-            remotePath,
-            transferred: total,
-            total,
-            status: 'completed',
-            ...batchInfo
-          }))
+            })
+          )
           resolve()
         }
       )
@@ -1939,10 +1994,13 @@ export class SessionManager {
   }
 
   private emitPortForwardState(rule: PortForwardRule): void {
-    this.emitToRenderer('portForwards:state', this.withObservableMetadata(rule.sessionId, {
-      sessionId: rule.sessionId,
-      rule: clonePortForwardRule(rule)
-    }))
+    this.emitToRenderer(
+      'portForwards:state',
+      this.withObservableMetadata(rule.sessionId, {
+        sessionId: rule.sessionId,
+        rule: clonePortForwardRule(rule)
+      })
+    )
   }
 
   private async startPortForwardRuntime(
@@ -2348,15 +2406,21 @@ export class SessionManager {
     phase?: SessionConnectionPhase,
     message?: string
   ): void {
-    this.emitToRenderer('sessions:state', this.withObservableMetadata(sessionId, {
-      sessionId,
-      status,
-      phase,
-      message
-    }))
+    this.emitToRenderer(
+      'sessions:state',
+      this.withObservableMetadata(sessionId, {
+        sessionId,
+        status,
+        phase,
+        message
+      })
+    )
   }
 
-  private withObservableMetadata<TPayload extends object>(correlationId: string, payload: TPayload) {
+  private withObservableMetadata<TPayload extends object>(
+    correlationId: string,
+    payload: TPayload
+  ) {
     return {
       ...payload,
       correlationId,
