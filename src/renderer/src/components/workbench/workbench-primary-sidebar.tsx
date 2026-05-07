@@ -250,7 +250,7 @@ function TreeRow({
       data-active={active}
       draggable={draggable}
       className={cn(
-        'liquid-glass-list-item group/tree-row flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-[13px] transition-colors',
+        'group/tree-row flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-[13px] transition-colors',
         active
           ? 'bg-[var(--workbench-hover)] text-foreground'
           : 'text-muted-foreground hover:bg-[var(--workbench-hover)] hover:text-foreground',
@@ -887,7 +887,7 @@ export function WorkbenchPrimarySidebar() {
 
   return (
     <>
-      <aside className="liquid-glass-pane flex h-full min-h-0 flex-col bg-[var(--workbench-sidebar)]">
+      <aside className="flex h-full min-h-0 flex-col bg-[var(--workbench-sidebar)]">
         <div className="border-b border-[var(--workbench-border)] px-4 py-3">
           <div className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground">
             {t('workbench.primarySidebar.title').toUpperCase()}
@@ -902,7 +902,7 @@ export function WorkbenchPrimarySidebar() {
             <label className="sr-only" htmlFor="workbench-primary-sidebar-search">
               {t('workbench.primarySidebar.search.label')}
             </label>
-            <div className="liquid-glass-chip liquid-glass-search-shell flex items-center gap-2 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2.5 text-[var(--workbench-muted)] shadow-xs transition-colors focus-within:border-[var(--workbench-active)]/50 focus-within:text-foreground">
+            <div className="flex items-center gap-2 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2.5 text-[var(--workbench-muted)] shadow-xs transition-colors focus-within:border-[var(--workbench-active)]/50 focus-within:text-foreground">
               <Search className="size-3.5 shrink-0" />
               <Input
                 id="workbench-primary-sidebar-search"
@@ -916,7 +916,7 @@ export function WorkbenchPrimarySidebar() {
                 }}
                 placeholder={t('workbench.primarySidebar.search.placeholder')}
                 aria-label={t('workbench.primarySidebar.search.label')}
-                className="liquid-glass-search-input h-8 border-0 bg-transparent px-0 text-[13px] shadow-none placeholder:text-[var(--workbench-muted)] focus-visible:border-0 focus-visible:ring-0 dark:bg-transparent"
+                className="h-8 border-0 bg-transparent px-0 text-[13px] shadow-none placeholder:text-[var(--workbench-muted)] focus-visible:border-0 focus-visible:ring-0 dark:bg-transparent"
               />
               {serverSearchQuery ? (
                 <TooltipAction content={t('workbench.primarySidebar.search.clear')} side="right">

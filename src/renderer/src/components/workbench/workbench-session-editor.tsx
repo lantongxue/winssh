@@ -55,8 +55,8 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
 
   if (!session) {
     return (
-      <div className="liquid-glass-page flex h-full items-center justify-center bg-[var(--workbench-editor)] px-6">
-        <div className="liquid-glass-hero max-w-md border border-[var(--workbench-border)] px-8 py-10 text-center">
+      <div className="flex h-full items-center justify-center bg-[var(--workbench-editor)] px-6">
+        <div className="max-w-md border border-[var(--workbench-border)] px-8 py-10 text-center">
           <div className="text-lg font-semibold text-foreground">
             {t('workbench.sessionEditor.closed.title')}
           </div>
@@ -89,13 +89,13 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
     auxView === 'sftp' ? (
       <SftpPanel
         session={session}
-        className="liquid-glass-pane liquid-glass-panel-frame h-full overflow-hidden bg-[var(--workbench-sidebar)]"
+        className="h-full overflow-hidden bg-[var(--workbench-sidebar)]"
         onEditFile={(remotePath) => openSftpFileEditor(session.sessionId, remotePath)}
       />
     ) : auxView === 'port-forward' ? (
       <PortForwardPanel
         session={session}
-        className="liquid-glass-pane liquid-glass-panel-frame h-full overflow-hidden bg-[var(--workbench-sidebar)]"
+        className="h-full overflow-hidden bg-[var(--workbench-sidebar)]"
       />
     ) : null
   const showAuxPanel = Boolean(auxPanelContent && !session.provisional)
@@ -109,8 +109,8 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
   }
 
   return (
-    <div className="liquid-glass-page flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
-      <div className="liquid-glass-toolbar flex min-h-[56px] shrink-0 items-center gap-3 border-b border-[var(--workbench-border)] px-3 py-2">
+    <div className="flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
+      <div className="flex min-h-[56px] shrink-0 items-center gap-3 border-b border-[var(--workbench-border)] px-3 py-2">
         <button
           type="button"
           className="inline-flex h-8 min-w-0 shrink-0 items-center rounded-md border border-[var(--workbench-border)] px-2 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--workbench-hover)_72%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--workbench-active)]"

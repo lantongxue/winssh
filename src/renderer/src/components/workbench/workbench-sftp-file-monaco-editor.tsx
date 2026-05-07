@@ -427,13 +427,13 @@ export function WorkbenchSftpFileMonacoEditor({
   return (
     <form
       id={getSftpFileEditorFormId(document.id)}
-      className="liquid-glass-page flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]"
+      className="flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]"
       onSubmit={(event) => {
         event.preventDefault()
         void handleSave()
       }}
     >
-      <div className="liquid-glass-toolbar flex min-h-[56px] shrink-0 items-center gap-3 border-b border-[var(--workbench-border)] px-3 py-2">
+      <div className="flex min-h-[56px] shrink-0 items-center gap-3 border-b border-[var(--workbench-border)] px-3 py-2">
         <div className="grid min-w-[220px] shrink-0 gap-1 rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2.5 py-1.5">
           <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
             <span className="shrink-0">{t('workbench.sessionEditor.serverName')}</span>

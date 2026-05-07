@@ -18,7 +18,6 @@
 - `src/renderer/src/lib/theme.ts`
 - `src/renderer/src/App.tsx`
 - `themes/builtin/winssh-default-themes/package.json`
-- `themes/builtin/winssh-liquid-glass/package.json`
 
 ## 2. 当前主题系统概览
 
@@ -43,8 +42,6 @@
   - `winssh.light-plus`
   - `winssh.dark-plus`
   - `winssh.pixel-crt`
-  - `winssh.liquid-glass-light`
-  - `winssh.liquid-glass-dark`
   - `acme.nebula`
 
 ## 3. 主题选择与解析规则
@@ -331,7 +328,7 @@ Windows 下通常会落在类似下面的位置：
 
 ### 7.5 Glass Token
 
-这组 token 主要服务于内置 `Liquid Glass` 视觉语言：
+这组 token 可用于自定义玻璃视觉语言效果：
 
 | Token | 说明 |
 | --- | --- |
@@ -415,41 +412,12 @@ Windows 下通常会落在类似下面的位置：
 主题应用到根节点时，当前会做这些事：
 
 1. 根据 `appearance` 切换 `.dark`
-2. 根据 `pluginId` 决定是否挂上 `.theme-liquid-glass`
-3. 设置 `data-theme`
+2. 设置 `data-theme`
 4. 设置 `data-theme-appearance`
 5. 设置 `data-theme-plugin`
 6. 设置 `data-theme-selection`
 7. 设置 `color-scheme`
 8. 把全部 UI token 写入 CSS 变量
-
-根节点数据属性如下：
-
-- `data-theme`
-- `data-theme-appearance`
-- `data-theme-plugin`
-- `data-theme-selection`
-
-JS 中对应：
-
-- `dataset.theme`
-- `dataset.themeAppearance`
-- `dataset.themePlugin`
-- `dataset.themeSelection`
-
-### 9.1 `theme-liquid-glass` 是硬编码视觉钩子
-
-当前只有在下面这个条件满足时，根节点才会挂 `theme-liquid-glass`：
-
-```ts
-resolvedTheme.pluginId === 'winssh.liquid-glass-themes'
-```
-
-这意味着：
-
-1. `Liquid Glass` 额外的布局、背景和玻璃效果，当前不是通用 manifest 能力，而是渲染层对内置插件 id 的硬编码识别。
-2. 第三方主题即使写了 glass token，也不会自动得到 `.theme-liquid-glass` 相关样式钩子。
-3. 如果你想让第三方主题也获得同类特殊视觉处理，需要继续改渲染层代码，而不只是增加主题 JSON。
 
 ## 10. `terminalDefaults` 的真实行为
 
@@ -547,27 +515,6 @@ manifest 派生出的插件 id：
 - `Dark+` 是默认深色主题
 - `Pixel CRT` 带扫描线 token 和终端推荐字体配置
 
-### 12.2 Liquid Glass Themes
-
-内置路径：
-
-- `themes/builtin/winssh-liquid-glass`
-
-manifest 派生出的插件 id：
-
-- `winssh.liquid-glass-themes`
-
-当前包含：
-
-- `winssh.liquid-glass-light`
-- `winssh.liquid-glass-dark`
-
-特征：
-
-- 使用更完整的 glass token
-- 大量使用 blur、透明层、阴影和 glow
-- 会触发根节点 `.theme-liquid-glass` 特殊样式
-
 ## 13. 开发新主题的建议流程
 
 ### 13.1 先选一个正确的起点
@@ -575,7 +522,6 @@ manifest 派生出的插件 id：
 如果你要做：
 
 - 常规浅色 / 深色主题：建议复制 `themes/builtin/winssh-default-themes`
-- 研究玻璃态视觉语言：建议同时参考 `themes/builtin/winssh-liquid-glass`
 
 ### 13.2 先决定 `vs` 还是 `vs-dark`
 
@@ -707,8 +653,7 @@ manifest 派生出的插件 id：
 1. token 名拼错了
 2. 你改的是 UI token，但实际受影响的是终端 token
 3. 你写了未知 token，运行时把它忽略了
-4. 你期待的是 `Liquid Glass` 特殊视觉效果，但当前主题并没有触发 `.theme-liquid-glass`
-5. 你改了 `terminalDefaults`，但用户其实已经自定义过终端字体或字号
+4. 你改了 `terminalDefaults`，但用户其实已经自定义过终端字体或字号
 
 ### 15.3 为什么 `terminalDefaults` 没生效？
 
@@ -725,16 +670,7 @@ manifest 派生出的插件 id：
 
 如果你想基于内置主题做变体，请使用新的主题 id，而不是复用内置主题 id。
 
-### 15.5 为什么我写了 glass token，但界面没有变成 Liquid Glass？
-
-因为 `Liquid Glass` 目前不只是 token 集合，还依赖渲染层对 `pluginId === "winssh.liquid-glass-themes"` 的特殊 class 钩子。
-
-仅仅增加 glass token：
-
-- 可以让 token 本身可用
-- 但不会自动启用 `.theme-liquid-glass` 相关样式分支
-
-## 16. 最后建议
+## 16.
 
 如果你是第一次开发 WinSSH 主题，最稳妥的路径不是从零写，而是：
 

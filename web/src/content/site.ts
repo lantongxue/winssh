@@ -108,7 +108,7 @@ export const SITE_COPY = {
           value: '5',
           label: 'Built-in themes',
           description:
-            'Light+, Dark+, Pixel CRT, and both Liquid Glass variants are live in the theme registry right now.'
+            'Light+, Dark+, and Pixel CRT are live in the theme registry right now.'
         }
       ],
       features: {
@@ -371,7 +371,7 @@ export const SITE_COPY = {
                 title: 'Current theme system overview',
                 paragraphs: [
                   'The desktop application loads themes through `ThemeRegistry`. It scans `themes/builtin` and `<userData>/themes`, validates plugin `package.json` files and theme documents, produces normalized `ThemeDefinition` objects, and exposes them to the renderer.',
-                  'Built-in themes currently include Light+, Dark+, Pixel CRT, and both Liquid Glass variants. Imported user theme packs can also be added or deleted from the settings surface.',
+                  'Built-in themes currently include Light+, Dark+, and Pixel CRT. Imported user theme packs can also be added or deleted from the settings surface.',
                   'The website does not load arbitrary themes at runtime. `web/src/home-main.tsx` and `web/src/docs-main.tsx` call `initializeSiteTheme()` before rendering, then the React layer applies Light+ or Dark+ according to system appearance or the persisted manual selection.'
                 ],
                 bullets: [
@@ -496,15 +496,12 @@ export const SITE_COPY = {
               {
                 title: 'Renderer application details',
                 paragraphs: [
-                  'When the renderer applies a theme, it writes all UI tokens to CSS variables on `document.documentElement`, toggles `.dark` based on `appearance`, sets `color-scheme`, and updates `data-theme`, `data-theme-appearance`, `data-theme-plugin`, and `data-theme-selection`.',
-                  'The class `.theme-liquid-glass` is not a general theme-package feature. It is added only when `resolvedTheme.pluginId === "winssh.liquid-glass-themes"`.'
+                  'When the renderer applies a theme, it writes all UI tokens to CSS variables on `document.documentElement`, toggles `.dark` based on `appearance`, sets `color-scheme`, and updates `data-theme`, `data-theme-appearance`, `data-theme-plugin`, and `data-theme-selection`.'
                 ],
                 bullets: [
-                  'Third-party themes can use glass tokens without receiving `.theme-liquid-glass`.',
                   '`data-theme` stores the resolved theme id.',
                   '`data-theme-selection` stores the saved selection value.'
                 ],
-                note: 'Extending Liquid Glass behavior to third-party themes requires renderer changes in addition to theme JSON changes.'
               },
               {
                 title: 'Merge, priority, and fallback rules',
@@ -522,7 +519,7 @@ export const SITE_COPY = {
               {
                 title: 'Suggested development flow',
                 paragraphs: [
-                  'For a new theme, start from `themes/builtin/winssh-default-themes` for conventional light or dark work, or `themes/builtin/winssh-liquid-glass` when studying the built-in glass visual language.',
+                  'For a new theme, start from `themes/builtin/winssh-default-themes` for conventional light or dark work.',
                   'First cover the primary workbench and terminal tokens, then refine overlay, toast, radius, scanline, and `terminalDefaults`.'
                 ],
                 bullets: [
@@ -661,7 +658,7 @@ export const SITE_COPY = {
           value: '5',
           label: '内置主题',
           description:
-            'Light+、Dark+、Pixel CRT，以及两套 Liquid Glass 主题，已经全部在 theme registry 里跑起来了。'
+            'Light+、Dark+、Pixel CRT 主题已经在 theme registry 里上线了。'
         }
       ],
       features: {
@@ -916,7 +913,7 @@ export const SITE_COPY = {
                 title: '当前主题系统概览',
                 paragraphs: [
                   '桌面应用通过 `ThemeRegistry` 加载主题。它会扫描 `themes/builtin` 和 `<userData>/themes`，校验插件 `package.json` 与主题文档，生成标准化后的 `ThemeDefinition`，再提供给渲染层。',
-                  '当前内置主题至少包括 Light+、Dark+、Pixel CRT，以及两套 Liquid Glass。设置页也已经支持导入和删除用户 ZIP 主题包。',
+                  '当前内置主题至少包括 Light+、Dark+、Pixel CRT。设置页也已经支持导入和删除用户 ZIP 主题包。',
                   '官网不会在运行时加载任意主题。`web/src/home-main.tsx` 与 `web/src/docs-main.tsx` 会先调用 `initializeSiteTheme()`，然后在 React 层根据系统外观或已持久化的手动选择应用 Light+ 或 Dark+。'
                 ],
                 bullets: [
@@ -1041,15 +1038,12 @@ export const SITE_COPY = {
               {
                 title: '渲染层应用细节',
                 paragraphs: [
-                  '渲染层应用主题时，会把全部 UI token 写到 `document.documentElement` 的 CSS 变量上，根据 `appearance` 切换 `.dark`，设置 `color-scheme`，并更新 `data-theme`、`data-theme-appearance`、`data-theme-plugin`、`data-theme-selection`。',
-                  '`.theme-liquid-glass` 不是通用主题包能力。只有当 `resolvedTheme.pluginId === "winssh.liquid-glass-themes"` 时，渲染层才会添加这个 class。'
+                  '渲染层应用主题时，会把全部 UI token 写到 `document.documentElement` 的 CSS 变量上，根据 `appearance` 切换 `.dark`，设置 `color-scheme`，并更新 `data-theme`、`data-theme-appearance`、`data-theme-plugin`、`data-theme-selection`。'
                 ],
                 bullets: [
-                  '第三方主题可以使用 glass token，但不会自动获得 `.theme-liquid-glass`。',
                   '`data-theme` 保存解析后的主题 id。',
                   '`data-theme-selection` 保存设置里的选择值。'
                 ],
-                note: '如果要把 Liquid Glass 的额外行为扩展到第三方主题，必须同时修改渲染层代码。'
               },
               {
                 title: '合并、优先级与回退规则',
@@ -1067,7 +1061,7 @@ export const SITE_COPY = {
               {
                 title: '开发新主题的建议流程',
                 paragraphs: [
-                  '开发新主题时，常规浅色或深色主题建议从 `themes/builtin/winssh-default-themes` 开始；需要研究内置玻璃视觉语言时，再参考 `themes/builtin/winssh-liquid-glass`。',
+                  '开发新主题时，常规浅色或深色主题建议从 `themes/builtin/winssh-default-themes` 开始。',
                   '第一轮应先覆盖核心 workbench 和 terminal token，再处理 overlay、toast、radius、scanline 和 `terminalDefaults`。'
                 ],
                 bullets: [

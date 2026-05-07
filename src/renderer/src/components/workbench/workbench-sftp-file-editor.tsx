@@ -37,8 +37,8 @@ export function WorkbenchSftpFileEditor({ active = true, document }: WorkbenchSf
   return (
     <Suspense
       fallback={
-        <div className="liquid-glass-page flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
-          <div className="liquid-glass-toolbar flex h-12 shrink-0 items-center border-b border-[var(--workbench-border)] px-3">
+        <div className="flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
+          <div className="flex h-12 shrink-0 items-center border-b border-[var(--workbench-border)] px-3">
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium text-foreground">
                 {session ? session.serverName : document.sessionId}

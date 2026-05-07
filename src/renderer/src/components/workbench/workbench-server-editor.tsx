@@ -822,8 +822,8 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   )
 
   return (
-    <div className="liquid-glass-page flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
-      <div className="liquid-glass-toolbar flex h-10 shrink-0 items-center justify-between border-b border-[var(--workbench-border)] px-3">
+    <div className="flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
+      <div className="flex h-10 shrink-0 items-center justify-between border-b border-[var(--workbench-border)] px-3">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-panel)]/40">
             <ServerBrandIcon
@@ -907,7 +907,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
           className="min-h-0 flex-1 space-y-4 overflow-auto px-4 py-4"
           onSubmit={handleSave}
         >
-          <section className="liquid-glass-card border border-[var(--workbench-border)] px-6 py-5">
+          <section className="border border-[var(--workbench-border)] px-6 py-5">
             <div className="mb-4">
               <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
                 {t('workbench.serverEditor.sections.basic')}
@@ -1068,7 +1068,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
             />
           </section>
 
-          <section className="liquid-glass-card border border-[var(--workbench-border)] px-6 py-5">
+          <section className="border border-[var(--workbench-border)] px-6 py-5">
             <div className="mb-4 flex items-center gap-2 text-base font-semibold">
               {isPrivateKeyAuth ? (
                 <KeyRound className="size-4 text-primary" />
@@ -1263,7 +1263,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
             </div>
           </section>
 
-          <section className="liquid-glass-card border border-[var(--workbench-border)] px-6 py-5">
+          <section className="border border-[var(--workbench-border)] px-6 py-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="text-base font-semibold">
                 {t('workbench.serverEditor.fields.jumpServer')}
@@ -1337,7 +1337,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
             />
           </section>
 
-          <section className="liquid-glass-card border border-[var(--workbench-border)] px-6 py-5">
+          <section className="border border-[var(--workbench-border)] px-6 py-5">
             <div className="mb-4 text-base font-semibold">
               {t('workbench.serverEditor.sections.brand')}
             </div>
@@ -1385,7 +1385,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
             </div>
           </section>
 
-          <section className="liquid-glass-card border border-[var(--workbench-border)] px-6 py-5">
+          <section className="border border-[var(--workbench-border)] px-6 py-5">
             <div className="mb-4 text-base font-semibold">
               {t('workbench.serverEditor.sections.note')}
             </div>

@@ -419,8 +419,8 @@ export function WorkbenchSettingsEditor() {
   })
   const backupDestructiveActionPending = restoreBackup.isPending || deleteBackup.isPending
   return (
-    <div className="liquid-glass-page flex h-full min-h-0 bg-[var(--workbench-editor)]">
-      <aside className="liquid-glass-pane w-[220px] shrink-0 border-r border-[var(--workbench-border)] bg-[var(--workbench-sidebar)] px-3 py-3">
+    <div className="flex h-full min-h-0 bg-[var(--workbench-editor)]">
+      <aside className="w-[220px] shrink-0 border-r border-[var(--workbench-border)] bg-[var(--workbench-sidebar)] px-3 py-3">
         <div className="px-2 pb-3 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
           {t('workbench.activity.settings.title')}
         </div>
@@ -433,7 +433,7 @@ export function WorkbenchSettingsEditor() {
                 key={section.id}
                 type="button"
                 data-active={selectedSection === section.id}
-                className={`liquid-glass-list-item flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm transition-colors ${
+                className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm transition-colors ${
                   selectedSection === section.id
                     ? 'bg-[var(--workbench-hover)] text-foreground'
                     : 'text-muted-foreground hover:bg-[var(--workbench-hover)] hover:text-foreground'
@@ -449,7 +449,7 @@ export function WorkbenchSettingsEditor() {
       </aside>
 
       <div className="min-h-0 flex-1 overflow-auto">
-        <div className="liquid-glass-hero mx-6 mt-6 border border-[var(--workbench-border)] px-6 py-5">
+        <div className="mx-6 mt-6 border border-[var(--workbench-border)] px-6 py-5">
           <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
             {t(settingsSections.find((section) => section.id === selectedSection)?.labelKey ?? '')}
           </div>
@@ -463,7 +463,7 @@ export function WorkbenchSettingsEditor() {
           <div className="space-y-6 px-6 py-6">
             {selectedSection === 'appearance' ? (
               <>
-                <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
+                <section className="space-y-4 border border-[var(--workbench-border)] p-5">
                   <div className="flex items-center gap-2 text-sm font-semibold">
                     <SlidersHorizontal className="size-4 text-primary" />
                     {t('workbench.settings.sections.appearance')}
@@ -602,7 +602,7 @@ export function WorkbenchSettingsEditor() {
                   </div>
                 </section>
 
-                <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
+                <section className="space-y-4 border border-[var(--workbench-border)] p-5">
                   <div className="text-sm font-semibold">
                     {t('workbench.settings.themeManagement.title')}
                   </div>
@@ -680,7 +680,7 @@ export function WorkbenchSettingsEditor() {
             ) : null}
 
             {selectedSection === 'terminal' ? (
-              <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
+              <section className="space-y-4 border border-[var(--workbench-border)] p-5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <TerminalSquare className="size-4 text-primary" />
                   {t('workbench.settings.sections.terminal')}
@@ -985,7 +985,7 @@ export function WorkbenchSettingsEditor() {
             ) : null}
 
             {selectedSection === 'security' ? (
-              <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
+              <section className="space-y-4 border border-[var(--workbench-border)] p-5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <ShieldCheck className="size-4 text-primary" />
                   {t('workbench.settings.sections.security')}
@@ -1064,7 +1064,7 @@ export function WorkbenchSettingsEditor() {
             ) : null}
 
             {selectedSection === 'credentialVault' ? (
-              <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
+              <section className="space-y-4 border border-[var(--workbench-border)] p-5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <KeyRound className="size-4 text-primary" />
                   {t('workbench.credentialVault.title')}
@@ -1074,7 +1074,7 @@ export function WorkbenchSettingsEditor() {
             ) : null}
 
             {selectedSection === 'backup' ? (
-              <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
+              <section className="space-y-4 border border-[var(--workbench-border)] p-5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <Cloud className="size-4 text-primary" />
                   {t('workbench.settings.sections.backup')}
@@ -1307,7 +1307,7 @@ export function WorkbenchSettingsEditor() {
 
             {selectedSection === 'about' ? (
               <>
-                <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
+                <section className="space-y-4 border border-[var(--workbench-border)] p-5">
                   <div className="flex items-center gap-2 text-sm font-semibold">
                     <CircleHelp className="size-4 text-primary" />
                     {t('workbench.settings.sections.about')}
@@ -1323,7 +1323,7 @@ export function WorkbenchSettingsEditor() {
                   </div>
                 </section>
 
-                <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
+                <section className="space-y-4 border border-[var(--workbench-border)] p-5">
                   <div className="text-sm font-semibold">
                     {t('workbench.settings.about.version.title')}
                   </div>

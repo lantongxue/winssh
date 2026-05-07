@@ -125,7 +125,6 @@ describe('theme helpers', () => {
 
     expect(root.classList.contains('dark')).toBe(true)
     expect(root.classList.contains('theme-high-contrast')).toBe(true)
-    expect(root.classList.contains('theme-liquid-glass')).toBe(false)
     expect(root.dataset.theme).toBe('acme.accessible-dark')
     expect(root.dataset.themeUi).toBe('hc-black')
     expect(root.style.getPropertyValue('--workbench-active')).toBe('#ffff00')

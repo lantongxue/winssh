@@ -219,9 +219,9 @@ export function WorkbenchUpdatesEditor() {
   }
 
   return (
-    <div className="liquid-glass-page flex h-full min-h-0 bg-[var(--workbench-editor)]">
+    <div className="flex h-full min-h-0 bg-[var(--workbench-editor)]">
       <div className="min-h-0 flex-1 overflow-auto">
-        <div className="liquid-glass-hero mx-6 mt-6 border border-[var(--workbench-border)] px-6 py-5">
+        <div className="mx-6 mt-6 border border-[var(--workbench-border)] px-6 py-5">
           <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
             {t('workbench.documents.updates')}
           </div>
@@ -232,7 +232,7 @@ export function WorkbenchUpdatesEditor() {
         </div>
 
         <div className="space-y-6 px-6 py-6">
-          <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
+          <section className="space-y-4 border border-[var(--workbench-border)] p-5">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <RefreshCcw className="size-4 text-primary" />
               {t('workbench.settings.about.version.title')}
@@ -269,7 +269,7 @@ export function WorkbenchUpdatesEditor() {
             </div>
           </section>
 
-          <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
+          <section className="space-y-4 border border-[var(--workbench-border)] p-5">
             <div className="flex items-center justify-between rounded-sm border border-[var(--workbench-border)] px-4 py-3">
               <div>
                 <div className="font-medium">{t('workbench.settings.updates.autoCheck.title')}</div>
@@ -285,7 +285,7 @@ export function WorkbenchUpdatesEditor() {
             </div>
           </section>
 
-          <section className="liquid-glass-card space-y-4 border border-[var(--workbench-border)] p-5">
+          <section className="space-y-4 border border-[var(--workbench-border)] p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold">

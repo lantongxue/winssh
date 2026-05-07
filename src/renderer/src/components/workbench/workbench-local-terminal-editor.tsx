@@ -56,8 +56,8 @@ function WorkbenchLocalTerminalEditorImpl({
 
   if (!terminal) {
     return (
-      <div className="liquid-glass-page flex h-full items-center justify-center bg-[var(--workbench-editor)] px-6">
-        <div className="liquid-glass-hero max-w-md border border-[var(--workbench-border)] px-8 py-10 text-center">
+      <div className="flex h-full items-center justify-center bg-[var(--workbench-editor)] px-6">
+        <div className="max-w-md border border-[var(--workbench-border)] px-8 py-10 text-center">
           <div className="text-lg font-semibold text-foreground">
             {t('workbench.localTerminal.closed.title')}
           </div>
@@ -76,8 +76,8 @@ function WorkbenchLocalTerminalEditorImpl({
   )
 
   return (
-    <div className="liquid-glass-page flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
-      <div className="liquid-glass-toolbar flex h-10 shrink-0 items-center justify-between border-b border-[var(--workbench-border)] px-3">
+    <div className="flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
+      <div className="flex h-10 shrink-0 items-center justify-between border-b border-[var(--workbench-border)] px-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-medium text-foreground">{terminal.title}</div>
           <div className="truncate text-[11px] text-muted-foreground">

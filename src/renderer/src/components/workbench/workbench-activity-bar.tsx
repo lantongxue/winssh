@@ -67,7 +67,7 @@ export function WorkbenchActivityBar() {
   }
 
   return (
-    <aside className="liquid-glass-pane flex w-12 shrink-0 flex-col items-center border-r border-[var(--workbench-border)] bg-[var(--workbench-activity-bar)] py-2">
+    <aside className="flex w-12 shrink-0 flex-col items-center border-r border-[var(--workbench-border)] bg-[var(--workbench-activity-bar)] py-2">
       <div className="flex min-h-0 flex-1 flex-col items-center">
         <div className="flex flex-col items-center gap-1">
           {visibleActivities.map((activity) => {
@@ -84,7 +84,7 @@ export function WorkbenchActivityBar() {
                     data-active={active}
                     aria-label={title}
                     className={cn(
-                      'liquid-glass-chip relative flex size-10 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground',
+                      'relative flex size-10 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground',
                       active && 'bg-[var(--workbench-hover)] text-foreground'
                     )}
                     onClick={() => {
@@ -124,7 +124,7 @@ export function WorkbenchActivityBar() {
                   data-active={settingsActive}
                   aria-label={settingsTitle}
                   className={cn(
-                    'liquid-glass-chip relative mt-auto flex size-10 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground',
+                    'relative mt-auto flex size-10 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-colors hover:bg-[var(--workbench-hover)] hover:text-foreground',
                     settingsActive && 'bg-[var(--workbench-hover)] text-foreground'
                   )}
                 >
