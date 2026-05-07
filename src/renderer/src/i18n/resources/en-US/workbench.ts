@@ -145,7 +145,8 @@ const workbench = {
         error: 'Error',
         running: 'Running',
         unknown: 'Unknown',
-        upload: 'Upload'
+        upload: 'Upload',
+        batchProgress: '{{completed}} / {{total}} files'
       }
     },
     primarySidebar: {
@@ -824,7 +825,8 @@ const workbench = {
       sessionDisconnected: 'Session disconnected',
       sessionExited: 'Session exited: {{sessionId}}',
       sessionStateChanged: 'Session state changed to {{status}}',
-      uploadCompleted: 'Upload completed: {{fileName}}'
+      uploadCompleted: 'Upload completed: {{fileName}}',
+      batchUploadCompleted: 'Upload completed: {{count}} files'
     },
     credentialVault: {
       title: 'Credential Vault',

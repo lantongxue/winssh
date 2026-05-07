@@ -142,7 +142,8 @@ const workbench = {
         error: '失败',
         running: '进行中',
         unknown: '未知',
-        upload: '上传'
+        upload: '上传',
+        batchProgress: '{{completed}} / {{total}} 个文件'
       }
     },
     primarySidebar: {
@@ -804,7 +805,8 @@ const workbench = {
       sessionDisconnected: '会话已断开',
       sessionExited: '会话已退出：{{sessionId}}',
       sessionStateChanged: '会话状态已变更为 {{status}}',
-      uploadCompleted: '上传完成：{{fileName}}'
+      uploadCompleted: '上传完成：{{fileName}}',
+      batchUploadCompleted: '上传完成：{{count}} 个文件'
     },
     credentialVault: {
       title: '凭据保险柜',

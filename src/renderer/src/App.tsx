@@ -275,30 +275,7 @@ export default function App() {
         <WorkbenchShell />
       </TooltipProvider>
       <UpdateDialog />
-      <Toaster
-        position="bottom-right"
-        offset={16}
-        mobileOffset={12}
-        toastOptions={{
-          unstyled: true,
-          classNames: {
-            toast: 'winssh-toast',
-            content: 'winssh-toast__content',
-            title: 'winssh-toast__title',
-            description: 'winssh-toast__description',
-            icon: 'winssh-toast__icon',
-            closeButton: 'winssh-toast__close',
-            actionButton: 'winssh-toast__action',
-            cancelButton: 'winssh-toast__cancel',
-            default: 'winssh-toast--default',
-            info: 'winssh-toast--info',
-            success: 'winssh-toast--success',
-            warning: 'winssh-toast--warning',
-            error: 'winssh-toast--error',
-            loading: 'winssh-toast--loading'
-          }
-        }}
-      />
+      <Toaster position="bottom-right" closeButton offset={16} />
     </AppErrorBoundary>
   )
 }

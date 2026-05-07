@@ -386,6 +386,8 @@ export interface TransferProgressEvent extends ObservableEventMetadata {
   total: number
   status: 'running' | 'completed' | 'error'
   error?: string
+  batchId?: string
+  batchTotal?: number
 }
 
 export interface PortForwardInput {

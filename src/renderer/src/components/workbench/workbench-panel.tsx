@@ -14,6 +14,7 @@ export function WorkbenchPanel() {
   const outputEntries = useWorkbenchStore((state) => state.outputEntries)
   const problems = useWorkbenchStore((state) => state.problems)
   const transferEntries = useWorkbenchStore((state) => state.transferEntries)
+  const batchProgress = useWorkbenchStore((state) => state.batchProgress)
   const clearOutput = useWorkbenchStore((state) => state.clearOutput)
   const clearProblems = useWorkbenchStore((state) => state.clearProblems)
   const clearTransfers = useWorkbenchStore((state) => state.clearTransfers)
@@ -21,6 +22,12 @@ export function WorkbenchPanel() {
   const setPanelOpen = useWorkbenchStore((state) => state.setPanelOpen)
   const ClearIcon = actionIcons.clear
   const CloseIcon = actionIcons.close
+
+  const batchEntries = Object.values(batchProgress)
+  const batchTotalFiles = batchEntries.reduce((sum, b) => sum + b.total, 0)
+  const batchCompletedFiles = batchEntries.reduce((sum, b) => sum + Math.min(b.completed, b.total), 0)
+  const hasActiveBatch = batchTotalFiles > 0 && batchCompletedFiles < batchTotalFiles
+  const batchRatio = batchTotalFiles > 0 ? Math.min(batchCompletedFiles / batchTotalFiles, 1) : 0
 
   return (
     <section className="flex h-full min-h-0 flex-col bg-[var(--workbench-panel)]">
@@ -103,7 +110,30 @@ export function WorkbenchPanel() {
 
         {activePanelId === 'transfers' ? (
           <div className="space-y-px bg-[var(--workbench-border)]">
-            {transferEntries.length === 0 ? (
+            {batchTotalFiles > 0 ? (
+              <div className="bg-[var(--workbench-panel)] px-4 py-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="font-medium text-foreground">
+                    {t('workbench.panel.transfer.batchProgress', {
+                      completed: batchCompletedFiles,
+                      total: batchTotalFiles
+                    })}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {hasActiveBatch
+                      ? t('workbench.panel.transfer.running')
+                      : t('workbench.panel.transfer.completed')}
+                  </div>
+                </div>
+                <div className="mt-3 h-1.5 rounded-full bg-[var(--workbench-hover)]">
+                  <div
+                    className="h-full rounded-full bg-[var(--workbench-active)] transition-[width] duration-300 ease-out"
+                    style={{ width: `${batchRatio * 100}%` }}
+                  />
+                </div>
+              </div>
+            ) : null}
+            {transferEntries.length === 0 && batchTotalFiles === 0 ? (
               <div className="bg-[var(--workbench-panel)] px-4 py-6 text-sm text-muted-foreground">
                 {t('workbench.panel.empty.transfers')}
               </div>

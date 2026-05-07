@@ -1226,6 +1226,21 @@ export class SessionManager {
     await this.uploadPaths(sessionId, targetPath, selection.filePaths)
   }
 
+  private async countLocalFiles(localPath: string): Promise<number> {
+    const stats = await fs.lstat(localPath)
+
+    if (!stats.isDirectory()) {
+      return stats.isFile() ? 1 : 0
+    }
+
+    const children = await fs.readdir(localPath)
+    const counts = await Promise.all(
+      children.map((child) => this.countLocalFiles(path.join(localPath, child)))
+    )
+
+    return counts.reduce((sum, count) => sum + count, 0)
+  }
+
   async uploadPaths(sessionId: string, targetPath: string, localPaths: string[]): Promise<void> {
     const runtime = this.requireSession(sessionId)
     const normalizedTargetPath = normalizeRemotePath(targetPath)
@@ -1238,9 +1253,13 @@ export class SessionManager {
       )
     ]
 
+    const batchId = `upload:${sessionId}:${randomUUID()}`
+    const counts = await Promise.all(uniqueLocalPaths.map((localPath) => this.countLocalFiles(localPath)))
+    const batchTotal = counts.reduce((sum, count) => sum + count, 0)
+
     for (const localPath of uniqueLocalPaths) {
       const remotePath = posix.join(normalizedTargetPath, basename(localPath))
-      await this.uploadLocalEntry(sessionId, runtime.sftp, localPath, remotePath)
+      await this.uploadLocalEntry(sessionId, runtime.sftp, localPath, remotePath, batchId, batchTotal)
     }
   }
 
@@ -1710,7 +1729,9 @@ export class SessionManager {
     sessionId: string,
     sftp: SFTPWrapper,
     localPath: string,
-    remotePath: string
+    remotePath: string,
+    batchId?: string,
+    batchTotal?: number
   ): Promise<void> {
     const localStats = await fs.lstat(localPath)
     const normalizedRemotePath = normalizeRemotePath(remotePath)
@@ -1724,7 +1745,9 @@ export class SessionManager {
           sessionId,
           sftp,
           path.join(localPath, childName),
-          posix.join(normalizedRemotePath, childName)
+          posix.join(normalizedRemotePath, childName),
+          batchId,
+          batchTotal
         )
       }
 
@@ -1735,7 +1758,7 @@ export class SessionManager {
       throw new Error(`Unsupported local upload entry: ${localPath}`)
     }
 
-    await this.uploadLocalFile(sessionId, sftp, localPath, normalizedRemotePath, localStats)
+    await this.uploadLocalFile(sessionId, sftp, localPath, normalizedRemotePath, localStats, batchId, batchTotal)
   }
 
   private async uploadLocalFile(
@@ -1743,11 +1766,15 @@ export class SessionManager {
     sftp: SFTPWrapper,
     localPath: string,
     remotePath: string,
-    localStats: FsStats
+    localStats: FsStats,
+    batchId?: string,
+    batchTotal?: number
   ): Promise<void> {
     const fileName = basename(localPath)
     let transferred = 0
     let total = Math.max(localStats.size, 1)
+
+    const batchInfo = batchId !== undefined ? { batchId, batchTotal } : {}
 
     await new Promise<void>((resolve, reject) => {
       sftp.fastPut(
@@ -1765,7 +1792,8 @@ export class SessionManager {
               remotePath,
               transferred,
               total,
-              status: 'running'
+              status: 'running',
+              ...batchInfo
             }))
           }
         },
@@ -1780,7 +1808,8 @@ export class SessionManager {
               transferred,
               total,
               status: 'error',
-              error: error.message
+              error: error.message,
+              ...batchInfo
             }))
             reject(error)
             return
@@ -1794,7 +1823,8 @@ export class SessionManager {
             remotePath,
             transferred: total,
             total,
-            status: 'completed'
+            status: 'completed',
+            ...batchInfo
           }))
           resolve()
         }

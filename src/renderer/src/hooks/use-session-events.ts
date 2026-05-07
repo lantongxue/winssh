@@ -85,6 +85,24 @@ export function useSessionEvents() {
       }
 
       if (event.status === 'completed') {
+        if (event.batchId !== undefined) {
+          const batch = useWorkbenchStore.getState().batchProgress[event.batchId]
+          if (!batch || batch.completed < batch.total) {
+            return
+          }
+
+          const message = t('workbench.output.batchUploadCompleted', {
+            count: batch.total
+          })
+          appendOutput({
+            detail: event.remotePath,
+            level: 'success',
+            message
+          })
+          toast.success(message)
+          return
+        }
+
         const message = t(`workbench.output.${event.direction}Completed`, {
           fileName: event.fileName
         })

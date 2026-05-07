@@ -21,6 +21,7 @@ interface WorkbenchStateData {
   activeActivityId: WorkbenchActivityId
   activeDocumentId: WorkbenchDocumentId | null
   activePanelId: WorkbenchPanelId
+  batchProgress: Record<string, { total: number; completed: number }>
   collapsedSections: Partial<Record<WorkbenchExplorerSectionId, boolean>>
   commandPaletteOpen: boolean
   documentTitleOverrides: Partial<Record<WorkbenchDocumentId, string>>
@@ -67,6 +68,7 @@ interface WorkbenchState extends WorkbenchStateData {
   togglePanel: () => void
   toggleSection: (sectionId: WorkbenchExplorerSectionId) => void
   toggleSidebar: () => void
+  updateBatchProgress: (batchId: string, total: number) => void
   upsertTransfer: (entry: Omit<WorkbenchTransferEntry, 'id' | 'updatedAt'>) => void
 }
 
@@ -113,6 +115,7 @@ function createInitialState(): WorkbenchStateData {
     activeActivityId: 'explorer',
     activeDocumentId: null,
     activePanelId: 'output',
+    batchProgress: {},
     collapsedSections: {},
     commandPaletteOpen: false,
     documentTitleOverrides: {},
@@ -158,7 +161,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
           }
         }),
       clearProblems: () => set({ problems: [] }),
-      clearTransfers: () => set({ transferEntries: [] }),
+      clearTransfers: () => set({ transferEntries: [], batchProgress: {} }),
       closeDocument: (documentId) =>
         set((state) => {
           const currentDocuments = normalizeDocuments(state.openDocuments)
@@ -350,6 +353,17 @@ export const useWorkbenchStore = create<WorkbenchState>()(
           }
         })),
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+      updateBatchProgress: (batchId, total) =>
+        set((state) => {
+          const current = state.batchProgress[batchId]
+          const completed = (current?.completed ?? 0) + 1
+          return {
+            batchProgress: {
+              ...state.batchProgress,
+              [batchId]: { total, completed }
+            }
+          }
+        }),
       upsertTransfer: (entry) =>
         set((state) => {
           const transferId = createTransferEntryId(entry)
@@ -362,13 +376,31 @@ export const useWorkbenchStore = create<WorkbenchState>()(
             updatedAt: new Date().toISOString()
           }
 
+          const existingEntry = existingIndex !== -1 ? state.transferEntries[existingIndex] : null
+          const wasCompleted = existingEntry?.status === 'completed'
+          const isNowCompleted = entry.status === 'completed'
+          const hasBatch = entry.batchId !== undefined
+
+          let nextBatchProgress = state.batchProgress
+
+          if (hasBatch && isNowCompleted && !wasCompleted) {
+            const current = state.batchProgress[entry.batchId!]
+            const completed = (current?.completed ?? 0) + 1
+            nextBatchProgress = {
+              ...state.batchProgress,
+              [entry.batchId!]: { total: entry.batchTotal ?? (current?.total ?? 0), completed }
+            }
+          }
+
           if (existingIndex === -1) {
             return {
+              batchProgress: nextBatchProgress,
               transferEntries: [nextEntry, ...state.transferEntries].slice(0, 100)
             }
           }
 
           return {
+            batchProgress: nextBatchProgress,
             transferEntries: state.transferEntries.map((transferEntry, index) =>
               index === existingIndex ? nextEntry : transferEntry
             )
