@@ -29,6 +29,11 @@
     "dist:mac": "npm run build && electron-builder --mac dmg zip",
     "dist:linux": "npm run build && electron-builder --linux AppImage deb"
   },
+  "config": {
+    "commitizen": {
+      "path": "cz-git"
+    }
+  },
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0",
     "@fontsource-variable/cascadia-code": "^5.2.2",
