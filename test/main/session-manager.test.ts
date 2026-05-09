@@ -102,10 +102,6 @@ function createManager() {
       recordRecentSession: vi.fn(),
       upsertKnownHost: vi.fn()
     } as never,
-    {
-      getSecret: vi.fn(),
-      setSecret: vi.fn()
-    } as never,
     () => null,
     vi.fn() as never,
     ((key: string) => key) as never

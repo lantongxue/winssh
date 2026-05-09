@@ -44,8 +44,6 @@ import {
 } from '@shared/types'
 import type { DatabaseService } from './database'
 import type { MainTranslator } from './localization'
-import type { SecureStoreService } from './secure-store'
-
 type WindowProvider = () => BrowserWindow | null
 type AcceptTcpConnection = () => ClientChannel
 type RejectConnection = () => void
@@ -819,7 +817,6 @@ export class SessionManager {
 
   constructor(
     private readonly database: DatabaseService,
-    private readonly secureStore: SecureStoreService,
     private readonly getWindow: WindowProvider,
     private readonly emitToRenderer: <T extends keyof EventMap>(
       channel: T,
@@ -1526,13 +1523,9 @@ export class SessionManager {
   }> {
     const requestSecrets = request.secrets?.[server.id]
     const password =
-      requestSecrets?.password ??
-      (await this.secureStore.getSecret(server.id, 'password')) ??
-      undefined
+      requestSecrets?.password ?? this.database.getServerPassword(server.id) ?? undefined
     const passphrase =
-      requestSecrets?.passphrase ??
-      (await this.secureStore.getSecret(server.id, 'passphrase')) ??
-      undefined
+      requestSecrets?.passphrase ?? this.database.getServerPassphrase(server.id) ?? undefined
 
     if (server.authType === 'password' && !password) {
       throw new ConnectionFailure(
@@ -1748,18 +1741,18 @@ export class SessionManager {
   ): Promise<void> {
     if (authType === 'password') {
       if (request.rememberPassword === false) {
-        await this.secureStore.deleteSecret(serverId, 'password')
+        this.database.updateServerPassword(serverId, null)
       } else if (request.rememberPassword && request.password) {
-        await this.secureStore.setSecret(serverId, 'password', request.password)
+        this.database.updateServerPassword(serverId, request.password)
       }
 
       return
     }
 
     if (request.rememberPassphrase === false) {
-      await this.secureStore.deleteSecret(serverId, 'passphrase')
+      this.database.updateServerPassphrase(serverId, null)
     } else if (request.rememberPassphrase && request.passphrase) {
-      await this.secureStore.setSecret(serverId, 'passphrase', request.passphrase)
+      this.database.updateServerPassphrase(serverId, request.passphrase)
     }
   }
 

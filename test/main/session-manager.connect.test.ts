@@ -153,23 +153,21 @@ function createPrivateKeyServer(overrides: Partial<Server> = {}): Server {
 function createManager() {
   const database = {
     getKnownHost: vi.fn(),
+    getServerPassphrase: vi.fn((): string | null => null),
+    getServerPassword: vi.fn((): string | null => null),
     getServerPrivateKey: vi.fn((): string | null => null),
     getServerById: vi.fn((id: string): Server | null =>
       id === 'server-1' ? createPasswordServer() : null
     ),
     recordRecentSession: vi.fn(),
     updateServerBrand: vi.fn(),
+    updateServerPassphrase: vi.fn(),
+    updateServerPassword: vi.fn(),
     upsertKnownHost: vi.fn()
-  }
-  const secureStore = {
-    deleteSecret: vi.fn(),
-    getSecret: vi.fn(),
-    setSecret: vi.fn()
   }
 
   const manager = new SessionManager(
     database as never,
-    secureStore as never,
     () => null,
     vi.fn() as never,
     ((key: string) => key) as never
@@ -177,8 +175,7 @@ function createManager() {
 
   return {
     database,
-    manager,
-    secureStore
+    manager
   }
 }
 
@@ -191,8 +188,8 @@ beforeEach(() => {
 
 describe('SessionManager connect', () => {
   it('returns secret_required with server metadata when no password is available', async () => {
-    const { manager, secureStore } = createManager()
-    secureStore.getSecret.mockResolvedValueOnce(null)
+    const { manager, database } = createManager()
+    database.getServerPassword.mockReturnValue(null)
 
     const result = await manager.connect({ serverId: 'server-1' })
 
@@ -251,7 +248,7 @@ describe('SessionManager connect', () => {
   })
 
   it('persists a remembered password only after a successful connection', async () => {
-    const { database, manager, secureStore } = createManager()
+    const { database, manager } = createManager()
     clientBehaviors.push({ type: 'ready' })
 
     const result = await manager.connect({
@@ -266,7 +263,7 @@ describe('SessionManager connect', () => {
 
     expect(result.ok).toBe(true)
     expect(database.recordRecentSession).toHaveBeenCalledWith('server-1')
-    expect(secureStore.setSecret).toHaveBeenCalledWith('server-1', 'password', 'correct-password')
+    expect(database.updateServerPassword).toHaveBeenCalledWith('server-1', 'correct-password')
   })
 
   it('uses the stored private key content for key-based authentication', async () => {
@@ -298,7 +295,7 @@ describe('SessionManager connect', () => {
   })
 
   it('returns secret_required for the jump server when its password is missing', async () => {
-    const { database, manager, secureStore } = createManager()
+    const { database, manager } = createManager()
     const targetServer = createPasswordServer({
       id: 'server-1',
       jumpServerId: 'jump-1',
@@ -324,7 +321,7 @@ describe('SessionManager connect', () => {
 
       return null
     })
-    secureStore.getSecret.mockResolvedValue(null)
+    database.getServerPassword.mockReturnValue(null)
 
     const result = await manager.connect({ serverId: 'server-1' })
 
@@ -338,7 +335,7 @@ describe('SessionManager connect', () => {
   })
 
   it('connects through the jump server and passes the forwarded socket to the target connection', async () => {
-    const { database, manager, secureStore } = createManager()
+    const { database, manager } = createManager()
     const targetServer = createPasswordServer({
       id: 'server-1',
       host: '10.0.0.20',
@@ -366,8 +363,8 @@ describe('SessionManager connect', () => {
 
       return null
     })
-    secureStore.getSecret.mockImplementation((serverId: string) =>
-      Promise.resolve(serverId === 'jump-1' ? 'jump-password' : 'target-password')
+    database.getServerPassword.mockImplementation((serverId: string) =>
+      serverId === 'jump-1' ? 'jump-password' : 'target-password'
     )
     clientBehaviors.push({ type: 'ready' }, { type: 'ready' })
 

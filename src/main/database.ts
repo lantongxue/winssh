@@ -70,6 +70,8 @@ type ServerRow = {
   custom_icon: Buffer | null
   private_key_path: string | null
   private_key: string | null
+  password: string | null
+  passphrase: string | null
   note: string | null
   group_id: string | null
   credential_id: string | null
@@ -186,8 +188,8 @@ function mapServer(row: ServerRow, tags: Tag[]): Server {
         }
       : null,
     tags,
-    hasPassword: false,
-    hasPassphrase: false
+    hasPassword: Boolean(row.password),
+    hasPassphrase: Boolean(row.passphrase)
   }
 }
 
@@ -267,6 +269,8 @@ export class DatabaseService {
         custom_icon BLOB,
         private_key_path TEXT,
         private_key TEXT,
+        password TEXT,
+        passphrase TEXT,
         note TEXT,
         group_id TEXT REFERENCES server_groups(id) ON DELETE SET NULL,
         jump_server_id TEXT REFERENCES servers(id) ON DELETE SET NULL,
@@ -334,6 +338,12 @@ export class DatabaseService {
     }
     if (!serverColumns.some((column) => column.name === 'custom_icon')) {
       this.db.exec('ALTER TABLE servers ADD COLUMN custom_icon BLOB')
+    }
+    if (!serverColumns.some((column) => column.name === 'password')) {
+      this.db.exec('ALTER TABLE servers ADD COLUMN password TEXT')
+    }
+    if (!serverColumns.some((column) => column.name === 'passphrase')) {
+      this.db.exec('ALTER TABLE servers ADD COLUMN passphrase TEXT')
     }
   }
 
@@ -519,6 +529,56 @@ export class DatabaseService {
     return row?.private_key ?? null
   }
 
+  getServerPassword(id: string): string | null {
+    const row = this.db.prepare('SELECT password FROM servers WHERE id = ?').get(id) as
+      | Pick<ServerRow, 'password'>
+      | undefined
+
+    return row?.password ?? null
+  }
+
+  getServerPassphrase(id: string): string | null {
+    const row = this.db.prepare('SELECT passphrase FROM servers WHERE id = ?').get(id) as
+      | Pick<ServerRow, 'passphrase'>
+      | undefined
+
+    return row?.passphrase ?? null
+  }
+
+  updateServerPassword(id: string, password: string | null): void {
+    this.db
+      .prepare('UPDATE servers SET password = ?, updated_at = ? WHERE id = ?')
+      .run(password, nowIso(), id)
+  }
+
+  updateServerPassphrase(id: string, passphrase: string | null): void {
+    this.db
+      .prepare('UPDATE servers SET passphrase = ?, updated_at = ? WHERE id = ?')
+      .run(passphrase, nowIso(), id)
+  }
+
+  migrateServerSecrets(
+    secrets: Array<{ serverId: string; password: string | null; passphrase: string | null }>
+  ): void {
+    const updatePassword = this.db.prepare(
+      'UPDATE servers SET password = ? WHERE id = ? AND password IS NULL'
+    )
+    const updatePassphrase = this.db.prepare(
+      'UPDATE servers SET passphrase = ? WHERE id = ? AND passphrase IS NULL'
+    )
+    const transaction = this.db.transaction((items: typeof secrets) => {
+      for (const item of items) {
+        if (item.password !== null) {
+          updatePassword.run(item.password, item.serverId)
+        }
+        if (item.passphrase !== null) {
+          updatePassphrase.run(item.passphrase, item.serverId)
+        }
+      }
+    })
+    transaction(secrets)
+  }
+
   createServer(input: ServerUpsertInput): Server {
     const id = randomUUID()
     this.saveServer({ ...input, id })
@@ -563,6 +623,8 @@ export class DatabaseService {
                 custom_icon = ?,
                 private_key = ?,
                 private_key_path = ?,
+                password = ?,
+                passphrase = ?,
                 note = ?,
                 group_id = ?,
                 jump_server_id = ?,
@@ -582,6 +644,8 @@ export class DatabaseService {
             customIcon,
             payload.privateKey?.trim() ? payload.privateKey : null,
             null,
+            payload.rememberPassword && payload.password ? payload.password : null,
+            payload.rememberPassphrase && payload.passphrase ? payload.passphrase : null,
             payload.note?.trim() || null,
             payload.groupId || null,
             payload.jumpServerId || null,
@@ -596,9 +660,9 @@ export class DatabaseService {
             `
               INSERT INTO servers (
                 id, name, host, port, username, auth_type, brand_id, custom_icon_mime_type,
-                custom_icon, private_key, private_key_path, note, group_id, jump_server_id,
+                custom_icon, private_key, private_key_path, password, passphrase, note, group_id, jump_server_id,
                 favorite, credential_id, created_at, updated_at, last_connected_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `
           )
           .run(
@@ -613,6 +677,8 @@ export class DatabaseService {
             customIcon,
             payload.privateKey?.trim() ? payload.privateKey : null,
             null,
+            payload.rememberPassword && payload.password ? payload.password : null,
+            payload.rememberPassphrase && payload.passphrase ? payload.passphrase : null,
             payload.note?.trim() || null,
             payload.groupId || null,
             payload.jumpServerId || null,

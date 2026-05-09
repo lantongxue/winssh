@@ -5,13 +5,15 @@ interface ServersDatabaseDouble {
   createServer?: ReturnType<typeof vi.fn>
   getCredentialSecret?: ReturnType<typeof vi.fn>
   getServerById?: ReturnType<typeof vi.fn>
+  getServerPassword?: ReturnType<typeof vi.fn>
+  getServerPassphrase?: ReturnType<typeof vi.fn>
   listServers?: ReturnType<typeof vi.fn>
+  updateServer?: ReturnType<typeof vi.fn>
 }
 
 interface SecureStoreDouble {
   deleteSecret?: ReturnType<typeof vi.fn>
   getSecret?: ReturnType<typeof vi.fn>
-  listStatuses?: ReturnType<typeof vi.fn>
   setSecret?: ReturnType<typeof vi.fn>
 }
 
@@ -43,25 +45,14 @@ function createServer(overrides: Partial<Server> = {}): Server {
 }
 
 describe('ServersApplicationService', () => {
-  it('merges secure-store status into listed servers', async () => {
+  it('returns server list with hasPassword/hasPassphrase from database', async () => {
     const database = {
-      listServers: vi.fn(() => [createServer()])
+      listServers: vi.fn(() => [createServer({ hasPassword: true, hasPassphrase: false })])
     } satisfies ServersDatabaseDouble as unknown as ConstructorParameters<
       typeof ServersApplicationService
     >[0]
     const secureStore = {
-      listStatuses: vi.fn(
-        async () =>
-          new Map([
-            [
-              'server-1',
-              {
-                hasPassphrase: false,
-                hasPassword: true
-              }
-            ]
-          ])
-      )
+      deleteSecret: vi.fn(async () => undefined)
     } satisfies SecureStoreDouble as unknown as ConstructorParameters<
       typeof ServersApplicationService
     >[1]
@@ -94,8 +85,7 @@ describe('ServersApplicationService', () => {
       typeof ServersApplicationService
     >[0]
     const secureStore = {
-      getSecret: vi.fn(async () => 'ignored'),
-      listStatuses: vi.fn(async () => new Map())
+      deleteSecret: vi.fn(async () => undefined)
     } satisfies SecureStoreDouble as unknown as ConstructorParameters<
       typeof ServersApplicationService
     >[1]
@@ -108,10 +98,33 @@ describe('ServersApplicationService', () => {
       password: 'vault-password',
       privateKey: 'vault-private-key'
     })
-    expect(secureStore.getSecret).not.toHaveBeenCalled()
   })
 
-  it('persists remembered password secrets during create', async () => {
+  it('reads password and passphrase from database when no credential is linked', async () => {
+    const database = {
+      getServerById: vi.fn(() => createServer()),
+      getServerPassword: vi.fn(() => 'db-password'),
+      getServerPassphrase: vi.fn(() => 'db-passphrase'),
+      getServerPrivateKey: vi.fn(() => null)
+    } satisfies ServersDatabaseDouble as unknown as ConstructorParameters<
+      typeof ServersApplicationService
+    >[0]
+    const secureStore = {
+      deleteSecret: vi.fn(async () => undefined)
+    } satisfies SecureStoreDouble as unknown as ConstructorParameters<
+      typeof ServersApplicationService
+    >[1]
+
+    const service = new ServersApplicationService(database, secureStore)
+    const secrets = await service.getSecrets('server-1')
+
+    expect(secrets.password).toBe('db-password')
+    expect(secrets.passphrase).toBe('db-passphrase')
+    expect(database.getServerPassword).toHaveBeenCalledWith('server-1')
+    expect(database.getServerPassphrase).toHaveBeenCalledWith('server-1')
+  })
+
+  it('cleans up keychain secrets after creating a server', async () => {
     const createdServer = createServer()
     const database = {
       createServer: vi.fn(() => createdServer),
@@ -120,20 +133,7 @@ describe('ServersApplicationService', () => {
       typeof ServersApplicationService
     >[0]
     const secureStore = {
-      deleteSecret: vi.fn(async () => undefined),
-      listStatuses: vi.fn(
-        async () =>
-          new Map([
-            [
-              'server-1',
-              {
-                hasPassphrase: false,
-                hasPassword: true
-              }
-            ]
-          ])
-      ),
-      setSecret: vi.fn(async () => undefined)
+      deleteSecret: vi.fn(async () => undefined)
     } satisfies SecureStoreDouble as unknown as ConstructorParameters<
       typeof ServersApplicationService
     >[1]
@@ -156,7 +156,7 @@ describe('ServersApplicationService', () => {
       username: 'tester'
     })
 
-    expect(secureStore.setSecret).toHaveBeenCalledWith('server-1', 'password', 'top-secret')
+    expect(secureStore.deleteSecret).toHaveBeenCalledWith('server-1', 'password')
     expect(secureStore.deleteSecret).toHaveBeenCalledWith('server-1', 'passphrase')
   })
 })

@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import type { ServerUpsertInput } from '@shared/types'
 import type { DatabaseService } from '../database'
-import { createLogger, createOperationContext, toAppError } from '../observability'
+import { createLogger, createOperationContext } from '../observability'
 import type { SecureStoreService } from '../secure-store'
 
 export class ServersApplicationService {
@@ -15,17 +15,7 @@ export class ServersApplicationService {
   async listServers() {
     const context = createOperationContext('main', 'servers', 'list')
     this.logger.info('Listing servers', { context })
-    const servers = this.database.listServers()
-    const statuses = await this.secureStore.listStatuses(servers.map((server) => server.id))
-
-    return servers.map((server) => {
-      const status = statuses.get(server.id)
-      return {
-        ...server,
-        hasPassword: status?.hasPassword ?? false,
-        hasPassphrase: status?.hasPassphrase ?? false
-      }
-    })
+    return this.database.listServers()
   }
 
   async getSecrets(id: string) {
@@ -54,8 +44,8 @@ export class ServersApplicationService {
     }
 
     const [password, passphrase, privateKey] = await Promise.all([
-      this.secureStore.getSecret(id, 'password'),
-      this.secureStore.getSecret(id, 'passphrase'),
+      this.database.getServerPassword(id),
+      this.database.getServerPassphrase(id),
       this.resolveStoredPrivateKey(id)
     ])
 
@@ -70,16 +60,16 @@ export class ServersApplicationService {
     const context = createOperationContext('main', 'servers', 'create')
     this.logger.info('Creating server', { context, data: { authType: payload.authType } })
     const server = this.database.createServer(payload)
-    await this.persistSecrets(server.id, payload)
+    await this.cleanupKeychainSecrets(server.id)
     return (await this.listServers()).find((item) => item.id === server.id) ?? server
   }
 
   async update(id: string, payload: ServerUpsertInput) {
     const context = createOperationContext('main', 'servers', 'update', { serverId: id })
     this.logger.info('Updating server', { context, data: { authType: payload.authType } })
-    const server = this.database.updateServer(id, payload)
-    await this.persistSecrets(server.id, payload)
-    return (await this.listServers()).find((item) => item.id === server.id) ?? server
+    this.database.updateServer(id, payload)
+    await this.cleanupKeychainSecrets(id)
+    return (await this.listServers()).find((item) => item.id === id) ?? null
   }
 
   async delete(id: string) {
@@ -107,33 +97,12 @@ export class ServersApplicationService {
     this.database.clearRecentSessions()
   }
 
-  private async persistSecrets(serverId: string, payload: ServerUpsertInput) {
+  private async cleanupKeychainSecrets(serverId: string) {
     try {
-      if (payload.authType === 'password') {
-        if (!payload.rememberPassword) {
-          await this.secureStore.deleteSecret(serverId, 'password')
-        } else if (payload.password) {
-          await this.secureStore.setSecret(serverId, 'password', payload.password)
-        }
-
-        await this.secureStore.deleteSecret(serverId, 'passphrase')
-      }
-
-      if (payload.authType === 'privateKey') {
-        if (!payload.rememberPassphrase) {
-          await this.secureStore.deleteSecret(serverId, 'passphrase')
-        } else if (payload.passphrase) {
-          await this.secureStore.setSecret(serverId, 'passphrase', payload.passphrase)
-        }
-
-        await this.secureStore.deleteSecret(serverId, 'password')
-      }
+      await this.secureStore.deleteSecret(serverId, 'password')
+      await this.secureStore.deleteSecret(serverId, 'passphrase')
     } catch (error) {
-      throw toAppError(error, {
-        code: 'server_secret_persist_failed',
-        details: { serverId },
-        recoverable: false
-      })
+      void error
     }
   }
 

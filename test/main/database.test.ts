@@ -129,7 +129,14 @@ describeDatabase('DatabaseService server persistence', () => {
     migrated.close()
 
     expect(columns.map((column) => column.name)).toEqual(
-      expect.arrayContaining(['brand_id', 'custom_icon', 'custom_icon_mime_type', 'jump_server_id'])
+      expect.arrayContaining([
+        'brand_id',
+        'custom_icon',
+        'custom_icon_mime_type',
+        'jump_server_id',
+        'password',
+        'passphrase'
+      ])
     )
   })
 

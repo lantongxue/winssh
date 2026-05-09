@@ -127,6 +127,90 @@ function isEnabledEnvironmentFlag(value: string | undefined): boolean {
   return value === '1' || value?.toLowerCase() === 'true'
 }
 
+function parseVersionSegments(version: string): number[] {
+  const [coreVersion] = version.split('-')
+  return coreVersion.split('.').map((segment) => Number.parseInt(segment, 10) || 0)
+}
+
+function isVersionLessThanOrEqual(version: string, targetVersion: string): boolean {
+  const current = parseVersionSegments(version)
+  const target = parseVersionSegments(targetVersion)
+  const length = Math.max(current.length, target.length)
+
+  for (let index = 0; index < length; index += 1) {
+    const currentSegment = current[index] ?? 0
+    const targetSegment = target[index] ?? 0
+
+    if (currentSegment < targetSegment) {
+      return true
+    }
+
+    if (currentSegment > targetSegment) {
+      return false
+    }
+  }
+
+  return true
+}
+
+async function migrateKeychainSecretsToDatabase(
+  database: DatabaseService,
+  secureStore: SecureStoreService,
+  version: string
+): Promise<void> {
+  if (!isVersionLessThanOrEqual(version, '1.1.0')) {
+    return
+  }
+
+  const available = await secureStore.isAvailable()
+  if (!available) {
+    return
+  }
+
+  try {
+    const servers = database.listServers()
+    const migrations: Array<{
+      serverId: string
+      password: string | null
+      passphrase: string | null
+    }> = []
+
+    for (const server of servers) {
+      if (server.hasPassword && server.hasPassphrase) {
+        continue
+      }
+
+      const [password, passphrase] = await Promise.all([
+        server.hasPassword ? null : secureStore.getSecret(server.id, 'password'),
+        server.hasPassphrase ? null : secureStore.getSecret(server.id, 'passphrase')
+      ])
+
+      if (password !== null || passphrase !== null) {
+        migrations.push({
+          serverId: server.id,
+          password,
+          passphrase
+        })
+      }
+    }
+
+    if (migrations.length > 0) {
+      database.migrateServerSecrets(migrations)
+
+      for (const migration of migrations) {
+        if (migration.password !== null) {
+          await secureStore.deleteSecret(migration.serverId, 'password')
+        }
+        if (migration.passphrase !== null) {
+          await secureStore.deleteSecret(migration.serverId, 'passphrase')
+        }
+      }
+    }
+  } catch (error) {
+    void error
+  }
+}
+
 export async function bootstrap(): Promise<void> {
   const logger = createLogger('main')
   electronApp.setAppUserModelId(APP_ID)
@@ -137,6 +221,7 @@ export async function bootstrap(): Promise<void> {
     join(app.getPath('userData'), 'themes')
   )
   const secureStore = new SecureStoreService()
+  await migrateKeychainSecretsToDatabase(database, secureStore, app.getVersion())
   const translate = createMainTranslator(() =>
     resolveMainLanguage(database.getSettings().language, app.getLocale())
   )
@@ -158,7 +243,6 @@ export async function bootstrap(): Promise<void> {
   })
   const sessionManager = new SessionManager(
     database,
-    secureStore,
     () => mainWindow,
     (channel, payload) => {
       mainWindow?.webContents.send(channel, payload)
@@ -219,7 +303,7 @@ export async function bootstrap(): Promise<void> {
   registerSessionIpc(sessionsService)
   registerSystemIpc({
     appInfo,
-    credentialStorageAvailable: () => secureStore.isAvailable(),
+    credentialStorageAvailable: () => Promise.resolve(true),
     database,
     getMainWindow: () => mainWindow,
     logFileService,
