@@ -4,6 +4,7 @@ import net, { type AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
+import { dialog } from 'electron'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   SESSION_RESOURCE_MONITOR_LINUX_ONLY,
@@ -448,6 +449,111 @@ describe('SessionManager port forwarding', () => {
       '/deploy/project/README.md',
       '/deploy/project/nested/config.json'
     ])
+  })
+
+  it('downloads remote directories recursively and preserves empty folders', async () => {
+    const manager = createManager()
+    const client = new MockClient()
+    const rootDir = await fs.mkdtemp(join(tmpdir(), 'winssh-sftp-download-'))
+    temporaryPaths.push(rootDir)
+    vi.mocked(dialog.showOpenDialog).mockResolvedValue({
+      canceled: false,
+      filePaths: [rootDir]
+    })
+
+    const remoteDirectories = new Set([
+      '/deploy/project',
+      '/deploy/project/nested',
+      '/deploy/project/nested/empty'
+    ])
+    const remoteFiles = new Map([
+      ['/deploy/project/README.md', '# demo\n'],
+      ['/deploy/project/nested/config.json', '{"ok":true}\n']
+    ])
+    const downloadedFiles: Array<{ localPath: string; remotePath: string }> = []
+    const createStats = (kind: 'directory' | 'file', size = 0) => ({
+      isDirectory: () => kind === 'directory',
+      isSymbolicLink: () => false,
+      mode: kind === 'directory' ? 0o040755 : 0o100644,
+      mtime: 0,
+      size
+    })
+    const sftp = {
+      fastGet: vi.fn(
+        (
+          remotePath: string,
+          localPath: string,
+          options: { step?: (transferred: number, chunk: number, total: number) => void },
+          callback: (error?: Error) => void
+        ) => {
+          downloadedFiles.push({ localPath, remotePath })
+          const content = remoteFiles.get(remotePath) ?? ''
+          fs.writeFile(localPath, content)
+            .then(() => {
+              options.step?.(content.length, content.length, content.length || 1)
+              callback()
+            })
+            .catch(callback)
+        }
+      ),
+      readdir: vi.fn(
+        (remotePath: string, callback: (error: Error | undefined, entries?: unknown[]) => void) => {
+          const children = Array.from([...remoteDirectories, ...remoteFiles.keys()])
+            .filter(
+              (entryPath) => entryPath !== remotePath && entryPath.startsWith(`${remotePath}/`)
+            )
+            .filter((entryPath) => entryPath.slice(remotePath.length + 1).split('/').length === 1)
+            .map((entryPath) => {
+              const isDirectory = remoteDirectories.has(entryPath)
+              const content = remoteFiles.get(entryPath) ?? ''
+              return {
+                attrs: createStats(isDirectory ? 'directory' : 'file', content.length),
+                filename: entryPath.split('/').at(-1) ?? ''
+              }
+            })
+          callback(undefined, children)
+        }
+      ),
+      stat: vi.fn(
+        (
+          remotePath: string,
+          callback: (error: Error | undefined, stats?: ReturnType<typeof createStats>) => void
+        ) => {
+          if (remoteDirectories.has(remotePath)) {
+            callback(undefined, createStats('directory'))
+            return
+          }
+
+          const content = remoteFiles.get(remotePath)
+          if (content !== undefined) {
+            callback(undefined, createStats('file', content.length))
+            return
+          }
+
+          callback(new Error('ENOENT'))
+        }
+      )
+    } as never
+
+    const runtime = {
+      ...createRuntime('session-1', client),
+      sftp
+    }
+    getSessionsMap(manager).set('session-1', runtime)
+
+    await manager.downloadFile('session-1', '/deploy/project')
+
+    expect(downloadedFiles.map((entry) => entry.remotePath).sort()).toEqual([
+      '/deploy/project/README.md',
+      '/deploy/project/nested/config.json'
+    ])
+    await expect(fs.readFile(join(rootDir, 'project', 'README.md'), 'utf8')).resolves.toBe(
+      '# demo\n'
+    )
+    await expect(
+      fs.readFile(join(rootDir, 'project', 'nested', 'config.json'), 'utf8')
+    ).resolves.toBe('{"ok":true}\n')
+    await expect(fs.stat(join(rootDir, 'project', 'nested', 'empty'))).resolves.toMatchObject({})
   })
 
   it('removes non-empty directories recursively', async () => {

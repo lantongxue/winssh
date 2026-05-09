@@ -185,7 +185,7 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
     setSelectionAnchorPath((current) => (current && availablePaths.has(current) ? current : null))
   }, [listingQuery.data?.entries])
 
-  const entries = listingQuery.data?.entries ?? []
+  const entries = useMemo(() => listingQuery.data?.entries ?? [], [listingQuery.data?.entries])
   const selectedEntrySet = useMemo(() => new Set(selectedEntryPaths), [selectedEntryPaths])
   const removingEntrySet = useMemo(() => new Set(removingEntryPaths), [removingEntryPaths])
   const selectedEntries = useMemo(
@@ -634,7 +634,7 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
               ) : null
             ) : null}
 
-            {singleContextTarget && singleContextTarget.kind !== 'directory' ? (
+            {singleContextTarget ? (
               <ContextMenuItem
                 onClick={() =>
                   void sftpClient.downloadFile(session.sessionId, singleContextTarget.path)

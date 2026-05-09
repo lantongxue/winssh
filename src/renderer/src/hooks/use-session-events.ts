@@ -80,12 +80,12 @@ export function useSessionEvents() {
 
       upsertTransfer(event)
 
-      if (event.direction === 'upload' && event.status === 'running') {
+      if (event.status === 'running') {
         revealPanel('transfers', { minSizePx: MIN_TRANSFER_PANEL_REVEAL_SIZE_PX })
       }
 
       if (event.status === 'completed') {
-        if (event.batchId !== undefined) {
+        if (event.direction === 'upload' && event.batchId !== undefined) {
           const batch = useWorkbenchStore.getState().batchProgress[event.batchId]
           if (!batch || batch.completed < batch.total) {
             return

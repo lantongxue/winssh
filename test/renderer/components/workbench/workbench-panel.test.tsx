@@ -35,4 +35,31 @@ describe('WorkbenchPanel', () => {
     expect(screen.getByText('archive.tar.gz')).toBeInTheDocument()
     expect(screen.getByText(/1\.50 KB \/ 5\.00 MB .* Running/)).toBeInTheDocument()
   })
+
+  it('renders download batch progress at the top of transfers', async () => {
+    const store = useWorkbenchStore.getState()
+
+    store.setActivePanel('transfers')
+    store.upsertTransfer({
+      batchId: 'download:session-1:test',
+      batchTotal: 1,
+      direction: 'download',
+      fileName: 'backup.zip',
+      localPath: 'C:\\Users\\mrkin\\Downloads\\backup.zip',
+      remotePath: '/var/www/backup.zip',
+      sessionId: 'session-1',
+      status: 'running',
+      total: 1024,
+      transferred: 512
+    })
+
+    render(
+      <TooltipProvider>
+        <WorkbenchPanel />
+      </TooltipProvider>
+    )
+
+    expect(screen.getByText('0 / 1 files')).toBeInTheDocument()
+    expect(screen.getByText('backup.zip')).toBeInTheDocument()
+  })
 })

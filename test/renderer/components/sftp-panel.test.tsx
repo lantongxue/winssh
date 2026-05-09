@@ -148,6 +148,29 @@ describe('SftpPanel', () => {
     expect(onEditFile).toHaveBeenCalledWith('/var/www/config.json')
   })
 
+  it('downloads a selected directory from the context menu', async () => {
+    const downloadFile = vi.fn().mockResolvedValue(undefined)
+
+    window.winsshApi = createWinsshApiMock({
+      sftp: {
+        downloadFile,
+        list: vi.fn().mockResolvedValue({
+          entries: [directoryEntry, ...entries],
+          path: '/var/www'
+        })
+      }
+    })
+
+    renderSftpPanel(session)
+
+    fireEvent.contextMenu(await screen.findByText('assets'))
+    fireEvent.click(await screen.findByText('Download'))
+
+    await waitFor(() => {
+      expect(downloadFile).toHaveBeenCalledWith('session-1', '/var/www/assets')
+    })
+  })
+
   it('renders directory icons with a stronger highlighted treatment than files', async () => {
     window.winsshApi = createWinsshApiMock({
       sftp: {

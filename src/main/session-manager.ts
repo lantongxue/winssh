@@ -1290,8 +1290,37 @@ export class SessionManager {
   async downloadFile(sessionId: string, remotePath: string): Promise<void> {
     const runtime = this.requireSession(sessionId)
     const normalized = normalizeRemotePath(remotePath)
+    const remoteStats = await sftpStat(runtime.sftp, normalized)
     const window = this.getWindow()
     const fileName = path.posix.basename(normalized)
+
+    if (remoteStats.isDirectory()) {
+      const selectionOptions: OpenDialogOptions = {
+        title: this.t('dialogs.downloadFile.title'),
+        properties: ['openDirectory']
+      }
+      const selection = window
+        ? await dialog.showOpenDialog(window, selectionOptions)
+        : await dialog.showOpenDialog(selectionOptions)
+
+      if (selection.canceled || selection.filePaths.length === 0) {
+        return
+      }
+
+      const batchId = `download:${sessionId}:${randomUUID()}`
+      const batchTotal = await this.countRemoteFiles(runtime.sftp, normalized)
+      const localDirectoryPath = path.join(selection.filePaths[0], fileName)
+      await this.downloadRemoteEntry(
+        sessionId,
+        runtime.sftp,
+        normalized,
+        localDirectoryPath,
+        batchId,
+        batchTotal
+      )
+      return
+    }
+
     const saveOptions = {
       title: this.t('dialogs.downloadFile.title'),
       defaultPath: fileName
@@ -1304,23 +1333,104 @@ export class SessionManager {
       return
     }
 
+    const batchId = `download:${sessionId}:${randomUUID()}`
+    const batchTotal = 1
+    await this.downloadRemoteFile(
+      sessionId,
+      runtime.sftp,
+      normalized,
+      saveResult.filePath,
+      batchId,
+      batchTotal
+    )
+  }
+
+  private async countRemoteFiles(sftp: SFTPWrapper, remotePath: string): Promise<number> {
+    const stats = await sftpStat(sftp, remotePath)
+
+    if (!stats.isDirectory()) {
+      return 1
+    }
+
+    const entries = await sftpReadDir(sftp, remotePath)
+    const counts = await Promise.all(
+      entries
+        .filter((entry) => entry.name !== '.' && entry.name !== '..')
+        .map((entry) => this.countRemoteFiles(sftp, entry.path))
+    )
+
+    return counts.reduce((sum, count) => sum + count, 0)
+  }
+
+  private async downloadRemoteEntry(
+    sessionId: string,
+    sftp: SFTPWrapper,
+    remotePath: string,
+    localPath: string,
+    batchId: string,
+    batchTotal: number
+  ): Promise<void> {
+    const stats = await sftpStat(sftp, remotePath)
+
+    if (!stats.isDirectory()) {
+      await this.downloadRemoteFile(sessionId, sftp, remotePath, localPath, batchId, batchTotal)
+      return
+    }
+
+    await fs.mkdir(localPath, { recursive: true })
+    const entries = await sftpReadDir(sftp, remotePath)
+
+    for (const entry of entries) {
+      if (entry.name === '.' || entry.name === '..') {
+        continue
+      }
+
+      await this.downloadRemoteEntry(
+        sessionId,
+        sftp,
+        entry.path,
+        path.join(localPath, entry.name),
+        batchId,
+        batchTotal
+      )
+    }
+  }
+
+  private async downloadRemoteFile(
+    sessionId: string,
+    sftp: SFTPWrapper,
+    remotePath: string,
+    localPath: string,
+    batchId: string,
+    batchTotal: number
+  ): Promise<void> {
+    const fileName = path.posix.basename(remotePath)
+    let transferred = 0
+    let total = 1
+
+    await fs.mkdir(path.dirname(localPath), { recursive: true })
+
     await new Promise<void>((resolve, reject) => {
-      runtime.sftp.fastGet(
-        normalized,
-        saveResult.filePath as string,
+      sftp.fastGet(
+        remotePath,
+        localPath,
         {
-          step: (transferred, _chunk, total) => {
+          step: (nextTransferred, _chunk, nextTotal) => {
+            transferred = nextTransferred
+            total = Math.max(nextTotal, 1)
             this.emitToRenderer(
               'sftp:transfer',
               this.withObservableMetadata(sessionId, {
                 sessionId,
                 direction: 'download',
                 fileName,
-                localPath: saveResult.filePath as string,
-                remotePath: normalized,
+                localPath,
+                remotePath,
                 transferred,
                 total,
-                status: 'running'
+                status: 'running',
+                batchId,
+                batchTotal
               })
             )
           }
@@ -1333,12 +1443,14 @@ export class SessionManager {
                 sessionId,
                 direction: 'download',
                 fileName,
-                localPath: saveResult.filePath as string,
-                remotePath: normalized,
-                transferred: 0,
-                total: 0,
+                localPath,
+                remotePath,
+                transferred,
+                total,
                 status: 'error',
-                error: error.message
+                error: error.message,
+                batchId,
+                batchTotal
               })
             )
             reject(error)
@@ -1351,11 +1463,13 @@ export class SessionManager {
               sessionId,
               direction: 'download',
               fileName,
-              localPath: saveResult.filePath as string,
-              remotePath: normalized,
-              transferred: 1,
-              total: 1,
-              status: 'completed'
+              localPath,
+              remotePath,
+              transferred: total,
+              total,
+              status: 'completed',
+              batchId,
+              batchTotal
             })
           )
           resolve()
