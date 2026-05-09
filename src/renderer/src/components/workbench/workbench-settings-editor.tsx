@@ -66,6 +66,7 @@ import {
   TableRow
 } from '@/components/ui/table'
 import { CredentialVault } from '@/components/credential-vault'
+import WinsshFullLogo from '@/assets/logo-full.svg?react'
 
 const settingsSections = [
   { id: 'appearance', labelKey: 'workbench.settings.sections.appearance' },
@@ -1308,11 +1309,19 @@ export function WorkbenchSettingsEditor() {
                   </div>
 
                   <div className="rounded-sm border border-[var(--workbench-border)] px-4 py-4">
-                    <div className="text-sm font-medium">
-                      {t('workbench.settings.about.intro.title')}
-                    </div>
-                    <div className="mt-1 text-sm text-muted-foreground">
-                      {t('workbench.settings.about.intro.description')}
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                      <WinsshFullLogo
+                        aria-hidden="true"
+                        className="size-14 shrink-0 text-primary sm:size-16"
+                      />
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium">
+                          {t('workbench.settings.about.intro.title')}
+                        </div>
+                        <div className="mt-1 text-sm text-muted-foreground">
+                          {t('workbench.settings.about.intro.description')}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </section>
