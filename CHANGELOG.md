@@ -1,3 +1,7 @@
+# Changelog
+
+## [1.1.1](https://cnb.cool/webqteam/winssh/compare/v1.2.0...v1.1.1) (2026-05-10)
+
 # 更新日志
 
 ## [1.2.0](https://cnb.cool/webqteam/winssh/compare/v1.1.0...v1.2.0) (2026-05-10)
@@ -7,7 +11,7 @@
 * logo换新 ([b24c9bc](https://cnb.cool/webqteam/winssh/commit/b24c9bcba3c90799b6022359390cd31f1651df0e))
 * **sftp:** 支持递归下载远程目录并保留空文件夹 ([6550ef3](https://cnb.cool/webqteam/winssh/commit/6550ef3f53aec4fc66b9015a735dd214777d7606))
 
-# Changelog
+
 
 ## 1.1.0 (2026-05-07)
 
