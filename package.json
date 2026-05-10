@@ -22,12 +22,15 @@
     "updates:serve": "node scripts/update-test-server.mjs",
     "prepare": "husky",
     "commit": "cz",
-    "release": "semantic-release",
+    "release": "release-it",
     "postinstall": "electron-builder install-app-deps",
     "dist": "npm run build && electron-builder",
     "dist:win": "npm run build && electron-builder --win nsis zip",
     "dist:mac": "npm run build && electron-builder --mac dmg zip",
-    "dist:linux": "npm run build && electron-builder --linux AppImage deb"
+    "dist:linux": "npm run build && electron-builder --linux AppImage deb",
+    "release:patch": "release-it patch",
+    "release:minor": "release-it minor",
+    "release:major": "release-it major"
   },
   "config": {
     "commitizen": {
@@ -98,10 +101,7 @@
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",
     "@electron-toolkit/eslint-config-ts": "^3.1.0",
     "@electron-toolkit/tsconfig": "^2.0.0",
-    "@semantic-release/changelog": "^6.0.3",
-    "@semantic-release/commit-analyzer": "^13.0.1",
-    "@semantic-release/git": "^10.0.1",
-    "@semantic-release/release-notes-generator": "^14.1.0",
+    "@release-it/conventional-changelog": "^11.0.0",
     "@tailwindcss/vite": "^4.1.14",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
@@ -124,7 +124,7 @@
     "husky": "^9.1.7",
     "jsdom": "^27.0.0",
     "prettier": "^3.7.4",
-    "semantic-release": "^25.0.3",
+    "release-it": "^20.0.1",
     "shadcn": "^4.1.2",
     "tailwindcss": "^4.1.14",
     "typescript": "^5.9.3",
