@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.2](https://cnb.cool/webqteam/winssh/compare/v1.1.1...v1.1.2) (2026-05-11)
+
+### Bug Fixes
+
+* 修复 SSH 会话重连入口 ([e4c0720](https://cnb.cool/webqteam/winssh/commit/e4c0720d1d7bab06497f4d31f6c164de575ef465))
+
 ## [1.1.1](https://cnb.cool/webqteam/winssh/compare/v1.2.0...v1.1.1) (2026-05-10)
 
 # 更新日志
