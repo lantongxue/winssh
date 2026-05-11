@@ -136,3 +136,4 @@ $:
     - *build-windows
     - *build-macos
     - *build-linux
+    - *deploy-web
