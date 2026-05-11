@@ -546,12 +546,12 @@ const workbench = {
       about: {
         channels: {
           alpha: 'Alpha',
-          beta: 'Beta',
-          latest: 'Latest'
+          beta: 'Preview',
+          latest: 'Stable'
         },
         intro: {
           description:
-            'WinSSH is a desktop SSH workspace focused on terminals, files, forwarding, and reusable connection management. This build is still in the beta runway, so update behavior and platform coverage are still being tightened.',
+            'WinSSH is a stable desktop SSH workspace focused on terminals, files, forwarding, and reusable connection management. Updates, platform details, and workbench polish continue to improve from this official release line.',
           title: 'About WinSSH'
         },
         version: {

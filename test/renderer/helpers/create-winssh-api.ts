@@ -6,8 +6,10 @@ import {
   DEFAULT_LIGHT_THEME_ID,
   DEFAULT_PIXEL_THEME_ID
 } from '@shared/themes'
+import appPackage from '../../../package.json'
 
 const noopUnsubscribe = () => undefined
+export const APP_PACKAGE_VERSION = appPackage.version
 
 const defaultThemes = [
   createThemeDefinition({
@@ -157,7 +159,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
         name: 'WinSSH',
         platform: 'linux',
         releaseChannel: 'latest',
-        version: '1.0.0'
+        version: APP_PACKAGE_VERSION
       })),
     getPathForFile:
       systemOverrides?.getPathForFile ??
@@ -339,7 +341,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       check: async () => ({
         autoCheckEnabled: true,
         availableUpdate: null,
-        currentVersion: '1.0.0',
+        currentVersion: APP_PACKAGE_VERSION,
         downloadProgressPercent: null,
         errorMessage: null,
         phase: 'not-available',
@@ -349,7 +351,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       download: async () => ({
         autoCheckEnabled: true,
         availableUpdate: null,
-        currentVersion: '1.0.0',
+        currentVersion: APP_PACKAGE_VERSION,
         downloadProgressPercent: null,
         errorMessage: null,
         phase: 'not-available',
@@ -359,7 +361,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       getState: async () => ({
         autoCheckEnabled: true,
         availableUpdate: null,
-        currentVersion: '1.0.0',
+        currentVersion: APP_PACKAGE_VERSION,
         downloadProgressPercent: null,
         errorMessage: null,
         phase: 'unsupported',

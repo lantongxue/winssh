@@ -37,7 +37,7 @@
 
 这次重点刷新的是：
 
-- 根 `package.json` 当前版本已是 `1.1.0`
+- 根 `package.json` 当前版本以 `version` 字段为准
 - 当前内置主题目录实际包括 `winssh-default-themes`、`winssh-cyber-retro`、`winssh-dashed-border`、`winssh-high-contrast`
 - 当前内置主题 id 实际包括 `winssh.light-plus`、`winssh.dark-plus`、`winssh.pixel-crt`、`winssh.cyber-retro-light`、`winssh.cyber-retro-dark`、`winssh.dashed-border-light`、`winssh.dashed-border-dark`、`winssh.high-contrast-light`、`winssh.high-contrast-dark`
 - `src/main/gpu-config.ts` 当前不存在，相关索引不应再指向这个文件
@@ -503,7 +503,7 @@
 ## 项目概览
 
 - 项目名：`winssh`
-- 版本：`1.1.0`
+- 版本：以根 `package.json` 的 `version` 字段为准
 - 形态：Electron 桌面应用 + `web/` 品牌站 / docs landing 子工程
 - 目标：提供面向桌面的 SSH、SFTP、端口转发和工作台式连接管理，并配套官网首页与文档入口页
 

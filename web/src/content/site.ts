@@ -1,4 +1,4 @@
-import { APP_VERSION, RELEASE_CHANNEL, REPOSITORY_URL } from '@/lib/constants'
+import { APP_VERSION, REPOSITORY_URL } from '@/lib/constants'
 
 export type SitePage = 'home' | 'docs'
 
@@ -15,7 +15,7 @@ export const SITE_COPY = {
       winkMeaning: 'win = wink',
       repoUrl: REPOSITORY_URL,
       version: APP_VERSION,
-      releaseChannel: RELEASE_CHANNEL,
+      releaseChannel: 'Stable',
       platforms: sharedPlatforms
     },
     shell: {
@@ -69,7 +69,7 @@ export const SITE_COPY = {
         { id: 'overview', label: 'Overview', meta: 'Workbench, not clutter' },
         { id: 'features', label: 'Features', meta: 'SSH, local shell, SFTP' },
         { id: 'preview', label: 'Preview', meta: 'Desk-view snapshot' },
-        { id: 'download', label: 'Download', meta: 'Beta runway' },
+        { id: 'download', label: 'Download', meta: 'Stable release' },
         { id: 'faq', label: 'FAQ', meta: 'Straight answers' }
       ],
       hero: {
@@ -77,14 +77,14 @@ export const SITE_COPY = {
         title: 'SSH deserves a proper desk.',
         subtitle:
           'WinSSH brings SSH sessions, local shells, SFTP, jump servers, port forwarding, and resource monitoring into one calm desktop workspace — so the serious stuff stays serious, and the interface keeps its head up.',
-        primaryCta: 'See Download Plans',
+        primaryCta: 'Get WinSSH',
         secondaryCta: 'Open Docs',
         tertiaryCta: 'Browse GitHub',
         winkCardTitle: 'Why "WinSSH"',
         winkCardBody:
           'The product layer keeps its precision. The brand layer keeps a light touch. WinSSH is built for real infrastructure work — it just refuses to scowl while doing it.',
         signalsLabel: 'Workbench Signals',
-        releaseNote: `${APP_VERSION} ${RELEASE_CHANNEL} · Cross-platform desktop preview`,
+        releaseNote: `${APP_VERSION} Stable · Official cross-platform desktop release`,
         bullets: [
           'SSH sessions and local terminals share one workbench instead of splitting across separate tools.',
           'Jump hosts, SFTP transfers, and port forwards stay attached to the same session story.',
@@ -191,14 +191,18 @@ export const SITE_COPY = {
           'resource: cpu 18% · mem 63% · net 1.2 MB/s'
         ],
         panelTitle: 'Bottom Panel',
-        panelItems: ['Transfers · 3 landed', 'Port Forwards · 2 restored', 'Updates · 0.1.1 ready']
+        panelItems: [
+          'Transfers · 3 landed',
+          'Port Forwards · 2 restored',
+          `Updates · ${APP_VERSION} ready`
+        ]
       },
       download: {
         eyebrow: 'Download',
-        title: 'Beta channels mapped. Public installers are up next.',
+        title: 'The official release is ready for the desktop.',
         subtitle:
-          'The desktop app already targets Windows, macOS, and Linux. The in-app updater is Windows-first today. The site keeps the download story honest: platform intent first, public release packaging right after.',
-        ctaLabel: 'Open Repository',
+          'WinSSH now presents itself as a stable desktop SSH workbench for Windows, macOS, and Linux. Windows builds include the in-app updater, while every platform keeps the same workbench, terminal, SFTP, backup, and settings experience.',
+        ctaLabel: 'Open Releases',
         noteEyebrow: 'Docs',
         noteTitle: 'Docs start as a front door, not a placeholder.',
         noteBody:
@@ -209,21 +213,20 @@ export const SITE_COPY = {
             id: 'windows',
             title: 'Windows',
             description:
-              'NSIS delivery and the built-in updater are wired up. Public hosting is the remaining distribution step.',
-            status: 'Updater path implemented'
+              'NSIS delivery, ZIP packaging, and the built-in updater are wired into the official Windows release flow.',
+            status: 'Official release'
           },
           {
             id: 'macos',
             title: 'macOS',
             description: 'DMG and ZIP targets sit alongside the native font-helper pipeline.',
-            status: 'Packaging path mapped'
+            status: 'Official package target'
           },
           {
             id: 'linux',
             title: 'Linux',
-            description:
-              'AppImage and DEB keep Linux in scope while public release hosting catches up.',
-            status: 'Packaging path mapped'
+            description: 'AppImage and DEB targets keep Linux in the official desktop release set.',
+            status: 'Official package target'
           }
         ]
       },
@@ -242,9 +245,9 @@ export const SITE_COPY = {
               'By default, the website follows your system appearance and resolves to Light+ or Dark+. The titlebar also lets you switch manually between those two built-in site themes. The desktop app ships a larger theme registry with ZIP pack support that the website does not replicate.'
           },
           {
-            question: 'Are public installers available today?',
+            question: 'Is WinSSH a stable release now?',
             answer:
-              'Not yet. The site shows platform intent and the current beta channel while download links point to the repository until release hosting is finalized.'
+              'Yes. WinSSH is presented as an official stable desktop release, with platform packaging paths for Windows, macOS, and Linux and a Windows-first automatic update flow.'
           },
           {
             question: 'Does WinSSH already support app updates?',
@@ -565,7 +568,7 @@ export const SITE_COPY = {
       winkMeaning: 'win = wink',
       repoUrl: REPOSITORY_URL,
       version: APP_VERSION,
-      releaseChannel: RELEASE_CHANNEL,
+      releaseChannel: '正式版',
       platforms: sharedPlatforms
     },
     shell: {
@@ -619,7 +622,7 @@ export const SITE_COPY = {
         { id: 'overview', label: '总览', meta: 'Workbench，不是杂物堆' },
         { id: 'features', label: '能力', meta: 'SSH / 本地终端 / SFTP' },
         { id: 'preview', label: '预览', meta: '桌面快照' },
-        { id: 'download', label: '下载', meta: 'Beta 跑道' },
+        { id: 'download', label: '下载', meta: '正式发布' },
         { id: 'faq', label: 'FAQ', meta: '把话说清' }
       ],
       hero: {
@@ -627,14 +630,14 @@ export const SITE_COPY = {
         title: '你的服务器，一个窗口就够了。',
         subtitle:
           'WinSSH 把 SSH 会话、本地 Shell、SFTP、Jump Server、端口转发和资源监控收进同一个冷静的工作台——严肃的部分继续严肃，界面只管挺直了说话。',
-        primaryCta: '查看下载计划',
+        primaryCta: '获取 WinSSH',
         secondaryCta: '打开文档入口',
         tertiaryCta: '浏览 GitHub',
         winkCardTitle: '为什么叫 "WinSSH"',
         winkCardBody:
           '产品层保持克制，品牌层留一点轻松。WinSSH 做的是真实的基础设施工作——只是不想跟着板脸而已。',
         signalsLabel: 'Workbench 信号',
-        releaseNote: `${APP_VERSION} ${RELEASE_CHANNEL} · 跨平台桌面预览版`,
+        releaseNote: `${APP_VERSION} 正式版 · 跨平台桌面正式发布`,
         bullets: [
           'SSH 会话和本地终端共用一张桌子，不用在多个工具之间跳来跳去。',
           'Jump Server、SFTP 传输和端口转发挂在同一条会话故事线上。',
@@ -740,14 +743,14 @@ export const SITE_COPY = {
           'resource: cpu 18% · mem 63% · net 1.2 MB/s'
         ],
         panelTitle: '底部面板',
-        panelItems: ['传输 · 3 项完成', '端口转发 · 2 条已恢复', '更新 · 0.1.1 已就绪']
+        panelItems: ['传输 · 3 项完成', '端口转发 · 2 条已恢复', `更新 · ${APP_VERSION} 已就绪`]
       },
       download: {
         eyebrow: '下载',
-        title: 'Beta 渠道先排好队，公开安装包稍后就到。',
+        title: '正式版已经上桌，可以开始用了。',
         subtitle:
-          '桌面应用已经具备 Windows、macOS、Linux 的打包目标。内置更新链路目前 Windows 先行。官网先把下载故事讲清楚：平台方向在先，公开分发紧随其后。',
-        ctaLabel: '打开仓库',
+          'WinSSH 现在以正式版状态呈现，面向 Windows、macOS、Linux 三个平台。Windows 构建带有内置更新链路，各个平台共享同一套 workbench、终端、SFTP、备份和设置体验。',
+        ctaLabel: '查看发布',
         noteEyebrow: '文档',
         noteTitle: '文档先做前门，不做一句"敬请期待"。',
         noteBody:
@@ -757,20 +760,20 @@ export const SITE_COPY = {
           {
             id: 'windows',
             title: 'Windows',
-            description: 'NSIS 分发和内置更新流已经接好，剩下主要是公开托管和发布承载。',
-            status: '更新链路已实现'
+            description: 'NSIS 安装包、ZIP 包和内置更新流已经进入正式 Windows 发布链路。',
+            status: '正式发布'
           },
           {
             id: 'macos',
             title: 'macOS',
             description: 'DMG 和 ZIP 目标已具备，同时保留字体 helper 的原生适配路径。',
-            status: '打包路径已明确'
+            status: '正式包目标'
           },
           {
             id: 'linux',
             title: 'Linux',
-            description: 'AppImage 与 DEB 让 Linux 始终在发布桌上，等公开托管接上。',
-            status: '打包路径已明确'
+            description: 'AppImage 与 DEB 目标让 Linux 进入正式桌面发布集合。',
+            status: '正式包目标'
           }
         ]
       },
@@ -789,9 +792,9 @@ export const SITE_COPY = {
               '官网默认跟随系统外观，解析为 Light+ 或 Dark+。标题栏也提供了手动切换入口，但官网当前只支持这两个站点内置主题；桌面端则有更完整的内置主题集和 ZIP 主题包能力。'
           },
           {
-            question: '现在能直接下载正式安装包吗？',
+            question: 'WinSSH 现在是正式版了吗？',
             answer:
-              '还不能。官网先展示平台计划和当前 Beta 渠道，下载按钮暂时指向仓库，等公开发布承载方式明确后再接正式安装入口。'
+              '是。官网现在按正式版状态呈现 WinSSH，覆盖 Windows、macOS、Linux 的打包路径，并保留 Windows 优先的自动更新链路。'
           },
           {
             question: 'WinSSH 现在已经支持应用更新了吗？',

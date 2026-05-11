@@ -533,12 +533,12 @@ const workbench = {
       about: {
         channels: {
           alpha: 'Alpha',
-          beta: 'Beta',
-          latest: '正式通道'
+          beta: '预览通道',
+          latest: '正式版'
         },
         intro: {
           description:
-            'WinSSH 是一个围绕终端、文件、端口转发和连接管理构建的桌面 SSH 工作台。当前仍处于 Beta 跑道阶段，自动更新和平台覆盖会继续完善。',
+            'WinSSH 是一个正式版桌面 SSH 工作台，围绕终端、文件、端口转发和可复用连接管理构建。更新、平台细节和工作台体验会沿着正式发布线继续完善。',
           title: '关于 WinSSH'
         },
         version: {

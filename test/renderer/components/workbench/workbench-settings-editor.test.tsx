@@ -10,7 +10,7 @@ import type { AppSettings } from '@shared/types'
 import { toast } from 'sonner'
 import i18n from '@/i18n'
 import { WorkbenchSettingsEditor } from '@/components/workbench/workbench-settings-editor'
-import { createWinsshApiMock } from '@test/renderer/helpers/create-winssh-api'
+import { createWinsshApiMock, APP_PACKAGE_VERSION } from '@test/renderer/helpers/create-winssh-api'
 import { useWorkbenchStore } from '@/store/workbench-store'
 
 vi.mock('sonner', () => ({
@@ -772,8 +772,8 @@ describe('WorkbenchSettingsEditor theme selection', () => {
         getAppInfo: vi.fn().mockResolvedValue({
           name: 'WinSSH',
           platform: 'win32',
-          releaseChannel: 'beta',
-          version: '0.2.0-beta.1'
+          releaseChannel: 'latest',
+          version: APP_PACKAGE_VERSION
         })
       }
     })
@@ -782,9 +782,9 @@ describe('WorkbenchSettingsEditor theme selection', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'About' }))
 
-    expect(await screen.findByText('0.2.0-beta.1')).toBeInTheDocument()
+    expect(await screen.findByText(APP_PACKAGE_VERSION)).toBeInTheDocument()
     expect(screen.getByText('Windows')).toBeInTheDocument()
-    expect(screen.getByText('Beta')).toBeInTheDocument()
+    expect(screen.getByText('Stable')).toBeInTheDocument()
   })
 
   it('does not render an updates section in the settings navigation anymore', async () => {

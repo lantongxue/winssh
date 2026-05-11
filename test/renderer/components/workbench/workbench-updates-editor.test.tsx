@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
 import i18n from '@/i18n'
 import { WorkbenchUpdatesEditor } from '@/components/workbench/workbench-updates-editor'
-import { createWinsshApiMock } from '@test/renderer/helpers/create-winssh-api'
+import { createWinsshApiMock, APP_PACKAGE_VERSION } from '@test/renderer/helpers/create-winssh-api'
 
 vi.mock('sonner', () => ({
   toast: {
@@ -43,17 +43,17 @@ describe('WorkbenchUpdatesEditor', () => {
         getAppInfo: vi.fn().mockResolvedValue({
           name: 'WinSSH',
           platform: 'win32',
-          releaseChannel: 'beta',
-          version: '0.2.0-beta.1'
+          releaseChannel: 'latest',
+          version: APP_PACKAGE_VERSION
         })
       }
     })
 
     renderUpdatesEditor()
 
-    expect(await screen.findByText('0.2.0-beta.1')).toBeInTheDocument()
+    expect(await screen.findAllByText(APP_PACKAGE_VERSION)).toHaveLength(2)
     expect(screen.getByText('Windows')).toBeInTheDocument()
-    expect(screen.getByText('Beta')).toBeInTheDocument()
+    expect(screen.getByText('Stable')).toBeInTheDocument()
   })
 
   it('saves the automatic update check toggle immediately', async () => {
@@ -150,7 +150,7 @@ describe('WorkbenchUpdatesEditor', () => {
         getState: vi.fn().mockResolvedValue({
           autoCheckEnabled: true,
           availableUpdate: null,
-          currentVersion: '1.0.0',
+          currentVersion: APP_PACKAGE_VERSION,
           downloadProgressPercent: null,
           errorMessage: null,
           phase: 'idle',
@@ -176,7 +176,7 @@ describe('WorkbenchUpdatesEditor', () => {
     queryClient.setQueryData(['updates', 'state'], {
       autoCheckEnabled: true,
       availableUpdate: null,
-      currentVersion: '1.0.0',
+      currentVersion: APP_PACKAGE_VERSION,
       downloadProgressPercent: null,
       errorMessage: null,
       phase: 'idle',
@@ -215,7 +215,7 @@ describe('WorkbenchUpdatesEditor', () => {
         releaseNotes: 'Bug fixes',
         version: '0.2.0'
       },
-      currentVersion: '1.0.0',
+      currentVersion: APP_PACKAGE_VERSION,
       downloadProgressPercent: null,
       errorMessage: null,
       phase: 'available',
@@ -229,7 +229,7 @@ describe('WorkbenchUpdatesEditor', () => {
         getState: vi.fn().mockResolvedValue({
           autoCheckEnabled: true,
           availableUpdate: null,
-          currentVersion: '1.0.0',
+          currentVersion: APP_PACKAGE_VERSION,
           downloadProgressPercent: null,
           errorMessage: null,
           phase: 'idle',
@@ -262,7 +262,7 @@ describe('WorkbenchUpdatesEditor', () => {
             releaseNotes: 'Bug fixes',
             version: '0.2.0'
           },
-          currentVersion: '1.0.0',
+          currentVersion: APP_PACKAGE_VERSION,
           downloadProgressPercent: 100,
           errorMessage: null,
           phase: 'downloaded',
@@ -288,7 +288,7 @@ describe('WorkbenchUpdatesEditor', () => {
         getState: vi.fn().mockResolvedValue({
           autoCheckEnabled: true,
           availableUpdate: null,
-          currentVersion: '1.0.0',
+          currentVersion: APP_PACKAGE_VERSION,
           downloadProgressPercent: null,
           errorMessage: null,
           phase: 'unsupported',
@@ -311,7 +311,7 @@ describe('WorkbenchUpdatesEditor', () => {
         getState: vi.fn().mockResolvedValue({
           autoCheckEnabled: true,
           availableUpdate: null,
-          currentVersion: '1.0.0',
+          currentVersion: APP_PACKAGE_VERSION,
           downloadProgressPercent: null,
           errorMessage: 'network unavailable',
           phase: 'error',

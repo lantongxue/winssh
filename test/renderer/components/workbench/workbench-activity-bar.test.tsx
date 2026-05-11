@@ -9,7 +9,7 @@ import i18n from '@/i18n'
 import { useLocalTerminalsStore } from '@/store/local-terminals-store'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
-import { createWinsshApiMock } from '@test/renderer/helpers/create-winssh-api'
+import { createWinsshApiMock, APP_PACKAGE_VERSION } from '@test/renderer/helpers/create-winssh-api'
 
 function renderActivityBar() {
   const queryClient = new QueryClient({
@@ -84,7 +84,7 @@ describe('WorkbenchActivityBar', () => {
     const updateState: UpdateState = {
       autoCheckEnabled: true,
       availableUpdate: null,
-      currentVersion: '1.0.0',
+      currentVersion: APP_PACKAGE_VERSION,
       downloadProgressPercent: null,
       errorMessage: null,
       phase: 'not-available',
