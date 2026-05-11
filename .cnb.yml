@@ -106,11 +106,32 @@
     - *upload-release-assets
     - *release-summary
 
+.deploy-web: &deploy-web
+  name: deploy-web
+  runner:
+    tags: cnb:arch:amd64
+    cpus: 2
+  docker:
+    image: node:24-bookworm
+    volumes:
+      - /root/.npm
+  imports:
+    - https://cnb.cool/webqteam/winssh-edgeone-pages/-/blob/main/envs.yml
+  stages:
+    - name: install
+      script: npm install
+    - name: build-web
+      script: npm run web:build
+      timeout: 30m
+    - name: deploy-to-edgeone-pages
+      script: npx edgeone pages deploy web/dist -n winssh-web -t $EDGEONE_API_TOKEN
+
 $:
   tag_push:
     - *build-windows
     - *build-macos
     - *build-linux
+    - *deploy-web
   web_trigger_release:
     - *build-windows
     - *build-macos
