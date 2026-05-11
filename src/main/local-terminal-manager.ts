@@ -404,10 +404,10 @@ export class LocalTerminalManager {
     const envShellName = envShell ? this.resolveShellName(envShell).toLowerCase() : ''
 
     if (shell === 'zsh') {
-      return [envShellName === 'zsh' ? envShell : null, '/bin/zsh', '/usr/bin/zsh', 'zsh']
+      return [envShellName === 'zsh' ? envShell : null, '/bin/zsh', '/usr/bin/zsh']
     }
 
-    return [envShellName === 'bash' ? envShell : null, '/bin/bash', '/usr/bin/bash', 'bash']
+    return [envShellName === 'bash' ? envShell : null, '/bin/bash', '/usr/bin/bash']
   }
 
   private buildTitle(shell: string) {
