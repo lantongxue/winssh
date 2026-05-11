@@ -261,6 +261,27 @@ describe('TerminalPane', () => {
     )
   })
 
+  it('keeps the unavailable reconnect overlay above terminal internals', () => {
+    const unavailableSession: SessionTab = {
+      ...session,
+      lastMessage: 'Connection closed',
+      status: 'disconnected'
+    }
+
+    const { container } = render(
+      <TerminalPane
+        session={unavailableSession}
+        settings={settings}
+        theme={theme}
+        onReconnect={async () => undefined}
+      />
+    )
+
+    const overlay = screen.getByText('This session is currently unavailable').closest('.absolute')
+    expect(overlay?.className).toContain('z-30')
+    expect(container.querySelector('.terminal-surface')).toContainElement(overlay)
+  })
+
   it('opens the terminal search panel with ctrl+f and sends incremental queries to the search addon', async () => {
     const readySession: SessionTab = {
       ...session,

@@ -131,6 +131,33 @@ beforeEach(async () => {
 })
 
 describe('WorkbenchEditorTabs session context menu', () => {
+  it('reconnects the current session through the context menu', async () => {
+    const sessionsReconnect = vi.fn().mockResolvedValue({
+      ...sessionSummary,
+      connectedAt: new Date().toISOString()
+    })
+
+    window.winsshApi = createWinsshApiMock({
+      servers: {
+        list: vi.fn().mockResolvedValue([savedServer])
+      },
+      sessions: {
+        reconnect: sessionsReconnect
+      }
+    })
+
+    seedSessionTab()
+    renderEditorTabs()
+
+    fireEvent.contextMenu(screen.getByText('alpha'))
+    fireEvent.click(await screen.findByText('Reconnect'))
+
+    await waitFor(() => {
+      expect(sessionsReconnect).toHaveBeenCalledWith('session-1')
+    })
+    expect(toast.success).toHaveBeenCalledWith('Reconnected to alpha.')
+  })
+
   it('clones the current session by opening a new session for the same server', async () => {
     const sessionsConnect = vi.fn().mockResolvedValue({
       ok: true,

@@ -94,7 +94,8 @@ function getDropIndexForTab(clientX: number, left: number, width: number, index:
 
 export function WorkbenchEditorTabs() {
   const { t } = useTranslation()
-  const { closeLocalTerminal, connectServer, disconnectSession } = useWorkbenchContext()
+  const { closeLocalTerminal, connectServer, disconnectSession, reconnectSession } =
+    useWorkbenchContext()
   const activeDocumentId = useWorkbenchStore((state) => state.activeDocumentId)
   const documentTitleOverrides = useWorkbenchStore((state) => state.documentTitleOverrides)
   const moveDocument = useWorkbenchStore((state) => state.moveDocument)
@@ -119,6 +120,7 @@ export function WorkbenchEditorTabs() {
   const CloneIcon = actionIcons.clone
   const CloseIcon = actionIcons.close
   const CopyIcon = actionIcons.clone
+  const ReconnectIcon = actionIcons.reconnect
   const RenameIcon = actionIcons.rename
   const closeLabel = t('common.actions.close')
 
@@ -384,6 +386,10 @@ export function WorkbenchEditorTabs() {
                   <ContextMenuContent>
                     {document.kind === 'session-editor' ? (
                       <>
+                        <ContextMenuItem onClick={() => void reconnectSession(document.sessionId)}>
+                          <ReconnectIcon className="size-4" />
+                          {t('common.actions.reconnect')}
+                        </ContextMenuItem>
                         <ContextMenuItem
                           onClick={() => void handleCloneSession(document.sessionId)}
                         >

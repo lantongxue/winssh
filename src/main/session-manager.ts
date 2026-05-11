@@ -847,6 +847,19 @@ export class SessionManager {
       throw new Error(this.t('errors.reconnectUnavailable'))
     }
 
+    const runtime = this.sessions.get(sessionId)
+    if (runtime && !runtime.finalizing) {
+      runtime.finalizing = true
+      try {
+        await this.releaseSessionPortForwards(sessionId)
+      } finally {
+        this.releaseRuntimeClients(runtime)
+        this.sessions.delete(sessionId)
+        this.resourceCpuBaselines.delete(sessionId)
+        this.resourceNetworkBaselines.delete(sessionId)
+      }
+    }
+
     const result = await this.connect({ ...request, sessionId })
     if (!result.ok) {
       throw new Error(result.message)

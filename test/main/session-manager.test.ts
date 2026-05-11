@@ -281,6 +281,34 @@ describe('SessionManager port forwarding', () => {
     expect(summary.sessionId).toBe('session-old')
   })
 
+  it('releases the active runtime before reconnecting a still-ready session', async () => {
+    const manager = createManager()
+    const oldClient = new MockClient()
+    const runtime = createRuntime('session-old', oldClient)
+    getSessionsMap(manager).set('session-old', runtime)
+    getHistoryMap(manager).set('session-old', { serverId: 'server-1' })
+
+    vi.spyOn(manager, 'connect').mockResolvedValue({
+      ok: true,
+      summary: {
+        sessionId: 'session-old',
+        serverId: 'server-1',
+        serverName: 'alpha',
+        host: '127.0.0.1',
+        port: 22,
+        status: 'ready',
+        connectedAt: new Date().toISOString(),
+        currentPath: '/'
+      }
+    })
+
+    await manager.reconnect('session-old')
+
+    expect(runtime.finalizing).toBe(true)
+    expect(oldClient.end).toHaveBeenCalledTimes(1)
+    expect(getSessionsMap(manager).has('session-old')).toBe(false)
+  })
+
   it('starts a local forward and releases the listener on stop', async () => {
     const manager = createManager()
     const client = new MockClient()
