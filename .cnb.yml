@@ -20,7 +20,7 @@
 .release-preflight: &release-preflight
   name: release-preflight
   script: |
-    set -euo pipefail
+    set -eu
     if [ "$CNB_EVENT" = "web_trigger_release" ] && [ -z "${CNB_BRANCH:-}" ]; then
       echo "web_trigger_release must run from a branch or tag page."
       exit 1
@@ -57,7 +57,7 @@
 .release-summary: &release-summary
   name: release-summary
   script: |
-    set -euo pipefail
+    set -eu
     echo "Release tag: $CNB_BRANCH"
     echo "Uploaded files: ${RELEASE_FILES:-}"
 
@@ -68,7 +68,7 @@
     - *release-preflight
     - name: build-windows-artifacts
       script: |
-        set -euo pipefail
+        set -eu
         apt-get update
         apt-get install -y --no-install-recommends wine64 mono-complete
         npm run dist:win
@@ -84,7 +84,7 @@
     - *release-preflight
     - name: build-macos-artifacts
       script: |
-        set -euo pipefail
+        set -eu
         npm run dist:mac
       timeout: 2h
     - *create-release
@@ -98,7 +98,7 @@
     - *release-preflight
     - name: build-linux-artifacts
       script: |
-        set -euo pipefail
+        set -eu
         apt-get update
         apt-get install -y --no-install-recommends libarchive-tools rpm
         npm run dist:linux
