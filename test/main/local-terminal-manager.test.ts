@@ -79,7 +79,7 @@ describe('LocalTerminalManager', () => {
     })
     accessSyncMock.mockReset()
     accessSyncMock.mockImplementation(() => {})
-    vi.stubEnv('SHELL', '/bin/zsh')
+    vi.stubEnv('SHELL', process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash')
     vi.stubEnv('ComSpec', 'C:\\Windows\\System32\\cmd.exe')
   })
 
@@ -96,12 +96,12 @@ describe('LocalTerminalManager', () => {
 
     expect(summary).toMatchObject({
       cwd: expect.any(String),
-      shell: process.platform === 'win32' ? 'cmd' : 'zsh',
+      shell: process.platform === 'win32' ? 'cmd' : process.platform === 'darwin' ? 'zsh' : 'bash',
       status: 'running',
-      title: process.platform === 'win32' ? 'cmd' : 'zsh'
+      title: process.platform === 'win32' ? 'cmd' : process.platform === 'darwin' ? 'zsh' : 'bash'
     })
     expect(spawnMock).toHaveBeenCalledWith(
-      process.platform === 'win32' ? 'C:\\Windows\\System32\\cmd.exe' : '/bin/zsh',
+      process.platform === 'win32' ? 'C:\\Windows\\System32\\cmd.exe' : process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash',
       process.platform === 'win32' ? ['/d'] : [],
       expect.objectContaining({
         cols: 120,
@@ -141,8 +141,9 @@ describe('LocalTerminalManager', () => {
     createdPtys[0]?.emitExit({ exitCode: 0 })
     const second = manager.create()
 
-    expect(first.title).toBe(process.platform === 'win32' ? 'cmd' : 'zsh')
-    expect(second.title).toBe(`${process.platform === 'win32' ? 'cmd' : 'zsh'} 2`)
+    const defaultShell = process.platform === 'win32' ? 'cmd' : process.platform === 'darwin' ? 'zsh' : 'bash'
+    expect(first.title).toBe(defaultShell)
+    expect(second.title).toBe(`${defaultShell} 2`)
   })
 
   it('forwards data, write, and resize events to the correct PTY', () => {
