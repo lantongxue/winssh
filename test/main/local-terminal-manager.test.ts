@@ -64,6 +64,7 @@ vi.mock('node:fs', async (importOriginal) => {
 })
 
 import { LocalTerminalManager } from '@main/local-terminal-manager'
+import type { AppSettings } from '@shared/types'
 
 type MockAccessSyncState = {
   bashAvailable: boolean
@@ -88,6 +89,16 @@ function getExpectedDefaultShellPath() {
 function setPosixShellAvailability(options: Partial<MockAccessSyncState>) {
   accessState.bashAvailable = options.bashAvailable ?? accessState.bashAvailable
   accessState.zshAvailable = options.zshAvailable ?? accessState.zshAvailable
+}
+
+function createManager(emitToRenderer = vi.fn(), localTerminalShell?: AppSettings['localTerminalShell']) {
+  return new LocalTerminalManager(
+    emitToRenderer,
+    () =>
+      ({
+        localTerminalShell
+      }) as Pick<AppSettings, 'localTerminalShell'>
+  )
 }
 
 describe('LocalTerminalManager', () => {
@@ -132,7 +143,7 @@ describe('LocalTerminalManager', () => {
 
   it('creates a local terminal with the resolved shell, home directory, and title', () => {
     const emitToRenderer = vi.fn()
-    const manager = new LocalTerminalManager(emitToRenderer)
+    const manager = createManager(emitToRenderer)
 
     const summary = manager.create()
     const defaultShell = getExpectedDefaultShell()
@@ -161,9 +172,8 @@ describe('LocalTerminalManager', () => {
   })
 
   it('prefers the shell configured in settings when it is supported on the current platform', () => {
-    const manager = new LocalTerminalManager(vi.fn(), () => ({
-      localTerminalShell: process.platform === 'win32' ? 'powershell' : 'bash'
-    }))
+    const preferredShell = process.platform === 'win32' ? 'powershell' : 'bash'
+    const manager = createManager(vi.fn(), preferredShell)
 
     const summary = manager.create()
 
@@ -178,7 +188,7 @@ describe('LocalTerminalManager', () => {
   })
 
   it('increments duplicate shell titles and keeps exited terminals until explicitly closed', () => {
-    const manager = new LocalTerminalManager(vi.fn())
+    const manager = createManager()
 
     const first = manager.create()
     createdPtys[0]?.emitExit({ exitCode: 0 })
@@ -200,7 +210,7 @@ describe('LocalTerminalManager', () => {
       zshAvailable: true
     })
 
-    const manager = new LocalTerminalManager(vi.fn())
+    const manager = createManager()
     const summary = manager.create()
 
     expect(summary).toMatchObject({
@@ -227,7 +237,7 @@ describe('LocalTerminalManager', () => {
       zshAvailable: true
     })
 
-    const manager = new LocalTerminalManager(vi.fn())
+    const manager = createManager()
     const summary = manager.create()
 
     expect(summary).toMatchObject({
@@ -254,7 +264,7 @@ describe('LocalTerminalManager', () => {
       zshAvailable: false
     })
 
-    const manager = new LocalTerminalManager(vi.fn())
+    const manager = createManager()
     const summary = manager.create()
 
     expect(summary).toMatchObject({
@@ -275,7 +285,7 @@ describe('LocalTerminalManager', () => {
 
     try {
       const emitToRenderer = vi.fn()
-      const manager = new LocalTerminalManager(emitToRenderer)
+      const manager = createManager(emitToRenderer)
       const summary = manager.create()
       const pty = createdPtys[0]
 
@@ -303,7 +313,7 @@ describe('LocalTerminalManager', () => {
 
     try {
       const emitToRenderer = vi.fn()
-      const manager = new LocalTerminalManager(emitToRenderer)
+      const manager = createManager(emitToRenderer)
       const summary = manager.create()
 
       createdPtys[0]?.emitData('hello ')
@@ -344,7 +354,7 @@ describe('LocalTerminalManager', () => {
 
   it('emits exit and state events when the shell exits', () => {
     const emitToRenderer = vi.fn()
-    const manager = new LocalTerminalManager(emitToRenderer)
+    const manager = createManager(emitToRenderer)
     const summary = manager.create()
 
     createdPtys[0]?.emitExit({ exitCode: 9, signal: 15 })
@@ -372,7 +382,7 @@ describe('LocalTerminalManager', () => {
   })
 
   it('closes a terminal idempotently and removes it from the runtime map', () => {
-    const manager = new LocalTerminalManager(vi.fn())
+    const manager = createManager()
     const summary = manager.create()
     const pty = createdPtys[0]
 
@@ -384,7 +394,7 @@ describe('LocalTerminalManager', () => {
   })
 
   it('disposes every active terminal runtime', () => {
-    const manager = new LocalTerminalManager(vi.fn())
+    const manager = createManager()
 
     manager.create()
     manager.create()
