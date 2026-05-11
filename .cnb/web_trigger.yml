@@ -1,0 +1,10 @@
+branch:
+  - buttons:
+      - name: 发布 WinSSH
+        description: 手动构建并发布 WinSSH 桌面应用
+        event: web_trigger_release
+        groupName: 发布
+        permissions:
+          roles:
+            - owner
+            - master
