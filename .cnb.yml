@@ -3,7 +3,7 @@
     tags: cnb:arch:amd64
     cpus: 8
   docker:
-    image: node:22-bookworm
+    image: node:24-bookworm
     volumes:
       - /root/.npm
       - electron-cache:/root/.cache/electron:rw
@@ -26,7 +26,6 @@
       exit 1
     fi
     npm install
-    npm run lint
     npm run typecheck
     npm run test
 

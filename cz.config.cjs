@@ -16,4 +16,4 @@ module.exports = {
   skipQuestions: ['scope'],
   allowBreakingChanges: ['feat', 'fix', 'refactor'],
   subjectLimit: 100
-};
+}

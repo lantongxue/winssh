@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "skills": {
+    "cnb-api": {
+      "source": "cnb/skills/cnb-skill",
+      "sourceType": "git",
+      "skillPath": "skills/cnb-api/SKILL.md",
+      "computedHash": "d0cd780e83266bf8b1b060f958aa70f487da7445029bd7d75439be64969753a2"
+    },
+    "cnb-knowledge-base": {
+      "source": "cnb/skills/cnb-skill",
+      "sourceType": "git",
+      "skillPath": "skills/cnb-knowledge-base/SKILL.md",
+      "computedHash": "71453708dd51da78a310b786e0329ed20241589953484b29623b3583b13ac79d"
+    },
+    "cnb-pipeline": {
+      "source": "cnb/skills/cnb-skill",
+      "sourceType": "git",
+      "skillPath": "skills/cnb-pipeline/SKILL.md",
+      "computedHash": "45ea92d3b37c26ae976dd8a980b968a0c01866a4281820adfe198faa65d83d4c"
+    },
+    "code-commit": {
+      "source": "cnb/skills/cnb-skill",
+      "sourceType": "git",
+      "skillPath": "skills/code-commit/SKILL.md",
+      "computedHash": "100216da0257844a6212ed221362ab9e3ea69b8867fbbc0aea3ee7f4389c5421"
+    },
+    "code-review": {
+      "source": "cnb/skills/cnb-skill",
+      "sourceType": "git",
+      "skillPath": "skills/code-review/SKILL.md",
+      "computedHash": "7cb098a198bb57556dbbf5af074808c716b3d67e7b7914d043c8efc72a6077c0"
+    },
+    "knowledge-base": {
+      "source": "cnb/skills/cnb-skill",
+      "sourceType": "git",
+      "skillPath": "skills/knowledge-base/SKILL.md",
+      "computedHash": "791fe077b30de1345a468582f2024b9083635d5fd89f0a7f7307050c79cc269d"
+    },
+    "npc-delegate": {
+      "source": "cnb/skills/cnb-skill",
+      "sourceType": "git",
+      "skillPath": "skills/npc-delegate/SKILL.md",
+      "computedHash": "b4a828981aca0f2b17ce2258ae8a9ccc27b9faccf0062fcc0b37dd081b7f8df4"
+    },
+    "npc-search": {
+      "source": "cnb/skills/cnb-skill",
+      "sourceType": "git",
+      "skillPath": "skills/npc-search/SKILL.md",
+      "computedHash": "ad694153167a590cd86a0fdd736fa5f7ebc7885e4c75a45ff944a3aeec326cc3"
+    },
+    "pr-diff": {
+      "source": "cnb/skills/cnb-skill",
+      "sourceType": "git",
+      "skillPath": "skills/pr-diff/SKILL.md",
+      "computedHash": "0df00147ef07547e87b3d5c67242146531fdc9c3abcf743a6ace7207ac68a838"
+    },
+    "pr-summary": {
+      "source": "cnb/skills/cnb-skill",
+      "sourceType": "git",
+      "skillPath": "skills/pr-summary/SKILL.md",
+      "computedHash": "59ee8c41f5ea84dca0ae66a0916f5c61b2e437cf872caf1d6f4a4cd74795dd26"
+    },
+    "tapd-resource-fetcher": {
+      "source": "cnb/skills/cnb-skill",
+      "sourceType": "git",
+      "skillPath": "skills/tapd-resource-fetcher/SKILL.md",
+      "computedHash": "dc9111c86cdb034c7d3ddb9eb580874c3fc41cf61c4b28a825f9b5ee1f7d6819"
+    },
+    "text-path-converter": {
+      "source": "cnb/skills/cnb-skill",
+      "sourceType": "git",
+      "skillPath": "skills/text-path-converter/SKILL.md",
+      "computedHash": "32f74b28ea41d060d9e5b158794acd6dd79c67eb81f9ac03a39418b0f4817335"
+    },
+    "upload-attachment": {
+      "source": "cnb/skills/cnb-skill",
+      "sourceType": "git",
+      "skillPath": "skills/upload-attachment/SKILL.md",
+      "computedHash": "1d905b585075845922519515521693123a3c018617f2d63e23ffa1dce8021ca8"
+    }
+  }
+}
