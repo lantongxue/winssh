@@ -39,14 +39,25 @@ class MockPty {
   }
 }
 
-const { createdPtys, spawnMock } = vi.hoisted(() => ({
+const { createdPtys, spawnMock, accessSyncMock } = vi.hoisted(() => ({
   createdPtys: [] as MockPty[],
-  spawnMock: vi.fn()
+  spawnMock: vi.fn(),
+  accessSyncMock: vi.fn()
 }))
 
 vi.mock('node-pty', () => ({
   spawn: spawnMock
 }))
+
+vi.mock('node:fs', async (importOriginal) => {
+  const original = await importOriginal() as Record<string, unknown>
+  return {
+    ...original,
+    accessSync: accessSyncMock,
+    chmodSync: vi.fn(),
+    existsSync: vi.fn().mockReturnValue(true)
+  }
+})
 
 import { LocalTerminalManager } from '@main/local-terminal-manager'
 
@@ -66,6 +77,8 @@ describe('LocalTerminalManager', () => {
       createdPtys.push(pty)
       return pty
     })
+    accessSyncMock.mockReset()
+    accessSyncMock.mockImplementation(() => {})
     vi.stubEnv('SHELL', '/bin/zsh')
     vi.stubEnv('ComSpec', 'C:\\Windows\\System32\\cmd.exe')
   })
