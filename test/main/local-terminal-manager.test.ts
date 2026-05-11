@@ -39,10 +39,14 @@ class MockPty {
   }
 }
 
-const { createdPtys, spawnMock, accessSyncMock } = vi.hoisted(() => ({
+const { createdPtys, spawnMock, accessSyncMock, accessState } = vi.hoisted(() => ({
   createdPtys: [] as MockPty[],
   spawnMock: vi.fn(),
-  accessSyncMock: vi.fn()
+  accessSyncMock: vi.fn(),
+  accessState: {
+    bashAvailable: true,
+    zshAvailable: true
+  } as MockAccessSyncState
 }))
 
 vi.mock('node-pty', () => ({
@@ -50,7 +54,7 @@ vi.mock('node-pty', () => ({
 }))
 
 vi.mock('node:fs', async (importOriginal) => {
-  const original = await importOriginal() as Record<string, unknown>
+  const original = (await importOriginal()) as Record<string, unknown>
   return {
     ...original,
     accessSync: accessSyncMock,
@@ -60,7 +64,11 @@ vi.mock('node:fs', async (importOriginal) => {
 })
 
 import { LocalTerminalManager } from '@main/local-terminal-manager'
-import { getDefaultLocalTerminalShell } from '@shared/local-terminal-shells'
+
+type MockAccessSyncState = {
+  bashAvailable: boolean
+  zshAvailable: boolean
+}
 
 function getTerminalsMap(manager: LocalTerminalManager) {
   return Reflect.get(manager as object, 'terminals') as Map<
@@ -70,19 +78,16 @@ function getTerminalsMap(manager: LocalTerminalManager) {
 }
 
 function getExpectedDefaultShell() {
-  if (process.platform === 'win32') {
-    return 'cmd'
-  }
-
-  return getDefaultLocalTerminalShell(process.platform, process.env['SHELL'])
+  return process.platform === 'win32' ? 'cmd' : 'zsh'
 }
 
 function getExpectedDefaultShellPath() {
-  if (process.platform === 'win32') {
-    return 'C:\\Windows\\System32\\cmd.exe'
-  }
+  return process.platform === 'win32' ? 'C:\\Windows\\System32\\cmd.exe' : '/bin/zsh'
+}
 
-  return process.env['SHELL'] === '/bin/zsh' ? '/bin/zsh' : '/bin/bash'
+function setPosixShellAvailability(options: Partial<MockAccessSyncState>) {
+  accessState.bashAvailable = options.bashAvailable ?? accessState.bashAvailable
+  accessState.zshAvailable = options.zshAvailable ?? accessState.zshAvailable
 }
 
 describe('LocalTerminalManager', () => {
@@ -94,9 +99,29 @@ describe('LocalTerminalManager', () => {
       createdPtys.push(pty)
       return pty
     })
+    accessState.bashAvailable = true
+    accessState.zshAvailable = true
     accessSyncMock.mockReset()
-    accessSyncMock.mockImplementation(() => {})
-    vi.stubEnv('SHELL', process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash')
+    accessSyncMock.mockImplementation((targetPath: string) => {
+      if (process.platform === 'win32') {
+        return
+      }
+
+      if (
+        (targetPath === '/bin/bash' || targetPath === '/usr/bin/bash') &&
+        !accessState.bashAvailable
+      ) {
+        throw new Error('bash is unavailable in test runtime')
+      }
+
+      if (
+        (targetPath === '/bin/zsh' || targetPath === '/usr/bin/zsh') &&
+        !accessState.zshAvailable
+      ) {
+        throw new Error('zsh is unavailable in test runtime')
+      }
+    })
+    vi.stubEnv('SHELL', process.platform === 'win32' ? undefined : '/bin/zsh')
     vi.stubEnv('ComSpec', 'C:\\Windows\\System32\\cmd.exe')
   })
 
@@ -162,6 +187,87 @@ describe('LocalTerminalManager', () => {
     const defaultShell = getExpectedDefaultShell()
     expect(first.title).toBe(defaultShell)
     expect(second.title).toBe(`${defaultShell} 2`)
+  })
+
+  it('prefers bash when SHELL is sh and bash is available on POSIX runtimes', () => {
+    if (process.platform === 'win32') {
+      return
+    }
+
+    vi.stubEnv('SHELL', '/bin/sh')
+    setPosixShellAvailability({
+      bashAvailable: true,
+      zshAvailable: true
+    })
+
+    const manager = new LocalTerminalManager(vi.fn())
+    const summary = manager.create()
+
+    expect(summary).toMatchObject({
+      shell: 'bash',
+      title: 'bash'
+    })
+    expect(spawnMock).toHaveBeenCalledWith(
+      '/bin/bash',
+      [],
+      expect.objectContaining({
+        cwd: summary.cwd
+      })
+    )
+  })
+
+  it('falls back to zsh when SHELL is sh and bash is unavailable on POSIX runtimes', () => {
+    if (process.platform === 'win32') {
+      return
+    }
+
+    vi.stubEnv('SHELL', '/bin/sh')
+    setPosixShellAvailability({
+      bashAvailable: false,
+      zshAvailable: true
+    })
+
+    const manager = new LocalTerminalManager(vi.fn())
+    const summary = manager.create()
+
+    expect(summary).toMatchObject({
+      shell: 'zsh',
+      title: 'zsh'
+    })
+    expect(spawnMock).toHaveBeenCalledWith(
+      '/bin/zsh',
+      [],
+      expect.objectContaining({
+        cwd: summary.cwd
+      })
+    )
+  })
+
+  it('falls back to /bin/sh when SHELL is sh and neither bash nor zsh is available on POSIX runtimes', () => {
+    if (process.platform === 'win32') {
+      return
+    }
+
+    vi.stubEnv('SHELL', '/bin/sh')
+    setPosixShellAvailability({
+      bashAvailable: false,
+      zshAvailable: false
+    })
+
+    const manager = new LocalTerminalManager(vi.fn())
+    const summary = manager.create()
+
+    expect(summary).toMatchObject({
+      shell: 'sh',
+      title: 'sh'
+    })
+    expect(spawnMock).toHaveBeenCalledWith(
+      '/bin/sh',
+      [],
+      expect.objectContaining({
+        cwd: summary.cwd
+      })
+    )
   })
 
   it('forwards data, write, and resize events to the correct PTY', () => {
