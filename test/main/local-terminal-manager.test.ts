@@ -60,12 +60,29 @@ vi.mock('node:fs', async (importOriginal) => {
 })
 
 import { LocalTerminalManager } from '@main/local-terminal-manager'
+import { getDefaultLocalTerminalShell } from '@shared/local-terminal-shells'
 
 function getTerminalsMap(manager: LocalTerminalManager) {
   return Reflect.get(manager as object, 'terminals') as Map<
     string,
     { summary: { title: string; status: string; lastMessage?: string } }
   >
+}
+
+function getExpectedDefaultShell() {
+  if (process.platform === 'win32') {
+    return 'cmd'
+  }
+
+  return getDefaultLocalTerminalShell(process.platform, process.env['SHELL'])
+}
+
+function getExpectedDefaultShellPath() {
+  if (process.platform === 'win32') {
+    return 'C:\\Windows\\System32\\cmd.exe'
+  }
+
+  return process.env['SHELL'] === '/bin/zsh' ? '/bin/zsh' : '/bin/bash'
 }
 
 describe('LocalTerminalManager', () => {
@@ -93,15 +110,16 @@ describe('LocalTerminalManager', () => {
     const manager = new LocalTerminalManager(emitToRenderer)
 
     const summary = manager.create()
+    const defaultShell = getExpectedDefaultShell()
 
     expect(summary).toMatchObject({
       cwd: expect.any(String),
-      shell: process.platform === 'win32' ? 'cmd' : process.platform === 'darwin' ? 'zsh' : 'bash',
+      shell: defaultShell,
       status: 'running',
-      title: process.platform === 'win32' ? 'cmd' : process.platform === 'darwin' ? 'zsh' : 'bash'
+      title: defaultShell
     })
     expect(spawnMock).toHaveBeenCalledWith(
-      process.platform === 'win32' ? 'C:\\Windows\\System32\\cmd.exe' : process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash',
+      getExpectedDefaultShellPath(),
       process.platform === 'win32' ? ['/d'] : [],
       expect.objectContaining({
         cols: 120,
@@ -141,7 +159,7 @@ describe('LocalTerminalManager', () => {
     createdPtys[0]?.emitExit({ exitCode: 0 })
     const second = manager.create()
 
-    const defaultShell = process.platform === 'win32' ? 'cmd' : process.platform === 'darwin' ? 'zsh' : 'bash'
+    const defaultShell = getExpectedDefaultShell()
     expect(first.title).toBe(defaultShell)
     expect(second.title).toBe(`${defaultShell} 2`)
   })
