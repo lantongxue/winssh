@@ -25,6 +25,7 @@ jobs:
         cache: 'npm'
 
     - name: Install dependencies
+      shell: bash
       run: |
         npm ci
         if [ $? -ne 0 ]; then
