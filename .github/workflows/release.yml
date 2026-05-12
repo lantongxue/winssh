@@ -48,3 +48,4 @@ jobs:
       env:
         WINSSH_UPDATE_BASE_URL: ${{ secrets.WINSSH_UPDATE_BASE_URL }}
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SKIP_PUBLISH: 'false'
