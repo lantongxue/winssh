@@ -1,0 +1,79 @@
+name: EdgeOne Pages Deploy
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      site_id:
+        description: 'EdgeOne Pages site ID (optional if set in secrets EDGEONE_SITE_ID)'
+        required: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          npm ci
+          if [ $? -ne 0 ]; then
+            rm -rf node_modules package-lock.json
+            npm install
+          fi
+
+      - name: Build web site
+        run: npm run web:build
+
+      - name: Create deploy artifact
+        shell: bash
+        run: |
+          cd web
+          if [ ! -d dist ]; then
+            echo 'Build output not found: web/dist' >&2
+            exit 1
+          fi
+          zip -r ../web-dist.zip dist
+
+      - name: Deploy to EdgeOne Pages
+        shell: bash
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_SITE_ID: winssh-web
+          EDGEONE_DEPLOY_URL: ${{ secrets.EDGEONE_DEPLOY_URL }}
+          INPUT_SITE_ID: ${{ github.event.inputs.site_id }}
+        run: |
+          if [ -z "${EDGEONE_API_TOKEN}" ]; then
+            echo 'Secret EDGEONE_API_TOKEN is required.' >&2
+            exit 1
+          fi
+
+          site_id="${INPUT_SITE_ID:-${EDGEONE_SITE_ID}}"
+          if [ -z "${site_id}" ]; then
+            echo 'EdgeOne Pages site ID is required. Set it via workflow input or secret EDGEONE_SITE_ID.' >&2
+            exit 1
+          fi
+
+          deploy_url="${EDGEONE_DEPLOY_URL:-https://api.edgeone.com/pages/v1/deploy}"
+
+          curl --fail --show-error --location \
+            -X POST "${deploy_url}" \
+            -H "Authorization: Bearer ${EDGEONE_API_TOKEN}" \
+            -F "site_id=${site_id}" \
+            -F "branch=main" \
+            -F "artifact=@web-dist.zip" \
+            -F "source=github-actions"
