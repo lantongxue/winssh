@@ -1,10 +1,10 @@
 name: CI
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch: {}
 
 jobs:
   test:
@@ -69,6 +69,7 @@ jobs:
       run: npm run build
 
     - name: Build distributables
+      shell: bash
       run: |
         if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
           npm run dist:linux

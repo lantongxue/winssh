@@ -1,7 +1,14 @@
 name: Release
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag name to release (e.g. v1.1.2)'
+        required: false
   push:
     tags:
       - 'v*.*.*'
@@ -33,19 +40,60 @@ jobs:
           npm install
         fi
 
+    - name: Determine release tag
+      id: release_tag
+      shell: bash
+      run: |
+        if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+          if [ -z "${{ github.event.inputs.tag }}" ]; then
+            echo 'Tag is required for manual dispatch' >&2
+            exit 1
+          fi
+          echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+        else
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+
     - name: Build
       run: npm run build
 
     - name: Build distributables
+      shell: bash
       run: |
         if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-          npm run dist:linux
+          npm run dist:linux -- --publish=never
         elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-          npm run dist:win
+          npm run dist:win -- --publish=never
         elif [ "${{ matrix.os }}" == "macos-latest" ]; then
-          npm run dist:mac
+          npm run dist:mac -- --publish=never
         fi
       env:
         WINSSH_UPDATE_BASE_URL: ${{ secrets.WINSSH_UPDATE_BASE_URL }}
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        SKIP_PUBLISH: 'false'
+        SKIP_PUBLISH: 'true'
+
+    - name: Extract release notes
+      id: release_notes
+      shell: bash
+      run: |
+        tag="${{ steps.release_tag.outputs.tag }}"
+        version="${tag#v}"
+        awk "/^## \[${version}\]/ {flag=1; next} /^## \[/ {if (flag) exit} flag {print}" CHANGELOG.md > release-notes.md
+        if [ ! -s release-notes.md ]; then
+          echo "No changelog entry found for ${version}" >&2
+          exit 1
+        fi
+        echo "body<<EOF" >> $GITHUB_OUTPUT
+        cat release-notes.md >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Publish GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.release_tag.outputs.tag }}
+        name: ${{ steps.release_tag.outputs.tag }}
+        body: ${{ steps.release_notes.outputs.body }}
+        files: release/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        WINSSH_UPDATE_BASE_URL: ${{ secrets.WINSSH_UPDATE_BASE_URL }}
+        SKIP_PUBLISH: 'true'
