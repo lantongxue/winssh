@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: |
+        npm ci
+        if [ $? -ne 0 ]; then
+          rm -rf node_modules package-lock.json
+          npm install
+        fi
+
+    - name: Run typecheck
+      run: npm run typecheck
+
+    - name: Run tests
+      run: npm run test
+
+    - name: Build
+      run: npm run build
+
+  build:
+    needs: test
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:|
+        npm ci
+        if [ $? -ne 0 ]; then
+          rm -rf node_modules package-lock.json
+          npm install
+        f
+        node-version: '24'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build
+      run: npm run build
+
+    - name: Build distributables
+      run: |
+        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+          npm run dist:linux
+        elif [ "${{ matrix.os }}" == "windows-latest" ]; then
+          npm run dist:win
+        elif [ "${{ matrix.os }}" == "macos-latest" ]; then
+          npm run dist:mac
+        fi
+      env:
+        WINSSH_UPDATE_BASE_URL: ${{ secrets.WINSSH_UPDATE_BASE_URL }}
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: winssh-${{ matrix.os }}
+        path: release/
