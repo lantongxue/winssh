@@ -56,6 +56,13 @@ jobs:
           echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
         fi
 
+    - name: Determine release version
+      id: release_version
+      shell: bash
+      run: |
+        tag="${{ steps.release_tag.outputs.tag }}"
+        echo "version=${tag#v}" >> $GITHUB_OUTPUT
+
     - name: Build
       run: npm run build
 
@@ -72,6 +79,42 @@ jobs:
       env:
         WINSSH_UPDATE_BASE_URL: ${{ secrets.WINSSH_UPDATE_BASE_URL }}
         SKIP_PUBLISH: 'true'
+
+    - name: Determine release files
+      id: release_files
+      shell: bash
+      run: |
+        version="${{ steps.release_version.outputs.version }}"
+        dir="release/${version}"
+
+        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+          patterns=("*.AppImage" "*.deb")
+        elif [ "${{ matrix.os }}" == "windows-latest" ]; then
+          patterns=("*-Setup.exe" "*.zip")
+        elif [ "${{ matrix.os }}" == "macos-latest" ]; then
+          patterns=("*.dmg" "*.zip")
+        else
+          echo "Unsupported OS: ${{ matrix.os }}" >&2
+          exit 1
+        fi
+
+        files=()
+        for pat in "${patterns[@]}"; do
+          for f in ${dir}/${pat}; do
+            if [ -f "$f" ]; then
+              files+=("$f")
+            fi
+          done
+        done
+
+        if [ ${#files[@]} -eq 0 ]; then
+          echo "No release artifacts found for ${dir} on ${GITHUB_RUNNER_OS}" >&2
+          exit 1
+        fi
+
+        echo "files<<EOF" >> $GITHUB_OUTPUT
+        printf '%s\n' "${files[@]}" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
 
     - name: Extract release notes
       id: release_notes
@@ -95,7 +138,7 @@ jobs:
         tag_name: ${{ steps.release_tag.outputs.tag }}
         name: ${{ steps.release_tag.outputs.tag }}
         body: ${{ steps.release_notes.outputs.body }}
-        files: release/**/*
+        files: ${{ steps.release_files.outputs.files }}
       env:
         WINSSH_UPDATE_BASE_URL: ${{ secrets.WINSSH_UPDATE_BASE_URL }}
         SKIP_PUBLISH: 'true'
