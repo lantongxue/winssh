@@ -26,8 +26,8 @@ jobs:
             arch: x64
           - os: windows-latest
             arch: x64
-          - os: macos-15
-            arch: x64
+          - os: macos-15-intel
+            arch: Intel
           - os: macos-latest
             arch: arm64
 
