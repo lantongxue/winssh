@@ -4,14 +4,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
-    inputs:
-      site_id:
-        description: 'EdgeOne Pages site ID (optional if set in secrets EDGEONE_SITE_ID)'
-        required: false
 
 jobs:
   deploy:
@@ -38,16 +31,6 @@ jobs:
 
       - name: Build web site
         run: npm run web:build
-
-      - name: Create deploy artifact
-        shell: bash
-        run: |
-          cd web
-          if [ ! -d dist ]; then
-            echo 'Build output not found: web/dist' >&2
-            exit 1
-          fi
-          zip -r ../web-dist.zip dist
 
       - name: Deploy to EdgeOne Pages
         shell: bash
