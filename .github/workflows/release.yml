@@ -16,6 +16,8 @@ on:
 jobs:
   release:
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
 
     strategy:
       matrix:
@@ -89,11 +91,11 @@ jobs:
     - name: Publish GitHub Release
       uses: softprops/action-gh-release@v1
       with:
+        token: ${{ secrets.GITHUB_TOKEN }}
         tag_name: ${{ steps.release_tag.outputs.tag }}
         name: ${{ steps.release_tag.outputs.tag }}
         body: ${{ steps.release_notes.outputs.body }}
-        files: release/*
+        files: release/**/*
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         WINSSH_UPDATE_BASE_URL: ${{ secrets.WINSSH_UPDATE_BASE_URL }}
         SKIP_PUBLISH: 'true'
