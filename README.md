@@ -1,136 +1,106 @@
-# WinSSH
-
 <div align="center">
-  <img src="resources/icon.png" width="200" alt="WinSSH Logo" />
+  <img src="resources/icon.png" width="120" alt="WinSSH" />
+  <h1>WinSSH</h1>
+  <p>跨平台桌面 SSH 客户端，基于 Electron · React · TypeScript</p>
+
+  ![version](https://img.shields.io/badge/version-1.1.2-blue)
+  ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
+  ![license](https://img.shields.io/badge/license-MIT-green)
 </div>
 
-WinSSH 是 Electron + React + TypeScript 做的一个桌面 SSH 工具。起因很简单——市面上的 SSH 客户端要么功能残缺，要么界面老旧，要么需要同时开好几个窗口才能干完一件事。WinSSH 的目标是把常用的那些东西都塞进一个窗口里：SSH 会话、本地终端、SFTP、端口转发、凭据管理，以及一个能看着舒服的主题系统。
-
 ---
 
-## 当前版本
+WinSSH 把 SSH 会话、本地终端、SFTP、端口转发、凭据管理和主题系统整合进同一个窗口，不需要在多个工具之间来回切换。
 
-`1.1.2`
+## 功能
 
----
+- **服务器管理** — 分组、标签、收藏、最近连接、Quick Connect
+- **SSH 会话** — 连接 / 断开 / 重连，会话阶段状态追踪，known hosts 管理
+- **凭据系统** — Credential Vault，支持密码和私钥鉴权，支持 Jump Server（单跳）
+- **终端工作台** — SSH 终端与本地终端统一在同一个 Workbench 视图
+- **SFTP** — 目录浏览、远端文件编辑、上传 / 下载、新建 / 重命名 / 删除、拖拽上传、批量选择
+- **端口转发** — 本地转发与远程转发，重连后规则自动恢复
+- **资源监控** — 远端 Linux 的 CPU / 内存 / 网络 / 磁盘实时采样
+- **主题系统** — 内置主题 + ZIP 包导入，支持自定义字体
+- **WebDAV 备份** — 远端备份列表、选择恢复、恢复后自动重启
+- **应用更新** — Windows 打包版本支持自动检测 / 下载 / 安装
 
-## 功能一览
+## 安装 & 运行
 
-**服务器管理**  
-支持分组、标签、收藏和最近连接记录，还有 Quick Connect 快速入口，连过的服务器不用每次手打。
-
-**SSH 会话**  
-连接、断开、重连都有，会话状态有明确的阶段提示，known hosts 也在应用内统一管理。
-
-**凭据系统**  
-内置 Credential Vault，支持密码和私钥两种鉴权方式，可以给每台服务器单独记住凭据。
-
-**Jump Server**  
-支持单跳代理，通过跳板机连内网服务器不用绕弯子。
-
-**终端工作台**  
-SSH 终端和本地终端共用同一套界面，切换起来很顺手，不用开多个窗口。
-
-**SFTP**  
-可以浏览远端目录、直接编辑远端文件（主要面向文本文件）、上传下载、新建重命名删除，支持拖拽上传和批量选择。
-
-**端口转发**  
-本地转发和远程转发都支持，会话断线重连后转发规则会自动恢复。
-
-**资源监控**  
-可以看远端 Linux 服务器的 CPU、内存、网络、磁盘实时数据，基于 `/proc/*` 和 `df` 实现，非 Linux 系统会自动回退。
-
-**主题系统**  
-内置了几套主题，也可以自己打包 ZIP 导入，字体也可以自定义。
-
-**WebDAV 备份**  
-支持把配置备份到 WebDAV 远端，可以查看备份列表、选择某个版本恢复，恢复完会自动重启应用。
-
-**应用更新**  
-Windows 打包版本支持自动检测更新、下载、安装，一套走完。
-
----
-
-## 技术栈
-
-| 层级 | 用的东西 |
-|------|----------|
-| 桌面框架 | Electron 39 |
-| 前端 | React 19 + TypeScript 5 |
-| 构建工具 | Vite 7 |
-| 样式 | Tailwind CSS 4 |
-| 终端 / 编辑器 | xterm.js / Monaco Editor |
-| 底层能力 | ssh2 / node-pty / better-sqlite3 / electron-updater / keytar |
-
----
-
-## 目录结构
-
-```text
-.
-├── src/
-│   ├── main/        主进程：数据库、SSH/SFTP/WebDAV/更新/本地终端运行时
-│   ├── preload/     contextBridge 与 typed IPC Bridge
-│   ├── renderer/    React Workbench、状态管理、feature API Gateway
-│   └── shared/      共享类型、Zod 校验、主题、终端、更新、IPC 常量
-├── themes/          内置主题包
-├── web/             官网与 docs landing 子工程
-├── docs/            额外文档（如主题开发指南）
-├── scripts/         工具脚本与本地更新测试工具
-├── build/           打包配置与安装器资源
-└── AGENTS.md        工程快照与协作说明
-```
----
-
-## 快速开始
+**环境要求：** Node.js 20+
 
 ```bash
+git clone https://github.com/yourname/winssh.git
+cd winssh
 npm install
 npm run dev
 ```
 
-开发官网子工程：
+打包发布：
 
 ```bash
-npm run web:dev
+npm run dist:win    # Windows NSIS + ZIP
+npm run dist:mac    # macOS DMG + ZIP
+npm run dist:linux  # Linux AppImage + deb
 ```
----
+
+## 技术栈
+
+Electron 39 · React 19 · TypeScript 5 · Vite 7 · Tailwind CSS 4  
+xterm.js · Monaco Editor · ssh2 · node-pty · better-sqlite3 · electron-updater · keytar
+
+## 目录结构
+
+```
+src/
+├── main/       主进程 — 数据库、SSH/SFTP/WebDAV、本地终端、更新
+├── preload/    contextBridge & typed IPC Bridge
+├── renderer/   React Workbench、状态管理、feature API Gateway
+└── shared/     共享类型、Zod schema、主题、IPC 常量
+themes/         内置主题包
+web/            官网 & 文档入口子工程
+docs/           主题开发文档等
+scripts/        构建脚本 & 本地更新测试工具
+```
 
 ## 常用命令
 
 | 命令 | 说明 |
-|------|------|
-| `npm run dev` | 启动 Electron 开发模式 |
-| `npm run dist:win` | 构建 Windows NSIS + ZIP |
-| `npm run dist:mac` | 构建 macOS DMG + ZIP |
-| `npm run dist:linux` | 构建 Linux AppImage + deb |
-
----
+| --- | --- |
+| `npm run dev` | 启动开发模式 |
+| `npm run build` | 类型检查 + 构建 |
+| `npm run test` | 运行 Vitest |
+| `npm run typecheck` | TypeScript 类型检查 |
+| `npm run format` | Prettier |
+| `npm run web:dev` | 启动 `web/` 子工程 |
+| `npm run updates:mock` | 生成本地更新测试元数据 |
+| `npm run updates:serve` | 启动本地更新测试服务 |
 
 ## 环境变量
 
 | 变量 | 说明 |
-|------|------|
-| `WINSSH_UPDATE_BASE_URL` | Windows 更新 generic feed 的基础 URL |
-| `WINSSH_ALLOW_DEV_UPDATES` | 允许开发态写出 `dev-app-update.yml` 并测试完整更新流程 |
-| `WINSSH_HARDWARE_ACCELERATION` | 覆盖 Windows 默认的硬件加速策略 |
+| --- | --- |
+| `WINSSH_UPDATE_BASE_URL` | Windows 更新 feed 基础 URL |
+| `WINSSH_ALLOW_DEV_UPDATES` | 开发模式下启用完整更新流程测试 |
+| `WINSSH_HARDWARE_ACCELERATION` | 覆盖 Windows 默认硬件加速策略 |
 
----
+## 已知限制
 
-## 参与贡献
+- 自动更新仅在 Windows 打包版本下可用，macOS / Linux 及 dev 模式不支持
+- Jump Server 目前只支持单跳，暂不支持多级链式代理
+- 资源监控依赖远端 Linux `/proc/*` 和 `df`，非 Linux 系统会静默回退
+- SFTP 远端文件编辑适用于文本文件，不建议用于二进制或超大文件
 
-欢迎提 Issue 和 PR。提交前建议先跑一下：
+## Contributing
+
+欢迎提 Issue 和 PR。提交前请先跑：
 
 ```bash
-npm run lint
-npm run typecheck
-npm run test
+npm run typecheck && npm run test
 ```
-
----
 
 ## 文档
 
-- `AGENTS.md` — 工程快照与架构说明
-- `docs/theme-dev.md` — 主题开发文档
-- `web/` — 官网与 docs landing 代码
+- [`AGENTS.md`](AGENTS.md) — 工程快照与架构说明
+- [`docs/theme-dev.md`](docs/theme-dev.md) — 主题开发指南
+- [`web/`](web/) — 官网与文档入口
