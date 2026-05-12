@@ -21,7 +21,15 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            arch: x64
+          - os: windows-latest
+            arch: x64
+          - os: macos-15
+            arch: x64
+          - os: macos-latest
+            arch: arm64
 
     steps:
     - name: Checkout code
@@ -73,7 +81,7 @@ jobs:
           npm run dist:linux -- --publish=never
         elif [ "${{ matrix.os }}" == "windows-latest" ]; then
           npm run dist:win -- --publish=never
-        elif [ "${{ matrix.os }}" == "macos-latest" ]; then
+        elif [ "${{ matrix.os }}" == "macos-13" ] || [ "${{ matrix.os }}" == "macos-latest" ]; then
           npm run dist:mac -- --publish=never
         fi
       env:
@@ -91,7 +99,7 @@ jobs:
           patterns=("*.AppImage" "*.deb")
         elif [ "${{ matrix.os }}" == "windows-latest" ]; then
           patterns=("*-Setup.exe" "*.zip")
-        elif [ "${{ matrix.os }}" == "macos-latest" ]; then
+        elif [ "${{ matrix.os }}" == "macos-13" ] || [ "${{ matrix.os }}" == "macos-latest" ]; then
           patterns=("*.dmg" "*.zip")
         else
           echo "Unsupported OS: ${{ matrix.os }}" >&2
