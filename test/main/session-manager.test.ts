@@ -101,7 +101,11 @@ function createManager() {
       getKnownHost: vi.fn(),
       getServerById: vi.fn(),
       recordRecentSession: vi.fn(),
-      upsertKnownHost: vi.fn()
+      upsertKnownHost: vi.fn(),
+      getSettings: vi.fn(() => ({
+        sftpUploadConcurrency: 3,
+        sftpDownloadConcurrency: 3
+      }))
     } as never,
     () => null,
     vi.fn() as never,

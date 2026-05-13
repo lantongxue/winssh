@@ -246,6 +246,8 @@ const api: WinsshApi = {
       ipcRenderer.invoke('sftp:uploadPaths', sessionId, targetPath, localPaths),
     downloadFile: (sessionId, remotePath) =>
       ipcRenderer.invoke('sftp:downloadFile', sessionId, remotePath),
+    cancelTransfer: (batchId) => ipcRenderer.invoke('sftp:cancelTransfer', batchId),
+    cancelAllTransfers: () => ipcRenderer.invoke('sftp:cancelAllTransfers'),
     refresh: (sessionId, remotePath) => ipcRenderer.invoke('sftp:refresh', sessionId, remotePath),
     onTransferProgress: (callback) => subscribe('sftp:transfer', callback)
   },

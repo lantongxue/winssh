@@ -137,13 +137,16 @@ const workbench = {
         warning: '警告'
       },
       transfer: {
+        batchProgress: '{{completed}} / {{total}} 个文件',
+        cancel: '取消',
+        cancelAll: '取消全部',
+        cancelled: '已取消',
         completed: '已完成',
         download: '下载',
         error: '失败',
         running: '进行中',
         unknown: '未知',
-        upload: '上传',
-        batchProgress: '{{completed}} / {{total}} 个文件'
+        upload: '上传'
       }
     },
     primarySidebar: {
@@ -445,6 +448,12 @@ const workbench = {
         resourceMonitorInterval: '资源监控间隔（毫秒）',
         resourceMonitorIntervalDescription:
           '会话资源监控采样 CPU、内存、网络和磁盘数据的频率。最小 500 ms，最大 30000 ms。',
+        sftpUploadConcurrency: 'SFTP 上传并发数',
+        sftpUploadConcurrencyDescription:
+          '同时上传的最大文件数。最小 1，最大 16。',
+        sftpDownloadConcurrency: 'SFTP 下载并发数',
+        sftpDownloadConcurrencyDescription:
+          '同时下载的最大文件数。最小 1，最大 16。',
         cursorStyle: '光标样式',
         language: '界面语言',
         localTerminalShell: '本地终端 shell',

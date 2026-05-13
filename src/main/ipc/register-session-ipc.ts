@@ -84,6 +84,10 @@ export function registerSessionIpc(service: SessionsApplicationService) {
   ipcMain.handle('sftp:downloadFile', (_event, sessionId: string, remotePath: string) =>
     service.downloadFile(sessionId, remotePath)
   )
+  ipcMain.handle('sftp:cancelTransfer', (_event, batchId: string) =>
+    service.cancelTransfer(batchId)
+  )
+  ipcMain.handle('sftp:cancelAllTransfers', () => service.cancelAllTransfers())
 
   ipcMain.handle('portForwards:list', (_event, sessionId: string) =>
     service.listPortForwards(sessionId)

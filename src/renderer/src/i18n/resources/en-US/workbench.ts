@@ -140,13 +140,16 @@ const workbench = {
         warning: 'Warning'
       },
       transfer: {
+        batchProgress: '{{completed}} / {{total}} files',
+        cancel: 'Cancel',
+        cancelAll: 'Cancel All',
+        cancelled: 'Cancelled',
         completed: 'Completed',
         download: 'Download',
         error: 'Error',
         running: 'Running',
         unknown: 'Unknown',
-        upload: 'Upload',
-        batchProgress: '{{completed}} / {{total}} files'
+        upload: 'Upload'
       }
     },
     primarySidebar: {
@@ -457,6 +460,12 @@ const workbench = {
         resourceMonitorInterval: 'Resource monitor interval (ms)',
         resourceMonitorIntervalDescription:
           'How often the session resource monitor polls for CPU, memory, network, and disk data. Minimum 500 ms, maximum 30000 ms.',
+        sftpUploadConcurrency: 'SFTP upload concurrency',
+        sftpUploadConcurrencyDescription:
+          'Maximum number of files to upload simultaneously. Minimum 1, maximum 16.',
+        sftpDownloadConcurrency: 'SFTP download concurrency',
+        sftpDownloadConcurrencyDescription:
+          'Maximum number of files to download simultaneously. Minimum 1, maximum 16.',
         cursorStyle: 'Cursor style',
         language: 'Display language',
         localTerminalShell: 'Local terminal shell',

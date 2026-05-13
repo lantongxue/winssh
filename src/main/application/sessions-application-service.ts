@@ -94,6 +94,14 @@ export class SessionsApplicationService {
     return this.sessionManager.downloadFile(sessionId, remotePath)
   }
 
+  cancelTransfer(batchId: string) {
+    this.sessionManager.cancelTransfer(batchId)
+  }
+
+  cancelAllTransfers() {
+    this.sessionManager.cancelAllTransfers()
+  }
+
   listPortForwards(sessionId: string) {
     return this.sessionManager.listPortForwards(sessionId)
   }

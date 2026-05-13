@@ -3,6 +3,7 @@ import { formatFileSize, formatTime } from '@/i18n/format'
 import { actionIcons } from '@/lib/action-icons'
 import { workbenchPanels } from '@/lib/workbench'
 import { cn } from '@/lib/utils'
+import { sftpClient } from '@/features/sftp/api/sftp-client'
 import { useWorkbenchStore } from '@/store/workbench-store'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -63,6 +64,11 @@ export function WorkbenchPanel() {
             <Button variant="ghost" size="sm" onClick={clearProblems}>
               <ClearIcon className="size-4" />
               {t('workbench.panel.clearProblems')}
+            </Button>
+          ) : null}
+          {activePanelId === 'transfers' && hasActiveBatch ? (
+            <Button variant="destructive" size="sm" onClick={() => sftpClient.cancelAllTransfers()}>
+              {t('workbench.panel.transfer.cancelAll')}
             </Button>
           ) : null}
           {activePanelId === 'transfers' ? (
@@ -150,19 +156,37 @@ export function WorkbenchPanel() {
                   entry.total > 0
                     ? formatFileSize(entry.total)
                     : t('workbench.panel.transfer.unknown')
+                const isRunning = entry.status === 'running'
 
                 return (
                   <div key={entry.id} className="bg-[var(--workbench-panel)] px-4 py-3 text-sm">
                     <div className="flex items-center justify-between gap-3">
                       <div className="font-medium text-foreground">{entry.fileName}</div>
-                      <div className="text-[11px] uppercase text-muted-foreground">
-                        {t(`workbench.panel.transfer.${entry.direction}`)}
+                      <div className="flex items-center gap-2">
+                        <div className="text-[11px] uppercase text-muted-foreground">
+                          {t(`workbench.panel.transfer.${entry.direction}`)}
+                        </div>
+                        {isRunning && entry.batchId ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 px-1.5 text-[11px]"
+                            onClick={() => sftpClient.cancelTransfer(entry.batchId!)}
+                          >
+                            {t('workbench.panel.transfer.cancel')}
+                          </Button>
+                        ) : null}
                       </div>
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">{entry.remotePath}</div>
                     <div className="mt-3 h-1.5 rounded-full bg-[var(--workbench-hover)]">
                       <div
-                        className="h-full rounded-full bg-[var(--workbench-active)]"
+                        className={cn(
+                          'h-full rounded-full transition-[width] duration-300 ease-out',
+                          entry.status === 'cancelled'
+                            ? 'bg-[var(--workbench-muted)]'
+                            : 'bg-[var(--workbench-active)]'
+                        )}
                         style={{ width: `${ratio * 100}%` }}
                       />
                     </div>
