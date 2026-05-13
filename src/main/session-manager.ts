@@ -17,6 +17,7 @@ import {
   type OpenDialogOptions
 } from 'electron'
 import { normalizeRemotePath, sortRemoteEntries } from '@shared/sftp'
+import { runWithConcurrency } from './concurrency-pool'
 import { DEFAULT_SERVER_BRAND_ID, resolveServerBrandFromOsRelease } from '@shared/server-brands'
 import {
   type ConnectionSecretInput,
@@ -814,6 +815,7 @@ export class SessionManager {
   private readonly resourceCpuBaselines = new Map<string, CpuTimesSample>()
   private readonly resourceNetworkBaselines = new Map<string, NetworkBytesSample>()
   private readonly editorReadControllers = new Map<string, AbortController>()
+  private readonly transferControllers = new Map<string, AbortController>()
 
   constructor(
     private readonly database: DatabaseService,
@@ -1287,16 +1289,33 @@ export class SessionManager {
     )
     const batchTotal = counts.reduce((sum, count) => sum + count, 0)
 
-    for (const localPath of uniqueLocalPaths) {
-      const remotePath = posix.join(normalizedTargetPath, basename(localPath))
-      await this.uploadLocalEntry(
-        sessionId,
-        runtime.sftp,
-        localPath,
-        remotePath,
-        batchId,
-        batchTotal
+    const { sftpUploadConcurrency } = this.database.getSettings()
+    const controller = new AbortController()
+    this.transferControllers.set(batchId, controller)
+
+    try {
+      await runWithConcurrency(
+        uniqueLocalPaths,
+        sftpUploadConcurrency,
+        async (localPath, signal) => {
+          if (signal.aborted) {
+            return
+          }
+          const remotePath = posix.join(normalizedTargetPath, basename(localPath))
+          await this.uploadLocalEntry(
+            sessionId,
+            runtime.sftp,
+            localPath,
+            remotePath,
+            batchId,
+            batchTotal,
+            signal
+          )
+        },
+        controller.signal
       )
+    } finally {
+      this.transferControllers.delete(batchId)
     }
   }
 
@@ -1323,14 +1342,22 @@ export class SessionManager {
       const batchId = `download:${sessionId}:${randomUUID()}`
       const batchTotal = await this.countRemoteFiles(runtime.sftp, normalized)
       const localDirectoryPath = path.join(selection.filePaths[0], fileName)
-      await this.downloadRemoteEntry(
-        sessionId,
-        runtime.sftp,
-        normalized,
-        localDirectoryPath,
-        batchId,
-        batchTotal
-      )
+      const controller = new AbortController()
+      this.transferControllers.set(batchId, controller)
+
+      try {
+        await this.downloadRemoteEntry(
+          sessionId,
+          runtime.sftp,
+          normalized,
+          localDirectoryPath,
+          batchId,
+          batchTotal,
+          controller.signal
+        )
+      } finally {
+        this.transferControllers.delete(batchId)
+      }
       return
     }
 
@@ -1348,14 +1375,22 @@ export class SessionManager {
 
     const batchId = `download:${sessionId}:${randomUUID()}`
     const batchTotal = 1
-    await this.downloadRemoteFile(
-      sessionId,
-      runtime.sftp,
-      normalized,
-      saveResult.filePath,
-      batchId,
-      batchTotal
-    )
+    const controller = new AbortController()
+    this.transferControllers.set(batchId, controller)
+
+    try {
+      await this.downloadRemoteFile(
+        sessionId,
+        runtime.sftp,
+        normalized,
+        saveResult.filePath,
+        batchId,
+        batchTotal,
+        controller.signal
+      )
+    } finally {
+      this.transferControllers.delete(batchId)
+    }
   }
 
   private async countRemoteFiles(sftp: SFTPWrapper, remotePath: string): Promise<number> {
@@ -1381,32 +1416,41 @@ export class SessionManager {
     remotePath: string,
     localPath: string,
     batchId: string,
-    batchTotal: number
+    batchTotal: number,
+    signal?: AbortSignal
   ): Promise<void> {
+    if (signal?.aborted) {
+      return
+    }
+
     const stats = await sftpStat(sftp, remotePath)
 
     if (!stats.isDirectory()) {
-      await this.downloadRemoteFile(sessionId, sftp, remotePath, localPath, batchId, batchTotal)
+      await this.downloadRemoteFile(sessionId, sftp, remotePath, localPath, batchId, batchTotal, signal)
       return
     }
 
     await fs.mkdir(localPath, { recursive: true })
     const entries = await sftpReadDir(sftp, remotePath)
 
-    for (const entry of entries) {
-      if (entry.name === '.' || entry.name === '..') {
-        continue
-      }
+    const { sftpDownloadConcurrency } = this.database.getSettings()
 
-      await this.downloadRemoteEntry(
-        sessionId,
-        sftp,
-        entry.path,
-        path.join(localPath, entry.name),
-        batchId,
-        batchTotal
-      )
-    }
+    await runWithConcurrency(
+      entries.filter((entry) => entry.name !== '.' && entry.name !== '..'),
+      sftpDownloadConcurrency,
+      async (entry, s) => {
+        await this.downloadRemoteEntry(
+          sessionId,
+          sftp,
+          entry.path,
+          path.join(localPath, entry.name),
+          batchId,
+          batchTotal,
+          s
+        )
+      },
+      signal
+    )
   }
 
   private async downloadRemoteFile(
@@ -1415,20 +1459,67 @@ export class SessionManager {
     remotePath: string,
     localPath: string,
     batchId: string,
-    batchTotal: number
+    batchTotal: number,
+    signal?: AbortSignal
   ): Promise<void> {
+    if (signal?.aborted) {
+      this.emitToRenderer(
+        'sftp:transfer',
+        this.withObservableMetadata(sessionId, {
+          sessionId,
+          direction: 'download',
+          fileName: path.posix.basename(remotePath),
+          localPath,
+          remotePath,
+          transferred: 0,
+          total: 0,
+          status: 'cancelled',
+          batchId,
+          batchTotal
+        })
+      )
+      return
+    }
+
     const fileName = path.posix.basename(remotePath)
     let transferred = 0
     let total = 1
 
     await fs.mkdir(path.dirname(localPath), { recursive: true })
 
-    await new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
+      let aborted = false
+
+      const onAbort = () => {
+        aborted = true
+        this.emitToRenderer(
+          'sftp:transfer',
+          this.withObservableMetadata(sessionId, {
+            sessionId,
+            direction: 'download',
+            fileName,
+            localPath,
+            remotePath,
+            transferred,
+            total,
+            status: 'cancelled',
+            batchId,
+            batchTotal
+          })
+        )
+        resolve()
+      }
+
+      signal?.addEventListener('abort', onAbort, { once: true })
+
       sftp.fastGet(
         remotePath,
         localPath,
         {
           step: (nextTransferred, _chunk, nextTotal) => {
+            if (aborted) {
+              return
+            }
             transferred = nextTransferred
             total = Math.max(nextTotal, 1)
             this.emitToRenderer(
@@ -1449,6 +1540,13 @@ export class SessionManager {
           }
         },
         (error) => {
+          signal?.removeEventListener('abort', onAbort)
+
+          if (aborted) {
+            resolve()
+            return
+          }
+
           if (error) {
             this.emitToRenderer(
               'sftp:transfer',
@@ -1489,6 +1587,21 @@ export class SessionManager {
         }
       )
     })
+  }
+
+  cancelTransfer(batchId: string): void {
+    const controller = this.transferControllers.get(batchId)
+    if (controller) {
+      controller.abort()
+      this.transferControllers.delete(batchId)
+    }
+  }
+
+  cancelAllTransfers(): void {
+    for (const controller of this.transferControllers.values()) {
+      controller.abort()
+    }
+    this.transferControllers.clear()
   }
 
   async createPortForward(sessionId: string, input: PortForwardInput): Promise<PortForwardRule> {
@@ -1889,8 +2002,13 @@ export class SessionManager {
     localPath: string,
     remotePath: string,
     batchId?: string,
-    batchTotal?: number
+    batchTotal?: number,
+    signal?: AbortSignal
   ): Promise<void> {
+    if (signal?.aborted) {
+      return
+    }
+
     const localStats = await fs.lstat(localPath)
     const normalizedRemotePath = normalizeRemotePath(remotePath)
 
@@ -1898,16 +2016,19 @@ export class SessionManager {
       await this.ensureRemoteDirectory(sftp, normalizedRemotePath)
       const childNames = await fs.readdir(localPath)
 
-      for (const childName of childNames) {
+      const { sftpUploadConcurrency } = this.database.getSettings()
+
+      await runWithConcurrency(childNames, sftpUploadConcurrency, async (childName, s) => {
         await this.uploadLocalEntry(
           sessionId,
           sftp,
           path.join(localPath, childName),
           posix.join(normalizedRemotePath, childName),
           batchId,
-          batchTotal
+          batchTotal,
+          s
         )
-      }
+      }, signal)
 
       return
     }
@@ -1923,7 +2044,8 @@ export class SessionManager {
       normalizedRemotePath,
       localStats,
       batchId,
-      batchTotal
+      batchTotal,
+      signal
     )
   }
 
@@ -1934,20 +2056,65 @@ export class SessionManager {
     remotePath: string,
     localStats: FsStats,
     batchId?: string,
-    batchTotal?: number
+    batchTotal?: number,
+    signal?: AbortSignal
   ): Promise<void> {
+    if (signal?.aborted) {
+      this.emitToRenderer(
+        'sftp:transfer',
+        this.withObservableMetadata(sessionId, {
+          sessionId,
+          direction: 'upload',
+          fileName: basename(localPath),
+          localPath,
+          remotePath,
+          transferred: 0,
+          total: 0,
+          status: 'cancelled',
+          ...(batchId !== undefined ? { batchId, batchTotal } : {})
+        })
+      )
+      return
+    }
+
     const fileName = basename(localPath)
     let transferred = 0
     let total = Math.max(localStats.size, 1)
 
     const batchInfo = batchId !== undefined ? { batchId, batchTotal } : {}
 
-    await new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
+      let aborted = false
+
+      const onAbort = () => {
+        aborted = true
+        this.emitToRenderer(
+          'sftp:transfer',
+          this.withObservableMetadata(sessionId, {
+            sessionId,
+            direction: 'upload',
+            fileName,
+            localPath,
+            remotePath,
+            transferred,
+            total,
+            status: 'cancelled',
+            ...batchInfo
+          })
+        )
+        resolve()
+      }
+
+      signal?.addEventListener('abort', onAbort, { once: true })
+
       sftp.fastPut(
         localPath,
         remotePath,
         {
           step: (nextTransferred, _chunk, nextTotal) => {
+            if (aborted) {
+              return
+            }
             transferred = nextTransferred
             total = Math.max(nextTotal, 1)
             this.emitToRenderer(
@@ -1967,6 +2134,13 @@ export class SessionManager {
           }
         },
         (error) => {
+          signal?.removeEventListener('abort', onAbort)
+
+          if (aborted) {
+            resolve()
+            return
+          }
+
           if (error) {
             this.emitToRenderer(
               'sftp:transfer',

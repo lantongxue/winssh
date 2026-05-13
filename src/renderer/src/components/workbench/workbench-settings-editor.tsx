@@ -975,6 +975,88 @@ export function WorkbenchSettingsEditor() {
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="sftpUploadConcurrency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {t('workbench.settings.form.sftpUploadConcurrency')}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={16}
+                            step={1}
+                            {...field}
+                            onBlur={() => {
+                              field.onBlur()
+                              const parsed =
+                                settingsSchema.shape.sftpUploadConcurrency.safeParse(
+                                  form.getValues('sftpUploadConcurrency')
+                                )
+                              if (!parsed.success) {
+                                resetSavedField(
+                                  'sftpUploadConcurrency',
+                                  savedSettingsRef.current?.sftpUploadConcurrency ??
+                                    DEFAULT_SETTINGS_FORM_VALUES.sftpUploadConcurrency
+                                )
+                                toast.error(t('workbench.settings.validation.failed'))
+                                return
+                              }
+                              void handleSettingSave('sftpUploadConcurrency', parsed.data)
+                            }}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          {t('workbench.settings.form.sftpUploadConcurrencyDescription')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="sftpDownloadConcurrency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {t('workbench.settings.form.sftpDownloadConcurrency')}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={16}
+                            step={1}
+                            {...field}
+                            onBlur={() => {
+                              field.onBlur()
+                              const parsed =
+                                settingsSchema.shape.sftpDownloadConcurrency.safeParse(
+                                  form.getValues('sftpDownloadConcurrency')
+                                )
+                              if (!parsed.success) {
+                                resetSavedField(
+                                  'sftpDownloadConcurrency',
+                                  savedSettingsRef.current?.sftpDownloadConcurrency ??
+                                    DEFAULT_SETTINGS_FORM_VALUES.sftpDownloadConcurrency
+                                )
+                                toast.error(t('workbench.settings.validation.failed'))
+                                return
+                              }
+                              void handleSettingSave('sftpDownloadConcurrency', parsed.data)
+                            }}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          {t('workbench.settings.form.sftpDownloadConcurrencyDescription')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </section>
             ) : null}

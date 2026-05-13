@@ -200,7 +200,9 @@ export const settingsSchema = z.object({
   webdavUsername: z.string().trim().max(120).nullable(),
   webdavBackupIntervalMinutes: z.coerce.number().int().min(15).max(10080),
   webdavBackupPath: z.string().trim().max(512).nullable(),
-  resourceMonitorIntervalMs: z.coerce.number().int().min(500).max(30000)
+  resourceMonitorIntervalMs: z.coerce.number().int().min(500).max(30000),
+  sftpUploadConcurrency: z.coerce.number().int().min(1).max(16),
+  sftpDownloadConcurrency: z.coerce.number().int().min(1).max(16)
 })
 
 export type ServerFormValues = z.infer<typeof serverSchema>

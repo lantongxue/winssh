@@ -124,6 +124,8 @@ export interface AppSettings {
   webdavBackupIntervalMinutes: number
   webdavBackupPath: string | null
   resourceMonitorIntervalMs: number
+  sftpUploadConcurrency: number
+  sftpDownloadConcurrency: number
 }
 
 export interface WebDAVBackupState {
@@ -384,7 +386,7 @@ export interface TransferProgressEvent extends ObservableEventMetadata {
   remotePath: string
   transferred: number
   total: number
-  status: 'running' | 'completed' | 'error'
+  status: 'running' | 'completed' | 'error' | 'cancelled'
   error?: string
   batchId?: string
   batchTotal?: number

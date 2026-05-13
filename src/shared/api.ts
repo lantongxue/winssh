@@ -108,6 +108,8 @@ export interface WinsshApi {
     uploadFiles: (sessionId: string, targetPath: string) => Promise<void>
     uploadPaths: (sessionId: string, targetPath: string, localPaths: string[]) => Promise<void>
     downloadFile: (sessionId: string, remotePath: string) => Promise<void>
+    cancelTransfer: (batchId: string) => void
+    cancelAllTransfers: () => void
     refresh: (sessionId: string, path: string) => Promise<SftpListResult>
     onTransferProgress: (callback: (event: TransferProgressEvent) => void) => Unsubscribe
   }
