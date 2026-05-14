@@ -802,7 +802,7 @@ export function WorkbenchPrimarySidebar() {
     const { group } = node
     const style = getColorStyle(group.color)
     const active = selectedExplorerNode === `group:${group.id}`
-    const expanded = expandedGroups[group.id] ?? false
+    const expanded = expandedGroups[group.id] ?? true
     const groupServers = servers.filter((server) => server.groupId === group.id)
 
     return (
@@ -1098,7 +1098,7 @@ export function WorkbenchPrimarySidebar() {
                     {tags.map((tag) => {
                       const style = getColorStyle(tag.color)
                       const active = selectedExplorerNode === `tag:${tag.id}`
-                      const expanded = expandedTags[tag.id] ?? false
+                      const expanded = expandedTags[tag.id] ?? true
                       const tagServers = servers.filter((server) =>
                         server.tags.some((serverTag) => serverTag.id === tag.id)
                       )

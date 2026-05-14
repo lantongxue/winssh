@@ -349,13 +349,13 @@ describe('WorkbenchPrimarySidebar', () => {
     renderPrimarySidebar()
 
     const groupLabel = await screen.findByText('AA')
-    expect(screen.queryByText('103.205.241.248')).not.toBeInTheDocument()
-
-    fireEvent.doubleClick(groupLabel)
     expect(await screen.findByText('103.205.241.248')).toBeInTheDocument()
 
     fireEvent.doubleClick(groupLabel)
     expect(screen.queryByText('103.205.241.248')).not.toBeInTheDocument()
+
+    fireEvent.doubleClick(groupLabel)
+    expect(await screen.findByText('103.205.241.248')).toBeInTheDocument()
   })
 
   it('always shows server tags when a server has tags', async () => {
@@ -395,8 +395,9 @@ describe('WorkbenchPrimarySidebar', () => {
 
     renderPrimarySidebar()
 
-    const serverName = await screen.findByText('103.205.241.248')
-    const serverRow = serverName.closest('[role="button"]')
+    const serverNames = await screen.findAllByText('103.205.241.248')
+    expect(serverNames.length).toBeGreaterThanOrEqual(1)
+    const serverRow = serverNames[0]?.closest('[role="button"]')
 
     expect(serverRow).toBeTruthy()
     expect(within(serverRow as HTMLElement).getByText('HK-CN2')).toBeInTheDocument()
@@ -631,13 +632,20 @@ describe('WorkbenchPrimarySidebar', () => {
     renderPrimarySidebar()
 
     const parentLabel = await screen.findByText('Production')
-    expect(screen.queryByText('API')).not.toBeInTheDocument()
+    expect(await screen.findByText('API')).toBeInTheDocument()
+    expect(await screen.findByText('API Host')).toBeInTheDocument()
 
-    fireEvent.doubleClick(parentLabel)
-    const childLabel = await screen.findByText('API')
+    fireEvent.doubleClick(await screen.findByText('API'))
     expect(screen.queryByText('API Host')).not.toBeInTheDocument()
 
-    fireEvent.doubleClick(childLabel)
+    fireEvent.doubleClick(parentLabel)
+    expect(screen.queryByText('API')).not.toBeInTheDocument()
+    expect(screen.queryByText('API Host')).not.toBeInTheDocument()
+
+    fireEvent.doubleClick(parentLabel)
+    expect(await screen.findByText('API')).toBeInTheDocument()
+
+    fireEvent.doubleClick(await screen.findByText('API'))
     expect(await screen.findByText('API Host')).toBeInTheDocument()
   })
 
