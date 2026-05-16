@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { useShallow } from 'zustand/react/shallow'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import { queryKeys } from '@/features/shared/query-keys'
+import { serversClient } from '@/features/servers/api/servers-client'
 import { settingsClient } from '@/features/settings/api/settings-client'
 import { themesClient } from '@/features/themes/api/themes-client'
 import { actionIcons } from '@/lib/action-icons'
@@ -48,6 +49,12 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
     queryKey: queryKeys.themes,
     queryFn: () => themesClient.list()
   })
+  const serverQuery = useQuery({
+    queryKey: ['server', session?.serverId],
+    queryFn: () => session?.serverId ? serversClient.findById(session.serverId) : null,
+    enabled: Boolean(session?.serverId)
+  })
+  const isMacServer = serverQuery.data?.brandId === 'macos'
   const RemoteFilesIcon = actionIcons.openRemoteFiles
   const PortForwardIcon = actionIcons.openPortForwards
   const ReconnectIcon = actionIcons.reconnect
@@ -123,21 +130,26 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
             <span className="truncate font-mono">{session.host}</span>
           </div>
         </button>
-        <SessionResourceMonitor
-          active={active}
-          expanded={monitorExpanded}
-          refetchIntervalMs={
-            settingsQuery.data?.resourceMonitorIntervalMs ??
-            DEFAULT_APP_SETTINGS.resourceMonitorIntervalMs
-          }
-          session={session}
-        />
+        {!isMacServer ? (
+          <SessionResourceMonitor
+            active={active}
+            expanded={monitorExpanded}
+            refetchIntervalMs={
+              settingsQuery.data?.resourceMonitorIntervalMs ??
+              DEFAULT_APP_SETTINGS.resourceMonitorIntervalMs
+            }
+            session={session}
+          />
+        ) : (
+          <div className="min-w-0 flex-1" />
+        )}
         <div className="flex shrink-0 items-center gap-2">
           <label className="flex shrink-0 items-center gap-2 rounded-md border border-[var(--workbench-border)] bg-[color-mix(in_srgb,var(--workbench-sidebar)_72%,transparent)] px-2.5 py-1.5 text-xs text-muted-foreground">
             <span>{t('workbench.sessionEditor.resourceMonitor.title')}</span>
             <Switch
               aria-label={t('workbench.sessionEditor.resourceMonitor.toggle')}
               checked={monitorExpanded}
+              disabled={isMacServer}
               onCheckedChange={setMonitorExpanded}
               size="sm"
             />

@@ -194,6 +194,7 @@ const api: WinsshApi = {
   },
   servers: {
     list: () => ipcRenderer.invoke('servers:list'),
+    findById: (id) => ipcRenderer.invoke('servers:findById', id),
     getSecrets: (id) => ipcRenderer.invoke('servers:getSecrets', id),
     create: (input) => ipcRenderer.invoke('servers:create', input),
     update: (id, input) => ipcRenderer.invoke('servers:update', id, input),

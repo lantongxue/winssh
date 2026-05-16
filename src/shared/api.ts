@@ -67,6 +67,7 @@ export interface WinsshApi {
   }
   servers: {
     list: () => Promise<Server[]>
+    findById: (id: string) => Promise<Server | null>
     getSecrets: (id: string) => Promise<ServerSecrets>
     create: (input: ServerUpsertInput) => Promise<Server>
     update: (id: string, input: ServerUpsertInput) => Promise<Server>
