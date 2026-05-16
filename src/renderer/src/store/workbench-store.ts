@@ -32,6 +32,7 @@ interface WorkbenchStateData {
   problems: WorkbenchProblemEntry[]
   quickOpenOpen: boolean
   selectedExplorerNode: WorkbenchExplorerNodeId
+  sftpPanelSide: 'left' | 'right'
   sidebarOpen: boolean
   transferEntries: WorkbenchTransferEntry[]
 }
@@ -64,6 +65,7 @@ interface WorkbenchState extends WorkbenchStateData {
   setPanelSizePx: (sizePx: number) => void
   setQuickOpenOpen: (open: boolean) => void
   setSelectedExplorerNode: (nodeId: WorkbenchExplorerNodeId) => void
+  setSftpPanelSide: (side: 'left' | 'right') => void
   setSidebarOpen: (open: boolean) => void
   togglePanel: () => void
   toggleSection: (sectionId: WorkbenchExplorerSectionId) => void
@@ -126,6 +128,7 @@ function createInitialState(): WorkbenchStateData {
     problems: [],
     quickOpenOpen: false,
     selectedExplorerNode: 'home',
+    sftpPanelSide: 'left',
     sidebarOpen: true,
     transferEntries: []
   }
@@ -343,6 +346,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
         }),
       setQuickOpenOpen: (open) => set({ quickOpenOpen: open }),
       setSelectedExplorerNode: (nodeId) => set({ selectedExplorerNode: nodeId }),
+      setSftpPanelSide: (side) => set({ sftpPanelSide: side }),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       togglePanel: () => set((state) => ({ panelOpen: !state.panelOpen })),
       toggleSection: (sectionId) =>
@@ -427,7 +431,8 @@ export const useWorkbenchStore = create<WorkbenchState>()(
         panelOpen: state.panelOpen,
         panelSizePx: state.panelSizePx,
         selectedExplorerNode: state.selectedExplorerNode,
-        sidebarOpen: state.sidebarOpen
+        sidebarOpen: state.sidebarOpen,
+        sftpPanelSide: state.sftpPanelSide
       }),
       storage: createJSONStorage(() => localStorage)
     }

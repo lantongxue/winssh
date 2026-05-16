@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { Switch } from '@/components/ui/switch'
 import { useSessionsStore } from '@/store/sessions-store'
+import { useWorkbenchStore } from '@/store/workbench-store'
 
 const TERMINAL_PANEL_MIN_SIZE = '320px'
 const AUX_PANEL_DEFAULT_SIZE = '360px'
@@ -43,6 +44,8 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
   )
   const setAuxView = useSessionsStore((state) => state.setAuxView)
   const setAuxPanelSide = useSessionsStore((state) => state.setAuxPanelSide)
+  const globalSftpPanelSide = useWorkbenchStore((state) => state.sftpPanelSide)
+  const setGlobalSftpPanelSide = useWorkbenchStore((state) => state.setSftpPanelSide)
   const settingsQuery = useQuery({
     queryKey: queryKeys.settings,
     queryFn: () => settingsClient.get(),
@@ -79,7 +82,7 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
   }
 
   const auxView = session.auxView ?? null
-  const auxPanelSide = session.auxPanelSide ?? 'right'
+  const auxPanelSide = session.auxPanelSide ?? globalSftpPanelSide
   const resolvedTheme = resolveThemeDefinition(
     settingsQuery.data.theme,
     themesQuery.data ?? [],
@@ -129,11 +132,12 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
 
       if (targetSide !== auxPanelSide) {
         setAuxPanelSide(session.sessionId, targetSide)
+        setGlobalSftpPanelSide(targetSide)
       }
 
       setDropTargetSide(null)
     },
-    [session.sessionId, auxPanelSide, setAuxPanelSide]
+    [session.sessionId, auxPanelSide, setAuxPanelSide, setGlobalSftpPanelSide]
   )
 
   const terminalView = (
