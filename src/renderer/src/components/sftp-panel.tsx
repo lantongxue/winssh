@@ -39,6 +39,8 @@ interface SftpPanelProps {
   session: SessionTab | null
   className?: string
   onEditFile?: (remotePath: string) => void
+  onHeaderDragStart?: (event: React.DragEvent<HTMLDivElement>) => void
+  onHeaderDragEnd?: (event: React.DragEvent<HTMLDivElement>) => void
 }
 
 type FileWithPath = File & {
@@ -110,7 +112,7 @@ function getDroppedLocalPaths(dataTransfer: DataTransfer | null | undefined) {
   return [...localPaths]
 }
 
-export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
+export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, onHeaderDragEnd }: SftpPanelProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const setCurrentPath = useSessionsStore((state) => state.setCurrentPath)
@@ -511,7 +513,15 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
         onDrop={handleDrop}
       >
         <div className="border-b px-3 py-3">
-          <div className="flex items-start justify-between gap-3">
+          <div
+            draggable={!!onHeaderDragStart}
+            className={cn(
+              'flex items-start justify-between gap-3',
+              onHeaderDragStart && 'cursor-grab active:cursor-grabbing'
+            )}
+            onDragStart={onHeaderDragStart}
+            onDragEnd={onHeaderDragEnd}
+          >
             <div className="min-w-0">
               <div className="text-sm font-semibold">{t('workbench.sftp.explorer')}</div>
               <div className="truncate text-xs text-muted-foreground">{session.serverName}</div>

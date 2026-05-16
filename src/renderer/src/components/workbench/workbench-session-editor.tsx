@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo, useCallback, useState, type DragEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -25,6 +25,7 @@ const TERMINAL_PANEL_MIN_SIZE = '320px'
 const AUX_PANEL_DEFAULT_SIZE = '360px'
 const AUX_PANEL_MIN_SIZE = '280px'
 const AUX_PANEL_MAX_SIZE = '55%'
+const SFTP_PANEL_DRAG_MIME = 'application/x-winssh-sftp-panel'
 
 interface WorkbenchSessionEditorProps {
   sessionId: string
@@ -36,10 +37,12 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
   const prefersDark = usePrefersDark()
   const { reconnectSession, disconnectSession, openSftpFileEditor } = useWorkbenchContext()
   const [monitorExpanded, setMonitorExpanded] = useState(true)
+  const [dropTargetSide, setDropTargetSide] = useState<'left' | 'right' | null>(null)
   const session = useSessionsStore(
     useShallow((state) => state.tabs.find((tab) => tab.sessionId === sessionId) ?? null)
   )
   const setAuxView = useSessionsStore((state) => state.setAuxView)
+  const setAuxPanelSide = useSessionsStore((state) => state.setAuxPanelSide)
   const settingsQuery = useQuery({
     queryKey: queryKeys.settings,
     queryFn: () => settingsClient.get(),
@@ -76,13 +79,73 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
   }
 
   const auxView = session.auxView ?? null
+  const auxPanelSide = session.auxPanelSide ?? 'right'
   const resolvedTheme = resolveThemeDefinition(
     settingsQuery.data.theme,
     themesQuery.data ?? [],
     prefersDark
   )
+
+  const handleSftpHeaderDragStart = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
+      event.dataTransfer.effectAllowed = 'move'
+      event.dataTransfer.setData(SFTP_PANEL_DRAG_MIME, session.sessionId)
+    },
+    [session.sessionId]
+  )
+
+  const handleSftpHeaderDragEnd = useCallback(() => {
+    setDropTargetSide(null)
+  }, [])
+
+  const handleTerminalDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
+    if (!event.dataTransfer.types.includes(SFTP_PANEL_DRAG_MIME)) {
+      return
+    }
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+
+    const rect = event.currentTarget.getBoundingClientRect()
+    const midX = rect.left + rect.width / 2
+    setDropTargetSide(event.clientX < midX ? 'left' : 'right')
+  }, [])
+
+  const handleTerminalDragLeave = useCallback((event: DragEvent<HTMLDivElement>) => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      setDropTargetSide(null)
+    }
+  }, [])
+
+  const handleTerminalDrop = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
+      if (!event.dataTransfer.types.includes(SFTP_PANEL_DRAG_MIME)) {
+        return
+      }
+      event.preventDefault()
+
+      const rect = event.currentTarget.getBoundingClientRect()
+      const midX = rect.left + rect.width / 2
+      const targetSide: 'left' | 'right' = event.clientX < midX ? 'left' : 'right'
+
+      if (targetSide !== auxPanelSide) {
+        setAuxPanelSide(session.sessionId, targetSide)
+      }
+
+      setDropTargetSide(null)
+    },
+    [session.sessionId, auxPanelSide, setAuxPanelSide]
+  )
+
   const terminalView = (
-    <div className="h-full min-w-0">
+    <div
+      className="relative h-full min-w-0"
+      onDragOver={handleTerminalDragOver}
+      onDragLeave={handleTerminalDragLeave}
+      onDrop={handleTerminalDrop}
+    >
+      {dropTargetSide === 'left' ? (
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-20 w-1.5 bg-[var(--workbench-active)] opacity-60" />
+      ) : null}
       <TerminalPane
         active={active}
         session={session}
@@ -90,6 +153,9 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
         theme={resolvedTheme}
         onReconnect={reconnectSession}
       />
+      {dropTargetSide === 'right' ? (
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-20 w-1.5 bg-[var(--workbench-active)] opacity-60" />
+      ) : null}
     </div>
   )
   const auxPanelContent =
@@ -98,6 +164,8 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
         session={session}
         className="h-full overflow-hidden bg-[var(--workbench-sidebar)]"
         onEditFile={(remotePath) => openSftpFileEditor(session.sessionId, remotePath)}
+        onHeaderDragStart={handleSftpHeaderDragStart}
+        onHeaderDragEnd={handleSftpHeaderDragEnd}
       />
     ) : auxView === 'port-forward' ? (
       <PortForwardPanel
@@ -191,14 +259,43 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
 
       <div className="min-h-0 flex-1">
         <ResizablePanelGroup className="h-full" orientation="horizontal">
-          <ResizablePanel minSize={TERMINAL_PANEL_MIN_SIZE}>{terminalView}</ResizablePanel>
-          {showAuxPanel ? (
+          {auxPanelSide === 'left' && showAuxPanel ? (
+            <>
+              <ResizablePanel
+                key={`sftp-panel-${session.sessionId}`}
+                id={`sftp-panel-${session.sessionId}`}
+                defaultSize={AUX_PANEL_DEFAULT_SIZE}
+                maxSize={AUX_PANEL_MAX_SIZE}
+                minSize={AUX_PANEL_MIN_SIZE}
+              >
+                <div className="h-full min-w-0 bg-[var(--workbench-sidebar)] p-3">
+                  {auxPanelContent}
+                </div>
+              </ResizablePanel>
+              <ResizableHandle
+                withHandle
+                className="bg-[var(--workbench-border)] data-[resize-handle-state=drag]:bg-[var(--workbench-active)]"
+              />
+            </>
+          ) : null}
+
+          <ResizablePanel
+            key={`terminal-panel-${session.sessionId}`}
+            id={`terminal-panel-${session.sessionId}`}
+            minSize={TERMINAL_PANEL_MIN_SIZE}
+          >
+            {terminalView}
+          </ResizablePanel>
+
+          {auxPanelSide === 'right' && showAuxPanel ? (
             <>
               <ResizableHandle
                 withHandle
                 className="bg-[var(--workbench-border)] data-[resize-handle-state=drag]:bg-[var(--workbench-active)]"
               />
               <ResizablePanel
+                key={`sftp-panel-${session.sessionId}`}
+                id={`sftp-panel-${session.sessionId}`}
                 defaultSize={AUX_PANEL_DEFAULT_SIZE}
                 maxSize={AUX_PANEL_MAX_SIZE}
                 minSize={AUX_PANEL_MIN_SIZE}

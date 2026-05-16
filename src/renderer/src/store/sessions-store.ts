@@ -10,6 +10,7 @@ export type SessionAuxView = 'sftp' | 'port-forward'
 
 export interface SessionTab extends SessionSummary {
   auxView?: SessionAuxView | null
+  auxPanelSide?: 'left' | 'right'
   connectionPhase?: SessionConnectionPhase
   connectionStartedAt?: string
   lastMessage?: string
@@ -35,6 +36,7 @@ interface SessionsState {
   removeSession: (sessionId: string) => void
   setActiveSession: (sessionId: string | null) => void
   setAuxView: (sessionId: string, auxView: SessionAuxView | null) => void
+  setAuxPanelSide: (sessionId: string, side: 'left' | 'right') => void
   setSessionState: (
     sessionId: string,
     status: SessionStatus,
@@ -116,6 +118,7 @@ export const useSessionsStore = create<SessionsState>((set) => ({
         tab.sessionId === oldSessionId
           ? {
               auxView: tab.auxView ?? null,
+              auxPanelSide: tab.auxPanelSide,
               connectionPhase: tab.connectionPhase,
               ...summary,
               // 重连成功后刷新 connectionStartedAt，确保 TerminalPane 识别为新连接周期
@@ -141,6 +144,12 @@ export const useSessionsStore = create<SessionsState>((set) => ({
   setAuxView: (sessionId, auxView) =>
     set((state) => ({
       tabs: state.tabs.map((tab) => (tab.sessionId === sessionId ? { ...tab, auxView } : tab))
+    })),
+  setAuxPanelSide: (sessionId, side) =>
+    set((state) => ({
+      tabs: state.tabs.map((tab) =>
+        tab.sessionId === sessionId ? { ...tab, auxPanelSide: side } : tab
+      )
     })),
   setSessionState: (sessionId, status, lastMessage, connectionPhase) =>
     set((state) => ({
