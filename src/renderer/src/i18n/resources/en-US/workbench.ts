@@ -264,6 +264,7 @@ const workbench = {
         debian: 'Debian',
         fedora: 'Fedora',
         linux: 'Linux',
+        macos: 'macOS',
         redhat: 'Red Hat',
         suse: 'SUSE',
         ubuntu: 'Ubuntu'
@@ -694,7 +695,9 @@ const workbench = {
         backToParent: 'Go to Parent Directory',
         copyPath: 'Copy Path',
         copyPathToTerminal: 'Send Path to Terminal',
-        openDirectory: 'Open Directory'
+        flatView: 'Flat View',
+        openDirectory: 'Open Directory',
+        treeView: 'Tree View'
       },
       dropzone: {
         description: 'Upload them into {{path}}.',
@@ -730,6 +733,7 @@ const workbench = {
       },
       toasts: {
         deleteFailed: 'Failed to delete the selected items.',
+        listFailed: 'Failed to list directory.',
         pathCopied: 'Path copied.',
         pathCopyFailed: 'Failed to copy the path.',
         pathSendToTerminalFailed: 'Failed to send the path to the terminal.',

@@ -260,6 +260,7 @@ const workbench = {
         debian: 'Debian',
         fedora: 'Fedora',
         linux: 'Linux',
+        macos: 'macOS',
         redhat: 'Red Hat',
         suse: 'SUSE',
         ubuntu: 'Ubuntu'
@@ -676,7 +677,9 @@ const workbench = {
         backToParent: '返回上级目录',
         copyPath: '复制路径',
         copyPathToTerminal: '复制路径到终端',
-        openDirectory: '打开目录'
+        flatView: '平铺视图',
+        openDirectory: '打开目录',
+        treeView: '树形视图'
       },
       dropzone: {
         description: '会上传到 {{path}}。',
@@ -711,6 +714,7 @@ const workbench = {
       },
       toasts: {
         deleteFailed: '删除所选项目失败。',
+        listFailed: '列出目录失败。',
         pathCopied: '路径已复制。',
         pathCopyFailed: '复制路径失败。',
         pathSendToTerminalFailed: '复制路径到终端失败。',
