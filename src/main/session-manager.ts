@@ -1233,6 +1233,15 @@ export class SessionManager {
     await sftpRename(runtime.sftp, normalized, targetPath)
   }
 
+  async move(sessionId: string, sourcePath: string, destinationDirPath: string): Promise<void> {
+    const runtime = this.requireSession(sessionId)
+    const normalizedSource = normalizeRemotePath(sourcePath)
+    const normalizedDestDir = normalizeRemotePath(destinationDirPath)
+    const entryName = posix.basename(normalizedSource)
+    const targetPath = posix.join(normalizedDestDir, entryName)
+    await sftpRename(runtime.sftp, normalizedSource, targetPath)
+  }
+
   async remove(sessionId: string, remotePath: string): Promise<void> {
     const runtime = this.requireSession(sessionId)
     const normalized = normalizeRemotePath(remotePath)

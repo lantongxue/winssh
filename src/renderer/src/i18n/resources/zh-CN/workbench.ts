@@ -719,7 +719,8 @@ const workbench = {
         pathCopyFailed: '复制路径失败。',
         pathSendToTerminalFailed: '复制路径到终端失败。',
         pathSentToTerminal: '路径已发送到终端。',
-        uploadFailed: '上传所选项目失败。'
+        uploadFailed: '上传所选项目失败。',
+        moveFailed: '移动所选项目失败。'
       }
     },
     sftpFileEditor: {

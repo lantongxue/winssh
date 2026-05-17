@@ -5,7 +5,7 @@ import { queryKeys } from '@/features/shared/query-keys'
 import { settingsClient } from '@/features/settings/api/settings-client'
 import { systemClient } from '@/features/system/api/system-client'
 import { actionIcons } from '@/lib/action-icons'
-import { getPlatform } from '@/lib/platform'
+import { getPlatform, isWindowsPlatform } from '@/lib/platform'
 import { cn } from '@/lib/utils'
 import WinsshLogo from '@/assets/logo-slim.svg?react'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
@@ -117,7 +117,7 @@ export function WorkbenchTitlebar() {
   const customTitleBar = settingsQuery.data?.windowTitleBarStyle === 'custom'
   const platform = useMemo(() => getPlatform(), [])
   const isMac = platform.includes('mac')
-  const isWindows = platform.includes('win')
+  const isWindows = isWindowsPlatform(platform)
   const QuickOpenIcon = actionIcons.quickOpen
   const OpenTerminalIcon = actionIcons.openTerminal
   const CommandPaletteIcon = actionIcons.commandPalette

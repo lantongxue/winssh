@@ -738,7 +738,8 @@ const workbench = {
         pathCopyFailed: 'Failed to copy the path.',
         pathSendToTerminalFailed: 'Failed to send the path to the terminal.',
         pathSentToTerminal: 'Path sent to the terminal.',
-        uploadFailed: 'Failed to upload the selected items.'
+        uploadFailed: 'Failed to upload the selected items.',
+        moveFailed: 'Failed to move the selected items.'
       }
     },
     sftpFileEditor: {

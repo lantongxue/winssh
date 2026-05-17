@@ -105,6 +105,7 @@ export interface WinsshApi {
     writeFile: (sessionId: string, remotePath: string, contents: string) => Promise<void>
     mkdir: (sessionId: string, path: string, name: string) => Promise<void>
     rename: (sessionId: string, path: string, newName: string) => Promise<void>
+    move: (sessionId: string, sourcePath: string, destinationDirPath: string) => Promise<void>
     remove: (sessionId: string, path: string) => Promise<void>
     uploadFiles: (sessionId: string, targetPath: string) => Promise<void>
     uploadPaths: (sessionId: string, targetPath: string, localPaths: string[]) => Promise<void>

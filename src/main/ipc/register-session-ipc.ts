@@ -70,6 +70,9 @@ export function registerSessionIpc(service: SessionsApplicationService) {
   ipcMain.handle('sftp:rename', (_event, sessionId: string, remotePath: string, newName: string) =>
     service.rename(sessionId, remotePath, newName)
   )
+  ipcMain.handle('sftp:move', (_event, sessionId: string, sourcePath: string, destinationDirPath: string) =>
+    service.move(sessionId, sourcePath, destinationDirPath)
+  )
   ipcMain.handle('sftp:remove', (_event, sessionId: string, remotePath: string) =>
     service.remove(sessionId, remotePath)
   )

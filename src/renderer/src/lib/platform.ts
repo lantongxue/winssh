@@ -12,7 +12,7 @@ export function getPlatform() {
 }
 
 export function isWindowsPlatform(platform = getPlatform()) {
-  return platform.includes('win')
+  return platform === 'win32' || platform.startsWith('win')
 }
 
 export function isMacPlatform(platform = getPlatform()) {

@@ -2,10 +2,11 @@ import { type CSSProperties } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { File, Folder, LoaderCircle } from 'lucide-react'
 import type { RemoteEntry } from '@shared/types'
-import { writeTerminalPathDragData } from '@/lib/terminal-path-dnd'
+import { writeTerminalPathDragData, writeSftpMoveDragData, clearSftpMoveDragData } from '@/lib/terminal-path-dnd'
 import type { SessionTab } from '@/store/sessions-store'
 import { cn } from '@/lib/utils'
 import { SftpEntryContextMenu } from '@/components/sftp-entry-context-menu'
+import { useSftpEntryDrop } from '@/hooks/use-sftp-entry-drop'
 
 const ENTRY_ITEM_HEIGHT = 56
 const VIRTUALIZED_ENTRY_THRESHOLD = 200
@@ -58,6 +59,11 @@ function FlatEntryRow({
   const isDirectory = entry.kind === 'directory'
   const isSelected = selectedEntrySet.has(entry.path)
   const isRemoving = removingEntrySet.has(entry.path)
+  const { dropState, dropHandlers } = useSftpEntryDrop({
+    sessionId,
+    directoryPath: entry.path,
+    onMoveComplete: onRefresh
+  })
   const contextMenuTargets = onResolveContextMenuTargets(entry)
   const hasSingleContextTarget = contextMenuTargets.length === 1
   const singleContextTarget = hasSingleContextTarget ? contextMenuTargets[0] : null
@@ -127,7 +133,9 @@ function FlatEntryRow({
       }}
       onDragStart={(event) => {
         writeTerminalPathDragData(event.dataTransfer, entry.path)
+        writeSftpMoveDragData(event.dataTransfer, entry.path, entry.kind === 'directory' ? 'directory' : 'file')
       }}
+      onDragEnd={clearSftpMoveDragData}
     >
       <div
         className={cn(
@@ -159,6 +167,8 @@ function FlatEntryRow({
     </button>
   )
 
+  const isDropTarget = isDirectory && (dropState === 'valid' || dropState === 'invalid-self' || dropState === 'invalid-descendant' || dropState === 'invalid-same-dir')
+
   return (
     <div
       key={entry.path}
@@ -167,6 +177,11 @@ function FlatEntryRow({
           height: `${ENTRY_ITEM_HEIGHT}px`
         }
       }
+      {...(isDirectory ? dropHandlers : {})}
+      className={cn(
+        isDropTarget && dropState === 'valid' && 'bg-[color-mix(in_srgb,var(--workbench-active)_12%,transparent)]',
+        isDropTarget && dropState !== 'valid' && 'bg-destructive/10'
+      )}
     >
       {isSelected ? (
         <SftpEntryContextMenu

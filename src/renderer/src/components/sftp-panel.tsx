@@ -715,6 +715,7 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
                   onSendPathToTerminal={sendPathToTerminal}
                   onResolveContextMenuTargets={resolveContextMenuTargets}
                   onGetEntryMeta={getEntryMeta}
+                  onDirectoryMoved={(oldPath, newPath) => treeViewRef.current?.renameExpandedPath(oldPath, newPath)}
                   onEditFile={onEditFile}
                 />
               ) : null}

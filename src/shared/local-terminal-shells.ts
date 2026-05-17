@@ -22,7 +22,8 @@ function getShellName(shellPath: string | null | undefined) {
 }
 
 export function isWindowsLocalTerminalPlatform(platform: string | null | undefined) {
-  return normalizePlatform(platform).includes('win')
+  const normalizedPlatform = normalizePlatform(platform)
+  return normalizedPlatform === 'win32' || normalizedPlatform.startsWith('win')
 }
 
 export function getSupportedLocalTerminalShells(platform: string | null | undefined) {

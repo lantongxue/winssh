@@ -13,13 +13,15 @@ import { File, Folder, LoaderCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { RemoteEntry, SftpListResult } from '@shared/types'
+import { getParentRemotePath } from '@shared/sftp'
 import { sftpClient } from '@/features/sftp/api/sftp-client'
 import { actionIcons } from '@/lib/action-icons'
-import { writeTerminalPathDragData } from '@/lib/terminal-path-dnd'
+import { writeTerminalPathDragData, writeSftpMoveDragData, clearSftpMoveDragData } from '@/lib/terminal-path-dnd'
 import type { SessionTab } from '@/store/sessions-store'
 import { cn } from '@/lib/utils'
 import { SftpEntryContextMenu } from '@/components/sftp-entry-context-menu'
 import { Skeleton } from '@/components/ui/skeleton'
+import { type SftpMoveCompleteEvent, useSftpEntryDrop } from '@/hooks/use-sftp-entry-drop'
 
 const ENTRY_ITEM_HEIGHT = 56
 
@@ -50,11 +52,14 @@ interface SftpTreeEntryRowProps {
   onOpenCreateFolderDialog: (targetPath: string) => void
   onOpenDeleteDialog: (entries: RemoteEntry[]) => void
   onSetRenameTarget: (entry: RemoteEntry) => void
+  onMoveComplete: (event: SftpMoveCompleteEvent) => void | Promise<void>
   onRefresh: () => void
+  onRefreshDirectory: (path: string) => void | Promise<void>
   onCopyEntryPaths: (entries: RemoteEntry[]) => void
   onSendPathToTerminal: (path: string) => void
   onResolveContextMenuTargets: (entry: RemoteEntry) => RemoteEntry[]
   onGetEntryMeta: (entry: RemoteEntry) => string
+  onDirectoryMoved?: (oldPath: string, newPath: string) => void
   onEditFile?: (remotePath: string) => void
 }
 
@@ -73,11 +78,14 @@ function SftpTreeEntryRow({
   onOpenCreateFolderDialog,
   onOpenDeleteDialog,
   onSetRenameTarget,
+  onMoveComplete,
   onRefresh,
+  onRefreshDirectory,
   onCopyEntryPaths,
   onSendPathToTerminal,
   onResolveContextMenuTargets,
   onGetEntryMeta,
+  onDirectoryMoved,
   onEditFile
 }: SftpTreeEntryRowProps) {
   const ExpandIcon = actionIcons.expand
@@ -104,11 +112,22 @@ function SftpTreeEntryRow({
   const isDirectory = entry.kind === 'directory'
   const isSelected = selectedEntrySet.has(entry.path)
   const isRemoving = removingEntrySet.has(entry.path)
+  const { dropState, dropHandlers } = useSftpEntryDrop({
+    sessionId,
+    directoryPath: entry.path,
+    onMoveComplete,
+    onDirectoryMoved
+  })
   const contextMenuTargets = onResolveContextMenuTargets(entry)
   const hasSingleContextTarget = contextMenuTargets.length === 1
   const singleContextTarget = hasSingleContextTarget ? contextMenuTargets[0] : null
   const createTargetPath =
     singleContextTarget?.kind === 'directory' ? singleContextTarget.path : currentPath
+  const refreshContextTarget = singleContextTarget
+    ? singleContextTarget.kind === 'directory'
+      ? singleContextTarget.path
+      : getParentRemotePath(singleContextTarget.path)
+    : null
 
   const entryButton = (
     <button
@@ -171,7 +190,9 @@ function SftpTreeEntryRow({
       }}
       onDragStart={(event) => {
         writeTerminalPathDragData(event.dataTransfer, entry.path)
+        writeSftpMoveDragData(event.dataTransfer, entry.path, entry.kind === 'directory' ? 'directory' : 'file')
       }}
+      onDragEnd={clearSftpMoveDragData}
     >
       <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center">
         {isDirectory ? (
@@ -231,8 +252,17 @@ function SftpTreeEntryRow({
     </button>
   )
 
+  const isDropTarget = isDirectory && (dropState === 'valid' || dropState === 'invalid-self' || dropState === 'invalid-descendant' || dropState === 'invalid-same-dir')
+
   return (
-    <div style={wrapperStyle ?? { height: `${ENTRY_ITEM_HEIGHT}px` }}>
+    <div
+      style={wrapperStyle ?? { height: `${ENTRY_ITEM_HEIGHT}px` }}
+      {...(isDirectory ? dropHandlers : {})}
+      className={cn(
+        isDropTarget && dropState === 'valid' && 'bg-[color-mix(in_srgb,var(--workbench-active)_12%,transparent)]',
+        isDropTarget && dropState !== 'valid' && 'bg-destructive/10'
+      )}
+    >
       {isSelected ? (
         <SftpEntryContextMenu
           sessionId={sessionId}
@@ -243,7 +273,11 @@ function SftpTreeEntryRow({
           onOpenDirectory={onToggleExpanded}
           onEditFile={onEditFile}
           onRename={onSetRenameTarget}
-          onRefresh={onRefresh}
+          onRefresh={
+            refreshContextTarget
+              ? () => void onRefreshDirectory(refreshContextTarget)
+              : onRefresh
+          }
           onCopyEntryPaths={onCopyEntryPaths}
           onSendPathToTerminal={onSendPathToTerminal}
           onOpenCreateFileDialog={onOpenCreateFileDialog}
@@ -296,6 +330,7 @@ interface SftpTreeViewProps {
   onSendPathToTerminal: (path: string) => void
   onResolveContextMenuTargets: (entry: RemoteEntry) => RemoteEntry[]
   onGetEntryMeta: (entry: RemoteEntry) => string
+  onDirectoryMoved?: (oldPath: string, newPath: string) => void
   onEditFile?: (remotePath: string) => void
 }
 
@@ -319,6 +354,7 @@ export const SftpTreeView = forwardRef<SftpTreeViewHandle, SftpTreeViewProps>(fu
     onSendPathToTerminal,
     onResolveContextMenuTargets,
     onGetEntryMeta,
+    onDirectoryMoved,
     onEditFile
   },
   ref
@@ -328,6 +364,7 @@ export const SftpTreeView = forwardRef<SftpTreeViewHandle, SftpTreeViewProps>(fu
 
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set())
   const [recentlyLoadedPaths, setRecentlyLoadedPaths] = useState<Set<string>>(new Set())
+  const currentPath = session.currentPath
 
   const toggleExpanded = useCallback((path: string) => {
     setExpandedPaths((current) => {
@@ -411,6 +448,74 @@ export const SftpTreeView = forwardRef<SftpTreeViewHandle, SftpTreeViewProps>(fu
     }
   }, [expandedPaths, viewMode, session, queryClient, t])
 
+  const refetchTreePath = useCallback(
+    async (path: string) => {
+      await queryClient.fetchQuery({
+        queryKey: ['sftp', session.sessionId, path],
+        queryFn: () => sftpClient.list(session.sessionId, path)
+      })
+    },
+    [queryClient, session.sessionId]
+  )
+
+  const markTreePathsRecentlyLoaded = useCallback((paths: string[]) => {
+    const uniquePaths = [...new Set(paths)]
+    if (uniquePaths.length === 0) return
+
+    setRecentlyLoadedPaths((current) => new Set([...current, ...uniquePaths]))
+    window.setTimeout(() => {
+      setRecentlyLoadedPaths((current) => {
+        const next = new Set(current)
+        for (const path of uniquePaths) {
+          next.delete(path)
+        }
+        return next
+      })
+    }, 300)
+  }, [])
+
+  const refreshMovedPaths = useCallback(
+    async ({ destinationDirPath, sourcePath }: SftpMoveCompleteEvent) => {
+      const sourceParentPath = getParentRemotePath(sourcePath)
+      const pathsToRefresh = [...new Set([sourceParentPath, destinationDirPath])]
+
+      await Promise.all(
+        pathsToRefresh.map(async (path) => {
+          await queryClient.invalidateQueries({ queryKey: ['sftp', session.sessionId, path] })
+          const hasCachedPath = queryClient.getQueryData(['sftp', session.sessionId, path])
+          const shouldRefetchPath = path === currentPath || expandedPaths.has(path) || hasCachedPath
+
+          if (shouldRefetchPath) {
+            await refetchTreePath(path)
+          }
+        })
+      )
+
+      markTreePathsRecentlyLoaded(pathsToRefresh)
+    },
+    [
+      currentPath,
+      expandedPaths,
+      markTreePathsRecentlyLoaded,
+      queryClient,
+      refetchTreePath,
+      session.sessionId
+    ]
+  )
+
+  const refreshDirectoryPath = useCallback(
+    async (path: string) => {
+      try {
+        await queryClient.invalidateQueries({ queryKey: ['sftp', session.sessionId, path] })
+        await refetchTreePath(path)
+        markTreePathsRecentlyLoaded([path])
+      } catch {
+        toast.error(t('workbench.sftp.toasts.listFailed'))
+      }
+    },
+    [markTreePathsRecentlyLoaded, queryClient, refetchTreePath, session.sessionId, t]
+  )
+
   const treeVirtualizer = useVirtualizer({
     count: flatTreeNodes.length,
     getScrollElement: () => scrollContainerRef.current,
@@ -487,8 +592,6 @@ export const SftpTreeView = forwardRef<SftpTreeViewHandle, SftpTreeViewProps>(fu
     [flatTreeNodes]
   )
 
-  const currentPath = session.currentPath
-
   const renderTreeEntry = (node: FlatTreeNode, wrapperStyle?: CSSProperties) => (
     <SftpTreeEntryRow
       key={node.isLoading ? `loading:${node.entry.path}` : node.entry.path}
@@ -506,11 +609,14 @@ export const SftpTreeView = forwardRef<SftpTreeViewHandle, SftpTreeViewProps>(fu
       onOpenCreateFolderDialog={onOpenCreateFolderDialog}
       onOpenDeleteDialog={onOpenDeleteDialog}
       onSetRenameTarget={onSetRenameTarget}
+      onMoveComplete={refreshMovedPaths}
       onRefresh={onRefresh}
+      onRefreshDirectory={refreshDirectoryPath}
       onCopyEntryPaths={onCopyEntryPaths}
       onSendPathToTerminal={onSendPathToTerminal}
       onResolveContextMenuTargets={onResolveContextMenuTargets}
       onGetEntryMeta={onGetEntryMeta}
+      onDirectoryMoved={onDirectoryMoved}
       onEditFile={onEditFile}
     />
   )
