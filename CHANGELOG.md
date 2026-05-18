@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.3](https://github.com/lantongxue/winssh/compare/v1.1.2...v1.1.3) (2026-05-13)
+
+### Features
+
+* 添加SFTP并发上传下载、传输取消功能与配置项 ([8c7eed3](https://github.com/lantongxue/winssh/commit/8c7eed372db5a6ecfe250e03bafa6f421747f760))
+
 ## [1.1.2](https://cnb.cool/webqteam/winssh/compare/v1.1.1...v1.1.2) (2026-05-11)
 
 ### Bug Fixes

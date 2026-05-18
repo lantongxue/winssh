@@ -3,7 +3,7 @@
   <h1>WinSSH</h1>
   <p>跨平台桌面 SSH 客户端，基于 Electron · React · TypeScript</p>
 
-  ![version](https://img.shields.io/badge/version-1.1.2-blue)
+  ![version](https://img.shields.io/badge/version-1.1.3-blue)
   ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
   ![license](https://img.shields.io/badge/license-MIT-green)
 </div>
