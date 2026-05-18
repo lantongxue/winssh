@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.7](https://cnb.cool/webqteam/winssh/compare/v1.1.6...v1.1.7) (2026-05-18)
+
+### Features
+
+* **terminal:** 终端超链接支持 Ctrl/Cmd+click 打开 ([962f62c](https://cnb.cool/webqteam/winssh/commit/962f62ca1fa45c91c1f33fcd4afa29b7e1a282a6))
+
 ## [1.1.6](https://cnb.cool/webqteam/winssh/compare/v1.1.5...v1.1.6) (2026-05-18)
 
 ### Features
