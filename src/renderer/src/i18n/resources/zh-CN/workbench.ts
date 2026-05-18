@@ -155,6 +155,7 @@ const workbench = {
         clearRecent: '清除最近连接',
         connect: '连接',
         createGroup: '新建分组',
+        createServer: '新建服务器',
         createSubgroup: '新建子分组',
         createTag: '新建标签',
         edit: '编辑',

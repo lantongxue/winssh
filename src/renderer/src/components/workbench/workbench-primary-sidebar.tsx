@@ -33,6 +33,12 @@ import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 import { Button } from '@/components/ui/button'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
@@ -570,6 +576,8 @@ export function WorkbenchPrimarySidebar() {
   const CollapseIcon = actionIcons.collapse
   const DeleteIcon = actionIcons.delete
   const ExpandIcon = actionIcons.expand
+  const NewConnectionIcon = actionIcons.newConnection
+  const NewFolderIcon = actionIcons.newFolder
   const deferredServerSearchQuery = useDeferredValue(serverSearchQuery)
 
   const serversQuery = useQuery({
@@ -990,18 +998,36 @@ export function WorkbenchPrimarySidebar() {
                   onSelect={() => setSelectedExplorerNode('groups')}
                   onToggle={() => toggleSection('groups')}
                   action={
-                    <TooltipAction content={t('workbench.primarySidebar.actions.createGroup')}>
-                      <button
-                        type="button"
-                        className="flex size-5 shrink-0 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-all hover:bg-[var(--workbench-hover)] hover:text-foreground"
-                        aria-label={t('workbench.primarySidebar.actions.createGroup')}
-                        onClick={() =>
-                          openEntityQuickInput({ entityType: 'group', mode: 'create' })
-                        }
+                    <DropdownMenu>
+                      <TooltipAction content={t('common.actions.create')}>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex size-5 shrink-0 items-center justify-center rounded-sm text-[var(--workbench-muted)] transition-all hover:bg-[var(--workbench-hover)] hover:text-foreground"
+                            aria-label={t('common.actions.create')}
+                          >
+                            <Plus className="size-3.5" />
+                          </button>
+                        </DropdownMenuTrigger>
+                      </TooltipAction>
+                      <DropdownMenuContent
+                        align="end"
+                        className="min-w-40 border-[var(--workbench-border)] bg-[var(--workbench-editor)]"
                       >
-                        <Plus className="size-3.5" />
-                      </button>
-                    </TooltipAction>
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            openEntityQuickInput({ entityType: 'group', mode: 'create' })
+                          }
+                        >
+                          <NewFolderIcon className="size-4" />
+                          {t('workbench.primarySidebar.actions.createGroup')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => openServerEditor()}>
+                          <NewConnectionIcon className="size-4" />
+                          {t('workbench.primarySidebar.actions.createServer')}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   }
                 />
                 {!collapsedSections.groups ? (
