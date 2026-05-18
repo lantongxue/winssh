@@ -158,6 +158,7 @@ const workbench = {
         clearRecent: 'Clear Recent Connections',
         connect: 'Connect',
         createGroup: 'New Group',
+        createServer: 'New Server',
         createSubgroup: 'New Subgroup',
         createTag: 'New Tag',
         edit: 'Edit',
