@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.4](https://cnb.cool/webqteam/winssh/compare/v1.1.3...v1.1.4) (2026-05-18)
+
+### Features
+
+* 新增服务器查询接口，重构SFTP面板上下文菜单 ([23a42f0](https://cnb.cool/webqteam/winssh/commit/23a42f09b18314b033683d88357b975a931f632b))
+* 增加 SFTP树形结构视图，增加 macos 识别 ([7dd7867](https://cnb.cool/webqteam/winssh/commit/7dd786731b96c63bc41164d03c72be2b58d514be))
+* **sftp:** add file/directory move functionality ([dae0cd1](https://cnb.cool/webqteam/winssh/commit/dae0cd166006636f698af7afd969c5501cc877d1))
+* **workbench:** 支持拖拽调整SFTP面板显示侧边 ([45dc537](https://cnb.cool/webqteam/winssh/commit/45dc537cf4c21a41918ca9f3cafc01661b7cf782))
+* **workbench:** add global sftp panel side setting ([4a35c7e](https://cnb.cool/webqteam/winssh/commit/4a35c7e1401ce2d4cee77ec84774fd4040acc54e))
+
+### Bug Fixes
+
+* 服务器节点默认全部展开 ([d2de630](https://cnb.cool/webqteam/winssh/commit/d2de630d700386cd8b66a115d56460caa169dd8f))
+
 ## [1.1.3](https://github.com/lantongxue/winssh/compare/v1.1.2...v1.1.3) (2026-05-13)
 
 ### Features
