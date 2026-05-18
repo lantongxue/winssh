@@ -6,3 +6,4 @@ release
 .eslintcache
 *.log*
 resources/bin/macos-list-fonts
+.trae

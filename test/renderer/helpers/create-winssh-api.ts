@@ -283,6 +283,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       readFile: async () => '',
       cancelReadFile: () => undefined,
       refresh: async () => ({ entries: [], path: '/' }),
+      move: async () => undefined,
       remove: async () => undefined,
       rename: async () => undefined,
       uploadFiles: async () => undefined,

@@ -1005,7 +1005,7 @@ export class SessionManager {
       this.emitConnectionPhase(sessionId, 'prepare')
       const [shell, sftp] = await Promise.all([openShell(client), openSftp(client)])
       const currentPath = normalizeRemotePath(await sftpRealpath(sftp, '.').catch(() => '/'))
-      await this.detectAndStoreServerBrand(server, sftp)
+      await this.detectAndStoreServerBrand(server, sftp, client)
       const summary: SessionSummary = {
         ...baseSummary,
         status: 'ready',
@@ -1231,6 +1231,15 @@ export class SessionManager {
     const normalized = normalizeRemotePath(remotePath)
     const targetPath = posix.join(posix.dirname(normalized), newName.trim())
     await sftpRename(runtime.sftp, normalized, targetPath)
+  }
+
+  async move(sessionId: string, sourcePath: string, destinationDirPath: string): Promise<void> {
+    const runtime = this.requireSession(sessionId)
+    const normalizedSource = normalizeRemotePath(sourcePath)
+    const normalizedDestDir = normalizeRemotePath(destinationDirPath)
+    const entryName = posix.basename(normalizedSource)
+    const targetPath = posix.join(normalizedDestDir, entryName)
+    await sftpRename(runtime.sftp, normalizedSource, targetPath)
   }
 
   async remove(sessionId: string, remotePath: string): Promise<void> {
@@ -1946,12 +1955,31 @@ export class SessionManager {
     }
   }
 
-  private async detectAndStoreServerBrand(server: Server, sftp: SFTPWrapper): Promise<void> {
+  private async detectAndStoreServerBrand(
+    server: Server,
+    sftp: SFTPWrapper,
+    client: Client
+  ): Promise<void> {
     if (server.brandId !== null) {
       return
     }
 
     let brandId = DEFAULT_SERVER_BRAND_ID
+
+    try {
+      const { stdout } = await execCommand(client, 'uname -s')
+      if (stdout.trim() === 'Darwin') {
+        brandId = 'macos'
+        try {
+          this.database.updateServerBrand(server.id, brandId)
+        } catch {
+          // Best-effort.
+        }
+        return
+      }
+    } catch {
+      // uname failed; fall through to Linux detection.
+    }
 
     try {
       for (const remotePath of ['/etc/os-release', '/usr/lib/os-release']) {

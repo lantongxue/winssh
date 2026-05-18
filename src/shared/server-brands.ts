@@ -6,7 +6,8 @@ export const SERVER_BRAND_IDS = [
   'fedora',
   'centos',
   'redhat',
-  'suse'
+  'suse',
+  'macos'
 ] as const
 
 export type ServerBrandId = (typeof SERVER_BRAND_IDS)[number]

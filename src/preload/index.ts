@@ -194,6 +194,7 @@ const api: WinsshApi = {
   },
   servers: {
     list: () => ipcRenderer.invoke('servers:list'),
+    findById: (id) => ipcRenderer.invoke('servers:findById', id),
     getSecrets: (id) => ipcRenderer.invoke('servers:getSecrets', id),
     create: (input) => ipcRenderer.invoke('servers:create', input),
     update: (id, input) => ipcRenderer.invoke('servers:update', id, input),
@@ -239,6 +240,8 @@ const api: WinsshApi = {
       ipcRenderer.invoke('sftp:mkdir', sessionId, remotePath, name),
     rename: (sessionId, remotePath, newName) =>
       ipcRenderer.invoke('sftp:rename', sessionId, remotePath, newName),
+    move: (sessionId, sourcePath, destinationDirPath) =>
+      ipcRenderer.invoke('sftp:move', sessionId, sourcePath, destinationDirPath),
     remove: (sessionId, remotePath) => ipcRenderer.invoke('sftp:remove', sessionId, remotePath),
     uploadFiles: (sessionId, targetPath) =>
       ipcRenderer.invoke('sftp:uploadFiles', sessionId, targetPath),

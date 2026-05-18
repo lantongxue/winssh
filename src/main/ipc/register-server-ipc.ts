@@ -58,6 +58,7 @@ export function registerServerIpc(options: {
   })
 
   ipcMain.handle('servers:list', () => serversService.listServers())
+  ipcMain.handle('servers:findById', (_event, id: string) => serversService.findById(id))
   ipcMain.handle('servers:getSecrets', (_event, id: string) => serversService.getSecrets(id))
   ipcMain.handle('servers:create', (_event, input: ServerUpsertInput) =>
     serversService.create(parseInput(serverSchema, input))

@@ -78,6 +78,10 @@ export class SessionsApplicationService {
     return this.sessionManager.rename(sessionId, remotePath, newName)
   }
 
+  move(sessionId: string, sourcePath: string, destinationDirPath: string) {
+    return this.sessionManager.move(sessionId, sourcePath, destinationDirPath)
+  }
+
   remove(sessionId: string, remotePath: string) {
     return this.sessionManager.remove(sessionId, remotePath)
   }

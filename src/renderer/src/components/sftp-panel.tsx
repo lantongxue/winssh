@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useVirtualizer } from '@tanstack/react-virtual'
-import { File, Folder, LoaderCircle, Undo2, X } from 'lucide-react'
+import { Undo2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { getParentRemotePath } from '@shared/sftp'
@@ -11,7 +10,6 @@ import { sftpClient } from '@/features/sftp/api/sftp-client'
 import { systemClient } from '@/features/system/api/system-client'
 import { formatFileSize, getResolvedLocale } from '@/i18n/format'
 import { actionIcons } from '@/lib/action-icons'
-import { writeTerminalPathDragData } from '@/lib/terminal-path-dnd'
 import type { SessionTab } from '@/store/sessions-store'
 import { cn } from '@/lib/utils'
 import { useSessionsStore } from '@/store/sessions-store'
@@ -28,22 +26,32 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
-  ContextMenuSeparator,
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { SftpTreeView, type SftpTreeViewHandle, type SftpViewMode } from '@/components/sftp-tree-view'
+import { SftpFlatView } from '@/components/sftp-flat-view'
 
 interface SftpPanelProps {
   session: SessionTab | null
   className?: string
   onEditFile?: (remotePath: string) => void
+  onHeaderDragStart?: (event: React.DragEvent<HTMLDivElement>) => void
+  onHeaderDragEnd?: (event: React.DragEvent<HTMLDivElement>) => void
 }
 
 type FileWithPath = File & {
   path?: string
+}
+
+const REMOVE_EXIT_ANIMATION_MS = 180
+
+
+function hasLocalFileTransfer(dataTransfer: DataTransfer | null | undefined) {
+  return Array.from(dataTransfer?.types ?? []).includes('Files')
 }
 
 function TooltipIconButton({
@@ -63,16 +71,6 @@ function TooltipIconButton({
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   )
-}
-
-// 每个文件条目的固定高度（px-3 py-2 两行文字，约 56px）
-const ENTRY_ITEM_HEIGHT = 56
-// Typical directories scroll more smoothly without transform-based virtualization.
-const VIRTUALIZED_ENTRY_THRESHOLD = 200
-const REMOVE_EXIT_ANIMATION_MS = 180
-
-function hasLocalFileTransfer(dataTransfer: DataTransfer | null | undefined) {
-  return Array.from(dataTransfer?.types ?? []).includes('Files')
 }
 
 function resolveDroppedFilePath(file: File | null | undefined) {
@@ -114,7 +112,7 @@ function getDroppedLocalPaths(dataTransfer: DataTransfer | null | undefined) {
   return [...localPaths]
 }
 
-export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
+export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, onHeaderDragEnd }: SftpPanelProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const setCurrentPath = useSessionsStore((state) => state.setCurrentPath)
@@ -135,13 +133,14 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
   const [pendingDeleteEntries, setPendingDeleteEntries] = useState<RemoteEntry[] | null>(null)
   const [isDragActive, setIsDragActive] = useState(false)
   const [removingEntryPaths, setRemovingEntryPaths] = useState<string[]>([])
+  const [viewMode, setViewMode] = useState<SftpViewMode>('flat')
+  const treeViewRef = useRef<SftpTreeViewHandle>(null)
+  const ListIcon = actionIcons.listView
+  const FolderTreeIcon = actionIcons.openRemoteFiles
   const RefreshIcon = actionIcons.refresh
   const UploadIcon = actionIcons.upload
   const NewFileIcon = actionIcons.newFile
   const NewFolderIcon = actionIcons.newFolder
-  const DownloadIcon = actionIcons.download
-  const EditIcon = actionIcons.edit
-  const RenameIcon = actionIcons.rename
   const DeleteIcon = actionIcons.delete
   const CancelIcon = actionIcons.cancel
   const CreateFileIcon = actionIcons.newFile
@@ -192,24 +191,6 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
     () => entries.filter((entry) => selectedEntrySet.has(entry.path)),
     [entries, selectedEntrySet]
   )
-  const shouldVirtualizeEntries = entries.length >= VIRTUALIZED_ENTRY_THRESHOLD
-
-  const virtualizer = useVirtualizer({
-    count: entries.length,
-    getScrollElement: () => scrollContainerRef.current,
-    estimateSize: () => ENTRY_ITEM_HEIGHT,
-    overscan: 10,
-    enabled: shouldVirtualizeEntries,
-    getItemKey: (index) => entries[index]?.path ?? index
-  })
-  const virtualItems = virtualizer.getVirtualItems()
-  const shouldRenderStaticRows =
-    !shouldVirtualizeEntries ||
-    (entries.length > 0 &&
-      virtualItems.length === 0 &&
-      (scrollContainerRef.current?.clientHeight ?? 0) === 0)
-  const totalVirtualListHeight = virtualizer.getTotalSize()
-
   if (!session) {
     return (
       <div className="flex h-full items-center justify-center bg-muted/20">
@@ -368,7 +349,23 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
   }
 
   const selectEntryRange = (path: string) => {
+    if (viewMode === 'tree') {
+      const result = treeViewRef.current?.selectEntryRange(
+        path,
+        selectionAnchorPath,
+        selectedEntryPaths.at(-1) ?? null
+      )
+      if (result) {
+        setSelectedEntryPaths(result.paths)
+        setSelectionAnchorPath(result.anchorPath)
+      } else {
+        selectSingleEntry(path)
+      }
+      return
+    }
+
     const anchorPath = selectionAnchorPath ?? selectedEntryPaths.at(-1) ?? path
+
     const anchorIndex = entries.findIndex((entry) => entry.path === anchorPath)
     const targetIndex = entries.findIndex((entry) => entry.path === path)
 
@@ -466,6 +463,7 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
         setRemovingEntryPaths((current) =>
           current.filter((currentPath) => !targetPaths.includes(currentPath))
         )
+        treeViewRef.current?.collapsePaths(targetPaths)
       }
     }
   }
@@ -503,202 +501,6 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
     return parts.join(' · ')
   }
 
-  const renderEntryRow = (entry: RemoteEntry, wrapperStyle?: CSSProperties) => {
-    const contextMenuTargets = resolveContextMenuTargets(entry)
-    const isSelected = selectedEntrySet.has(entry.path)
-    const isDirectory = entry.kind === 'directory'
-    const isRemoving = removingEntrySet.has(entry.path)
-    const hasSingleContextTarget = contextMenuTargets.length === 1
-    const singleContextTarget = hasSingleContextTarget ? contextMenuTargets[0] : null
-    const createTargetPath =
-      singleContextTarget?.kind === 'directory' ? singleContextTarget.path : currentPath
-
-    return (
-      <div
-        key={entry.path}
-        style={
-          wrapperStyle ?? {
-            height: `${ENTRY_ITEM_HEIGHT}px`
-          }
-        }
-      >
-        <ContextMenu>
-          <ContextMenuTrigger asChild>
-            <button
-              type="button"
-              aria-busy={isRemoving || undefined}
-              data-removing={isRemoving ? 'true' : 'false'}
-              disabled={isRemoving}
-              draggable={!isRemoving}
-              className={cn(
-                'flex h-full w-full items-start gap-3 border-b px-3 py-2 text-left transition-[opacity,transform,background-color,color] duration-200 ease-out',
-                isSelected
-                  ? 'bg-[var(--workbench-hover)] text-foreground'
-                  : 'hover:bg-[var(--workbench-hover)] hover:text-foreground',
-                isRemoving && 'translate-x-1 scale-[0.985] opacity-35'
-              )}
-              onClick={(event) =>
-                handleEntrySelection(entry.path, {
-                  additive: event.metaKey || event.ctrlKey,
-                  range: event.shiftKey
-                })
-              }
-              onContextMenu={() => {
-                if (!selectedEntrySet.has(entry.path)) {
-                  selectSingleEntry(entry.path)
-                }
-              }}
-              onDoubleClick={(event) => {
-                handleEntrySelection(entry.path, {
-                  additive: event.metaKey || event.ctrlKey,
-                  range: event.shiftKey
-                })
-                if (isDirectory) {
-                  openDirectory(entry.path)
-                  return
-                }
-
-                if (entry.kind === 'file') {
-                  onEditFile?.(entry.path)
-                }
-              }}
-              onKeyDown={(event) => {
-                if (event.key === ' ') {
-                  event.preventDefault()
-                  handleEntrySelection(entry.path, {
-                    additive: event.metaKey || event.ctrlKey,
-                    range: event.shiftKey
-                  })
-                  return
-                }
-
-                if (event.key === 'Escape') {
-                  event.preventDefault()
-                  clearSelection()
-                  return
-                }
-
-                if (event.key === 'Enter' && entry.kind === 'directory') {
-                  event.preventDefault()
-                  selectSingleEntry(entry.path)
-                  openDirectory(entry.path)
-                }
-              }}
-              onDragStart={(event) => {
-                writeTerminalPathDragData(event.dataTransfer, entry.path)
-              }}
-            >
-              <div
-                className={cn(
-                  'mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-sm transition-colors',
-                  isDirectory
-                    ? 'bg-[color-mix(in_srgb,var(--workbench-active)_14%,transparent)] text-[var(--workbench-active)] ring-1 ring-[color-mix(in_srgb,var(--workbench-active)_28%,transparent)]'
-                    : isSelected
-                      ? 'bg-[var(--workbench-hover)] text-foreground'
-                      : 'bg-muted text-muted-foreground'
-                )}
-                data-entry-icon={isDirectory ? 'directory' : 'file'}
-              >
-                {isRemoving ? (
-                  <LoaderCircle className="size-3.5 animate-spin" />
-                ) : isDirectory ? (
-                  <Folder className="size-3.5" />
-                ) : (
-                  <File className="size-3.5" />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-[13px] leading-5 font-medium text-foreground">
-                  {entry.name}
-                </div>
-                <div className="truncate font-mono text-[11px] leading-4 text-muted-foreground">
-                  {getEntryMeta(entry)}
-                </div>
-              </div>
-            </button>
-          </ContextMenuTrigger>
-          <ContextMenuContent>
-            {singleContextTarget?.kind === 'directory' ? (
-              <ContextMenuItem onClick={() => openDirectory(singleContextTarget.path)}>
-                <Folder className="size-4" />
-                {t('workbench.sftp.actions.openDirectory')}
-              </ContextMenuItem>
-            ) : null}
-
-            {singleContextTarget && singleContextTarget.kind !== 'directory' ? (
-              onEditFile && singleContextTarget.kind === 'file' ? (
-                <ContextMenuItem onClick={() => onEditFile(singleContextTarget.path)}>
-                  <EditIcon className="size-4" />
-                  {t('common.actions.edit')}
-                </ContextMenuItem>
-              ) : null
-            ) : null}
-
-            {singleContextTarget ? (
-              <ContextMenuItem
-                onClick={() =>
-                  void sftpClient.downloadFile(session.sessionId, singleContextTarget.path)
-                }
-              >
-                <DownloadIcon className="size-4" />
-                {t('common.actions.download')}
-              </ContextMenuItem>
-            ) : null}
-
-            <ContextMenuItem onClick={() => void copyEntryPaths(contextMenuTargets)}>
-              <CopyIcon className="size-4" />
-              {t('workbench.sftp.actions.copyPath')}
-            </ContextMenuItem>
-
-            {singleContextTarget ? (
-              <ContextMenuItem onClick={() => void sendPathToTerminal(singleContextTarget.path)}>
-                <SendToTerminalIcon className="size-4" />
-                {t('workbench.sftp.actions.copyPathToTerminal')}
-              </ContextMenuItem>
-            ) : null}
-
-            <ContextMenuItem onClick={() => void refresh()}>
-              <RefreshIcon className="size-4" />
-              {t('common.actions.refresh')}
-            </ContextMenuItem>
-
-            <ContextMenuItem onClick={() => openCreateFileDialog(createTargetPath)}>
-              <NewFileIcon className="size-4" />
-              {t('common.actions.newFile')}
-            </ContextMenuItem>
-
-            <ContextMenuItem onClick={() => openCreateFolderDialog(createTargetPath)}>
-              <NewFolderIcon className="size-4" />
-              {t('common.actions.newFolder')}
-            </ContextMenuItem>
-
-            {hasSingleContextTarget ? <ContextMenuSeparator /> : null}
-
-            {singleContextTarget ? (
-              <ContextMenuItem
-                onClick={() => {
-                  setRenameTarget(singleContextTarget)
-                  setRenameValue(singleContextTarget.name)
-                }}
-              >
-                <RenameIcon className="size-4" />
-                {t('common.actions.rename')}
-              </ContextMenuItem>
-            ) : null}
-
-            <ContextMenuItem
-              variant="destructive"
-              onClick={() => openDeleteDialog(contextMenuTargets)}
-            >
-              <DeleteIcon className="size-4" />
-              {t('common.actions.delete')}
-            </ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenu>
-      </div>
-    )
-  }
-
   return (
     <>
       <div
@@ -711,7 +513,15 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
         onDrop={handleDrop}
       >
         <div className="border-b px-3 py-3">
-          <div className="flex items-start justify-between gap-3">
+          <div
+            draggable={!!onHeaderDragStart}
+            className={cn(
+              'flex items-start justify-between gap-3',
+              onHeaderDragStart && 'cursor-grab active:cursor-grabbing'
+            )}
+            onDragStart={onHeaderDragStart}
+            onDragEnd={onHeaderDragEnd}
+          >
             <div className="min-w-0">
               <div className="text-sm font-semibold">{t('workbench.sftp.explorer')}</div>
               <div className="truncate text-xs text-muted-foreground">{session.serverName}</div>
@@ -764,11 +574,34 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
 
           <div className="mt-2 flex items-center gap-1 pt-2">
             <TooltipIconButton
+              variant={viewMode === 'flat' ? 'secondary' : 'ghost'}
+              size="icon-sm"
+              label={t('workbench.sftp.actions.flatView')}
+              onClick={() => setViewMode('flat')}
+            >
+              <ListIcon className="size-4" />
+            </TooltipIconButton>
+            <TooltipIconButton
+              variant={viewMode === 'tree' ? 'secondary' : 'ghost'}
+              size="icon-sm"
+              label={t('workbench.sftp.actions.treeView')}
+              onClick={() => {
+                setViewMode('tree')
+                setCurrentPath(session.sessionId, '/')
+              }}
+            >
+              <FolderTreeIcon className="size-4" />
+            </TooltipIconButton>
+            <div className="mx-1 h-4 w-px bg-border" />
+            <TooltipIconButton
               variant="ghost"
               size="icon-sm"
               label={t('workbench.sftp.actions.backToParent')}
               onClick={() => {
                 clearSelection()
+                if (viewMode === 'tree') {
+                  treeViewRef.current?.expandPath(currentPath)
+                }
                 setCurrentPath(session.sessionId, getParentRemotePath(currentPath))
               }}
             >
@@ -832,29 +665,59 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
                 </div>
               ) : null}
 
-              {!listingQuery.isLoading && entries.length > 0 ? (
-                shouldRenderStaticRows ? (
-                  <div data-testid="sftp-entry-list" data-render-mode="static">
-                    {entries.map((entry) => renderEntryRow(entry))}
-                  </div>
-                ) : (
-                  <div
-                    data-testid="sftp-entry-list"
-                    data-render-mode="virtual"
-                    style={{ height: `${totalVirtualListHeight}px`, position: 'relative' }}
-                  >
-                    {virtualItems.map((virtualItem) =>
-                      renderEntryRow(entries[virtualItem.index], {
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: `${virtualItem.size}px`,
-                        transform: `translateY(${virtualItem.start}px)`
-                      })
-                    )}
-                  </div>
-                )
+              {!listingQuery.isLoading && entries.length > 0 && viewMode === 'flat' ? (
+                <SftpFlatView
+                  session={session}
+                  entries={entries}
+                  scrollContainerRef={scrollContainerRef}
+                  selectedEntrySet={selectedEntrySet}
+                  removingEntrySet={removingEntrySet}
+                  onSelectSingleEntry={selectSingleEntry}
+                  onHandleEntrySelection={handleEntrySelection}
+                  onClearSelection={clearSelection}
+                  onOpenDirectory={openDirectory}
+                  onOpenCreateFileDialog={openCreateFileDialog}
+                  onOpenCreateFolderDialog={openCreateFolderDialog}
+                  onOpenDeleteDialog={openDeleteDialog}
+                  onSetRenameTarget={(entry) => {
+                    setRenameTarget(entry)
+                    setRenameValue(entry.name)
+                  }}
+                  onRefresh={refresh}
+                  onCopyEntryPaths={copyEntryPaths}
+                  onSendPathToTerminal={sendPathToTerminal}
+                  onResolveContextMenuTargets={resolveContextMenuTargets}
+                  onGetEntryMeta={getEntryMeta}
+                  onEditFile={onEditFile}
+                />
+              ) : null}
+              {viewMode === 'tree' && !listingQuery.isLoading && session ? (
+                <SftpTreeView
+                  ref={treeViewRef}
+                  session={session}
+                  entries={entries}
+                  viewMode={viewMode}
+                  scrollContainerRef={scrollContainerRef}
+                  selectedEntrySet={selectedEntrySet}
+                  removingEntrySet={removingEntrySet}
+                  onSelectSingleEntry={selectSingleEntry}
+                  onHandleEntrySelection={handleEntrySelection}
+                  onClearSelection={clearSelection}
+                  onOpenCreateFileDialog={openCreateFileDialog}
+                  onOpenCreateFolderDialog={openCreateFolderDialog}
+                  onOpenDeleteDialog={openDeleteDialog}
+                  onSetRenameTarget={(entry) => {
+                    setRenameTarget(entry)
+                    setRenameValue(entry.name)
+                  }}
+                  onRefresh={refresh}
+                  onCopyEntryPaths={copyEntryPaths}
+                  onSendPathToTerminal={sendPathToTerminal}
+                  onResolveContextMenuTargets={resolveContextMenuTargets}
+                  onGetEntryMeta={getEntryMeta}
+                  onDirectoryMoved={(oldPath, newPath) => treeViewRef.current?.renameExpandedPath(oldPath, newPath)}
+                  onEditFile={onEditFile}
+                />
               ) : null}
             </div>
           </ContextMenuTrigger>
@@ -1002,6 +865,13 @@ export function SftpPanel({ session, className, onEditFile }: SftpPanelProps) {
                 }
 
                 await sftpClient.rename(session.sessionId, renameTarget.path, renameValue)
+
+                if (renameTarget.kind === 'directory') {
+                  const oldPath = renameTarget.path
+                  const newPath = oldPath.replace(/\/[^/]+$/, '/' + renameValue)
+                  treeViewRef.current?.renameExpandedPath(oldPath, newPath)
+                }
+
                 setRenameTarget(null)
                 await refresh()
               }}

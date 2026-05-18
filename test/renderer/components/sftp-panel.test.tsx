@@ -8,7 +8,7 @@ import type { SessionTab } from '@/store/sessions-store'
 import { createWinsshApiMock } from '@test/renderer/helpers/create-winssh-api'
 import { useSessionsStore } from '@/store/sessions-store'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { TERMINAL_PATH_DRAG_MIME } from '@/lib/terminal-path-dnd'
+import { SFTP_MOVE_DRAG_MIME, TERMINAL_PATH_DRAG_MIME } from '@/lib/terminal-path-dnd'
 
 vi.mock('sonner', () => ({
   toast: {
@@ -67,6 +67,47 @@ function renderConnectedSftpPanel(sessionId: string) {
   }
 }
 
+function createMutableDragDataTransfer() {
+  const store = new Map<string, string>()
+  const types: string[] = []
+  const setData = vi.fn((type: string, value: string) => {
+    store.set(type, value)
+    if (!types.includes(type)) {
+      types.push(type)
+    }
+  })
+
+  return {
+    dropEffect: 'none',
+    effectAllowed: 'none',
+    getData: (type: string) => store.get(type) ?? '',
+    setData,
+    types
+  }
+}
+
+async function selectEntryByName(name: string) {
+  const entryLabel = await screen.findByText(name)
+  const entryButton = entryLabel.closest('button')
+
+  expect(entryButton).not.toBeNull()
+
+  fireEvent.click(entryButton as HTMLElement)
+
+  await waitFor(() => {
+    expect(screen.getByText(name).closest('button')?.className).toContain(
+      'bg-[var(--workbench-hover)]'
+    )
+  })
+
+  return screen.getByText(name).closest('button') as HTMLElement
+}
+
+async function openSelectedEntryContextMenu(name: string) {
+  const entryButton = await selectEntryByName(name)
+  fireEvent.contextMenu(entryButton)
+}
+
 describe('SftpPanel', () => {
   const session = {
     connectedAt: new Date().toISOString(),
@@ -120,7 +161,7 @@ describe('SftpPanel', () => {
 
     renderSftpPanel(session)
 
-    fireEvent.contextMenu(await screen.findByText('config.json'))
+    await openSelectedEntryContextMenu('config.json')
     fireEvent.click(await screen.findByText('Send Path to Terminal'))
 
     await waitFor(() => {
@@ -142,7 +183,7 @@ describe('SftpPanel', () => {
 
     renderSftpPanel(session, { onEditFile })
 
-    fireEvent.contextMenu(await screen.findByText('config.json'))
+    await openSelectedEntryContextMenu('config.json')
     fireEvent.click(await screen.findByText('Edit'))
 
     expect(onEditFile).toHaveBeenCalledWith('/var/www/config.json')
@@ -163,7 +204,7 @@ describe('SftpPanel', () => {
 
     renderSftpPanel(session)
 
-    fireEvent.contextMenu(await screen.findByText('assets'))
+    await openSelectedEntryContextMenu('assets')
     fireEvent.click(await screen.findByText('Download'))
 
     await waitFor(() => {
@@ -387,7 +428,7 @@ describe('SftpPanel', () => {
 
     expect(entryButton).not.toBeNull()
 
-    fireEvent.contextMenu(entryLabel)
+    await openSelectedEntryContextMenu('config.json')
     fireEvent.click(await screen.findByText('Delete'))
 
     expect(remove).not.toHaveBeenCalled()
@@ -402,7 +443,10 @@ describe('SftpPanel', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
 
     await waitFor(() => {
-      expect(entryButton).toHaveAttribute('data-removing', 'true')
+      expect(screen.getByText('config.json').closest('button')).toHaveAttribute(
+        'data-removing',
+        'true'
+      )
     })
   })
 
@@ -419,19 +463,251 @@ describe('SftpPanel', () => {
     renderSftpPanel(session)
 
     const entryButton = (await screen.findByText('config.json')).closest('button')
-    const setData = vi.fn()
-    const dataTransfer = {
-      effectAllowed: 'none',
-      setData
-    }
+    const dataTransfer = createMutableDragDataTransfer()
 
     expect(entryButton).not.toBeNull()
 
     fireEvent.dragStart(entryButton as HTMLElement, { dataTransfer })
 
-    expect(dataTransfer.effectAllowed).toBe('copy')
-    expect(setData).toHaveBeenCalledWith(TERMINAL_PATH_DRAG_MIME, '/var/www/config.json')
-    expect(setData).toHaveBeenCalledWith('text/plain', '/var/www/config.json')
+    expect(dataTransfer.effectAllowed).toBe('copyMove')
+    expect(dataTransfer.setData).toHaveBeenCalledWith(TERMINAL_PATH_DRAG_MIME, '/var/www/config.json')
+    expect(dataTransfer.setData).toHaveBeenCalledWith('text/plain', '/var/www/config.json')
+    expect(dataTransfer.setData).toHaveBeenCalledWith(
+      SFTP_MOVE_DRAG_MIME,
+      JSON.stringify({
+        path: '/var/www/config.json',
+        kind: 'file'
+      })
+    )
+    expect(dataTransfer.types).toContain(TERMINAL_PATH_DRAG_MIME)
+    expect(dataTransfer.types).toContain('text/plain')
+    expect(dataTransfer.types).toContain(SFTP_MOVE_DRAG_MIME)
+    expect(dataTransfer.getData(TERMINAL_PATH_DRAG_MIME)).toBe('/var/www/config.json')
+    expect(dataTransfer.getData('text/plain')).toBe('/var/www/config.json')
+  })
+
+  it('moves a file entry into a directory when dropped on that directory', async () => {
+    const list = vi.fn().mockResolvedValue({
+      entries: [directoryEntry, ...entries],
+      path: '/var/www'
+    })
+    const move = vi.fn().mockResolvedValue(undefined)
+
+    window.winsshApi = createWinsshApiMock({
+      sftp: {
+        list,
+        move
+      }
+    })
+
+    renderSftpPanel(session)
+
+    const sourceButton = (await screen.findByText('config.json')).closest('button')
+    const targetButton = (await screen.findByText('assets')).closest('button')
+    const dataTransfer = createMutableDragDataTransfer()
+
+    expect(sourceButton).not.toBeNull()
+    expect(targetButton).not.toBeNull()
+
+    fireEvent.dragStart(sourceButton as HTMLElement, { dataTransfer })
+    fireEvent.dragEnter(targetButton as HTMLElement, { dataTransfer })
+    fireEvent.dragOver(targetButton as HTMLElement, { dataTransfer })
+    fireEvent.drop(targetButton as HTMLElement, { dataTransfer })
+
+    await waitFor(() => {
+      expect(move).toHaveBeenCalledWith(
+        'session-1',
+        '/var/www/config.json',
+        '/var/www/assets'
+      )
+    })
+  })
+
+  it('refreshes an expanded tree target directory after moving a file into it', async () => {
+    const movedEntry: RemoteEntry = {
+      ...entries[0],
+      path: '/var/www/assets/config.json'
+    }
+    const list = vi.fn().mockImplementation(async (_sessionId: string, path: string) => {
+      if (path === '/var/www/assets') {
+        const targetDirectoryCallCount = list.mock.calls.filter(
+          (call) => call[1] === '/var/www/assets'
+        ).length
+
+        return {
+          entries: targetDirectoryCallCount >= 2 ? [movedEntry] : [],
+          path
+        }
+      }
+
+      return {
+        entries: [directoryEntry, ...entries],
+        path
+      }
+    })
+    const move = vi.fn().mockResolvedValue(undefined)
+
+    window.winsshApi = createWinsshApiMock({
+      sftp: {
+        list,
+        move
+      }
+    })
+
+    renderSftpPanel(session)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tree View' }))
+    await screen.findByText('assets')
+
+    const targetButton = screen.getByText('assets').closest('button')
+    expect(targetButton).not.toBeNull()
+
+    fireEvent.doubleClick(targetButton as HTMLElement)
+
+    await waitFor(() => {
+      expect(list).toHaveBeenCalledWith('session-1', '/var/www/assets')
+    })
+
+    const sourceButton = (await screen.findByText('config.json')).closest('button')
+    const dataTransfer = createMutableDragDataTransfer()
+
+    expect(sourceButton).not.toBeNull()
+
+    fireEvent.dragStart(sourceButton as HTMLElement, { dataTransfer })
+    fireEvent.dragEnter(targetButton as HTMLElement, { dataTransfer })
+    fireEvent.dragOver(targetButton as HTMLElement, { dataTransfer })
+    fireEvent.drop(targetButton as HTMLElement, { dataTransfer })
+
+    await waitFor(() => {
+      expect(move).toHaveBeenCalledWith(
+        'session-1',
+        '/var/www/config.json',
+        '/var/www/assets'
+      )
+    })
+    await waitFor(() => {
+      expect(list.mock.calls.filter((call) => call[1] === '/var/www/assets')).toHaveLength(2)
+    })
+    await waitFor(() => {
+      expect(screen.getAllByText('config.json')).toHaveLength(2)
+    })
+  })
+
+  it('refreshes the selected directory from the tree context menu', async () => {
+    const refreshedEntry: RemoteEntry = {
+      kind: 'file',
+      modifiedAt: null,
+      name: 'refreshed.txt',
+      path: '/var/www/assets/refreshed.txt',
+      permissions: null,
+      size: 12
+    }
+    const list = vi.fn().mockImplementation(async (_sessionId: string, path: string) => {
+      if (path === '/var/www/assets') {
+        const targetDirectoryCallCount = list.mock.calls.filter(
+          (call) => call[1] === '/var/www/assets'
+        ).length
+
+        return {
+          entries: targetDirectoryCallCount >= 2 ? [refreshedEntry] : [],
+          path
+        }
+      }
+
+      return {
+        entries: [directoryEntry, ...entries],
+        path
+      }
+    })
+
+    window.winsshApi = createWinsshApiMock({
+      sftp: {
+        list
+      }
+    })
+
+    renderSftpPanel(session)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tree View' }))
+
+    const targetButton = (await screen.findByText('assets')).closest('button')
+    expect(targetButton).not.toBeNull()
+
+    fireEvent.doubleClick(targetButton as HTMLElement)
+
+    await waitFor(() => {
+      expect(list).toHaveBeenCalledWith('session-1', '/var/www/assets')
+    })
+
+    fireEvent.contextMenu(await selectEntryByName('assets'))
+    fireEvent.click(await screen.findByText('Refresh'))
+
+    await waitFor(() => {
+      expect(list.mock.calls.filter((call) => call[1] === '/var/www/assets')).toHaveLength(2)
+    })
+    expect(await screen.findByText('refreshed.txt')).toBeInTheDocument()
+  })
+
+  it('refreshes the parent directory for a selected tree file from the context menu', async () => {
+    const staleEntry: RemoteEntry = {
+      kind: 'file',
+      modifiedAt: null,
+      name: 'stale.txt',
+      path: '/var/www/assets/stale.txt',
+      permissions: null,
+      size: 8
+    }
+    const refreshedEntry: RemoteEntry = {
+      kind: 'file',
+      modifiedAt: null,
+      name: 'fresh.txt',
+      path: '/var/www/assets/fresh.txt',
+      permissions: null,
+      size: 16
+    }
+    const list = vi.fn().mockImplementation(async (_sessionId: string, path: string) => {
+      if (path === '/var/www/assets') {
+        const targetDirectoryCallCount = list.mock.calls.filter(
+          (call) => call[1] === '/var/www/assets'
+        ).length
+
+        return {
+          entries: targetDirectoryCallCount >= 2 ? [refreshedEntry] : [staleEntry],
+          path
+        }
+      }
+
+      return {
+        entries: [directoryEntry],
+        path
+      }
+    })
+
+    window.winsshApi = createWinsshApiMock({
+      sftp: {
+        list
+      }
+    })
+
+    renderSftpPanel(session)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tree View' }))
+
+    const targetButton = (await screen.findByText('assets')).closest('button')
+    expect(targetButton).not.toBeNull()
+
+    fireEvent.doubleClick(targetButton as HTMLElement)
+
+    expect(await screen.findByText('stale.txt')).toBeInTheDocument()
+
+    fireEvent.contextMenu(await selectEntryByName('stale.txt'))
+    fireEvent.click(await screen.findByText('Refresh'))
+
+    await waitFor(() => {
+      expect(list.mock.calls.filter((call) => call[1] === '/var/www/assets')).toHaveLength(2)
+    })
+    expect(await screen.findByText('fresh.txt')).toBeInTheDocument()
+    expect(screen.queryByText('stale.txt')).not.toBeInTheDocument()
   })
 
   it('uses static rows for typical directories and keeps virtualization for large lists', async () => {

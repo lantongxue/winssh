@@ -18,6 +18,12 @@ export class ServersApplicationService {
     return this.database.listServers()
   }
 
+  async findById(id: string) {
+    const context = createOperationContext('main', 'servers', 'findById', { serverId: id })
+    this.logger.info('Finding server by id', { context })
+    return this.database.getServerById(id)
+  }
+
   async getSecrets(id: string) {
     const context = createOperationContext('main', 'servers', 'getSecrets', {
       serverId: id
