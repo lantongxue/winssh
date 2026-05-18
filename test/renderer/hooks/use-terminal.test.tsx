@@ -646,7 +646,7 @@ describe('useTerminal', () => {
     expect(searchAddonInstances[0]?.clearDecorations).toHaveBeenCalledOnce()
   })
 
-  it('opens detected web links only when cmd-click is used', () => {
+  it('opens detected web links only when ctrl-click or cmd-click is used', () => {
     const onLinkTooltipChange = vi.fn()
     render(
       <TestTerminal
@@ -685,6 +685,14 @@ describe('useTerminal', () => {
     webLinksAddon?.handler?.(cmdClick, 'https://example.com')
 
     expect(cmdClick.defaultPrevented).toBe(true)
+    expect(openWindow).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer')
+
+    openWindow.mockClear()
+
+    const ctrlClick = new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true })
+    webLinksAddon?.handler?.(ctrlClick, 'https://example.com')
+
+    expect(ctrlClick.defaultPrevented).toBe(true)
     expect(openWindow).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer')
 
     const leaveEvent = new MouseEvent('mouseleave', { bubbles: true })

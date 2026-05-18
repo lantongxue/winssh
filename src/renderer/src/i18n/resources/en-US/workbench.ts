@@ -774,7 +774,7 @@ const workbench = {
         fallback: 'Drop to write the remote path into the terminal.',
         title: 'Drop to paste the remote path'
       },
-      linkHint: 'Cmd+click to open the link',
+      linkHint: 'Ctrl/Cmd+click to open the link',
       search: {
         close: 'Close terminal search',
         label: 'Search terminal output',

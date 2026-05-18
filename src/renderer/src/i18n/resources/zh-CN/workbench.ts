@@ -755,7 +755,7 @@ const workbench = {
         fallback: '松开后会把远程路径写入当前终端。',
         title: '松开以写入远程路径'
       },
-      linkHint: '按 Cmd+点击打开链接',
+      linkHint: '按 Ctrl/Cmd+点击打开链接',
       search: {
         close: '关闭终端搜索',
         label: '搜索终端输出',

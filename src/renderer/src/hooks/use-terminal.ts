@@ -194,7 +194,7 @@ function enableWebLinks(
   const webLinksAddon = new WebLinksAddon(
     (event, uri) => {
       event.preventDefault()
-      if (!event.metaKey) {
+      if (!event.metaKey && !event.ctrlKey) {
         return
       }
       window.open(uri, '_blank', 'noopener,noreferrer')
