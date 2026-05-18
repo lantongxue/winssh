@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.6](https://cnb.cool/webqteam/winssh/compare/v1.1.5...v1.1.6) (2026-05-18)
+
+### Features
+
+* **workbench:** 服务器管理节点新增下拉菜单 ([d15be2d](https://cnb.cool/webqteam/winssh/commit/d15be2d9cd43a0329524824ff455fa05df966c46))
+
 ## [1.1.5](https://github.com/lantongxue/winssh/compare/v1.1.3...v1.1.5) (2026-05-18)
 
 ### Features
