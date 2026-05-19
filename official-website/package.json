@@ -1,0 +1,13 @@
+{
+  "name": "winssh-official-website",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Official product website for WinSSH.",
+  "type": "module",
+  "scripts": {
+    "dev": "node ../node_modules/vite/bin/vite.js",
+    "build": "node ../node_modules/typescript/bin/tsc --noEmit -p tsconfig.json && node ../node_modules/vite/bin/vite.js build",
+    "preview": "node ../node_modules/vite/bin/vite.js preview",
+    "test": "node ../node_modules/vitest/vitest.mjs run --config vitest.config.ts"
+  }
+}
