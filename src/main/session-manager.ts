@@ -34,6 +34,7 @@ import {
   SessionConnectFailureCode,
   SessionConnectResult,
   type SessionConnectionPhase,
+  SessionCwdEvent,
   SessionDataEvent,
   SessionErrorEvent,
   SessionExitEvent,
@@ -50,6 +51,7 @@ type AcceptTcpConnection = () => ClientChannel
 type RejectConnection = () => void
 
 type EventMap = {
+  'sessions:cwd': SessionCwdEvent
   'sessions:data': SessionDataEvent
   'sessions:error': SessionErrorEvent
   'sessions:exit': SessionExitEvent
@@ -86,6 +88,7 @@ interface SessionRuntime {
   lastError?: string
   lastExit?: SessionExitEvent
   finalizing?: boolean
+  cwdScanBuffer?: string
 }
 
 interface ExecResult {
@@ -1091,11 +1094,116 @@ export class SessionManager {
       return
     }
 
+    const sanitized = this.extractCwdFromStream(runtime, data)
+    if (!sanitized) {
+      return
+    }
+
     this.emitToRenderer(
       'sessions:data',
       this.withObservableMetadata(runtime.sessionId, {
         sessionId: runtime.sessionId,
-        data
+        data: sanitized
+      })
+    )
+  }
+
+  /**
+   * 扫描 shell 输出中的 OSC 7（ESC ] 7 ; file://host/path BEL|ST），
+   * 命中后剥离序列、更新 runtime.summary.currentPath 并推送 sessions:cwd 事件。
+   * 缓冲区用于跨 chunk 拼接被截断的序列，超过 4KB 仍未结束则丢弃。
+   */
+  private extractCwdFromStream(runtime: SessionRuntime, data: string): string {
+    const ESC = '\x1b'
+    const OSC_PREFIX = '\x1b]7;'
+    const BEL = '\x07'
+    const ST = '\x1b\\'
+    const MAX_BUFFER = 4096
+
+    let combined = (runtime.cwdScanBuffer ?? '') + data
+    runtime.cwdScanBuffer = undefined
+
+    if (combined.indexOf(OSC_PREFIX) === -1) {
+      // 尾部可能是 OSC 起始片段（ESC 或 ESC ]），保留少量字节等待下一个 chunk
+      const tail = combined.length >= 3 ? combined.slice(-3) : combined
+      const partialIdx = tail.lastIndexOf(ESC)
+      if (partialIdx !== -1) {
+        const keep = tail.slice(partialIdx)
+        if (keep === ESC || keep === ESC + ']' || keep === ESC + ']7') {
+          runtime.cwdScanBuffer = keep
+          return combined.slice(0, combined.length - keep.length)
+        }
+      }
+      return combined
+    }
+
+    let output = ''
+    let cursor = 0
+    while (cursor < combined.length) {
+      const start = combined.indexOf(OSC_PREFIX, cursor)
+      if (start === -1) {
+        output += combined.slice(cursor)
+        break
+      }
+      output += combined.slice(cursor, start)
+
+      const payloadStart = start + OSC_PREFIX.length
+      const belIdx = combined.indexOf(BEL, payloadStart)
+      const stIdx = combined.indexOf(ST, payloadStart)
+      let terminator = -1
+      let terminatorLen = 0
+      if (belIdx !== -1 && (stIdx === -1 || belIdx < stIdx)) {
+        terminator = belIdx
+        terminatorLen = 1
+      } else if (stIdx !== -1) {
+        terminator = stIdx
+        terminatorLen = 2
+      }
+
+      if (terminator === -1) {
+        // 序列未结束，把从 start 起的内容缓存，等下一个 chunk
+        if (combined.length - start > MAX_BUFFER) {
+          // 防止恶意/异常流无限累积
+          output += combined.slice(start)
+        } else {
+          runtime.cwdScanBuffer = combined.slice(start)
+        }
+        break
+      }
+
+      const payload = combined.slice(payloadStart, terminator)
+      this.applyTerminalCwd(runtime, payload)
+      cursor = terminator + terminatorLen
+    }
+
+    return output
+  }
+
+  private applyTerminalCwd(runtime: SessionRuntime, payload: string): void {
+    if (!payload.startsWith('file://')) {
+      return
+    }
+    const afterScheme = payload.slice('file://'.length)
+    const slashIdx = afterScheme.indexOf('/')
+    const rawPath = slashIdx === -1 ? afterScheme : afterScheme.slice(slashIdx)
+    if (!rawPath) {
+      return
+    }
+    let decoded: string
+    try {
+      decoded = decodeURIComponent(rawPath)
+    } catch {
+      decoded = rawPath
+    }
+    if (!decoded.startsWith('/')) {
+      return
+    }
+    runtime.summary.currentPath = decoded
+    this.emitToRenderer(
+      'sessions:cwd',
+      this.withObservableMetadata(runtime.sessionId, {
+        sessionId: runtime.sessionId,
+        terminalCwd: decoded
       })
     )
   }

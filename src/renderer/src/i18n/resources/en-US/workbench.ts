@@ -697,7 +697,10 @@ const workbench = {
         copyPath: 'Copy Path',
         copyPathToTerminal: 'Send Path to Terminal',
         flatView: 'Flat View',
+        followTerminal: 'Follow Terminal',
+        followTerminalTooltip: 'Auto-navigate SFTP when terminal changes directory (bash/zsh only)',
         openDirectory: 'Open Directory',
+        sendPathToTerminal: 'Send Path to Terminal',
         treeView: 'Tree View'
       },
       dropzone: {

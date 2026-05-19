@@ -293,6 +293,11 @@ export interface SessionDataEvent extends ObservableEventMetadata {
   data: string
 }
 
+export interface SessionCwdEvent extends ObservableEventMetadata {
+  sessionId: string
+  terminalCwd: string
+}
+
 export interface SessionExitEvent extends ObservableEventMetadata {
   sessionId: string
   code?: number

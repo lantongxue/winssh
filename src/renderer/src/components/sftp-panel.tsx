@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Undo2, X } from 'lucide-react'
+import { Send, Undo2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { getParentRemotePath } from '@shared/sftp'
@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { SftpTreeView, type SftpTreeViewHandle, type SftpViewMode } from '@/components/sftp-tree-view'
@@ -48,6 +49,11 @@ type FileWithPath = File & {
 }
 
 const REMOVE_EXIT_ANIMATION_MS = 180
+
+// 注入到远端 shell 的一次性钩子：兼容 bash / zsh，每次新 prompt 时向终端发送 OSC 7
+// 序列上报当前工作目录。前导空格依赖 HISTCONTROL=ignorespace / HIST_IGNORE_SPACE
+// 让这一行不进入命令历史。末尾再调用一次保证立即同步。
+const FOLLOW_TERMINAL_SETUP_COMMAND = ` __wsh_emit_pwd(){ printf '\\033]7;file://%s%s\\033\\\\' "\${HOSTNAME:-$HOST}" "$PWD"; }; case "$PROMPT_COMMAND" in *__wsh_emit_pwd*) :;; *) PROMPT_COMMAND="__wsh_emit_pwd\${PROMPT_COMMAND:+;$PROMPT_COMMAND}";; esac; { typeset -ga precmd_functions; precmd_functions+=(__wsh_emit_pwd); } 2>/dev/null; __wsh_emit_pwd\n`
 
 
 function hasLocalFileTransfer(dataTransfer: DataTransfer | null | undefined) {
@@ -117,6 +123,8 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
   const queryClient = useQueryClient()
   const setCurrentPath = useSessionsStore((state) => state.setCurrentPath)
   const setAuxView = useSessionsStore((state) => state.setAuxView)
+  const setFollowTerminal = useSessionsStore((state) => state.setFollowTerminal)
+  const requestTerminalFocus = useSessionsStore((state) => state.requestTerminalFocus)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const dragDepthRef = useRef(0)
   const mountedRef = useRef(true)
@@ -168,6 +176,26 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
       setCurrentPath(session.sessionId, listingQuery.data.path)
     }
   }, [listingQuery.data?.path, session, setCurrentPath])
+
+  const followTerminal = session?.followTerminal ?? false
+  const terminalCwd = session?.terminalCwd
+
+  // 跟随终端开启时，把终端最新上报的 CWD 同步到 SFTP 当前目录。
+  // 选中态由下方监听 listingQuery.data?.entries 的 effect 在新列表到达时自动清理。
+  useEffect(() => {
+    if (!session || !followTerminal || !terminalCwd) return
+    if (terminalCwd === session.currentPath) return
+    setCurrentPath(session.sessionId, terminalCwd)
+  }, [followTerminal, terminalCwd, session, setCurrentPath])
+
+  // 在会话就绪且开启跟随时，向远端 shell 注入 OSC 7 钩子（覆盖首次勾选 + 重连）。
+  const sessionId = session?.sessionId
+  const sessionStatus = session?.status
+  const connectionStartedAt = session?.connectionStartedAt
+  useEffect(() => {
+    if (!followTerminal || sessionStatus !== 'ready' || !sessionId) return
+    sessionsClient.write(sessionId, FOLLOW_TERMINAL_SETUP_COMMAND)
+  }, [followTerminal, sessionStatus, sessionId, connectionStartedAt])
 
   useEffect(() => {
     setPathInputValue(currentPath)
@@ -543,15 +571,47 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
               <div className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
                 {t('workbench.sftp.labels.currentPath')}
               </div>
-              <TooltipIconButton
-                variant="ghost"
-                size="icon-xs"
-                className="shrink-0 text-muted-foreground hover:text-foreground"
-                label={t('workbench.sftp.actions.copyPath')}
-                onClick={() => void copyPath(currentPath)}
-              >
-                <CopyIcon className="size-3.5" />
-              </TooltipIconButton>
+              <div className="flex items-center gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <label className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground">
+                      <Checkbox
+                        aria-label={t('workbench.sftp.actions.followTerminal')}
+                        checked={followTerminal}
+                        onCheckedChange={(checked) => {
+                          if (!session) return
+                          setFollowTerminal(session.sessionId, checked === true)
+                        }}
+                      />
+                      <span>{t('workbench.sftp.actions.followTerminal')}</span>
+                    </label>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {t('workbench.sftp.actions.followTerminalTooltip')}
+                  </TooltipContent>
+                </Tooltip>
+                <TooltipIconButton
+                  variant="ghost"
+                  size="icon-xs"
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                  label={t('workbench.sftp.actions.copyPath')}
+                  onClick={() => void copyPath(currentPath)}
+                >
+                  <CopyIcon className="size-3.5" />
+                </TooltipIconButton>
+                <TooltipIconButton
+                  variant="ghost"
+                  size="icon-xs"
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                  label={t('workbench.sftp.actions.sendPathToTerminal')}
+                  onClick={() => {
+                    sendPathToTerminal(currentPath)
+                    requestTerminalFocus(session.sessionId)
+                  }}
+                >
+                  <Send className="size-3.5" />
+                </TooltipIconButton>
+              </div>
             </div>
 
             <Textarea

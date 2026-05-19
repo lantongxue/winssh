@@ -679,7 +679,10 @@ const workbench = {
         copyPath: '复制路径',
         copyPathToTerminal: '复制路径到终端',
         flatView: '平铺视图',
+        followTerminal: '跟随终端',
+        followTerminalTooltip: '终端切换目录时自动跳转 SFTP（需 bash/zsh）',
         openDirectory: '打开目录',
+        sendPathToTerminal: '发送路径到终端',
         treeView: '树形视图'
       },
       dropzone: {

@@ -15,6 +15,9 @@ export interface SessionTab extends SessionSummary {
   connectionStartedAt?: string
   lastMessage?: string
   provisional?: boolean
+  followTerminal?: boolean
+  terminalCwd?: string
+  focusNonce?: number
 }
 
 export interface PendingSessionInput {
@@ -45,6 +48,9 @@ interface SessionsState {
   ) => void
   updateSessionState: (event: SessionStateEvent) => void
   setCurrentPath: (sessionId: string, path: string) => void
+  setFollowTerminal: (sessionId: string, enabled: boolean) => void
+  setTerminalCwd: (sessionId: string, terminalCwd: string) => void
+  requestTerminalFocus: (sessionId: string) => void
   clear: () => void
 }
 
@@ -120,7 +126,9 @@ export const useSessionsStore = create<SessionsState>((set) => ({
               auxView: tab.auxView ?? null,
               auxPanelSide: tab.auxPanelSide,
               connectionPhase: tab.connectionPhase,
+              followTerminal: tab.followTerminal,
               ...summary,
+              terminalCwd: undefined,
               // 重连成功后刷新 connectionStartedAt，确保 TerminalPane 识别为新连接周期
               connectionStartedAt:
                 summary.status === 'ready' ? new Date().toISOString() : tab.connectionStartedAt,
@@ -169,6 +177,24 @@ export const useSessionsStore = create<SessionsState>((set) => ({
     set((state) => ({
       tabs: state.tabs.map((tab) =>
         tab.sessionId === sessionId ? { ...tab, currentPath: path } : tab
+      )
+    })),
+  setFollowTerminal: (sessionId, enabled) =>
+    set((state) => ({
+      tabs: state.tabs.map((tab) =>
+        tab.sessionId === sessionId ? { ...tab, followTerminal: enabled } : tab
+      )
+    })),
+  setTerminalCwd: (sessionId, terminalCwd) =>
+    set((state) => ({
+      tabs: state.tabs.map((tab) =>
+        tab.sessionId === sessionId ? { ...tab, terminalCwd: terminalCwd } : tab
+      )
+    })),
+  requestTerminalFocus: (sessionId) =>
+    set((state) => ({
+      tabs: state.tabs.map((tab) =>
+        tab.sessionId === sessionId ? { ...tab, focusNonce: (tab.focusNonce ?? 0) + 1 } : tab
       )
     })),
   clear: () => set({ tabs: [], activeSessionId: null })

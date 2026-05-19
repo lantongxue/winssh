@@ -17,6 +17,7 @@ export function useSessionEvents() {
   const queryClient = useQueryClient()
   const updateLocalTerminalState = useLocalTerminalsStore((state) => state.updateTerminalState)
   const updateSessionState = useSessionsStore((state) => state.updateSessionState)
+  const setTerminalCwd = useSessionsStore((state) => state.setTerminalCwd)
   const appendOutput = useWorkbenchStore((state) => state.appendOutput)
   const pushProblem = useWorkbenchStore((state) => state.pushProblem)
   const revealPanel = useWorkbenchStore((state) => state.revealPanel)
@@ -47,6 +48,10 @@ export function useSessionEvents() {
         })
         toast.error(event.message)
       }
+    })
+
+    const unsubscribeCwd = sessionsClient.onCwdChange((event) => {
+      setTerminalCwd(event.sessionId, event.terminalCwd)
     })
 
     const unsubscribeError = sessionsClient.onError((event) => {
@@ -217,6 +222,7 @@ export function useSessionEvents() {
 
     return () => {
       unsubscribeState()
+      unsubscribeCwd()
       unsubscribeError()
       unsubscribeExit()
       unsubscribeTransfer()
@@ -229,6 +235,7 @@ export function useSessionEvents() {
     pushProblem,
     queryClient,
     revealPanel,
+    setTerminalCwd,
     t,
     updateLocalTerminalState,
     updateSessionState,
