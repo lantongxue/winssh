@@ -23,7 +23,6 @@ import type {
   ServerGroup,
   ServerUpsertInput,
   SessionConnectResult,
-  SessionCwdEvent,
   SessionDataEvent,
   SessionErrorEvent,
   SessionExitEvent,
@@ -88,7 +87,6 @@ export interface WinsshApi {
     onExit: (callback: (event: SessionExitEvent) => void) => Unsubscribe
     onStateChange: (callback: (event: SessionStateEvent) => void) => Unsubscribe
     onError: (callback: (event: SessionErrorEvent) => void) => Unsubscribe
-    onCwdChange: (callback: (event: SessionCwdEvent) => void) => Unsubscribe
   }
   localTerminals: {
     create: () => Promise<LocalTerminalSummary>

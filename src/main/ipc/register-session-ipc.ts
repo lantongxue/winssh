@@ -24,8 +24,14 @@ export function registerSessionIpc(service: SessionsApplicationService) {
   ipcMain.handle('sessions:getResourceSnapshot', (_event, sessionId: string) =>
     service.getResourceSnapshot(sessionId)
   )
-  ipcMain.handle('sessions:write', (_event, sessionId: string, data: string) => {
-    service.write(sessionId, data)
+  ipcMain.on('sessions:write', (_event, sessionId: string, data: string) => {
+    try {
+      service.write(sessionId, data)
+    } catch (error) {
+      logger.warn('Failed to write session input', {
+        data: { sessionId, error }
+      })
+    }
   })
   ipcMain.handle('sessions:resize', (_event, sessionId: string, columns: number, rows: number) =>
     service.resize(sessionId, columns, rows)

@@ -3,7 +3,6 @@ import type {
   LocalTerminalExitEvent,
   LocalTerminalStateEvent,
   PortForwardStateEvent,
-  SessionCwdEvent,
   SessionDataEvent,
   SessionErrorEvent,
   SessionExitEvent,
@@ -19,7 +18,6 @@ export interface IpcChannelMap {
   'localTerminals:exit': LocalTerminalExitEvent
   'localTerminals:state': LocalTerminalStateEvent
   'portForwards:state': PortForwardStateEvent
-  'sessions:cwd': SessionCwdEvent
   'sessions:data': SessionDataEvent
   'sessions:error': SessionErrorEvent
   'sessions:exit': SessionExitEvent

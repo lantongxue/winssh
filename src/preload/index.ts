@@ -209,14 +209,13 @@ const api: WinsshApi = {
     reconnect: (sessionId) => ipcRenderer.invoke('sessions:reconnect', sessionId),
     getResourceSnapshot: (sessionId) =>
       ipcRenderer.invoke('sessions:getResourceSnapshot', sessionId),
-    write: (sessionId, data) => ipcRenderer.invoke('sessions:write', sessionId, data),
+    write: (sessionId, data) => ipcRenderer.send('sessions:write', sessionId, data),
     resize: (sessionId, columns, rows) =>
       ipcRenderer.invoke('sessions:resize', sessionId, columns, rows),
     onData: (sessionId, callback) => subscribeById('sessions:data', sessionId, callback),
     onExit: (callback) => subscribe('sessions:exit', callback),
     onStateChange: (callback) => subscribe('sessions:state', callback),
-    onError: (callback) => subscribe('sessions:error', callback),
-    onCwdChange: (callback) => subscribe('sessions:cwd', callback)
+    onError: (callback) => subscribe('sessions:error', callback)
   },
   localTerminals: {
     create: () => ipcRenderer.invoke('localTerminals:create'),

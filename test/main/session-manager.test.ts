@@ -959,7 +959,7 @@ describe('SessionManager port forwarding', () => {
   })
 })
 
-describe('SessionManager OSC 7 cwd detection', () => {
+describe('SessionManager session data forwarding', () => {
   function createManagerWithEmitSpy() {
     const emitToRenderer = vi.fn()
     const manager = new SessionManager(
@@ -994,85 +994,18 @@ describe('SessionManager OSC 7 cwd detection', () => {
       .map((call) => (call[1] as { data: string }).data)
   }
 
-  function getCwdPayloads(emit: ReturnType<typeof vi.fn>) {
-    return emit.mock.calls
-      .filter((call) => call[0] === 'sessions:cwd')
-      .map((call) => (call[1] as { terminalCwd: string }).terminalCwd)
-  }
-
-  it('extracts BEL-terminated OSC 7 path and strips the sequence from forwarded data', () => {
+  it('passes through terminal data without extracting OSC 7 cwd sequences', () => {
     const { manager, emitToRenderer } = createManagerWithEmitSpy()
     const runtime = createRuntime('session-1', new MockClient())
 
+    pushData(manager, runtime, 'user@host:~$ ls\r\n')
     pushData(manager, runtime, `prefix\x1b]7;file://host/tmp/foo\x07suffix`)
 
-    expect(getDataPayloads(emitToRenderer)).toEqual(['prefixsuffix'])
-    expect(getCwdPayloads(emitToRenderer)).toEqual(['/tmp/foo'])
-    expect(runtime.summary.currentPath).toBe('/tmp/foo')
-  })
-
-  it('extracts ST-terminated OSC 7 sequence', () => {
-    const { manager, emitToRenderer } = createManagerWithEmitSpy()
-    const runtime = createRuntime('session-1', new MockClient())
-
-    pushData(manager, runtime, `\x1b]7;file://host/var/log\x1b\\done`)
-
-    expect(getDataPayloads(emitToRenderer)).toEqual(['done'])
-    expect(getCwdPayloads(emitToRenderer)).toEqual(['/var/log'])
-  })
-
-  it('URL-decodes paths with spaces and unicode', () => {
-    const { manager, emitToRenderer } = createManagerWithEmitSpy()
-    const runtime = createRuntime('session-1', new MockClient())
-
-    pushData(manager, runtime, `\x1b]7;file://host/tmp/%E6%88%91%E7%9A%84/My%20Files\x07`)
-
-    expect(getCwdPayloads(emitToRenderer)).toEqual(['/tmp/我的/My Files'])
-    expect(runtime.summary.currentPath).toBe('/tmp/我的/My Files')
-  })
-
-  it('reassembles an OSC 7 sequence split across two chunks', () => {
-    const { manager, emitToRenderer } = createManagerWithEmitSpy()
-    const runtime = createRuntime('session-1', new MockClient())
-
-    pushData(manager, runtime, `hello\x1b]7;file://host/var`)
-    pushData(manager, runtime, `/log\x07world`)
-
-    expect(getDataPayloads(emitToRenderer)).toEqual(['hello', 'world'])
-    expect(getCwdPayloads(emitToRenderer)).toEqual(['/var/log'])
-  })
-
-  it('handles ESC tail at the end of a chunk without losing data', () => {
-    const { manager, emitToRenderer } = createManagerWithEmitSpy()
-    const runtime = createRuntime('session-1', new MockClient())
-
-    // ESC arrives at the boundary; rest of OSC arrives next chunk
-    pushData(manager, runtime, `a\x1b`)
-    pushData(manager, runtime, `]7;file://host/etc\x07b`)
-
-    const data = getDataPayloads(emitToRenderer).join('')
-    expect(data).toBe('ab')
-    expect(getCwdPayloads(emitToRenderer)).toEqual(['/etc'])
-  })
-
-  it('does not emit cwd events for non-file scheme or non-absolute paths', () => {
-    const { manager, emitToRenderer } = createManagerWithEmitSpy()
-    const runtime = createRuntime('session-1', new MockClient())
-
-    pushData(manager, runtime, `\x1b]7;http://host/not-a-cwd\x07`)
-    pushData(manager, runtime, `\x1b]7;file://host\x07`)
-
-    expect(getCwdPayloads(emitToRenderer)).toEqual([])
+    expect(getDataPayloads(emitToRenderer)).toEqual([
+      'user@host:~$ ls\r\n',
+      `prefix\x1b]7;file://host/tmp/foo\x07suffix`
+    ])
     expect(runtime.summary.currentPath).toBe('/')
   })
 
-  it('passes through plain data without OSC 7', () => {
-    const { manager, emitToRenderer } = createManagerWithEmitSpy()
-    const runtime = createRuntime('session-1', new MockClient())
-
-    pushData(manager, runtime, 'user@host:~$ ls\r\nfile.txt\r\n')
-
-    expect(getDataPayloads(emitToRenderer)).toEqual(['user@host:~$ ls\r\nfile.txt\r\n'])
-    expect(getCwdPayloads(emitToRenderer)).toEqual([])
-  })
 })

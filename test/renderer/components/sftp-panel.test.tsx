@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { RemoteEntry } from '@shared/types'
 import i18n from '@/i18n'
 import { SftpPanel } from '@/components/sftp-panel'
@@ -142,6 +142,10 @@ describe('SftpPanel', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('en-US')
     useSessionsStore.getState().clear()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('sends the selected entry path to the terminal from the context menu', async () => {
