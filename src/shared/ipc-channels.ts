@@ -1,4 +1,5 @@
 import type {
+  CommandRecordedEvent,
   LocalTerminalDataEvent,
   LocalTerminalExitEvent,
   LocalTerminalStateEvent,
@@ -14,6 +15,7 @@ import type {
 } from './types'
 
 export interface IpcChannelMap {
+  'commandHistory:added': CommandRecordedEvent
   'localTerminals:data': LocalTerminalDataEvent
   'localTerminals:exit': LocalTerminalExitEvent
   'localTerminals:state': LocalTerminalStateEvent

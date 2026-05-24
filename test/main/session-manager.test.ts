@@ -139,7 +139,11 @@ function createRuntime(sessionId: string, client: MockClient) {
       connectedAt: new Date().toISOString(),
       currentPath: '/'
     },
-    portForwards: new Map()
+    portForwards: new Map(),
+    oscState: { pending: '' },
+    pendingCommand: { text: null, startedAt: null, cwd: null },
+    historyCaptureEnabled: false,
+    historyCaptureStatus: 'unavailable' as const
   }
 }
 

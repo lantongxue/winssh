@@ -135,6 +135,7 @@ function toDefaultValues(
     return {
       authType: 'password',
       favorite: false,
+      captureCommandHistory: true,
       groupId: options.initialGroupId ?? null,
       jumpServerId: null,
       host: '',
@@ -155,6 +156,7 @@ function toDefaultValues(
   return {
     authType: server.authType,
     favorite: server.favorite,
+    captureCommandHistory: server.captureCommandHistory,
     groupId: server.groupId,
     jumpServerId: server.jumpServerId,
     host: server.host,
@@ -1068,6 +1070,28 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                   </div>
                   <FormControl>
                     <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="captureCommandHistory"
+              render={({ field }) => (
+                <FormItem className="mt-3 flex items-center justify-between rounded-sm border border-[var(--workbench-border)] px-4 py-3">
+                  <div>
+                    <div className="font-medium">
+                      {t('workbench.commandHistory.enableForServer')}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {t('workbench.commandHistory.captureHint')}
+                    </div>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value !== false}
+                      onCheckedChange={field.onChange}
+                    />
                   </FormControl>
                 </FormItem>
               )}

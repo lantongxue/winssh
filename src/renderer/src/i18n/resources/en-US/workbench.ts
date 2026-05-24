@@ -884,6 +884,25 @@ const workbench = {
         deleted: 'Credential deleted.',
         updated: 'Credential updated.'
       }
+    },
+    commandHistory: {
+      title: 'Command History',
+      empty: 'No commands recorded yet.',
+      searchPlaceholder: 'Search commands…',
+      clear: 'Clear history',
+      clearConfirm: 'Clear all recorded commands for this scope?',
+      deleteEntry: 'Delete',
+      reRun: 'Insert into terminal',
+      toggleButton: 'Toggle command history',
+      captureDisabled: 'Capture disabled for this server.',
+      captureUnavailable: 'Capture unavailable (shell integration not detected).',
+      captureHint:
+        'Commands are captured via shell integration. Bash and zsh are supported; fish and other shells are not.',
+      enableForServer: 'Record command history for this server',
+      enableGlobal: 'Enable command history globally',
+      cwdLabel: 'cwd',
+      exitCodeLabel: 'exit',
+      durationLabel: 'took'
     }
   }
 }

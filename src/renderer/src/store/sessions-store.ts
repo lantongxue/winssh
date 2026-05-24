@@ -6,7 +6,7 @@ import type {
   SessionSummary
 } from '@shared/types'
 
-export type SessionAuxView = 'sftp' | 'port-forward'
+export type SessionAuxView = 'sftp' | 'port-forward' | 'command-history'
 
 export interface SessionTab extends SessionSummary {
   auxView?: SessionAuxView | null

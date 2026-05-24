@@ -22,6 +22,8 @@ import { DEFAULT_SERVER_BRAND_ID, resolveServerBrandFromOsRelease } from '@share
 import {
   type ConnectionSecretInput,
   ConnectionRequest,
+  type CommandHistoryEntry,
+  type CommandRecordedEvent,
   PortForwardInput,
   PortForwardRule,
   PortForwardStateEvent,
@@ -45,6 +47,8 @@ import {
 } from '@shared/types'
 import type { DatabaseService } from './database'
 import type { MainTranslator } from './localization'
+import { createOscScannerState, scanOscChunk, type OscScannerState } from './osc-scanner'
+import { SHELL_INTEGRATION_SCRIPT } from './shell-integration'
 type WindowProvider = () => BrowserWindow | null
 type AcceptTcpConnection = () => ClientChannel
 type RejectConnection = () => void
@@ -56,6 +60,7 @@ type EventMap = {
   'sessions:state': SessionStateEvent
   'sftp:transfer': TransferProgressEvent
   'portForwards:state': PortForwardStateEvent
+  'commandHistory:added': CommandRecordedEvent
 }
 
 interface BasePortForwardRuntime {
@@ -75,6 +80,12 @@ interface RemotePortForwardRuntime extends BasePortForwardRuntime {
 
 type ActivePortForward = LocalPortForwardRuntime | RemotePortForwardRuntime
 
+interface PendingCommand {
+  text: string | null
+  startedAt: number | null
+  cwd: string | null
+}
+
 interface SessionRuntime {
   sessionId: string
   client: Client
@@ -86,6 +97,11 @@ interface SessionRuntime {
   lastError?: string
   lastExit?: SessionExitEvent
   finalizing?: boolean
+  oscState: OscScannerState
+  pendingCommand: PendingCommand
+  historyCaptureEnabled: boolean
+  historyCaptureStatus: 'pending' | 'active' | 'unavailable'
+  historyProbeTimer?: NodeJS.Timeout
 }
 
 interface ExecResult {
@@ -1014,6 +1030,9 @@ export class SessionManager {
 
       this.emitConnectionPhase(sessionId, 'attach')
 
+      const captureEnabled =
+        Boolean(server.captureCommandHistory) && this.database.getSettings().commandHistoryEnabled
+
       const runtime: SessionRuntime = {
         sessionId,
         client,
@@ -1021,7 +1040,11 @@ export class SessionManager {
         shell,
         sftp,
         summary,
-        portForwards: new Map()
+        portForwards: new Map(),
+        oscState: createOscScannerState(),
+        pendingCommand: { text: null, startedAt: null, cwd: null },
+        historyCaptureEnabled: captureEnabled,
+        historyCaptureStatus: captureEnabled ? 'pending' : 'unavailable'
       }
 
       shell.on('data', (chunk: Buffer | string) => {
@@ -1031,6 +1054,10 @@ export class SessionManager {
         this.emitSessionData(runtime, chunk.toString())
       })
       shell.on('close', (code?: number, signal?: string) => {
+        if (runtime.historyProbeTimer) {
+          clearTimeout(runtime.historyProbeTimer)
+          runtime.historyProbeTimer = undefined
+        }
         runtime.lastExit = this.withObservableMetadata(sessionId, { sessionId, code, signal })
         client?.end()
       })
@@ -1051,6 +1078,9 @@ export class SessionManager {
       })
       this.database.recordRecentSession(server.id)
       await this.persistConnectionSecrets([...(jumpServer ? [jumpServer] : []), server], request)
+      if (captureEnabled) {
+        this.installShellIntegration(runtime)
+      }
       this.emitSessionState(sessionId, 'ready', undefined, this.t('session.connected'))
 
       return summary
@@ -1068,6 +1098,10 @@ export class SessionManager {
 
     if (runtime) {
       runtime.finalizing = true
+      if (runtime.historyProbeTimer) {
+        clearTimeout(runtime.historyProbeTimer)
+        runtime.historyProbeTimer = undefined
+      }
       await this.releaseSessionPortForwards(sessionId)
       this.releaseRuntimeClients(runtime)
       this.sessions.delete(sessionId)
@@ -1091,11 +1125,99 @@ export class SessionManager {
       return
     }
 
+    const cleaned = scanOscChunk(runtime.oscState, data, {
+      onPromptStart: () => {
+        if (runtime.historyCaptureStatus === 'pending') {
+          runtime.historyCaptureStatus = 'active'
+          if (runtime.historyProbeTimer) {
+            clearTimeout(runtime.historyProbeTimer)
+            runtime.historyProbeTimer = undefined
+          }
+        }
+      },
+      onCommandText: (command) => {
+        runtime.pendingCommand = {
+          text: command,
+          startedAt: runtime.pendingCommand.startedAt,
+          cwd: runtime.summary.currentPath || null
+        }
+      },
+      onCommandPre: () => {
+        if (runtime.pendingCommand.startedAt === null) {
+          runtime.pendingCommand.startedAt = Date.now()
+        }
+        if (!runtime.pendingCommand.cwd) {
+          runtime.pendingCommand.cwd = runtime.summary.currentPath || null
+        }
+      },
+      onCommandDone: (exitCode) => {
+        this.handleCommandDone(runtime, exitCode)
+      }
+    })
+
+    if (!cleaned) {
+      return
+    }
+
     this.emitToRenderer(
       'sessions:data',
       this.withObservableMetadata(runtime.sessionId, {
         sessionId: runtime.sessionId,
-        data
+        data: cleaned
+      })
+    )
+  }
+
+  private installShellIntegration(runtime: SessionRuntime): void {
+    try {
+      runtime.shell.write(SHELL_INTEGRATION_SCRIPT)
+    } catch {
+      runtime.historyCaptureStatus = 'unavailable'
+      return
+    }
+    runtime.historyProbeTimer = setTimeout(() => {
+      if (runtime.historyCaptureStatus === 'pending') {
+        runtime.historyCaptureStatus = 'unavailable'
+      }
+      runtime.historyProbeTimer = undefined
+    }, 3000)
+  }
+
+  private handleCommandDone(runtime: SessionRuntime, exitCode: number | null): void {
+    const pending = runtime.pendingCommand
+    runtime.pendingCommand = { text: null, startedAt: null, cwd: null }
+    if (!pending.text) {
+      return
+    }
+    const executedAt = pending.startedAt
+      ? new Date(pending.startedAt).toISOString()
+      : new Date().toISOString()
+    const durationMs =
+      pending.startedAt !== null ? Math.max(0, Date.now() - pending.startedAt) : null
+
+    let entry: CommandHistoryEntry | null = null
+    try {
+      entry = this.database.recordCommand({
+        scope: { kind: 'ssh', serverId: runtime.summary.serverId },
+        command: pending.text,
+        executedAt,
+        cwd: pending.cwd,
+        exitCode,
+        durationMs
+      })
+    } catch {
+      return
+    }
+
+    if (!entry) {
+      return
+    }
+
+    this.emitToRenderer(
+      'commandHistory:added',
+      this.withObservableMetadata(runtime.sessionId, {
+        scope: { kind: 'ssh', serverId: runtime.summary.serverId },
+        entry
       })
     )
   }

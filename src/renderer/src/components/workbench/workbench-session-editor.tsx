@@ -1,16 +1,19 @@
 import { memo, useCallback, useState, type DragEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { History } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useShallow } from 'zustand/react/shallow'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import { queryKeys } from '@/features/shared/query-keys'
 import { serversClient } from '@/features/servers/api/servers-client'
+import { sessionsClient } from '@/features/sessions/api/sessions-client'
 import { settingsClient } from '@/features/settings/api/settings-client'
 import { themesClient } from '@/features/themes/api/themes-client'
 import { actionIcons } from '@/lib/action-icons'
 import { usePrefersDark } from '@/hooks/use-prefers-dark'
 import { resolveThemeDefinition } from '@/lib/theme'
+import { CommandHistoryPanel } from '@/components/workbench/command-history-panel'
 import { PortForwardPanel } from '@/components/port-forward-panel'
 import { SessionResourceMonitor } from '@/components/session-resource-monitor'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
@@ -26,7 +29,7 @@ const TERMINAL_PANEL_MIN_SIZE = '320px'
 const AUX_PANEL_DEFAULT_SIZE = '360px'
 const AUX_PANEL_MIN_SIZE = '280px'
 const AUX_PANEL_MAX_SIZE = '55%'
-const SFTP_PANEL_DRAG_MIME = 'application/x-winssh-sftp-panel'
+const AUX_PANEL_DRAG_MIME = 'application/x-winssh-aux-panel'
 
 interface WorkbenchSessionEditorProps {
   sessionId: string
@@ -89,20 +92,20 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
     prefersDark
   )
 
-  const handleSftpHeaderDragStart = useCallback(
+  const handleAuxHeaderDragStart = useCallback(
     (event: DragEvent<HTMLDivElement>) => {
       event.dataTransfer.effectAllowed = 'move'
-      event.dataTransfer.setData(SFTP_PANEL_DRAG_MIME, session.sessionId)
+      event.dataTransfer.setData(AUX_PANEL_DRAG_MIME, session.sessionId)
     },
     [session.sessionId]
   )
 
-  const handleSftpHeaderDragEnd = useCallback(() => {
+  const handleAuxHeaderDragEnd = useCallback(() => {
     setDropTargetSide(null)
   }, [])
 
   const handleTerminalDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
-    if (!event.dataTransfer.types.includes(SFTP_PANEL_DRAG_MIME)) {
+    if (!event.dataTransfer.types.includes(AUX_PANEL_DRAG_MIME)) {
       return
     }
     event.preventDefault()
@@ -121,7 +124,7 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
 
   const handleTerminalDrop = useCallback(
     (event: DragEvent<HTMLDivElement>) => {
-      if (!event.dataTransfer.types.includes(SFTP_PANEL_DRAG_MIME)) {
+      if (!event.dataTransfer.types.includes(AUX_PANEL_DRAG_MIME)) {
         return
       }
       event.preventDefault()
@@ -168,13 +171,23 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
         session={session}
         className="h-full overflow-hidden bg-[var(--workbench-sidebar)]"
         onEditFile={(remotePath) => openSftpFileEditor(session.sessionId, remotePath)}
-        onHeaderDragStart={handleSftpHeaderDragStart}
-        onHeaderDragEnd={handleSftpHeaderDragEnd}
+        onHeaderDragStart={handleAuxHeaderDragStart}
+        onHeaderDragEnd={handleAuxHeaderDragEnd}
       />
     ) : auxView === 'port-forward' ? (
       <PortForwardPanel
         session={session}
         className="h-full overflow-hidden bg-[var(--workbench-sidebar)]"
+        onHeaderDragStart={handleAuxHeaderDragStart}
+        onHeaderDragEnd={handleAuxHeaderDragEnd}
+      />
+    ) : auxView === 'command-history' ? (
+      <CommandHistoryPanel
+        scope={{ kind: 'ssh', serverId: session.serverId }}
+        onInsertCommand={(text) => sessionsClient.write(session.sessionId, text)}
+        className="h-full overflow-hidden bg-[var(--workbench-sidebar)]"
+        onHeaderDragStart={handleAuxHeaderDragStart}
+        onHeaderDragEnd={handleAuxHeaderDragEnd}
       />
     ) : null
   const showAuxPanel = Boolean(auxPanelContent && !session.provisional)
@@ -245,6 +258,22 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
           >
             <PortForwardIcon className="size-4" />
             {t('workbench.sessionEditor.portForwards')}
+          </Button>
+          <Button
+            variant={auxView === 'command-history' ? 'secondary' : 'ghost'}
+            size="sm"
+            disabled={session.provisional}
+            onClick={() =>
+              setAuxView(
+                session.sessionId,
+                auxView === 'command-history' ? null : 'command-history'
+              )
+            }
+            title={t('workbench.commandHistory.toggleButton')}
+            aria-label={t('workbench.commandHistory.toggleButton')}
+          >
+            <History className="size-4" />
+            {t('workbench.commandHistory.title')}
           </Button>
           {session.status !== 'ready' && session.status !== 'connecting' ? (
             <Button variant="ghost" size="sm" onClick={() => void reconnectSession(sessionId)}>

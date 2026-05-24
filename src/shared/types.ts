@@ -72,6 +72,7 @@ export interface Server {
   credentialId: string | null
   jumpServerId: string | null
   favorite: boolean
+  captureCommandHistory: boolean
   createdAt: string
   updatedAt: string
   lastConnectedAt: string | null
@@ -126,6 +127,7 @@ export interface AppSettings {
   resourceMonitorIntervalMs: number
   sftpUploadConcurrency: number
   sftpDownloadConcurrency: number
+  commandHistoryEnabled: boolean
 }
 
 export interface WebDAVBackupState {
@@ -229,6 +231,7 @@ export interface ServerUpsertInput {
   jumpServerId?: string | null
   tagIds: string[]
   favorite: boolean
+  captureCommandHistory?: boolean
   password?: string
   passphrase?: string
   rememberPassword: boolean
@@ -440,4 +443,34 @@ export interface QuickConnectTarget {
   host: string
   port: 22
   username: string
+}
+
+export type CommandHistoryScope = { kind: 'ssh'; serverId: string } | { kind: 'local' }
+
+export interface CommandHistoryEntry {
+  id: string
+  scopeKind: 'ssh' | 'local'
+  serverId: string | null
+  command: string
+  executedAt: string
+  cwd: string | null
+  exitCode: number | null
+  durationMs: number | null
+}
+
+export interface CommandRecordedEvent extends ObservableEventMetadata {
+  scope: CommandHistoryScope
+  entry: CommandHistoryEntry
+}
+
+export interface CommandHistoryListInput {
+  scope: CommandHistoryScope
+  limit?: number
+  before?: string
+}
+
+export interface CommandHistorySearchInput {
+  scope: CommandHistoryScope
+  query: string
+  limit?: number
 }

@@ -11,11 +11,16 @@ import {
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import type {
   AppSettings,
+  CommandHistoryEntry,
+  CommandRecordedEvent,
   LocalTerminalDataEvent,
   LocalTerminalExitEvent,
   LocalTerminalStateEvent,
   LocalTerminalSummary
 } from '@shared/types'
+import type { DatabaseService } from './database'
+import { createOscScannerState, scanOscChunk, type OscScannerState } from './osc-scanner'
+import { SHELL_INTEGRATION_SCRIPT } from './shell-integration'
 
 const require = createRequire(import.meta.url)
 
@@ -23,9 +28,16 @@ type EventMap = {
   'localTerminals:data': LocalTerminalDataEvent
   'localTerminals:exit': LocalTerminalExitEvent
   'localTerminals:state': LocalTerminalStateEvent
+  'commandHistory:added': CommandRecordedEvent
 }
 
 const LOCAL_TERMINAL_OUTPUT_BATCH_MS = 16
+const HISTORY_PROBE_TIMEOUT_MS = 3000
+
+interface PendingLocalCommand {
+  text: string | null
+  startedAt: number | null
+}
 
 interface LocalTerminalRecord {
   summary: LocalTerminalSummary
@@ -34,6 +46,11 @@ interface LocalTerminalRecord {
   closeRequested: boolean
   pendingData: string
   flushTimer: ReturnType<typeof setTimeout> | null
+  oscState: OscScannerState
+  pendingCommand: PendingLocalCommand
+  historyCaptureEnabled: boolean
+  historyCaptureStatus: 'pending' | 'active' | 'unavailable'
+  historyProbeTimer: ReturnType<typeof setTimeout> | null
 }
 
 function now() {
@@ -60,8 +77,11 @@ export class LocalTerminalManager {
       channel: K,
       payload: EventMap[K]
     ) => void,
-    private readonly getSettings: () => Pick<AppSettings, 'localTerminalShell'> = () =>
-      DEFAULT_APP_SETTINGS
+    private readonly getSettings: () => Pick<
+      AppSettings,
+      'localTerminalShell' | 'commandHistoryEnabled'
+    > = () => DEFAULT_APP_SETTINGS,
+    private readonly database: DatabaseService | null = null
   ) {}
 
   create(): LocalTerminalSummary {
@@ -107,19 +127,45 @@ export class LocalTerminalManager {
       throw new Error(`Failed to start local terminal using "${shellPath}" in "${cwd}": ${message}`)
     }
 
+    const shellName = path.basename(shell).toLowerCase()
+    const shellSupportsIntegration = shellName === 'bash' || shellName === 'zsh'
+    const captureEnabled =
+      shellSupportsIntegration &&
+      Boolean(this.database) &&
+      this.getSettings().commandHistoryEnabled !== false
+
     const record: LocalTerminalRecord = {
       closeRequested: false,
       disposeListeners: () => undefined,
       flushTimer: null,
       pendingData: '',
       pty,
-      summary
+      summary,
+      oscState: createOscScannerState(),
+      pendingCommand: { text: null, startedAt: null },
+      historyCaptureEnabled: captureEnabled,
+      historyCaptureStatus: captureEnabled ? 'pending' : 'unavailable',
+      historyProbeTimer: null
     }
 
     this.terminals.set(terminalId, record)
 
+    if (captureEnabled) {
+      try {
+        pty.write(SHELL_INTEGRATION_SCRIPT)
+        record.historyProbeTimer = setTimeout(() => {
+          if (record.historyCaptureStatus === 'pending') {
+            record.historyCaptureStatus = 'unavailable'
+          }
+          record.historyProbeTimer = null
+        }, HISTORY_PROBE_TIMEOUT_MS)
+      } catch {
+        record.historyCaptureStatus = 'unavailable'
+      }
+    }
+
     const dataDisposable = pty.onData((data) => {
-      this.bufferTerminalData(terminalId, data)
+      this.handlePtyData(terminalId, data)
     })
     const exitDisposable = pty.onExit(({ exitCode, signal }) => {
       const current = this.terminals.get(terminalId)
@@ -183,6 +229,10 @@ export class LocalTerminalManager {
     }
 
     record.closeRequested = true
+    if (record.historyProbeTimer) {
+      clearTimeout(record.historyProbeTimer)
+      record.historyProbeTimer = null
+    }
     this.clearPendingTerminalData(record)
     record.disposeListeners()
     record.pty?.kill()
@@ -228,6 +278,85 @@ export class LocalTerminalManager {
 
       this.flushTerminalData(terminalId, current)
     }, LOCAL_TERMINAL_OUTPUT_BATCH_MS)
+  }
+
+  private handlePtyData(terminalId: string, data: string) {
+    const record = this.terminals.get(terminalId)
+    if (!record) {
+      return
+    }
+
+    const cleaned = scanOscChunk(record.oscState, data, {
+      onPromptStart: () => {
+        if (record.historyCaptureStatus === 'pending') {
+          record.historyCaptureStatus = 'active'
+          if (record.historyProbeTimer) {
+            clearTimeout(record.historyProbeTimer)
+            record.historyProbeTimer = null
+          }
+        }
+      },
+      onCommandText: (command) => {
+        record.pendingCommand = {
+          text: command,
+          startedAt: record.pendingCommand.startedAt
+        }
+      },
+      onCommandPre: () => {
+        if (record.pendingCommand.startedAt === null) {
+          record.pendingCommand.startedAt = Date.now()
+        }
+      },
+      onCommandDone: (exitCode) => {
+        this.handleLocalCommandDone(record, exitCode)
+      }
+    })
+
+    if (cleaned) {
+      this.bufferTerminalData(terminalId, cleaned)
+    }
+  }
+
+  private handleLocalCommandDone(
+    record: LocalTerminalRecord,
+    exitCode: number | null
+  ): void {
+    const pending = record.pendingCommand
+    record.pendingCommand = { text: null, startedAt: null }
+    if (!pending.text || !this.database) {
+      return
+    }
+    const executedAt = pending.startedAt
+      ? new Date(pending.startedAt).toISOString()
+      : new Date().toISOString()
+    const durationMs =
+      pending.startedAt !== null ? Math.max(0, Date.now() - pending.startedAt) : null
+
+    let entry: CommandHistoryEntry | null = null
+    try {
+      entry = this.database.recordCommand({
+        scope: { kind: 'local' },
+        command: pending.text,
+        executedAt,
+        cwd: null,
+        exitCode,
+        durationMs
+      })
+    } catch {
+      return
+    }
+
+    if (!entry) {
+      return
+    }
+
+    this.emitToRenderer(
+      'commandHistory:added',
+      this.withObservableMetadata(record.summary.terminalId, {
+        scope: { kind: 'local' },
+        entry
+      })
+    )
   }
 
   private flushTerminalData(terminalId: string, record = this.terminals.get(terminalId)) {

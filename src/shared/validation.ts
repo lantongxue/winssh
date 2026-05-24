@@ -87,6 +87,7 @@ export const serverSchema = z
     jumpServerId: z.string().trim().nullable().optional(),
     tagIds: z.array(z.string()).default([]),
     favorite: z.boolean().default(false),
+    captureCommandHistory: z.boolean().optional(),
     password: z.string().optional(),
     passphrase: z.string().optional(),
     rememberPassword: z.boolean().default(true),
@@ -202,7 +203,8 @@ export const settingsSchema = z.object({
   webdavBackupPath: z.string().trim().max(512).nullable(),
   resourceMonitorIntervalMs: z.coerce.number().int().min(500).max(30000),
   sftpUploadConcurrency: z.coerce.number().int().min(1).max(16),
-  sftpDownloadConcurrency: z.coerce.number().int().min(1).max(16)
+  sftpDownloadConcurrency: z.coerce.number().int().min(1).max(16),
+  commandHistoryEnabled: z.boolean()
 })
 
 export type ServerFormValues = z.infer<typeof serverSchema>

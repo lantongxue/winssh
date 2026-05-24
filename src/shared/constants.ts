@@ -10,6 +10,9 @@ export const APP_ID = 'com.winssh.app'
 export const APP_NAME = 'WinSSH'
 export const SECURE_STORE_SERVICE = 'winssh.credentials'
 
+export const COMMAND_HISTORY_CAP = 5000
+export const COMMAND_HISTORY_LOCAL_SCOPE = 'default'
+
 export const COLOR_PRESETS = [
   'slate',
   'stone',
@@ -52,5 +55,6 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   webdavBackupPath: '/winssh-backup/',
   resourceMonitorIntervalMs: 2000,
   sftpUploadConcurrency: 3,
-  sftpDownloadConcurrency: 3
+  sftpDownloadConcurrency: 3,
+  commandHistoryEnabled: true
 }
