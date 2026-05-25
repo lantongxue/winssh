@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.9](https://cnb.cool/webqteam/winssh/compare/v1.1.8...v1.1.9) (2026-05-25)
+
+### Features
+
+* 跨平台资源监控、主机指纹对话框迁移渲染端、命令历史面板升级、SFTP智能编码 ([3742278](https://cnb.cool/webqteam/winssh/commit/3742278a1422277d7f0a14c67afb00ac4bdac4ad))
+
 ## [1.1.8](https://cnb.cool/webqteam/winssh/compare/v1.1.7...v1.1.8) (2026-05-25)
 
 ### Features
