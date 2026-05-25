@@ -1,5 +1,7 @@
 # Changelog
 
+## [1.1.10](https://github.com/lantongxue/winssh/compare/v1.1.9...v1.1.10) (2026-05-25)
+
 ## [1.1.9](https://cnb.cool/webqteam/winssh/compare/v1.1.8...v1.1.9) (2026-05-25)
 
 ### Features
