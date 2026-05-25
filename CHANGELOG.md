@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.8](https://cnb.cool/webqteam/winssh/compare/v1.1.7...v1.1.8) (2026-05-25)
+
+### Features
+
+* 移除终端跟随功能 ([a4f92fe](https://cnb.cool/webqteam/winssh/commit/a4f92fe1ccb7e9c22ad4fde8b1a3724b5864e00f))
+* 增加命令历史记录 ([ef27a34](https://cnb.cool/webqteam/winssh/commit/ef27a3499e4c3d09f9da9e52ccb9dac01e8c1e9c))
+* 增加全新的官网 ([adcef8c](https://cnb.cool/webqteam/winssh/commit/adcef8ce7c6ab79da9c5e8caf70a86d03c6f879e))
+* **session:** 添加 OSC 7 目录检测功能并推送 cwd 事件 ([5011114](https://cnb.cool/webqteam/winssh/commit/5011114fd508e0e3a531bd5e376a825f7fe2ab48))
+
 ## [1.1.7](https://cnb.cool/webqteam/winssh/compare/v1.1.6...v1.1.7) (2026-05-18)
 
 ### Features
