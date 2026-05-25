@@ -1,5 +1,6 @@
 import type {
   ConnectionRequest,
+  HostTrustResult,
   PortForwardInput,
   SessionConnectResult,
   SessionResourceSnapshot,
@@ -140,5 +141,9 @@ export class SessionsApplicationService {
 
   resizeLocalTerminal(terminalId: string, columns: number, rows: number) {
     return this.localTerminalManager.resize(terminalId, columns, rows)
+  }
+
+  resolveHostTrust(result: HostTrustResult): void {
+    this.sessionManager.resolveHostTrust(result)
   }
 }

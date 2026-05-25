@@ -13,11 +13,11 @@ import {
 import {
   dialog,
   type BrowserWindow,
-  type MessageBoxOptions,
   type OpenDialogOptions
 } from 'electron'
 import { normalizeRemotePath, sortRemoteEntries } from '@shared/sftp'
 import { runWithConcurrency } from './concurrency-pool'
+import { smartDecodeBuffer } from './encoding'
 import { DEFAULT_SERVER_BRAND_ID, resolveServerBrandFromOsRelease } from '@shared/server-brands'
 import {
   type ConnectionSecretInput,
@@ -30,7 +30,6 @@ import {
   RemoteEntry,
   type RemoteEntryKind,
   type SecretKind,
-  SESSION_RESOURCE_MONITOR_LINUX_ONLY,
   SESSION_RESOURCE_MONITOR_UNAVAILABLE,
   type Server,
   SessionConnectFailureCode,
@@ -43,12 +42,14 @@ import {
   type SessionResourceSnapshot,
   SessionStateEvent,
   SessionSummary,
-  TransferProgressEvent
+  TransferProgressEvent,
+  type HostTrustRequest,
+  type HostTrustResult
 } from '@shared/types'
 import type { DatabaseService } from './database'
 import type { MainTranslator } from './localization'
 import { createOscScannerState, scanOscChunk, type OscScannerState } from './osc-scanner'
-import { SHELL_INTEGRATION_SCRIPT } from './shell-integration'
+import { isShellIntegrationInternal, SHELL_INTEGRATION_SCRIPT } from './shell-integration'
 type WindowProvider = () => BrowserWindow | null
 type AcceptTcpConnection = () => ClientChannel
 type RejectConnection = () => void
@@ -328,7 +329,7 @@ async function sftpReadFile(
       onProgress(totalSize, totalSize)
     }
 
-    return Buffer.concat(chunks).toString('utf8')
+    return smartDecodeBuffer(Buffer.concat(chunks))
   } finally {
     await sftpClose(sftp, handle).catch(() => undefined)
   }
@@ -832,6 +833,10 @@ export class SessionManager {
   private readonly resourceNetworkBaselines = new Map<string, NetworkBytesSample>()
   private readonly editorReadControllers = new Map<string, AbortController>()
   private readonly transferControllers = new Map<string, AbortController>()
+  private readonly hostTrustResolvers = new Map<
+    string,
+    (result: boolean) => void
+  >()
 
   constructor(
     private readonly database: DatabaseService,
@@ -898,81 +903,106 @@ export class SessionManager {
       throw new Error(SESSION_RESOURCE_MONITOR_UNAVAILABLE)
     }
 
+    // Phase 1: Latency measurement (cross-platform)
+    const latencyStart = Date.now()
     try {
-      const result = await execCommand(runtime.client, LINUX_RESOURCE_SNAPSHOT_COMMAND)
-      if ((result.code ?? 0) !== 0) {
-        throw new Error(SESSION_RESOURCE_MONITOR_UNAVAILABLE)
-      }
+      const latencyResult = await execCommand(runtime.client, 'printf \'%s\\n\' "$(uname -s 2>/dev/null || echo unknown)"')
+      const rttMs = Date.now() - latencyStart
+      const platformName = latencyResult.stdout.trim()
 
-      const sections = parseSectionedOutput(result.stdout)
-      const platform = sections.get(RESOURCE_MONITOR_MARKERS.platform)
-      if (platform !== 'Linux') {
-        throw new Error(SESSION_RESOURCE_MONITOR_LINUX_ONLY)
-      }
+      const platform: SessionResourceSnapshot['platform'] =
+        platformName === 'Linux' ? 'linux' :
+        platformName === 'Darwin' ? 'darwin' :
+        platformName === 'Windows' || platformName.startsWith('Windows') ? 'windows' :
+        'unknown'
 
       const sampledAt = now()
       const sampledAtMs = Date.parse(sampledAt)
-      const cpuTimes = parseCpuTimes(sections.get(RESOURCE_MONITOR_MARKERS.procStat) ?? '')
-      const memory = parseMemInfo(sections.get(RESOURCE_MONITOR_MARKERS.procMeminfo) ?? '')
-      const networkBytes = parseNetworkBytes(
-        sections.get(RESOURCE_MONITOR_MARKERS.procNetDev) ?? ''
-      )
-      const disk = parseDiskUsage(sections.get(RESOURCE_MONITOR_MARKERS.df) ?? '')
 
-      const previousCpuTimes = this.resourceCpuBaselines.get(sessionId)
-      this.resourceCpuBaselines.set(sessionId, cpuTimes)
-      const previousNetworkBytes = this.resourceNetworkBaselines.get(sessionId)
-      this.resourceNetworkBaselines.set(sessionId, {
-        ...networkBytes,
-        sampledAt: sampledAtMs
-      })
+      // Phase 2: Resource sampling (Linux-only)
+      if (platform === 'linux' && (latencyResult.code ?? 0) === 0) {
+        try {
+          const resourceResult = await execCommand(runtime.client, LINUX_RESOURCE_SNAPSHOT_COMMAND)
+          if ((resourceResult.code ?? 0) !== 0) {
+            // Resource command failed but latency worked - return partial
+            return {
+              sessionId,
+              sampledAt,
+              platform,
+              latency: { rttMs },
+              cpu: null,
+              memory: null,
+              network: null,
+              disk: null
+            }
+          }
 
-      let cpuUsagePercent: number | null = null
-      if (previousCpuTimes) {
-        const totalDelta = cpuTimes.total - previousCpuTimes.total
-        const idleDelta = cpuTimes.idle - previousCpuTimes.idle
-        if (totalDelta > 0) {
-          cpuUsagePercent = Number((((totalDelta - idleDelta) / totalDelta) * 100).toFixed(1))
+          const sections = parseSectionedOutput(resourceResult.stdout)
+          const cpuTimes = parseCpuTimes(sections.get(RESOURCE_MONITOR_MARKERS.procStat) ?? '')
+          const memory = parseMemInfo(sections.get(RESOURCE_MONITOR_MARKERS.procMeminfo) ?? '')
+          const networkBytes = parseNetworkBytes(sections.get(RESOURCE_MONITOR_MARKERS.procNetDev) ?? '')
+          const disk = parseDiskUsage(sections.get(RESOURCE_MONITOR_MARKERS.df) ?? '')
+
+          const previousCpuTimes = this.resourceCpuBaselines.get(sessionId)
+          this.resourceCpuBaselines.set(sessionId, cpuTimes)
+          const previousNetworkBytes = this.resourceNetworkBaselines.get(sessionId)
+          this.resourceNetworkBaselines.set(sessionId, { ...networkBytes, sampledAt: sampledAtMs })
+
+          let cpuUsagePercent: number | null = null
+          if (previousCpuTimes) {
+            const totalDelta = cpuTimes.total - previousCpuTimes.total
+            const idleDelta = cpuTimes.idle - previousCpuTimes.idle
+            if (totalDelta > 0) {
+              cpuUsagePercent = Number((((totalDelta - idleDelta) / totalDelta) * 100).toFixed(1))
+            }
+          }
+
+          let rxBytesPerSecond: number | null = null
+          let txBytesPerSecond: number | null = null
+          if (previousNetworkBytes && sampledAtMs > previousNetworkBytes.sampledAt) {
+            const elapsedSeconds = (sampledAtMs - previousNetworkBytes.sampledAt) / 1000
+            rxBytesPerSecond = Math.max(0, Math.round((networkBytes.rxBytes - previousNetworkBytes.rxBytes) / elapsedSeconds))
+            txBytesPerSecond = Math.max(0, Math.round((networkBytes.txBytes - previousNetworkBytes.txBytes) / elapsedSeconds))
+          }
+
+          return {
+            sessionId,
+            sampledAt,
+            platform: 'linux',
+            latency: { rttMs },
+            cpu: { usagePercent: cpuUsagePercent },
+            memory,
+            network: { rxBytesPerSecond, txBytesPerSecond },
+            disk
+          }
+        } catch {
+          // Resource sampling failed on Linux - return partial
+          return {
+            sessionId,
+            sampledAt,
+            platform,
+            latency: { rttMs },
+            cpu: null,
+            memory: null,
+            network: null,
+            disk: null
+          }
         }
       }
 
-      let rxBytesPerSecond: number | null = null
-      let txBytesPerSecond: number | null = null
-      if (previousNetworkBytes && sampledAtMs > previousNetworkBytes.sampledAt) {
-        const elapsedSeconds = (sampledAtMs - previousNetworkBytes.sampledAt) / 1000
-        rxBytesPerSecond = Math.max(
-          0,
-          Math.round((networkBytes.rxBytes - previousNetworkBytes.rxBytes) / elapsedSeconds)
-        )
-        txBytesPerSecond = Math.max(
-          0,
-          Math.round((networkBytes.txBytes - previousNetworkBytes.txBytes) / elapsedSeconds)
-        )
-      }
-
+      // Non-Linux platform - return partial (latency only)
       return {
-        cpu: {
-          usagePercent: cpuUsagePercent
-        },
-        disk,
-        memory,
-        network: {
-          rxBytesPerSecond,
-          txBytesPerSecond
-        },
-        platform: 'linux',
+        sessionId,
         sampledAt,
-        sessionId
+        platform,
+        latency: { rttMs },
+        cpu: null,
+        memory: null,
+        network: null,
+        disk: null
       }
     } catch (error) {
-      if (
-        error instanceof Error &&
-        (error.message === SESSION_RESOURCE_MONITOR_LINUX_ONLY ||
-          error.message === SESSION_RESOURCE_MONITOR_UNAVAILABLE)
-      ) {
-        throw error
-      }
-
+      // Phase 1 failed - connection is broken
       throw new Error(SESSION_RESOURCE_MONITOR_UNAVAILABLE)
     }
   }
@@ -1136,6 +1166,9 @@ export class SessionManager {
         }
       },
       onCommandText: (command) => {
+        if (isShellIntegrationInternal(command)) {
+          return
+        }
         runtime.pendingCommand = {
           text: command,
           startedAt: runtime.pendingCommand.startedAt,
@@ -2780,49 +2813,30 @@ export class SessionManager {
 
     const window = this.getWindow()
 
-    if (known && known.fingerprint !== fingerprint) {
-      const warningOptions: MessageBoxOptions = {
-        type: 'warning',
-        buttons: [
-          this.t('dialogs.hostChanged.buttons.cancel'),
-          this.t('dialogs.hostChanged.buttons.trust')
-        ],
-        cancelId: 0,
-        defaultId: 0,
-        title: this.t('dialogs.hostChanged.title'),
-        message: this.t('dialogs.hostChanged.message', { serverName }),
-        detail: this.t('dialogs.hostChanged.detail', {
-          fingerprint,
-          knownFingerprint: known.fingerprint
-        })
-      }
-      const changed = window
-        ? await dialog.showMessageBox(window, warningOptions)
-        : await dialog.showMessageBox(warningOptions)
+    if (!window) {
+      return false
+    }
 
-      if (changed.response !== 1) {
-        return false
-      }
-    } else {
-      const trustOptions: MessageBoxOptions = {
-        type: 'question',
-        buttons: [
-          this.t('dialogs.hostFirstSeen.buttons.reject'),
-          this.t('dialogs.hostFirstSeen.buttons.trust')
-        ],
-        cancelId: 0,
-        defaultId: 1,
-        title: this.t('dialogs.hostFirstSeen.title'),
-        message: this.t('dialogs.hostFirstSeen.message', { serverName }),
-        detail: this.t('dialogs.hostFirstSeen.detail', { fingerprint, host, port })
-      }
-      const firstTrust = window
-        ? await dialog.showMessageBox(window, trustOptions)
-        : await dialog.showMessageBox(trustOptions)
+    const requestId = randomUUID()
+    const kind = known ? 'hostChanged' : 'hostFirstSeen'
 
-      if (firstTrust.response !== 1) {
-        return false
-      }
+    const request: HostTrustRequest = {
+      requestId,
+      kind,
+      serverName,
+      host,
+      port,
+      fingerprint,
+      knownFingerprint: known?.fingerprint
+    }
+
+    const trusted = await new Promise<boolean>((resolve) => {
+      this.hostTrustResolvers.set(requestId, resolve)
+      window.webContents.send('system:hostTrustRequest', request)
+    })
+
+    if (!trusted) {
+      return false
     }
 
     this.database.upsertKnownHost({
@@ -2834,6 +2848,14 @@ export class SessionManager {
     })
 
     return true
+  }
+
+  resolveHostTrust(result: HostTrustResult): void {
+    const resolver = this.hostTrustResolvers.get(result.requestId)
+    if (resolver) {
+      this.hostTrustResolvers.delete(result.requestId)
+      resolver(result.trusted)
+    }
   }
 
   private emitConnectionPhase(sessionId: string, phase: SessionConnectionPhase): void {

@@ -23,6 +23,7 @@ const common = {
     quickOpen: '快速连接',
     reconnect: '重新连接',
     refresh: '刷新',
+    reject: '拒绝',
     rename: '重命名',
     restartNow: '立即重启',
     save: '保存',
@@ -30,6 +31,7 @@ const common = {
     stop: '停止',
     togglePanel: '切换底部面板',
     toggleSidebar: '切换侧栏',
+    trust: '信任',
     upload: '上传'
   },
   labels: {
@@ -58,6 +60,23 @@ const common = {
     quickOpen: 'Ctrl/Cmd+P',
     togglePanel: 'Ctrl/Cmd+J',
     toggleSidebar: 'Ctrl/Cmd+B'
+  },
+  hostTrust: {
+    hostChanged: {
+      title: '主机指纹已变更',
+      message: '{{serverName}} 的主机指纹与上次记录不一致',
+      detail:
+        '旧指纹: {{knownFingerprint}}\n新指纹: {{fingerprint}}\n\n如果你无法确认变更来源，请取消连接。',
+      cancel: '取消连接',
+      trust: '信任新指纹'
+    },
+    hostFirstSeen: {
+      title: '首次连接主机',
+      message: '是否信任 {{serverName}} 的主机指纹？',
+      detail: '地址: {{host}}:{{port}}\n指纹: {{fingerprint}}',
+      reject: '拒绝',
+      trust: '信任并继续'
+    }
   }
 }
 

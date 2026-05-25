@@ -15,6 +15,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { WorkbenchShell } from '@/components/workbench/workbench-shell'
+import { HostTrustDialogHost } from '@/components/workbench/host-trust-dialog'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { queryKeys } from '@/features/shared/query-keys'
 import { settingsClient } from '@/features/settings/api/settings-client'
@@ -275,6 +276,7 @@ export default function App() {
         <WorkbenchShell />
       </TooltipProvider>
       <UpdateDialog />
+      <HostTrustDialogHost />
       <Toaster position="bottom-right" closeButton offset={16} />
     </AppErrorBoundary>
   )

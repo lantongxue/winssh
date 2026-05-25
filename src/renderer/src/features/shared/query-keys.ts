@@ -9,6 +9,7 @@ export const queryKeys = {
   logEntries: ['logs', 'entries'] as const,
   logsState: ['logs', 'state'] as const,
   recentSessions: ['recent-sessions'] as const,
+  resourceSnapshot: (sessionId: string) => ['session-resource-snapshot', sessionId] as const,
   servers: ['servers'] as const,
   settings: ['settings'] as const,
   tags: ['tags'] as const,

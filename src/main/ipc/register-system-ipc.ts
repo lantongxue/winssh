@@ -2,11 +2,13 @@ import { readFile } from 'node:fs/promises'
 import { extname } from 'node:path'
 import { app, dialog, ipcMain, type BrowserWindow, type OpenDialogOptions } from 'electron'
 import type { AppLogEvent } from '@shared/observability'
+import { hostTrustResultSchema } from '@shared/validation'
 import { isServerIconMimeType } from '@shared/server-brands'
 import { getDefaultThemeId, SYSTEM_THEME_ID, type ThemeAppearance } from '@shared/themes'
 import type { AppInfo, AppSettings } from '@shared/types'
 import { settingsSchema } from '@shared/validation'
 import type { SettingsApplicationService } from '../application/settings-application-service'
+import type { SessionsApplicationService } from '../application/sessions-application-service'
 import type { DatabaseService } from '../database'
 import type { MainTranslator } from '../localization'
 import type { LogFileService } from '../log-file-service'
@@ -40,6 +42,7 @@ export function registerSystemIpc(options: {
   getMainWindow: () => BrowserWindow | null
   logFileService: LogFileService
   settingsService: SettingsApplicationService
+  sessionsService: SessionsApplicationService
   themeRegistry: ThemeRegistry
   translate: MainTranslator
   updateService: UpdateService
@@ -53,6 +56,7 @@ export function registerSystemIpc(options: {
     getMainWindow,
     logFileService,
     settingsService,
+    sessionsService,
     themeRegistry,
     translate,
     updateService,
@@ -325,4 +329,9 @@ export function registerSystemIpc(options: {
     webdavBackupService.restore(fileName)
   )
   ipcMain.handle('backup:testConnection', () => webdavBackupService.testConnection())
+
+  ipcMain.handle('system:respondHostTrust', (_event, result: unknown) => {
+    const parsed = parseInput(hostTrustResultSchema, result)
+    sessionsService.resolveHostTrust(parsed)
+  })
 }

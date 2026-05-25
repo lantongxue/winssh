@@ -375,6 +375,7 @@ const workbench = {
         metrics: {
           cpu: 'CPU',
           disk: 'Disk (/)',
+          latency: 'Latency',
           memory: 'Memory',
           network: 'Network'
         },
@@ -887,12 +888,22 @@ const workbench = {
     },
     commandHistory: {
       title: 'Command History',
+      subtitle: 'Recorded shell commands',
       empty: 'No commands recorded yet.',
+      emptyTitle: 'No Command History',
+      emptyDescription: 'Commands executed in the terminal will be recorded here',
       searchPlaceholder: 'Search commands…',
       clear: 'Clear history',
       clearConfirm: 'Clear all recorded commands for this scope?',
+      clearDialog: {
+        title: 'Clear Command History',
+        description: 'This permanently removes all recorded commands for this scope. This action cannot be undone.'
+      },
       deleteEntry: 'Delete',
-      reRun: 'Insert into terminal',
+      reRun: 'Double-click to insert into terminal',
+      insertIntoTerminal: 'Insert into terminal',
+      runImmediately: 'Run immediately',
+      copyToClipboard: 'Copy to clipboard',
       toggleButton: 'Toggle command history',
       captureDisabled: 'Capture disabled for this server.',
       captureUnavailable: 'Capture unavailable (shell integration not detected).',
@@ -902,7 +913,10 @@ const workbench = {
       enableGlobal: 'Enable command history globally',
       cwdLabel: 'cwd',
       exitCodeLabel: 'exit',
-      durationLabel: 'took'
+      durationLabel: 'took',
+      filterAll: 'All',
+      filterSuccess: 'Success',
+      filterFailed: 'Failed'
     }
   }
 }

@@ -11,6 +11,7 @@ import type {
   CredentialSecret,
   CredentialUpsertInput,
   GroupInput,
+  HostTrustResult,
   KnownHost,
   LogEntry,
   LogsState,
@@ -177,6 +178,7 @@ export interface WinsshApi {
     removeKnownHost: (host: string, port: number) => Promise<void>
     getCapabilities: () => Promise<RuntimeCapabilities>
     relaunch: () => Promise<void>
+    respondHostTrust: (result: HostTrustResult) => Promise<void>
     menu: {
       onAction: (callback: (action: SystemMenuAction) => void) => Unsubscribe
     }
@@ -187,5 +189,6 @@ export interface WinsshApi {
       isMaximized: () => Promise<boolean>
       onStateChange: (callback: (state: WindowState) => void) => Unsubscribe
     }
+    onHostTrustRequest: (callback: (request: import('./types').HostTrustRequest) => void) => Unsubscribe
   }
 }

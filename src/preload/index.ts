@@ -319,6 +319,7 @@ const api: WinsshApi = {
     removeKnownHost: (host, port) => ipcRenderer.invoke('system:removeKnownHost', host, port),
     getCapabilities: () => ipcRenderer.invoke('system:getCapabilities'),
     relaunch: () => ipcRenderer.invoke('system:relaunch'),
+    respondHostTrust: (result) => ipcRenderer.invoke('system:respondHostTrust', result),
     menu: {
       onAction: (callback) => subscribe('system:menuAction', callback)
     },
@@ -328,7 +329,8 @@ const api: WinsshApi = {
       close: () => ipcRenderer.invoke('system:window:close'),
       isMaximized: () => ipcRenderer.invoke('system:window:isMaximized'),
       onStateChange: (callback) => subscribe('system:windowState', callback)
-    }
+    },
+    onHostTrustRequest: (callback) => subscribe('system:hostTrustRequest', callback)
   }
 }
 

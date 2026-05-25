@@ -6,10 +6,7 @@ import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
 import { dialog } from 'electron'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import {
-  SESSION_RESOURCE_MONITOR_LINUX_ONLY,
-  SESSION_RESOURCE_MONITOR_UNAVAILABLE
-} from '@shared/types'
+import { SESSION_RESOURCE_MONITOR_UNAVAILABLE } from '@shared/types'
 
 vi.mock('electron', () => ({
   dialog: {
@@ -862,10 +859,16 @@ describe('SessionManager port forwarding', () => {
 
     execBehaviors.push(
       {
+        stdout: 'Linux\n'
+      },
+      {
         stdout: createResourceMonitorOutput({
           cpuLine: 'cpu  100 0 100 900 0 0 0 0 0 0',
           networkInterfaces: ['eth0: 1000 0 0 0 0 0 0 0 2000 0 0 0 0 0 0 0']
         })
+      },
+      {
+        stdout: 'Linux\n'
       },
       {
         stdout: createResourceMonitorOutput({
@@ -876,18 +879,22 @@ describe('SessionManager port forwarding', () => {
     )
 
     const firstSnapshot = await manager.getResourceSnapshot('session-1')
-    expect(firstSnapshot.cpu.usagePercent).toBeNull()
-    expect(firstSnapshot.memory.usagePercent).toBe(50)
-    expect(firstSnapshot.disk.usagePercent).toBe(25)
-    expect(firstSnapshot.network).toEqual({
+    expect(firstSnapshot.platform).toBe('linux')
+    expect(firstSnapshot.latency.rttMs).toBeTypeOf('number')
+    expect(firstSnapshot.cpu!.usagePercent).toBeNull()
+    expect(firstSnapshot.memory!.usagePercent).toBe(50)
+    expect(firstSnapshot.disk!.usagePercent).toBe(25)
+    expect(firstSnapshot.network!).toEqual({
       rxBytesPerSecond: null,
       txBytesPerSecond: null
     })
 
     vi.setSystemTime(new Date('2026-04-06T00:00:02.000Z'))
     const secondSnapshot = await manager.getResourceSnapshot('session-1')
-    expect(secondSnapshot.cpu.usagePercent).toBe(75)
-    expect(secondSnapshot.network).toEqual({
+    expect(secondSnapshot.platform).toBe('linux')
+    expect(secondSnapshot.latency.rttMs).toBeTypeOf('number')
+    expect(secondSnapshot.cpu!.usagePercent).toBe(75)
+    expect(secondSnapshot.network!).toEqual({
       rxBytesPerSecond: 2000,
       txBytesPerSecond: 3000
     })
@@ -899,11 +906,16 @@ describe('SessionManager port forwarding', () => {
     const runtime = createRuntime('session-1', client)
     getSessionsMap(manager).set('session-1', runtime)
 
-    execBehaviors.push({
-      stdout: createResourceMonitorOutput({
-        cpuLine: 'cpu  100 0 100 900 0 0 0 0 0 0'
-      })
-    })
+    execBehaviors.push(
+      {
+        stdout: 'Linux\n'
+      },
+      {
+        stdout: createResourceMonitorOutput({
+          cpuLine: 'cpu  100 0 100 900 0 0 0 0 0 0'
+        })
+      }
+    )
 
     await manager.getResourceSnapshot('session-1')
     expect(getCpuBaselinesMap(manager).has('session-1')).toBe(true)
@@ -914,24 +926,27 @@ describe('SessionManager port forwarding', () => {
     expect(getNetworkBaselinesMap(manager).has('session-1')).toBe(false)
   })
 
-  it('reports Linux-only availability when the remote host is not Linux', async () => {
+  it('returns partial snapshot with latency for non-Linux platforms', async () => {
     const manager = createManager()
     const client = new MockClient()
     const runtime = createRuntime('session-1', client)
     getSessionsMap(manager).set('session-1', runtime)
 
+    // Phase 1: latency/platform command returns Darwin
     execBehaviors.push({
-      stdout: createResourceMonitorOutput({
-        platform: 'Darwin'
-      })
+      stdout: 'Darwin\n'
     })
 
-    await expect(manager.getResourceSnapshot('session-1')).rejects.toThrow(
-      SESSION_RESOURCE_MONITOR_LINUX_ONLY
-    )
+    const snapshot = await manager.getResourceSnapshot('session-1')
+    expect(snapshot.platform).toBe('darwin')
+    expect(snapshot.latency.rttMs).toBeTypeOf('number')
+    expect(snapshot.cpu).toBeNull()
+    expect(snapshot.memory).toBeNull()
+    expect(snapshot.network).toBeNull()
+    expect(snapshot.disk).toBeNull()
   })
 
-  it('returns unavailable when the session is missing, not ready, or remote sampling fails', async () => {
+  it('returns unavailable when the session is missing, not ready, or latency measurement fails', async () => {
     const manager = createManager()
 
     await expect(manager.getResourceSnapshot('missing-session')).rejects.toThrow(
@@ -949,6 +964,29 @@ describe('SessionManager port forwarding', () => {
     )
 
     runtime.summary.status = 'ready'
+
+    // Phase 1 (latency) fails - connection is broken
+    execBehaviors.push({
+      error: new Error('connection lost')
+    })
+
+    await expect(manager.getResourceSnapshot('session-1')).rejects.toThrow(
+      SESSION_RESOURCE_MONITOR_UNAVAILABLE
+    )
+  })
+
+  it('returns partial snapshot when latency succeeds but resource sampling fails', async () => {
+    const manager = createManager()
+    const client = new MockClient()
+    const runtime = createRuntime('session-1', client)
+    getSessionsMap(manager).set('session-1', runtime)
+
+    // Phase 1: latency succeeds (Linux)
+    execBehaviors.push({
+      stdout: 'Linux\n'
+    })
+
+    // Phase 2: resource command fails (exit code 1)
     execBehaviors.push({
       code: 1,
       stderr: 'cat: /proc/stat: No such file or directory',
@@ -957,9 +995,13 @@ describe('SessionManager port forwarding', () => {
       })
     })
 
-    await expect(manager.getResourceSnapshot('session-1')).rejects.toThrow(
-      SESSION_RESOURCE_MONITOR_UNAVAILABLE
-    )
+    const snapshot = await manager.getResourceSnapshot('session-1')
+    expect(snapshot.platform).toBe('linux')
+    expect(snapshot.latency.rttMs).toBeTypeOf('number')
+    expect(snapshot.cpu).toBeNull()
+    expect(snapshot.memory).toBeNull()
+    expect(snapshot.network).toBeNull()
+    expect(snapshot.disk).toBeNull()
   })
 })
 

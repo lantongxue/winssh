@@ -19,3 +19,7 @@ if (!globalThis.ResizeObserver) {
 if (typeof HTMLElement !== 'undefined' && !HTMLElement.prototype.scrollIntoView) {
   HTMLElement.prototype.scrollIntoView = () => undefined
 }
+
+if (typeof HTMLDocument !== 'undefined' && !HTMLDocument.prototype.queryCommandSupported) {
+  HTMLDocument.prototype.queryCommandSupported = (_command: string) => false
+}

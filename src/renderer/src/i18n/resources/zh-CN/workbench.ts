@@ -368,6 +368,7 @@ const workbench = {
         metrics: {
           cpu: 'CPU',
           disk: '磁盘(/)',
+          latency: '延迟',
           memory: '内存',
           network: '网络'
         },
@@ -865,12 +866,22 @@ const workbench = {
     },
     commandHistory: {
       title: '命令历史',
+      subtitle: '已记录的 Shell 命令',
       empty: '暂无命令记录。',
+      emptyTitle: '暂无历史命令',
+      emptyDescription: '在终端中执行的命令会自动记录在这里',
       searchPlaceholder: '搜索命令…',
       clear: '清空历史',
       clearConfirm: '确认清空当前范围内的全部命令记录？',
+      clearDialog: {
+        title: '清空命令历史',
+        description: '将永久删除当前范围内的所有命令记录。此操作无法撤销。'
+      },
       deleteEntry: '删除',
-      reRun: '插入到终端',
+      reRun: '双击插入终端',
+      insertIntoTerminal: '插入终端',
+      runImmediately: '立即运行',
+      copyToClipboard: '复制到剪贴板',
       toggleButton: '切换命令历史面板',
       captureDisabled: '该服务器已关闭命令记录。',
       captureUnavailable: '未检测到 shell 集成，无法记录命令。',
@@ -879,7 +890,10 @@ const workbench = {
       enableGlobal: '全局启用命令历史',
       cwdLabel: '目录',
       exitCodeLabel: '退出码',
-      durationLabel: '耗时'
+      durationLabel: '耗时',
+      filterAll: '全部',
+      filterSuccess: '成功',
+      filterFailed: '失败'
     }
   }
 }
