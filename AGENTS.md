@@ -1,5 +1,40 @@
 # AGENTS.md
 
+**Updated:** 2026-05-26 · **Commit:** 50c93b3 · **Branch:** main
+
+Cross-platform SSH/SFTP desktop client. Electron 39 + React 19 + TypeScript 5 + Vite 7 + Tailwind 4. Core runtime: ssh2, node-pty, better-sqlite3, xterm.js, Monaco, electron-updater, keytar.
+
+> **Child AGENTS.md**: `src/main/`, `src/renderer/src/`, `test/`, `web/` — read domain-specific docs there.
+
+## STRUCTURE
+
+```
+src/main/           # Electron main process (Node.js) — see child AGENTS.md
+src/preload/        # contextBridge typed IPC — 2 files only (index.ts + index.d.ts)
+src/renderer/src/   # React workbench app — see child AGENTS.md
+src/shared/         # Domain models (NOT just types): 12 files incl. Zod schemas, API surface
+themes/builtin/     # VSCode-style JSON theme packs (loaded by main, not CSS in renderer)
+test/               # Mirror-tree test infra — see child AGENTS.md
+web/                # Fully independent brand-site subproject — see child AGENTS.md
+scripts/            # ESM (.mjs) build/utility scripts (mock update feed)
+build/              # NSIS installer.nsh + platform icons + macOS entitlements
+```
+
+**Non-obvious**: `src/renderer/src/` double nesting is electron-vite convention. No `pages/` dir — entire app is a single workbench shell. `src/native/` referenced in README but removed — do not use.
+
+## WHERE TO LOOK
+
+| Task | Location | Notes |
+|------|----------|-------|
+| Add new IPC method | shared/types → shared/validation → main/ipc/register-* → preload → features/*/api → query-keys | 6-layer cross-cutting (see below) |
+| Modify session lifecycle | main/session-manager + renderer/store/sessions-store + workbench-context | SessionManager is 2897 lines — most complex file |
+| Change theme | shared/themes → main/theme-registry → themes/builtin/*/themes/*.json → renderer/lib/theme | Theme packs are JSON, not CSS |
+| Add server table column | main/database + main/application/servers-app-service + shared/validation | Also update ServerUpsertInput/serverSchema |
+| Add SFTP feature | main/session-manager (readFile/writeFile) + renderer/features/sftp/api + workbench-sftp-*-editor | SFTP is text-only |
+| Work on UI layout | renderer/components/workbench/ | Keep-mounted for session/local-terminal editors |
+| Write renderer tests | test/renderer/ + test/renderer/helpers/create-winssh-api | Never co-locate tests in src/ |
+| Work on web/ site | web/src/ | Separate package.json, tsconfig, vite config |
+
 ## Commands
 
 ```bash
@@ -40,7 +75,7 @@ Use these aliases in imports; both src and tests consume them.
 
 - **`src/main/index.ts`** is a thin entry (`app.whenReady().then(bootstrap)`). All assembly is in **`src/main/bootstrap.ts`**.
 - **`src/main/application/`** is a use-case orchestration layer (servers/sessions/settings services).
-- **`src/main/ipc/`** has 3 registrars: `register-server-ipc.ts`, `register-session-ipc.ts`, `register-system-ipc.ts`.
+- **`src/main/ipc/`** has 4 registrars: `register-server-ipc.ts`, `register-session-ipc.ts`, `register-system-ipc.ts`, `register-command-history-ipc.ts`.
 - **`src/renderer/src/features/*/api`** is the ONLY approved entry point for renderer code to call preload bridge. ESLint enforces this: `window.winsshApi` is banned in `src/renderer/src/**` except in `features/shared/api/`.
 - **`src/renderer/src/features/shared/query-keys.ts`** centralizes all React Query keys. Never hardcode new keys.
 - Theme definitions live in `themes/builtin/`, loaded by `src/main/theme-registry.ts`.
@@ -71,7 +106,7 @@ Use these aliases in imports; both src and tests consume them.
 
 - **Prettier**: `singleQuote: true`, `semi: false`, `printWidth: 100`, `trailingComma: none`.
 - **TypeScript**: strict mode, no `as any` / `@ts-ignore` allowed.
-- **Commit format**: conventional commits enforced by commitlint (`feat:`, `fix:`, `chore:`, etc.). Header max 120 chars. Pre-commit hook is empty (no lint-on-commit).
+- **Commit format**: conventional commits enforced by commitlint (`feat`, `fix`, `perf`, `security`, `refactor`, `docs`, `style`, `test`, `build`, `ci`, `chore`, `revert`). Header max 120 chars. Pre-commit hook is empty (no lint-on-commit).
 - **shadcn/ui** components live under `src/renderer/src/components/ui/` — do not add `react-refresh` exports there (eslint disabled intentionally).
 
 ## Critical Constraints

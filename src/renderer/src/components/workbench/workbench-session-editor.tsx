@@ -20,7 +20,7 @@ import { SftpPanel } from '@/components/sftp-panel'
 import { TerminalPane } from '@/components/terminal-pane'
 import { Button } from '@/components/ui/button'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
-import { Switch } from '@/components/ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 
@@ -33,6 +33,25 @@ const AUX_PANEL_DRAG_MIME = 'application/x-winssh-aux-panel'
 interface WorkbenchSessionEditorProps {
   sessionId: string
   active?: boolean
+}
+
+function TooltipIconButton({
+  children,
+  label,
+  ...props
+}: React.ComponentProps<typeof Button> & {
+  label: string
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button aria-label={label} {...props}>
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
 }
 
 function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessionEditorProps) {
@@ -61,6 +80,7 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
   const PortForwardIcon = actionIcons.openPortForwards
   const ReconnectIcon = actionIcons.reconnect
   const DisconnectIcon = actionIcons.disconnect
+  const ResourceMonitorIcon = actionIcons.openResourceMonitor
 
   if (!session) {
     return (
@@ -196,7 +216,7 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-[var(--workbench-editor)]">
-      <div className="flex min-h-[56px] shrink-0 items-center gap-3 border-b border-[var(--workbench-border)] px-3 py-2">
+      <div className="flex h-10 shrink-0 items-center gap-1.5 border-b border-[var(--workbench-border)] px-2">
         <button
           type="button"
           className="inline-flex h-8 min-w-0 shrink-0 items-center rounded-md border border-[var(--workbench-border)] px-2 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--workbench-hover)_72%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--workbench-active)]"
@@ -219,38 +239,42 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
           session={session}
         />
         <div className="flex shrink-0 items-center gap-2">
-          <label className="flex shrink-0 items-center gap-2 rounded-md border border-[var(--workbench-border)] bg-[color-mix(in_srgb,var(--workbench-sidebar)_72%,transparent)] px-2.5 py-1.5 text-xs text-muted-foreground">
-            <span>{t('workbench.sessionEditor.resourceMonitor.title')}</span>
-            <Switch
-              aria-label={t('workbench.sessionEditor.resourceMonitor.toggle')}
-              checked={monitorExpanded}
-              onCheckedChange={setMonitorExpanded}
-              size="sm"
-            />
-          </label>
-          <Button
+          <TooltipIconButton
+            variant={monitorExpanded ? 'secondary' : 'ghost'}
+            size="icon-sm"
+            label={t('workbench.sessionEditor.resourceMonitor.title')}
+            aria-pressed={monitorExpanded}
+            onClick={() => setMonitorExpanded((prev) => !prev)}
+          >
+            <ResourceMonitorIcon className="size-4" />
+          </TooltipIconButton>
+          <TooltipIconButton
             variant={auxView === 'sftp' ? 'secondary' : 'ghost'}
-            size="sm"
+            size="icon-sm"
+            label={t('workbench.sessionEditor.remoteFiles')}
+            aria-pressed={auxView === 'sftp'}
             disabled={session.provisional || session.status !== 'ready'}
             onClick={() => setAuxView(session.sessionId, auxView === 'sftp' ? null : 'sftp')}
           >
             <RemoteFilesIcon className="size-4" />
-            {t('workbench.sessionEditor.remoteFiles')}
-          </Button>
-          <Button
+          </TooltipIconButton>
+          <TooltipIconButton
             variant={auxView === 'port-forward' ? 'secondary' : 'ghost'}
-            size="sm"
+            size="icon-sm"
+            label={t('workbench.sessionEditor.portForwards')}
+            aria-pressed={auxView === 'port-forward'}
             disabled={session.provisional}
             onClick={() =>
               setAuxView(session.sessionId, auxView === 'port-forward' ? null : 'port-forward')
             }
           >
             <PortForwardIcon className="size-4" />
-            {t('workbench.sessionEditor.portForwards')}
-          </Button>
-          <Button
+          </TooltipIconButton>
+          <TooltipIconButton
             variant={auxView === 'command-history' ? 'secondary' : 'ghost'}
-            size="sm"
+            size="icon-sm"
+            label={t('workbench.commandHistory.title')}
+            aria-pressed={auxView === 'command-history'}
             disabled={session.provisional}
             onClick={() =>
               setAuxView(
@@ -258,24 +282,31 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
                 auxView === 'command-history' ? null : 'command-history'
               )
             }
-            title={t('workbench.commandHistory.toggleButton')}
-            aria-label={t('workbench.commandHistory.toggleButton')}
           >
             <History className="size-4" />
-            {t('workbench.commandHistory.title')}
-          </Button>
+          </TooltipIconButton>
           {session.status !== 'ready' && session.status !== 'connecting' ? (
-            <Button variant="ghost" size="sm" onClick={() => void reconnectSession(sessionId)}>
+            <TooltipIconButton
+              variant="ghost"
+              size="icon-sm"
+              label={t('common.actions.reconnect')}
+              onClick={() => void reconnectSession(sessionId)}
+            >
               <ReconnectIcon className="size-4" />
-              {t('common.actions.reconnect')}
-            </Button>
+            </TooltipIconButton>
           ) : null}
-          <Button variant="ghost" size="sm" onClick={() => void disconnectSession(sessionId)}>
+          <TooltipIconButton
+            variant="ghost"
+            size="icon-sm"
+            label={
+              session.status === 'connecting'
+                ? t('workbench.sessionEditor.cancel')
+                : t('common.actions.disconnect')
+            }
+            onClick={() => void disconnectSession(sessionId)}
+          >
             <DisconnectIcon className="size-4" />
-            {session.status === 'connecting'
-              ? t('workbench.sessionEditor.cancel')
-              : t('common.actions.disconnect')}
-          </Button>
+          </TooltipIconButton>
         </div>
       </div>
 
