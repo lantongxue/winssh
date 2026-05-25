@@ -207,6 +207,21 @@ export const settingsSchema = z.object({
   commandHistoryEnabled: z.boolean()
 })
 
+export const hostTrustRequestSchema = z.object({
+  requestId: z.string().min(1),
+  kind: z.enum(['hostChanged', 'hostFirstSeen']),
+  serverName: z.string().min(1),
+  host: z.string().min(1),
+  port: z.number().int().min(1).max(65535),
+  fingerprint: z.string().min(1),
+  knownFingerprint: z.string().optional()
+})
+
+export const hostTrustResultSchema = z.object({
+  requestId: z.string().min(1),
+  trusted: z.boolean()
+})
+
 export type ServerFormValues = z.infer<typeof serverSchema>
 export type GroupFormValues = z.infer<typeof groupSchema>
 export type TagFormValues = z.infer<typeof tagSchema>

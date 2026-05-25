@@ -1,5 +1,6 @@
 import type {
   CommandRecordedEvent,
+  HostTrustRequest,
   LocalTerminalDataEvent,
   LocalTerminalExitEvent,
   LocalTerminalStateEvent,
@@ -25,6 +26,7 @@ export interface IpcChannelMap {
   'sessions:exit': SessionExitEvent
   'sessions:state': SessionStateEvent
   'sftp:transfer': TransferProgressEvent
+  'system:hostTrustRequest': HostTrustRequest
   'system:menuAction': SystemMenuAction
   'system:windowState': WindowState
   'updates:state': UpdateState

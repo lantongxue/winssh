@@ -58,3 +58,16 @@ const SHELL_INTEGRATION_ONE_LINER = [
  * shell history. Trailing `\r` submits the line.
  */
 export const SHELL_INTEGRATION_SCRIPT = ` ${SHELL_INTEGRATION_ONE_LINER}\r`
+
+/** Commands that start with these prefixes are shell-integration internals and should not be recorded. */
+const SHELL_INTEGRATION_INTERNAL_PREFIXES = ['__wsh_']
+
+/**
+ * Returns `true` when a command text captured via OSC 633;E is a shell-integration
+ * internal helper (e.g. __wsh_post when triggered by bash's DEBUG trap during
+ * PROMPT_COMMAND execution under certain shell configurations).
+ */
+export function isShellIntegrationInternal(command: string): boolean {
+  const trimmed = command.trimStart()
+  return SHELL_INTEGRATION_INTERNAL_PREFIXES.some((prefix) => trimmed.startsWith(prefix))
+}

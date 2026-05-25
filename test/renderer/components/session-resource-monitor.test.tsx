@@ -1,7 +1,7 @@
 import { act, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { SESSION_RESOURCE_MONITOR_LINUX_ONLY, type SessionResourceSnapshot } from '@shared/types'
+import { type SessionResourceSnapshot } from '@shared/types'
 import i18n from '@/i18n'
 import { SessionResourceMonitor } from '@/components/session-resource-monitor'
 import { createWinsshApiMock } from '@test/renderer/helpers/create-winssh-api'
@@ -28,6 +28,9 @@ function createSnapshot(): SessionResourceSnapshot {
       totalBytes: 512 * 1024 * 1024 * 1024,
       usedBytes: 256 * 1024 * 1024 * 1024,
       usagePercent: 50
+    },
+    latency: {
+      rttMs: 23
     },
     memory: {
       totalBytes: 8 * 1024 * 1024 * 1024,
@@ -150,15 +153,23 @@ describe('SessionResourceMonitor', () => {
   it('shows a Linux-only hint for unsupported platforms', async () => {
     window.winsshApi = createWinsshApiMock({
       sessions: {
-        getResourceSnapshot: vi
-          .fn()
-          .mockRejectedValue(new Error(SESSION_RESOURCE_MONITOR_LINUX_ONLY))
+        getResourceSnapshot: vi.fn().mockResolvedValue({
+          sessionId: 'session-1',
+          sampledAt: new Date().toISOString(),
+          platform: 'darwin',
+          latency: { rttMs: 45 },
+          cpu: null,
+          memory: null,
+          network: null,
+          disk: null
+        })
       }
     })
 
     renderMonitor()
 
     expect(await screen.findByText('Linux only')).toBeInTheDocument()
+    expect(screen.getByText('45 ms')).toBeInTheDocument()
   })
 
   it('shows an unavailable hint for sampling failures', async () => {

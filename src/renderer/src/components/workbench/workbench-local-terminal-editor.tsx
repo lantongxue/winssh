@@ -156,6 +156,7 @@ function WorkbenchLocalTerminalEditorImpl({
                 <CommandHistoryPanel
                   scope={{ kind: 'local' }}
                   onInsertCommand={(text) => localTerminalsClient.write(terminalId, text)}
+                  onClose={() => setHistoryOpen(false)}
                   className="h-full overflow-hidden bg-[var(--workbench-sidebar)]"
                 />
               </div>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
+import 'monaco-editor/esm/vs/editor/editor.all.js'
 import 'monaco-editor/esm/vs/basic-languages/bat/bat.contribution.js'
 import 'monaco-editor/esm/vs/basic-languages/cpp/cpp.contribution.js'
 import 'monaco-editor/esm/vs/basic-languages/csharp/csharp.contribution.js'
@@ -300,6 +301,7 @@ export function WorkbenchSftpFileMonacoEditor({
     const model = monaco.editor.createModel('', language, modelUri)
     const editor = monaco.editor.create(container, {
       ariaLabel: t('workbench.documents.remoteFile'),
+      autoIndent: 'advanced',
       automaticLayout: false,
       fontFamily: getTerminalFontStack(editorFontId),
       fontSize: terminalAppearance.fontSize,

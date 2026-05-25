@@ -20,7 +20,7 @@ import type {
 } from '@shared/types'
 import type { DatabaseService } from './database'
 import { createOscScannerState, scanOscChunk, type OscScannerState } from './osc-scanner'
-import { SHELL_INTEGRATION_SCRIPT } from './shell-integration'
+import { isShellIntegrationInternal, SHELL_INTEGRATION_SCRIPT } from './shell-integration'
 
 const require = createRequire(import.meta.url)
 
@@ -297,6 +297,9 @@ export class LocalTerminalManager {
         }
       },
       onCommandText: (command) => {
+        if (isShellIntegrationInternal(command)) {
+          return
+        }
         record.pendingCommand = {
           text: command,
           startedAt: record.pendingCommand.startedAt

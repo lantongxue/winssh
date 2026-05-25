@@ -39,6 +39,7 @@ export const UPDATE_UNSUPPORTED_REASONS = [
 export type UpdateUnsupportedReason = (typeof UPDATE_UNSUPPORTED_REASONS)[number]
 export const SESSION_RESOURCE_MONITOR_LINUX_ONLY = 'session_resource_linux_only'
 export const SESSION_RESOURCE_MONITOR_UNAVAILABLE = 'session_resource_unavailable'
+export const SESSION_RESOURCE_MONITOR_PARTIAL = 'session_resource_partial'
 
 export interface ServerGroup {
   id: string
@@ -312,25 +313,28 @@ export interface SessionErrorEvent extends ObservableEventMetadata {
 export interface SessionResourceSnapshot {
   sessionId: string
   sampledAt: string
-  platform: 'linux'
+  platform: 'linux' | 'darwin' | 'windows' | 'unknown'
+  latency: {
+    rttMs: number | null
+  }
   cpu: {
     usagePercent: number | null
-  }
+  } | null
   memory: {
     usedBytes: number
     totalBytes: number
     usagePercent: number
-  }
+  } | null
   network: {
     rxBytesPerSecond: number | null
     txBytesPerSecond: number | null
-  }
+  } | null
   disk: {
-    mountPath: '/'
+    mountPath: string
     usedBytes: number
     totalBytes: number
     usagePercent: number
-  }
+  } | null
 }
 
 export interface LocalTerminalSummary {
@@ -473,4 +477,21 @@ export interface CommandHistorySearchInput {
   scope: CommandHistoryScope
   query: string
   limit?: number
+}
+
+export type HostTrustKind = 'hostChanged' | 'hostFirstSeen'
+
+export interface HostTrustRequest {
+  requestId: string
+  kind: HostTrustKind
+  serverName: string
+  host: string
+  port: number
+  fingerprint: string
+  knownFingerprint?: string
+}
+
+export interface HostTrustResult {
+  requestId: string
+  trusted: boolean
 }

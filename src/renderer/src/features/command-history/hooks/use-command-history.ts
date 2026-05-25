@@ -60,6 +60,7 @@ export function useCommandHistory(scope: CommandHistoryScope | null) {
     entries: query.data ?? [],
     isLoading: query.isLoading,
     isError: query.isError,
+    isClearing: clearMutation.isPending,
     clear: () => clearMutation.mutateAsync(),
     deleteEntry: (id: string) => deleteMutation.mutateAsync(id)
   }

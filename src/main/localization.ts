@@ -14,16 +14,6 @@ export type MainTranslationKey =
   | 'dialogs.importThemeArchive.filters.allFiles'
   | 'dialogs.uploadFiles.title'
   | 'dialogs.downloadFile.title'
-  | 'dialogs.hostChanged.buttons.cancel'
-  | 'dialogs.hostChanged.buttons.trust'
-  | 'dialogs.hostChanged.title'
-  | 'dialogs.hostChanged.message'
-  | 'dialogs.hostChanged.detail'
-  | 'dialogs.hostFirstSeen.buttons.reject'
-  | 'dialogs.hostFirstSeen.buttons.trust'
-  | 'dialogs.hostFirstSeen.title'
-  | 'dialogs.hostFirstSeen.message'
-  | 'dialogs.hostFirstSeen.detail'
   | 'errors.serverNotFound'
   | 'errors.passwordRequired'
   | 'errors.authFailed'
@@ -114,30 +104,11 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
           allFiles: 'All Files'
         }
       },
-      uploadFiles: {
+uploadFiles: {
         title: 'Choose Files to Upload'
       },
       downloadFile: {
         title: 'Save Remote File'
-      },
-      hostChanged: {
-        buttons: {
-          cancel: 'Cancel Connection',
-          trust: 'Trust New Fingerprint'
-        },
-        title: 'Host Fingerprint Changed',
-        message: 'The host fingerprint for {{serverName}} does not match the previous record.',
-        detail:
-          'Old fingerprint: {{knownFingerprint}}\nNew fingerprint: {{fingerprint}}\n\nIf you cannot verify the change, cancel the connection.'
-      },
-      hostFirstSeen: {
-        buttons: {
-          reject: 'Reject',
-          trust: 'Trust and Continue'
-        },
-        title: 'First-Time Host Connection',
-        message: 'Trust the host fingerprint for {{serverName}}?',
-        detail: 'Address: {{host}}:{{port}}\nFingerprint: {{fingerprint}}'
       }
     },
     errors: {
@@ -243,27 +214,8 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
       uploadFiles: {
         title: '选择要上传的文件'
       },
-      downloadFile: {
+downloadFile: {
         title: '保存远程文件'
-      },
-      hostChanged: {
-        buttons: {
-          cancel: '取消连接',
-          trust: '信任新指纹'
-        },
-        title: '主机指纹已变更',
-        message: '{{serverName}} 的主机指纹与上次记录不一致',
-        detail:
-          '旧指纹: {{knownFingerprint}}\n新指纹: {{fingerprint}}\n\n如果你无法确认变更来源，请取消连接。'
-      },
-      hostFirstSeen: {
-        buttons: {
-          reject: '拒绝',
-          trust: '信任并继续'
-        },
-        title: '首次连接主机',
-        message: '是否信任 {{serverName}} 的主机指纹？',
-        detail: '地址: {{host}}:{{port}}\n指纹: {{fingerprint}}'
       }
     },
     errors: {

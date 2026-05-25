@@ -311,6 +311,7 @@ export async function bootstrap(): Promise<void> {
     getMainWindow: () => mainWindow,
     logFileService,
     settingsService,
+    sessionsService,
     themeRegistry,
     translate,
     updateService,
