@@ -451,11 +451,9 @@ const workbench = {
         resourceMonitorIntervalDescription:
           '会话资源监控采样 CPU、内存、网络和磁盘数据的频率。最小 500 ms，最大 30000 ms。',
         sftpUploadConcurrency: 'SFTP 上传并发数',
-        sftpUploadConcurrencyDescription:
-          '同时上传的最大文件数。最小 1，最大 16。',
+        sftpUploadConcurrencyDescription: '同时上传的最大文件数。最小 1，最大 16。',
         sftpDownloadConcurrency: 'SFTP 下载并发数',
-        sftpDownloadConcurrencyDescription:
-          '同时下载的最大文件数。最小 1，最大 16。',
+        sftpDownloadConcurrencyDescription: '同时下载的最大文件数。最小 1，最大 16。',
         cursorStyle: '光标样式',
         language: '界面语言',
         localTerminalShell: '本地终端 shell',
@@ -680,6 +678,7 @@ const workbench = {
         copyPathToTerminal: '复制路径到终端',
         flatView: '平铺视图',
         openDirectory: '打开目录',
+        sendPathToTerminal: '发送路径到终端',
         treeView: '树形视图'
       },
       dropzone: {
@@ -863,6 +862,24 @@ const workbench = {
         deleted: '凭据已删除。',
         updated: '凭据已更新。'
       }
+    },
+    commandHistory: {
+      title: '命令历史',
+      empty: '暂无命令记录。',
+      searchPlaceholder: '搜索命令…',
+      clear: '清空历史',
+      clearConfirm: '确认清空当前范围内的全部命令记录？',
+      deleteEntry: '删除',
+      reRun: '插入到终端',
+      toggleButton: '切换命令历史面板',
+      captureDisabled: '该服务器已关闭命令记录。',
+      captureUnavailable: '未检测到 shell 集成，无法记录命令。',
+      captureHint: '通过 shell 集成捕获命令，目前支持 bash 和 zsh，fish 等其他 shell 暂不支持。',
+      enableForServer: '记录该服务器的命令历史',
+      enableGlobal: '全局启用命令历史',
+      cwdLabel: '目录',
+      exitCodeLabel: '退出码',
+      durationLabel: '耗时'
     }
   }
 }

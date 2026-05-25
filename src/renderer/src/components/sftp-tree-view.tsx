@@ -4,6 +4,7 @@ import {
   useEffect,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
   type CSSProperties
 } from 'react'
@@ -364,7 +365,37 @@ export const SftpTreeView = forwardRef<SftpTreeViewHandle, SftpTreeViewProps>(fu
 
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set())
   const [recentlyLoadedPaths, setRecentlyLoadedPaths] = useState<Set<string>>(new Set())
+  const recentlyLoadedTimeoutsRef = useRef<number[]>([])
   const currentPath = session.currentPath
+
+  const markTreePathsRecentlyLoaded = useCallback((paths: string[]) => {
+    const uniquePaths = [...new Set(paths)]
+    if (uniquePaths.length === 0) return
+
+    setRecentlyLoadedPaths((current) => new Set([...current, ...uniquePaths]))
+    const timeoutId = window.setTimeout(() => {
+      recentlyLoadedTimeoutsRef.current = recentlyLoadedTimeoutsRef.current.filter(
+        (id) => id !== timeoutId
+      )
+      setRecentlyLoadedPaths((current) => {
+        const next = new Set(current)
+        for (const path of uniquePaths) {
+          next.delete(path)
+        }
+        return next
+      })
+    }, 300)
+    recentlyLoadedTimeoutsRef.current.push(timeoutId)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      for (const timeoutId of recentlyLoadedTimeoutsRef.current) {
+        window.clearTimeout(timeoutId)
+      }
+      recentlyLoadedTimeoutsRef.current = []
+    }
+  }, [])
 
   const toggleExpanded = useCallback((path: string) => {
     setExpandedPaths((current) => {
@@ -423,18 +454,7 @@ export const SftpTreeView = forwardRef<SftpTreeViewHandle, SftpTreeViewProps>(fu
             queryFn: () => sftpClient.list(session.sessionId, path)
           })
           .then(() => {
-            setRecentlyLoadedPaths((current) => {
-              const next = new Set(current)
-              next.add(path)
-              return next
-            })
-            window.setTimeout(() => {
-              setRecentlyLoadedPaths((current) => {
-                const next = new Set(current)
-                next.delete(path)
-                return next
-              })
-            }, 300)
+            markTreePathsRecentlyLoaded([path])
           })
           .catch(() => {
             setExpandedPaths((current) => {
@@ -446,7 +466,7 @@ export const SftpTreeView = forwardRef<SftpTreeViewHandle, SftpTreeViewProps>(fu
           })
       }
     }
-  }, [expandedPaths, viewMode, session, queryClient, t])
+  }, [expandedPaths, viewMode, session, queryClient, markTreePathsRecentlyLoaded, t])
 
   const refetchTreePath = useCallback(
     async (path: string) => {
@@ -457,22 +477,6 @@ export const SftpTreeView = forwardRef<SftpTreeViewHandle, SftpTreeViewProps>(fu
     },
     [queryClient, session.sessionId]
   )
-
-  const markTreePathsRecentlyLoaded = useCallback((paths: string[]) => {
-    const uniquePaths = [...new Set(paths)]
-    if (uniquePaths.length === 0) return
-
-    setRecentlyLoadedPaths((current) => new Set([...current, ...uniquePaths]))
-    window.setTimeout(() => {
-      setRecentlyLoadedPaths((current) => {
-        const next = new Set(current)
-        for (const path of uniquePaths) {
-          next.delete(path)
-        }
-        return next
-      })
-    }, 300)
-  }, [])
 
   const refreshMovedPaths = useCallback(
     async ({ destinationDirPath, sourcePath }: SftpMoveCompleteEvent) => {

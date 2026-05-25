@@ -1,5 +1,6 @@
-import { memo, useMemo } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { History } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
@@ -10,9 +11,15 @@ import { themesClient } from '@/features/themes/api/themes-client'
 import { actionIcons } from '@/lib/action-icons'
 import { usePrefersDark } from '@/hooks/use-prefers-dark'
 import { resolveThemeDefinition } from '@/lib/theme'
+import { CommandHistoryPanel } from '@/components/workbench/command-history-panel'
 import { TerminalSurface } from '@/components/terminal-surface'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import { Button } from '@/components/ui/button'
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup
+} from '@/components/ui/resizable'
 import { useLocalTerminalsStore } from '@/store/local-terminals-store'
 
 interface WorkbenchLocalTerminalEditorProps {
@@ -27,6 +34,7 @@ function WorkbenchLocalTerminalEditorImpl({
   const { t } = useTranslation()
   const prefersDark = usePrefersDark()
   const { closeLocalTerminal } = useWorkbenchContext()
+  const [historyOpen, setHistoryOpen] = useState(false)
   const terminal = useLocalTerminalsStore(
     useShallow((state) => state.tabs.find((tab) => tab.terminalId === terminalId) ?? null)
   )
@@ -88,6 +96,16 @@ function WorkbenchLocalTerminalEditorImpl({
           <span className="rounded-full border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
             {t(`workbench.localTerminal.status.${terminal.status}`)}
           </span>
+          <Button
+            variant={historyOpen ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setHistoryOpen((prev) => !prev)}
+            title={t('workbench.commandHistory.toggleButton')}
+            aria-label={t('workbench.commandHistory.toggleButton')}
+          >
+            <History className="size-4" />
+            {t('workbench.commandHistory.title')}
+          </Button>
           <Button variant="ghost" size="sm" onClick={() => void closeLocalTerminal(terminalId)}>
             <CloseIcon className="size-4" />
             {t('common.actions.close')}
@@ -106,13 +124,53 @@ function WorkbenchLocalTerminalEditorImpl({
         </div>
       ) : null}
 
-      <div className="min-h-0 flex-1 p-3">
-        <TerminalSurface
-          active={active}
-          settings={settingsQuery.data}
-          theme={resolvedTheme}
-          transport={transport}
-        />
+      <div className="min-h-0 flex-1">
+        {historyOpen ? (
+          <ResizablePanelGroup className="h-full" orientation="horizontal">
+            <ResizablePanel
+              key={`local-terminal-${terminalId}`}
+              id={`local-terminal-${terminalId}`}
+              minSize="320px"
+            >
+              <div className="h-full min-w-0 p-3">
+                <TerminalSurface
+                  active={active}
+                  settings={settingsQuery.data}
+                  theme={resolvedTheme}
+                  transport={transport}
+                />
+              </div>
+            </ResizablePanel>
+            <ResizableHandle
+              withHandle
+              className="bg-[var(--workbench-border)] data-[resize-handle-state=drag]:bg-[var(--workbench-active)]"
+            />
+            <ResizablePanel
+              key={`local-history-${terminalId}`}
+              id={`local-history-${terminalId}`}
+              defaultSize="360px"
+              minSize="280px"
+              maxSize="55%"
+            >
+              <div className="h-full min-w-0 bg-[var(--workbench-sidebar)] p-3">
+                <CommandHistoryPanel
+                  scope={{ kind: 'local' }}
+                  onInsertCommand={(text) => localTerminalsClient.write(terminalId, text)}
+                  className="h-full overflow-hidden bg-[var(--workbench-sidebar)]"
+                />
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        ) : (
+          <div className="h-full p-3">
+            <TerminalSurface
+              active={active}
+              settings={settingsQuery.data}
+              theme={resolvedTheme}
+              transport={transport}
+            />
+          </div>
+        )}
       </div>
     </div>
   )

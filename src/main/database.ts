@@ -2,7 +2,11 @@ import Database from 'better-sqlite3'
 import { randomUUID } from 'node:crypto'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import { DEFAULT_APP_SETTINGS } from '@shared/constants'
+import {
+  COMMAND_HISTORY_CAP,
+  COMMAND_HISTORY_LOCAL_SCOPE,
+  DEFAULT_APP_SETTINGS
+} from '@shared/constants'
 import {
   normalizeIntegratedEditorFontId,
   normalizeIntegratedTerminalFontId,
@@ -12,6 +16,8 @@ import {
 import type { ServerBrandId, ServerIconMimeType } from '@shared/server-brands'
 import type {
   AppSettings,
+  CommandHistoryEntry,
+  CommandHistoryScope,
   Credential,
   CredentialSecret,
   CredentialUpsertInput,
@@ -77,6 +83,7 @@ type ServerRow = {
   credential_id: string | null
   jump_server_id: string | null
   favorite: number
+  capture_command_history: number
   created_at: string
   updated_at: string
   last_connected_at: string | null
@@ -110,6 +117,18 @@ type KnownHostRow = {
   algorithm: string
   fingerprint: string
   verified_at: string
+}
+
+type CommandHistoryRow = {
+  id: string
+  scope_kind: 'ssh' | 'local'
+  server_id: string | null
+  local_scope: string | null
+  command: string
+  executed_at: string
+  cwd: string | null
+  exit_code: number | null
+  duration_ms: number | null
 }
 
 type SettingsRow = {
@@ -174,6 +193,7 @@ function mapServer(row: ServerRow, tags: Tag[]): Server {
     credentialId: row.credential_id,
     jumpServerId: row.jump_server_id,
     favorite: Boolean(row.favorite),
+    captureCommandHistory: row.capture_command_history === null ? true : Boolean(row.capture_command_history),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     lastConnectedAt: row.last_connected_at,
@@ -201,6 +221,30 @@ function mapKnownHost(row: KnownHostRow): KnownHost {
     fingerprint: row.fingerprint,
     verifiedAt: row.verified_at
   }
+}
+
+function mapCommandHistory(row: CommandHistoryRow): CommandHistoryEntry {
+  return {
+    id: row.id,
+    scopeKind: row.scope_kind,
+    serverId: row.server_id,
+    command: row.command,
+    executedAt: row.executed_at,
+    cwd: row.cwd,
+    exitCode: row.exit_code,
+    durationMs: row.duration_ms
+  }
+}
+
+function commandScopeKey(scope: CommandHistoryScope): {
+  scopeKind: 'ssh' | 'local'
+  serverId: string | null
+  localScope: string | null
+} {
+  if (scope.kind === 'ssh') {
+    return { scopeKind: 'ssh', serverId: scope.serverId, localScope: null }
+  }
+  return { scopeKind: 'local', serverId: null, localScope: COMMAND_HISTORY_LOCAL_SCOPE }
 }
 
 export class DatabaseService {
@@ -305,6 +349,31 @@ export class DatabaseService {
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS command_history (
+        id TEXT PRIMARY KEY,
+        scope_kind TEXT NOT NULL CHECK (scope_kind IN ('ssh', 'local')),
+        server_id TEXT REFERENCES servers(id) ON DELETE CASCADE,
+        local_scope TEXT,
+        command TEXT NOT NULL,
+        executed_at TEXT NOT NULL,
+        cwd TEXT,
+        exit_code INTEGER,
+        duration_ms INTEGER,
+        CHECK (
+          (scope_kind = 'ssh'   AND server_id IS NOT NULL AND local_scope IS NULL)
+          OR
+          (scope_kind = 'local' AND server_id IS NULL     AND local_scope IS NOT NULL)
+        )
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_cmdhist_ssh
+        ON command_history(server_id, executed_at DESC)
+        WHERE scope_kind = 'ssh';
+
+      CREATE INDEX IF NOT EXISTS idx_cmdhist_local
+        ON command_history(local_scope, executed_at DESC)
+        WHERE scope_kind = 'local';
     `)
 
     const groupColumns = this.db
@@ -344,6 +413,11 @@ export class DatabaseService {
     }
     if (!serverColumns.some((column) => column.name === 'passphrase')) {
       this.db.exec('ALTER TABLE servers ADD COLUMN passphrase TEXT')
+    }
+    if (!serverColumns.some((column) => column.name === 'capture_command_history')) {
+      this.db.exec(
+        'ALTER TABLE servers ADD COLUMN capture_command_history INTEGER NOT NULL DEFAULT 1'
+      )
     }
   }
 
@@ -608,6 +682,7 @@ export class DatabaseService {
           : null
 
     const transaction = this.db.transaction((payload: ServerUpsertInput & { id: string }) => {
+      const captureFlag = payload.captureCommandHistory === false ? 0 : 1
       if (existing) {
         this.db
           .prepare(
@@ -629,6 +704,7 @@ export class DatabaseService {
                 group_id = ?,
                 jump_server_id = ?,
                 favorite = ?,
+                capture_command_history = ?,
                 credential_id = ?,
                 updated_at = ?
               WHERE id = ?
@@ -650,6 +726,7 @@ export class DatabaseService {
             payload.groupId || null,
             payload.jumpServerId || null,
             payload.favorite ? 1 : 0,
+            captureFlag,
             payload.credentialId || null,
             now,
             payload.id
@@ -661,8 +738,8 @@ export class DatabaseService {
               INSERT INTO servers (
                 id, name, host, port, username, auth_type, brand_id, custom_icon_mime_type,
                 custom_icon, private_key, private_key_path, password, passphrase, note, group_id, jump_server_id,
-                favorite, credential_id, created_at, updated_at, last_connected_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                favorite, capture_command_history, credential_id, created_at, updated_at, last_connected_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `
           )
           .run(
@@ -683,6 +760,7 @@ export class DatabaseService {
             payload.groupId || null,
             payload.jumpServerId || null,
             payload.favorite ? 1 : 0,
+            captureFlag,
             payload.credentialId || null,
             now,
             now,
@@ -961,5 +1039,171 @@ export class DatabaseService {
   deleteCredential(id: string): void {
     // servers.credential_id has ON DELETE SET NULL so refs are cleared automatically
     this.db.prepare('DELETE FROM credentials WHERE id = ?').run(id)
+  }
+
+  // ── Command history ──────────────────────────────────────────────────────
+
+  setServerCaptureCommandHistory(serverId: string, enabled: boolean): void {
+    this.db
+      .prepare(
+        'UPDATE servers SET capture_command_history = ?, updated_at = ? WHERE id = ?'
+      )
+      .run(enabled ? 1 : 0, nowIso(), serverId)
+  }
+
+  recordCommand(input: {
+    scope: CommandHistoryScope
+    command: string
+    executedAt: string
+    cwd: string | null
+    exitCode: number | null
+    durationMs: number | null
+  }): CommandHistoryEntry | null {
+    const trimmed = input.command.replace(/\r/g, '').trim()
+    if (!trimmed) {
+      return null
+    }
+    const { scopeKind, serverId, localScope } = commandScopeKey(input.scope)
+    const id = randomUUID()
+    const cap = COMMAND_HISTORY_CAP
+
+    const transaction = this.db.transaction(() => {
+      this.db
+        .prepare(
+          `INSERT INTO command_history
+            (id, scope_kind, server_id, local_scope, command, executed_at, cwd, exit_code, duration_ms)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+        .run(
+          id,
+          scopeKind,
+          serverId,
+          localScope,
+          trimmed,
+          input.executedAt,
+          input.cwd,
+          input.exitCode,
+          input.durationMs
+        )
+      if (scopeKind === 'ssh') {
+        this.db
+          .prepare(
+            `DELETE FROM command_history
+              WHERE scope_kind = 'ssh' AND server_id = ?
+              AND id NOT IN (
+                SELECT id FROM command_history
+                WHERE scope_kind = 'ssh' AND server_id = ?
+                ORDER BY executed_at DESC, id DESC
+                LIMIT ?
+              )`
+          )
+          .run(serverId, serverId, cap)
+      } else {
+        this.db
+          .prepare(
+            `DELETE FROM command_history
+              WHERE scope_kind = 'local' AND local_scope = ?
+              AND id NOT IN (
+                SELECT id FROM command_history
+                WHERE scope_kind = 'local' AND local_scope = ?
+                ORDER BY executed_at DESC, id DESC
+                LIMIT ?
+              )`
+          )
+          .run(localScope, localScope, cap)
+      }
+    })
+
+    transaction()
+    const row = this.db
+      .prepare('SELECT * FROM command_history WHERE id = ?')
+      .get(id) as CommandHistoryRow | undefined
+    return row ? mapCommandHistory(row) : null
+  }
+
+  listCommands(input: {
+    scope: CommandHistoryScope
+    limit?: number
+    before?: string
+  }): CommandHistoryEntry[] {
+    const limit = Math.min(Math.max(input.limit ?? 200, 1), COMMAND_HISTORY_CAP)
+    const { scopeKind, serverId, localScope } = commandScopeKey(input.scope)
+    const beforeClause = input.before ? 'AND executed_at < ?' : ''
+    const params: (string | number)[] = []
+
+    let sql: string
+    if (scopeKind === 'ssh') {
+      sql = `SELECT * FROM command_history
+             WHERE scope_kind = 'ssh' AND server_id = ? ${beforeClause}
+             ORDER BY executed_at DESC, id DESC
+             LIMIT ?`
+      params.push(serverId as string)
+      if (input.before) params.push(input.before)
+      params.push(limit)
+    } else {
+      sql = `SELECT * FROM command_history
+             WHERE scope_kind = 'local' AND local_scope = ? ${beforeClause}
+             ORDER BY executed_at DESC, id DESC
+             LIMIT ?`
+      params.push(localScope as string)
+      if (input.before) params.push(input.before)
+      params.push(limit)
+    }
+
+    const rows = this.db.prepare(sql).all(...params) as CommandHistoryRow[]
+    return rows.map(mapCommandHistory)
+  }
+
+  searchCommands(input: {
+    scope: CommandHistoryScope
+    query: string
+    limit?: number
+  }): CommandHistoryEntry[] {
+    const limit = Math.min(Math.max(input.limit ?? 200, 1), COMMAND_HISTORY_CAP)
+    const { scopeKind, serverId, localScope } = commandScopeKey(input.scope)
+    const escaped = input.query.replace(/[\\%_]/g, (m) => `\\${m}`)
+    const pattern = `%${escaped}%`
+
+    let sql: string
+    const params: (string | number)[] = []
+    if (scopeKind === 'ssh') {
+      sql = `SELECT * FROM command_history
+             WHERE scope_kind = 'ssh' AND server_id = ?
+             AND command LIKE ? ESCAPE '\\'
+             ORDER BY executed_at DESC, id DESC
+             LIMIT ?`
+      params.push(serverId as string, pattern, limit)
+    } else {
+      sql = `SELECT * FROM command_history
+             WHERE scope_kind = 'local' AND local_scope = ?
+             AND command LIKE ? ESCAPE '\\'
+             ORDER BY executed_at DESC, id DESC
+             LIMIT ?`
+      params.push(localScope as string, pattern, limit)
+    }
+
+    const rows = this.db.prepare(sql).all(...params) as CommandHistoryRow[]
+    return rows.map(mapCommandHistory)
+  }
+
+  deleteCommand(id: string): void {
+    this.db.prepare('DELETE FROM command_history WHERE id = ?').run(id)
+  }
+
+  clearCommands(scope: CommandHistoryScope): void {
+    const { scopeKind, serverId, localScope } = commandScopeKey(scope)
+    if (scopeKind === 'ssh') {
+      this.db
+        .prepare("DELETE FROM command_history WHERE scope_kind = 'ssh' AND server_id = ?")
+        .run(serverId)
+    } else {
+      this.db
+        .prepare("DELETE FROM command_history WHERE scope_kind = 'local' AND local_scope = ?")
+        .run(localScope)
+    }
+  }
+
+  clearAllCommands(): void {
+    this.db.prepare('DELETE FROM command_history').run()
   }
 }

@@ -41,6 +41,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 interface PortForwardPanelProps {
   session: SessionTab | null
   className?: string
+  onHeaderDragStart?: (event: React.DragEvent<HTMLDivElement>) => void
+  onHeaderDragEnd?: (event: React.DragEvent<HTMLDivElement>) => void
 }
 
 const DEFAULT_VALUES: PortForwardFormValues = {
@@ -73,7 +75,12 @@ function getStatusVariant(
   return 'outline'
 }
 
-export function PortForwardPanel({ session, className }: PortForwardPanelProps) {
+export function PortForwardPanel({
+  session,
+  className,
+  onHeaderDragStart,
+  onHeaderDragEnd
+}: PortForwardPanelProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [createOpen, setCreateOpen] = useState(false)
@@ -124,7 +131,15 @@ export function PortForwardPanel({ session, className }: PortForwardPanelProps) 
     <>
       <div className={cn('flex h-full flex-col bg-background', className)}>
         <div className="border-b px-3 py-3">
-          <div className="flex items-start justify-between gap-3">
+          <div
+            draggable={!!onHeaderDragStart}
+            className={cn(
+              'flex items-start justify-between gap-3',
+              onHeaderDragStart && 'cursor-grab active:cursor-grabbing'
+            )}
+            onDragStart={onHeaderDragStart}
+            onDragEnd={onHeaderDragEnd}
+          >
             <div className="min-w-0">
               <div className="text-sm font-semibold">{t('workbench.portForward.title')}</div>
               <div className="truncate text-xs text-muted-foreground">

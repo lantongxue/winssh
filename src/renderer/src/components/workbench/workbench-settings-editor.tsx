@@ -936,6 +936,32 @@ export function WorkbenchSettingsEditor() {
                   />
                   <FormField
                     control={form.control}
+                    name="commandHistoryEnabled"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-sm border border-[var(--workbench-border)] px-4 py-3">
+                        <div>
+                          <div className="font-medium">
+                            {t('workbench.commandHistory.enableGlobal')}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {t('workbench.commandHistory.captureHint')}
+                          </div>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            aria-label={t('workbench.commandHistory.enableGlobal')}
+                            checked={field.value !== false}
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked)
+                              void handleSettingSave('commandHistoryEnabled', checked)
+                            }}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
                     name="resourceMonitorIntervalMs"
                     render={({ field }) => (
                       <FormItem>

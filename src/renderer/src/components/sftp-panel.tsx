@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Undo2, X } from 'lucide-react'
+import { Send, Undo2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { getParentRemotePath } from '@shared/sftp'
@@ -48,7 +48,6 @@ type FileWithPath = File & {
 }
 
 const REMOVE_EXIT_ANIMATION_MS = 180
-
 
 function hasLocalFileTransfer(dataTransfer: DataTransfer | null | undefined) {
   return Array.from(dataTransfer?.types ?? []).includes('Files')
@@ -117,6 +116,7 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
   const queryClient = useQueryClient()
   const setCurrentPath = useSessionsStore((state) => state.setCurrentPath)
   const setAuxView = useSessionsStore((state) => state.setAuxView)
+  const requestTerminalFocus = useSessionsStore((state) => state.requestTerminalFocus)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const dragDepthRef = useRef(0)
   const mountedRef = useRef(true)
@@ -152,9 +152,19 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
   const listingQuery = useQuery({
     queryKey: ['sftp', session?.sessionId, session?.currentPath],
     queryFn: () => sftpClient.list(session!.sessionId, session!.currentPath),
-    enabled: Boolean(session && session.status === 'ready')
+    enabled: Boolean(session && session.status === 'ready'),
+    placeholderData: (previousData, previousQuery) => {
+      if (previousQuery?.queryKey[1] === session?.sessionId) {
+        return previousData
+      }
+
+      return undefined
+    }
   })
-  const currentPath = listingQuery.data?.path ?? session?.currentPath ?? '/'
+  const currentPath =
+    !listingQuery.isPlaceholderData && listingQuery.data?.path
+      ? listingQuery.data.path
+      : (session?.currentPath ?? '/')
   const [pathInputValue, setPathInputValue] = useState(currentPath)
 
   useEffect(() => {
@@ -164,17 +174,22 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
   }, [])
 
   useEffect(() => {
-    if (session && listingQuery.data?.path && listingQuery.data.path !== session.currentPath) {
+    if (
+      session &&
+      !listingQuery.isPlaceholderData &&
+      listingQuery.data?.path &&
+      listingQuery.data.path !== session.currentPath
+    ) {
       setCurrentPath(session.sessionId, listingQuery.data.path)
     }
-  }, [listingQuery.data?.path, session, setCurrentPath])
+  }, [listingQuery.data?.path, listingQuery.isPlaceholderData, session, setCurrentPath])
 
   useEffect(() => {
     setPathInputValue(currentPath)
   }, [currentPath])
 
   useEffect(() => {
-    if (!listingQuery.data?.entries) {
+    if (!listingQuery.data?.entries || listingQuery.isPlaceholderData) {
       return
     }
 
@@ -182,7 +197,7 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
 
     setSelectedEntryPaths((current) => current.filter((path) => availablePaths.has(path)))
     setSelectionAnchorPath((current) => (current && availablePaths.has(current) ? current : null))
-  }, [listingQuery.data?.entries])
+  }, [listingQuery.data?.entries, listingQuery.isPlaceholderData])
 
   const entries = useMemo(() => listingQuery.data?.entries ?? [], [listingQuery.data?.entries])
   const selectedEntrySet = useMemo(() => new Set(selectedEntryPaths), [selectedEntryPaths])
@@ -543,15 +558,29 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
               <div className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
                 {t('workbench.sftp.labels.currentPath')}
               </div>
-              <TooltipIconButton
-                variant="ghost"
-                size="icon-xs"
-                className="shrink-0 text-muted-foreground hover:text-foreground"
-                label={t('workbench.sftp.actions.copyPath')}
-                onClick={() => void copyPath(currentPath)}
-              >
-                <CopyIcon className="size-3.5" />
-              </TooltipIconButton>
+              <div className="flex items-center gap-1">
+                <TooltipIconButton
+                  variant="ghost"
+                  size="icon-xs"
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                  label={t('workbench.sftp.actions.copyPath')}
+                  onClick={() => void copyPath(currentPath)}
+                >
+                  <CopyIcon className="size-3.5" />
+                </TooltipIconButton>
+                <TooltipIconButton
+                  variant="ghost"
+                  size="icon-xs"
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                  label={t('workbench.sftp.actions.sendPathToTerminal')}
+                  onClick={() => {
+                    sendPathToTerminal(currentPath)
+                    requestTerminalFocus(session.sessionId)
+                  }}
+                >
+                  <Send className="size-3.5" />
+                </TooltipIconButton>
+              </div>
             </div>
 
             <Textarea

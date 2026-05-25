@@ -1,6 +1,11 @@
 import type {
   AppInfo,
   AppSettings,
+  CommandHistoryEntry,
+  CommandHistoryListInput,
+  CommandHistoryScope,
+  CommandHistorySearchInput,
+  CommandRecordedEvent,
   ConnectionRequest,
   Credential,
   CredentialSecret,
@@ -122,6 +127,15 @@ export interface WinsshApi {
     stop: (sessionId: string, ruleId: string) => Promise<PortForwardRule>
     remove: (sessionId: string, ruleId: string) => Promise<void>
     onStateChange: (callback: (event: PortForwardStateEvent) => void) => Unsubscribe
+  }
+  commandHistory: {
+    list: (input: CommandHistoryListInput) => Promise<CommandHistoryEntry[]>
+    search: (input: CommandHistorySearchInput) => Promise<CommandHistoryEntry[]>
+    clear: (scope: CommandHistoryScope) => Promise<void>
+    clearAll: () => Promise<void>
+    deleteEntry: (id: string) => Promise<void>
+    setServerCapture: (serverId: string, enabled: boolean) => Promise<void>
+    onCommandAdded: (callback: (event: CommandRecordedEvent) => void) => Unsubscribe
   }
   settings: {
     get: () => Promise<AppSettings>

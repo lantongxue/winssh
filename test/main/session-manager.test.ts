@@ -139,7 +139,11 @@ function createRuntime(sessionId: string, client: MockClient) {
       connectedAt: new Date().toISOString(),
       currentPath: '/'
     },
-    portForwards: new Map()
+    portForwards: new Map(),
+    oscState: { pending: '' },
+    pendingCommand: { text: null, startedAt: null, cwd: null },
+    historyCaptureEnabled: false,
+    historyCaptureStatus: 'unavailable' as const
   }
 }
 
@@ -957,4 +961,55 @@ describe('SessionManager port forwarding', () => {
       SESSION_RESOURCE_MONITOR_UNAVAILABLE
     )
   })
+})
+
+describe('SessionManager session data forwarding', () => {
+  function createManagerWithEmitSpy() {
+    const emitToRenderer = vi.fn()
+    const manager = new SessionManager(
+      {
+        getKnownHost: vi.fn(),
+        getServerById: vi.fn(),
+        recordRecentSession: vi.fn(),
+        upsertKnownHost: vi.fn(),
+        getSettings: vi.fn(() => ({
+          sftpUploadConcurrency: 3,
+          sftpDownloadConcurrency: 3
+        }))
+      } as never,
+      () => null,
+      emitToRenderer as never,
+      ((key: string) => key) as never
+    )
+    return { manager, emitToRenderer }
+  }
+
+  function pushData(manager: SessionManager, runtime: ReturnType<typeof createRuntime>, data: string) {
+    const emit = Reflect.get(manager as object, 'emitSessionData') as (
+      r: ReturnType<typeof createRuntime>,
+      data: string
+    ) => void
+    emit.call(manager, runtime, data)
+  }
+
+  function getDataPayloads(emit: ReturnType<typeof vi.fn>) {
+    return emit.mock.calls
+      .filter((call) => call[0] === 'sessions:data')
+      .map((call) => (call[1] as { data: string }).data)
+  }
+
+  it('passes through terminal data without extracting OSC 7 cwd sequences', () => {
+    const { manager, emitToRenderer } = createManagerWithEmitSpy()
+    const runtime = createRuntime('session-1', new MockClient())
+
+    pushData(manager, runtime, 'user@host:~$ ls\r\n')
+    pushData(manager, runtime, `prefix\x1b]7;file://host/tmp/foo\x07suffix`)
+
+    expect(getDataPayloads(emitToRenderer)).toEqual([
+      'user@host:~$ ls\r\n',
+      `prefix\x1b]7;file://host/tmp/foo\x07suffix`
+    ])
+    expect(runtime.summary.currentPath).toBe('/')
+  })
+
 })

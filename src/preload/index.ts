@@ -209,7 +209,7 @@ const api: WinsshApi = {
     reconnect: (sessionId) => ipcRenderer.invoke('sessions:reconnect', sessionId),
     getResourceSnapshot: (sessionId) =>
       ipcRenderer.invoke('sessions:getResourceSnapshot', sessionId),
-    write: (sessionId, data) => ipcRenderer.invoke('sessions:write', sessionId, data),
+    write: (sessionId, data) => ipcRenderer.send('sessions:write', sessionId, data),
     resize: (sessionId, columns, rows) =>
       ipcRenderer.invoke('sessions:resize', sessionId, columns, rows),
     onData: (sessionId, callback) => subscribeById('sessions:data', sessionId, callback),
@@ -261,6 +261,16 @@ const api: WinsshApi = {
     stop: (sessionId, ruleId) => ipcRenderer.invoke('portForwards:stop', sessionId, ruleId),
     remove: (sessionId, ruleId) => ipcRenderer.invoke('portForwards:remove', sessionId, ruleId),
     onStateChange: (callback) => subscribe('portForwards:state', callback)
+  },
+  commandHistory: {
+    list: (input) => ipcRenderer.invoke('commandHistory:list', input),
+    search: (input) => ipcRenderer.invoke('commandHistory:search', input),
+    clear: (scope) => ipcRenderer.invoke('commandHistory:clear', scope),
+    clearAll: () => ipcRenderer.invoke('commandHistory:clearAll'),
+    deleteEntry: (id) => ipcRenderer.invoke('commandHistory:deleteEntry', id),
+    setServerCapture: (serverId, enabled) =>
+      ipcRenderer.invoke('commandHistory:setServerCapture', serverId, enabled),
+    onCommandAdded: (callback) => subscribe('commandHistory:added', callback)
   },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),

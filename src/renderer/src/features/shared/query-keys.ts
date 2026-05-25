@@ -1,3 +1,5 @@
+import type { CommandHistoryScope } from '@shared/types'
+
 export const queryKeys = {
   appInfo: ['app-info'] as const,
   capabilities: ['capabilities'] as const,
@@ -17,5 +19,9 @@ export const queryKeys = {
   portForwards: (sessionId: string) => ['port-forwards', sessionId] as const,
   serverSecrets: (serverId: string) => ['server-secrets', serverId] as const,
   sftpFile: (sessionId: string, remotePath: string) =>
-    ['sftp', sessionId, 'file', remotePath] as const
+    ['sftp', sessionId, 'file', remotePath] as const,
+  commandHistory: (scope: CommandHistoryScope) =>
+    scope.kind === 'ssh'
+      ? (['command-history', 'ssh', scope.serverId] as const)
+      : (['command-history', 'local'] as const)
 }

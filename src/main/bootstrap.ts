@@ -18,6 +18,7 @@ import { SettingsApplicationService } from './application/settings-application-s
 import { registerServerIpc } from './ipc/register-server-ipc'
 import { registerSessionIpc } from './ipc/register-session-ipc'
 import { registerSystemIpc } from './ipc/register-system-ipc'
+import { registerCommandHistoryIpc } from './ipc/register-command-history-ipc'
 import { SecureStoreService } from './secure-store'
 import { SessionManager } from './session-manager'
 import { ThemeRegistry } from './theme-registry'
@@ -253,7 +254,8 @@ export async function bootstrap(): Promise<void> {
     (channel, payload) => {
       mainWindow?.webContents.send(channel, payload)
     },
-    () => database.getSettings()
+    () => database.getSettings(),
+    database
   )
   const logFileService = new LogFileService(
     normalizeAppSettingsForPlatform(database.getSettings()).logFilePath ??
@@ -301,6 +303,7 @@ export async function bootstrap(): Promise<void> {
     serversService
   })
   registerSessionIpc(sessionsService)
+  registerCommandHistoryIpc(database)
   registerSystemIpc({
     appInfo,
     credentialStorageAvailable: () => Promise.resolve(true),
