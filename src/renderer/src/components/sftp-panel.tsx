@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Send, Undo2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { getParentRemotePath } from '@shared/sftp'
+import { getParentRemotePath, normalizeRemotePath } from '@shared/sftp'
 import type { RemoteEntry } from '@shared/types'
 import { sessionsClient } from '@/features/sessions/api/sessions-client'
 import { sftpClient } from '@/features/sftp/api/sftp-client'
@@ -152,19 +152,9 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
   const listingQuery = useQuery({
     queryKey: ['sftp', session?.sessionId, session?.currentPath],
     queryFn: () => sftpClient.list(session!.sessionId, session!.currentPath),
-    enabled: Boolean(session && session.status === 'ready'),
-    placeholderData: (previousData, previousQuery) => {
-      if (previousQuery?.queryKey[1] === session?.sessionId) {
-        return previousData
-      }
-
-      return undefined
-    }
+    enabled: Boolean(session && session.status === 'ready')
   })
-  const currentPath =
-    !listingQuery.isPlaceholderData && listingQuery.data?.path
-      ? listingQuery.data.path
-      : (session?.currentPath ?? '/')
+  const currentPath = listingQuery.data?.path ?? (session?.currentPath ?? '/')
   const [pathInputValue, setPathInputValue] = useState(currentPath)
 
   useEffect(() => {
@@ -176,20 +166,19 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
   useEffect(() => {
     if (
       session &&
-      !listingQuery.isPlaceholderData &&
       listingQuery.data?.path &&
       listingQuery.data.path !== session.currentPath
     ) {
       setCurrentPath(session.sessionId, listingQuery.data.path)
     }
-  }, [listingQuery.data?.path, listingQuery.isPlaceholderData, session, setCurrentPath])
+  }, [listingQuery.data?.path, session, setCurrentPath])
 
   useEffect(() => {
     setPathInputValue(currentPath)
   }, [currentPath])
 
   useEffect(() => {
-    if (!listingQuery.data?.entries || listingQuery.isPlaceholderData) {
+    if (!listingQuery.data?.entries) {
       return
     }
 
@@ -197,7 +186,7 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
 
     setSelectedEntryPaths((current) => current.filter((path) => availablePaths.has(path)))
     setSelectionAnchorPath((current) => (current && availablePaths.has(current) ? current : null))
-  }, [listingQuery.data?.entries, listingQuery.isPlaceholderData])
+  }, [listingQuery.data?.entries])
 
   const entries = useMemo(() => listingQuery.data?.entries ?? [], [listingQuery.data?.entries])
   const selectedEntrySet = useMemo(() => new Set(selectedEntryPaths), [selectedEntryPaths])
@@ -328,7 +317,7 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
 
   const openDirectory = (path: string) => {
     clearSelection()
-    setCurrentPath(session.sessionId, path)
+    setCurrentPath(session.sessionId, normalizeRemotePath(path))
   }
 
   const jumpToPath = () => {
