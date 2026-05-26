@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>命令面板</title>
+    <style>
+        :root {
+            --bg-panel: #ffffff;
+            --bg-hover: #f1f5f9;
+            --bg-active: #e2e8f0;
+            --border-color: #e2e8f0;
+            
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            
+            --color-success: #10b981;
+            --color-error: #ef4444;
+            --color-primary: #3b82f6;
+            --color-primary-hover: #2563eb;
+            
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-mono: "Fira Code", "SFMono-Regular", Consolas, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: #f1f5f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* 主面板容器 */
+        .command-panel {
+            width: 340px;
+            height: 620px;
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 1. 顶部 Header */
+        .panel-header {
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header-title-area {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .panel-subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background-color: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        /* 添加按钮特有样式 */
+        .btn-add-custom {
+            color: var(--color-primary);
+        }
+        .btn-add-custom:hover {
+            background-color: #eff6ff;
+            color: var(--color-primary-hover);
+        }
+
+        /* 2. 主分类 Tab (历史 vs 自定义) */
+        .main-tabs {
+            padding: 8px 16px 4px 16px;
+            display: flex;
+            gap: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .main-tab-item {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            padding: 6px 0 8px 0;
+            cursor: pointer;
+            border: none;
+            background: none;
+            position: relative;
+        }
+
+        .main-tab-item.active {
+            color: var(--color-primary);
+            font-weight: 600;
+        }
+
+        .main-tab-item.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: var(--color-primary);
+            border-radius: 2px;
+        }
+
+        /* 3. 搜索和过滤区域 */
+        .control-section {
+            padding: 10px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            height: 32px;
+            padding: 0 8px 0 32px;
+            font-size: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            outline: none;
+            background-color: #f8fafc;
+            transition: all 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--color-primary);
+            background-color: #fff;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+            display: flex;
+        }
+
+        /* 历史过滤标签（只在历史菜单显示） */
+        .sub-filters {
+            display: flex;
+            background-color: #f1f5f9;
+            padding: 2px;
+            border-radius: 6px;
+        }
+
+        .sub-filter-btn {
+            flex: 1;
+            font-size: 11px;
+            padding: 4px 0;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .sub-filter-btn.active {
+            background-color: #fff;
+            color: var(--text-primary);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        /* 4. 列表展示区 */
+        .list-container {
+            flex: 1;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .content-panel {
+            display: none;
+        }
+
+        .content-panel.active {
+            display: block;
+        }
+
+        /* 基础项列表样式 */
+        .list-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.02);
+            position: relative;
+            transition: background-color 0.15s;
+        }
+
+        .list-item:hover {
+            background-color: var(--bg-hover);
+        }
+
+        /* 历史记录专属样式 */
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-top: 6px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        .status-ok { background-color: var(--color-success); }
+        .status-err { background-color: var(--color-error); }
+
+        .item-main {
+            flex: 1;
+            min-width: 0;
+            padding-right: 54px;
+        }
+
+        .code-text {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .item-sub {
+            display: flex;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            align-items: center;
+        }
+
+        /* 自定义命令专属样式 */
+        .custom-item-icon {
+            color: var(--color-primary);
+            margin-right: 12px;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .custom-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        /* 悬浮操作栏 */
+        .hover-actions {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s;
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, var(--bg-hover) 30%, var(--bg-hover) 100%);
+            padding-left: 20px;
+            height: 100%;
+            align-items: center;
+        }
+
+        .list-item:hover .hover-actions {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .action-btn {
+            background-color: #ffffff;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            transition: all 0.15s;
+        }
+
+        .action-btn:hover {
+            color: var(--color-primary);
+            border-color: var(--color-primary);
+            background-color: #f0f7ff;
+        }
+
+        .action-btn.btn-delete:hover {
+            color: var(--color-error);
+            border-color: var(--color-error);
+            background-color: #fef2f2;
+        }
+
+        /* 5. 新建/编辑自定义命令表单 (滑动抽屉) */
+        .drawer {
+            position: absolute;
+            left: 0;
+            bottom: -100%;
+            width: 100%;
+            background-color: #ffffff;
+            border-top: 1px solid var(--border-color);
+            box-shadow: 0 -8px 20px rgba(0,0,0,0.08);
+            transition: bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 10;
+            padding: 16px;
+        }
+
+        .drawer.open {
+            bottom: 0;
+        }
+
+        .drawer-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .form-input {
+            width: 100%;
+            height: 32px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0 8px;
+            font-size: 12px;
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: var(--color-primary);
+        }
+
+        .form-textarea {
+            width: 100%;
+            height: 60px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 6px 8px;
+            font-size: 11px;
+            font-family: var(--font-mono);
+            outline: none;
+            resize: none;
+        }
+
+        .form-textarea:focus {
+            border-color: var(--color-primary);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 16px;
+        }
+
+        .btn {
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-cancel {
+            background-color: #ffffff;
+            color: var(--text-secondary);
+        }
+
+        .btn-cancel:hover {
+            background-color: var(--bg-hover);
+        }
+
+        .btn-submit {
+            background-color: var(--color-primary);
+            color: #ffffff;
+            border: none;
+        }
+
+        .btn-submit:hover {
+            background-color: var(--color-primary-hover);
+        }
+
+        /* 黑色遮罩层 */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(15, 23, 42, 0.3);
+            backdrop-filter: blur(1px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s;
+            z-index: 9;
+        }
+        .overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="command-panel">
+        
+        <!-- 1. 顶部 Header -->
+        <div class="panel-header">
+            <div class="header-title-area">
+                <span class="panel-title">命令面板</span>
+                <span class="panel-subtitle">执行、复用与自定义常用命令</span>
+            </div>
+            <div class="header-actions">
+                <!-- 新增自定义命令按钮 (仅在自定义标签页显示或常驻) -->
+                <button class="icon-btn btn-add-custom" id="triggerAddBtn" title="新建自定义命令">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+                <button class="icon-btn" title="关闭面板">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- 2. 主分类导航 Tab -->
+        <div class="main-tabs">
+            <button class="main-tab-item active" data-target="tab-history">历史记录</button>
+            <button class="main-tab-item" data-target="tab-custom">自定义命令</button>
+        </div>
+
+        <!-- 3. 搜索与二级过滤区 -->
+        <div class="control-section">
+            <div class="search-wrapper">
+                <div class="search-icon">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                </div>
+                <input type="text" class="search-input" id="searchInput" placeholder="在当前列表搜索...">
+            </div>
+            
+            <!-- 仅在“历史记录”下展示的快捷分类 -->
+            <div class="sub-filters" id="historySubFilters">
+                <button class="sub-filter-btn active">全部</button>
+                <button class="sub-filter-btn">成功</button>
+                <button class="sub-filter-btn">失败</button>
+            </div>
+        </div>
+
+        <!-- 4. 列表展示区 -->
+        <div class="list-container">
+            
+            <!-- 4.1 历史记录面板 -->
+            <div class="content-panel active" id="tab-history">
+                <!-- 历史项 1 -->
+                <div class="list-item">
+                    <div class="status-dot status-ok"></div>
+                    <div class="item-main">
+                        <div class="code-text">PROMPT_COMMAND="__wsh_post${PROMPT_COMMAND}"</div>
+                        <div class="item-sub"><span>01:23:44</span><span>•</span><span>/root</span></div>
+                    </div>
+                    <div class="hover-actions">
+                        <button class="action-btn" title="执行此命令"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></button>
+                        <button class="action-btn" title="复制"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                    </div>
+                </div>
+                <!-- 历史项 2 -->
+                <div class="list-item">
+                    <div class="status-dot status-ok"></div>
+                    <div class="item-main">
+                        <div class="code-text">clear</div>
+                        <div class="item-sub"><span>00:45:28</span><span>•</span><span>/root</span></div>
+                    </div>
+                    <div class="hover-actions">
+                        <button class="action-btn" title="执行"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></button>
+                        <button class="action-btn" title="复制"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                    </div>
+                </div>
+                <!-- 历史项 3 -->
+                <div class="list-item">
+                    <div class="status-dot status-err"></div>
+                    <div class="item-main">
+                        <div class="code-text">git push origin main</div>
+                        <div class="item-sub"><span>23:12:05</span><span>•</span><span>/var/workspace</span><span>•</span><span style="color:var(--color-error)">Exit: 128</span></div>
+                    </div>
+                    <div class="hover-actions">
+                        <button class="action-btn" title="执行"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></button>
+                        <button class="action-btn" title="复制"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4.2 自定义命令面板 -->
+            <div class="content-panel" id="tab-custom">
+                <div id="customList">
+                    <!-- 预设自定义命令 1 -->
+                    <div class="list-item" data-id="1">
+                        <div class="custom-item-icon">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                        </div>
+                        <div class="item-main">
+                            <div class="custom-title">运行前端项目</div>
+                            <div class="code-text">npm run dev -- --host</div>
+                        </div>
+                        <div class="hover-actions">
+                            <button class="action-btn" title="运行"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></button>
+                            <button class="action-btn" title="复制"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                            <button class="action-btn btn-delete" onclick="deleteCustomItem(this)" title="删除"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 5. 遮罩层及抽屉式表单 -->
+        <div class="overlay" id="overlay"></div>
+        <div class="drawer" id="drawer">
+            <div class="drawer-title">新建自定义命令</div>
+            <div class="form-group">
+                <label class="form-label">命令别名</label>
+                <input type="text" id="customName" class="form-input" placeholder="例如: 启动本地前端开发">
+            </div>
+            <div class="form-group">
+                <label class="form-label">具体 Shell 命令</label>
+                <textarea id="customCmd" class="form-textarea" placeholder="git pull && yarn install && yarn start"></textarea>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-cancel" id="btnCancel">取消</button>
+                <button class="btn btn-submit" id="btnSubmit">保存命令</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 交互逻辑 JS -->
+    <script>
+        const mainTabs = document.querySelectorAll('.main-tab-item');
+        const contentPanels = document.querySelectorAll('.content-panel');
+        const historyFilters = document.getElementById('historySubFilters');
+        const searchInput = document.getElementById('searchInput');
+
+        // 1. 首层标签页切换
+        mainTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                mainTabs.forEach(t => t.classList.remove('active'));
+                contentPanels.forEach(p => p.classList.remove('active'));
+
+                tab.classList.add('active');
+                const targetPanel = document.getElementById(tab.dataset.target);
+                targetPanel.classList.add('active');
+
+                // 只有切换到“历史记录”时才显示子过滤器
+                if (tab.dataset.target === 'tab-history') {
+                    historyFilters.style.display = 'flex';
+                    searchInput.placeholder = "在历史记录中搜索...";
+                } else {
+                    historyFilters.style.display = 'none';
+                    searchInput.placeholder = "在自定义命令中搜索...";
+                }
+            });
+        });
+
+        // 二级过滤器激活状态切换
+        const subFilterBtns = document.querySelectorAll('.sub-filter-btn');
+        subFilterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                subFilterBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        // 2. 抽屉表单打开与关闭
+        const triggerAddBtn = document.getElementById('triggerAddBtn');
+        const overlay = document.getElementById('overlay');
+        const drawer = document.getElementById('drawer');
+        const btnCancel = document.getElementById('btnCancel');
+        const btnSubmit = document.getElementById('btnSubmit');
+
+        function openDrawer() {
+            overlay.classList.add('show');
+            drawer.classList.add('open');
+        }
+
+        function closeDrawer() {
+            overlay.classList.remove('show');
+            drawer.classList.remove('open');
+            // 清空表单
+            document.getElementById('customName').value = '';
+            document.getElementById('customCmd').value = '';
+        }
+
+        triggerAddBtn.addEventListener('click', openDrawer);
+        overlay.addEventListener('click', closeDrawer);
+        btnCancel.addEventListener('click', closeDrawer);
+
+        // 3. 动态添加自定义命令
+        const customList = document.getElementById('customList');
+        btnSubmit.addEventListener('click', () => {
+            const name = document.getElementById('customName').value.trim();
+            const cmd = document.getElementById('customCmd').value.trim();
+
+            if (!name || !cmd) {
+                alert('请填写完整的命令别名与命令代码！');
+                return;
+            }
+
+            // 创建新的卡片 DOM 节点
+            const newItemHtml = `
+                <div class="list-item" data-id="${Date.now()}">
+                    <div class="custom-item-icon">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    </div>
+                    <div class="item-main">
+                        <div class="custom-title">${name}</div>
+                        <div class="code-text">${cmd}</div>
+                    </div>
+                    <div class="hover-actions">
+                        <button class="action-btn" title="运行"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></button>
+                        <button class="action-btn" title="复制"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                        <button class="action-btn btn-delete" onclick="deleteCustomItem(this)" title="删除"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                    </div>
+                </div>
+            `;
+            
+            customList.insertAdjacentHTML('beforeend', newItemHtml);
+            closeDrawer();
+
+            // 自动跳转至自定义命令列表展示新添加的项
+            document.querySelector('[data-target="tab-custom"]').click();
+        });
+
+        // 4. 删除自定义命令
+        function deleteCustomItem(btn) {
+            const item = btn.closest('.list-item');
+            if (confirm('确定要删除这条自定义命令吗？')) {
+                item.remove();
+            }
+        }
+    </script>
+</body>
+</html>
