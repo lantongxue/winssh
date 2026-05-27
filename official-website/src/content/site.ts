@@ -133,8 +133,7 @@ const zhCN: SiteCopy = {
   hero: {
     eyebrow: '跨平台 SSH / SFTP 客户端',
     headline: 'SSH，本该有张正经工作台',
-    subline:
-      'SSH 会话、双面板 SFTP、端口转发、跳板机、主题市场、备份恢复 —— 都在同一张工作台上。',
+    subline: 'SSH 会话、双面板 SFTP、端口转发、跳板机、主题市场、备份恢复 —— 都在同一张工作台上。',
     primaryCta: '下载 WinSSH',
     secondaryCta: '查看 GitHub',
     keywords: ['SSH 工作台', '跨平台', '开源'],
@@ -158,7 +157,8 @@ const zhCN: SiteCopy = {
         fileLabel: 'workbench.tsx',
         language: 'tsx',
         title: '工作台首页',
-        summary: '左侧活动栏 + 服务器目录树 + 多标签编辑区,一眼可见全部会话与近期连接,熟悉得就像 VS Code 本身。',
+        summary:
+          '左侧活动栏 + 服务器目录树 + 多标签编辑区,一眼可见全部会话与近期连接,熟悉得就像 VS Code 本身。',
         bullets: [
           '活动栏切换服务器 / SFTP / 终端 / 设置',
           '资源管理器支持分组、收藏、拖拽排序',
@@ -186,7 +186,8 @@ const zhCN: SiteCopy = {
         fileLabel: 'new-server.tsx',
         language: 'tsx',
         title: '新建服务器',
-        summary: '一张表单完成 SSH 连接所需的一切:协议、跳板、密钥、密码、超时与代理,字段都带行内校验。',
+        summary:
+          '一张表单完成 SSH 连接所需的一切:协议、跳板、密钥、密码、超时与代理,字段都带行内校验。',
         bullets: [
           '密码 / 公钥 / 凭据库三种鉴权方式自由切换',
           '单跳跳板机自动复用父连接凭据',
@@ -214,7 +215,8 @@ const zhCN: SiteCopy = {
         fileLabel: 'settings.terminal.tsx',
         language: 'tsx',
         title: '终端精细调校',
-        summary: '字体连字、光标样式、滚动回写、WebGL 渲染、铃声策略 —— 把 xterm 调到完全符合手感。',
+        summary:
+          '字体连字、光标样式、滚动回写、WebGL 渲染、铃声策略 —— 把 xterm 调到完全符合手感。',
         bullets: [
           '字体支持 fallback 链与连字开关',
           '滚动回写最高 10 万行,搜索定位仍流畅',
@@ -228,7 +230,8 @@ const zhCN: SiteCopy = {
         fileLabel: 'settings.backup.tsx',
         language: 'tsx',
         title: 'WebDAV 备份与同步',
-        summary: '接入任意 WebDAV 服务(坚果云 / Nextcloud / 自建),一键备份服务器目录、凭据与主题,换设备秒级恢复。',
+        summary:
+          '接入任意 WebDAV 服务(坚果云 / Nextcloud / 自建),一键备份服务器目录、凭据与主题,换设备秒级恢复。',
         bullets: [
           '客户端密钥派生,服务端只看见密文',
           '支持自动定时备份与冲突合并',
@@ -484,16 +487,56 @@ const enUS: SiteCopy = {
     title: 'User guide',
     subtitle: 'From install to advanced tricks — pick a section.',
     sections: [
-      { id: 'quick-start', title: 'Quick start', description: 'Download to first connection in 3 minutes.' },
-      { id: 'connections', title: 'Connections', description: 'Servers, groups, jump hosts, retries.' },
-      { id: 'local-terminal', title: 'Local terminal', description: 'Built on node-pty. Cross-platform shells.' },
-      { id: 'sftp', title: 'SFTP transfer', description: 'Dual-panel view, batch transfer, move, rename.' },
-      { id: 'port-forwarding', title: 'Port forwarding', description: 'Local / remote / dynamic tunnels.' },
-      { id: 'observability', title: 'Resource monitor', description: 'CPU / memory / disk dashboards.' },
-      { id: 'themes', title: 'Themes & fonts', description: 'Built-in themes, custom JSON, font swap.' },
-      { id: 'updates', title: 'Auto-update', description: 'Update channels, rollback, offline install.' },
-      { id: 'backup', title: 'Backup & sync', description: 'WebDAV backup, restore, multi-device sync.' },
-      { id: 'security', title: 'Security model', description: 'Credentials, keys, encryption, privacy.' }
+      {
+        id: 'quick-start',
+        title: 'Quick start',
+        description: 'Download to first connection in 3 minutes.'
+      },
+      {
+        id: 'connections',
+        title: 'Connections',
+        description: 'Servers, groups, jump hosts, retries.'
+      },
+      {
+        id: 'local-terminal',
+        title: 'Local terminal',
+        description: 'Built on node-pty. Cross-platform shells.'
+      },
+      {
+        id: 'sftp',
+        title: 'SFTP transfer',
+        description: 'Dual-panel view, batch transfer, move, rename.'
+      },
+      {
+        id: 'port-forwarding',
+        title: 'Port forwarding',
+        description: 'Local / remote / dynamic tunnels.'
+      },
+      {
+        id: 'observability',
+        title: 'Resource monitor',
+        description: 'CPU / memory / disk dashboards.'
+      },
+      {
+        id: 'themes',
+        title: 'Themes & fonts',
+        description: 'Built-in themes, custom JSON, font swap.'
+      },
+      {
+        id: 'updates',
+        title: 'Auto-update',
+        description: 'Update channels, rollback, offline install.'
+      },
+      {
+        id: 'backup',
+        title: 'Backup & sync',
+        description: 'WebDAV backup, restore, multi-device sync.'
+      },
+      {
+        id: 'security',
+        title: 'Security model',
+        description: 'Credentials, keys, encryption, privacy.'
+      }
     ],
     repoCta: 'Read the full docs on GitHub'
   },

@@ -19,9 +19,12 @@ export function registerCustomCommandIpc(database: DatabaseService) {
     const parsed = parseInput(customCommandSchema, input)
     return database.createCustomCommand(parsed)
   })
-  ipcMain.handle('customCommands:update', (_event, id: string, input: Partial<CustomCommandInput>) => {
-    const parsed = parseInput(customCommandUpdateSchema, input)
-    return database.updateCustomCommand(id, parsed)
-  })
+  ipcMain.handle(
+    'customCommands:update',
+    (_event, id: string, input: Partial<CustomCommandInput>) => {
+      const parsed = parseInput(customCommandUpdateSchema, input)
+      return database.updateCustomCommand(id, parsed)
+    }
+  )
   ipcMain.handle('customCommands:delete', (_event, id: string) => database.deleteCustomCommand(id))
 }

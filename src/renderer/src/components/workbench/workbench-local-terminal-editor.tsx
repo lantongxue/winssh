@@ -15,11 +15,7 @@ import { CommandPanel } from '@/components/workbench/command-panel'
 import { TerminalSurface } from '@/components/terminal-surface'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import { Button } from '@/components/ui/button'
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup
-} from '@/components/ui/resizable'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { useLocalTerminalsStore } from '@/store/local-terminals-store'
 
 interface WorkbenchLocalTerminalEditorProps {
@@ -100,11 +96,11 @@ function WorkbenchLocalTerminalEditorImpl({
             variant={historyOpen ? 'secondary' : 'ghost'}
             size="sm"
             onClick={() => setHistoryOpen((prev) => !prev)}
-title={t('workbench.commandPanel.title')}
-              aria-label={t('workbench.commandPanel.title')}
+            title={t('workbench.commandPanel.title')}
+            aria-label={t('workbench.commandPanel.title')}
           >
-<TerminalSquare className="size-4" />
-              {t('workbench.commandPanel.title')}
+            <TerminalSquare className="size-4" />
+            {t('workbench.commandPanel.title')}
           </Button>
           <Button variant="ghost" size="sm" onClick={() => void closeLocalTerminal(terminalId)}>
             <CloseIcon className="size-4" />

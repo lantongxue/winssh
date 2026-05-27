@@ -2,7 +2,11 @@ import { type CSSProperties } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { File, Folder, LoaderCircle } from 'lucide-react'
 import type { RemoteEntry } from '@shared/types'
-import { writeTerminalPathDragData, writeSftpMoveDragData, clearSftpMoveDragData } from '@/lib/terminal-path-dnd'
+import {
+  writeTerminalPathDragData,
+  writeSftpMoveDragData,
+  clearSftpMoveDragData
+} from '@/lib/terminal-path-dnd'
 import type { SessionTab } from '@/store/sessions-store'
 import { cn } from '@/lib/utils'
 import { SftpEntryContextMenu } from '@/components/sftp-entry-context-menu'
@@ -19,7 +23,10 @@ interface FlatEntryRowProps {
   selectedEntrySet: Set<string>
   removingEntrySet: Set<string>
   onSelectSingleEntry: (path: string) => void
-  onHandleEntrySelection: (entryPath: string, options: { additive: boolean; range: boolean }) => void
+  onHandleEntrySelection: (
+    entryPath: string,
+    options: { additive: boolean; range: boolean }
+  ) => void
   onClearSelection: () => void
   onOpenDirectory: (path: string) => void
   onOpenCreateFileDialog: (targetPath: string) => void
@@ -133,7 +140,11 @@ function FlatEntryRow({
       }}
       onDragStart={(event) => {
         writeTerminalPathDragData(event.dataTransfer, entry.path)
-        writeSftpMoveDragData(event.dataTransfer, entry.path, entry.kind === 'directory' ? 'directory' : 'file')
+        writeSftpMoveDragData(
+          event.dataTransfer,
+          entry.path,
+          entry.kind === 'directory' ? 'directory' : 'file'
+        )
       }}
       onDragEnd={clearSftpMoveDragData}
     >
@@ -167,7 +178,12 @@ function FlatEntryRow({
     </button>
   )
 
-  const isDropTarget = isDirectory && (dropState === 'valid' || dropState === 'invalid-self' || dropState === 'invalid-descendant' || dropState === 'invalid-same-dir')
+  const isDropTarget =
+    isDirectory &&
+    (dropState === 'valid' ||
+      dropState === 'invalid-self' ||
+      dropState === 'invalid-descendant' ||
+      dropState === 'invalid-same-dir')
 
   return (
     <div
@@ -179,7 +195,9 @@ function FlatEntryRow({
       }
       {...(isDirectory ? dropHandlers : {})}
       className={cn(
-        isDropTarget && dropState === 'valid' && 'bg-[color-mix(in_srgb,var(--workbench-active)_12%,transparent)]',
+        isDropTarget &&
+          dropState === 'valid' &&
+          'bg-[color-mix(in_srgb,var(--workbench-active)_12%,transparent)]',
         isDropTarget && dropState !== 'valid' && 'bg-destructive/10'
       )}
     >
@@ -216,7 +234,10 @@ export interface SftpFlatViewProps {
   selectedEntrySet: Set<string>
   removingEntrySet: Set<string>
   onSelectSingleEntry: (path: string) => void
-  onHandleEntrySelection: (entryPath: string, options: { additive: boolean; range: boolean }) => void
+  onHandleEntrySelection: (
+    entryPath: string,
+    options: { additive: boolean; range: boolean }
+  ) => void
   onClearSelection: () => void
   onOpenDirectory: (path: string) => void
   onOpenCreateFileDialog: (targetPath: string) => void

@@ -1,5 +1,13 @@
 import { useState } from 'react'
-import { Apple, Download, Monitor, Search, Star, Terminal as TerminalIcon, type LucideIcon } from 'lucide-react'
+import {
+  Apple,
+  Download,
+  Monitor,
+  Search,
+  Star,
+  Terminal as TerminalIcon,
+  type LucideIcon
+} from 'lucide-react'
 import { WorkbenchShell } from '@/components/workbench-shell'
 import type { BreadcrumbSegment } from '@/components/breadcrumb'
 import { useLanguage } from '@/lib/language'
@@ -57,7 +65,12 @@ export function DownloadPage() {
     >
       <div className="vsc-marketplace">
         <div className="vsc-marketplace-header">
-          <Search size={14} strokeWidth={1.5} aria-hidden="true" style={{ color: 'var(--workbench-muted)' }} />
+          <Search
+            size={14}
+            strokeWidth={1.5}
+            aria-hidden="true"
+            style={{ color: 'var(--workbench-muted)' }}
+          />
           <input
             type="search"
             className="vsc-marketplace-search"
@@ -80,21 +93,32 @@ export function DownloadPage() {
             const Icon = ICON_BY_PLATFORM[platform.platform]
             const label = copy.download.platforms[platform.platform]
             return (
-              <div key={platform.platform} className="vsc-extension-item" id={`download-${platform.platform}`}>
+              <div
+                key={platform.platform}
+                className="vsc-extension-item"
+                id={`download-${platform.platform}`}
+              >
                 <div className="vsc-extension-icon">
                   <Icon size={28} strokeWidth={1.5} aria-hidden="true" />
                 </div>
                 <div className="vsc-extension-body">
                   <h3>
                     WinSSH for {label}{' '}
-                    <span style={{ fontSize: 13, color: 'var(--workbench-muted)', fontWeight: 400 }}>
+                    <span
+                      style={{ fontSize: 13, color: 'var(--workbench-muted)', fontWeight: 400 }}
+                    >
                       v{APP_VERSION}
                     </span>
                   </h3>
                   <p>{platform.assets.map((a) => `${a.label} (${a.format})`).join('  ·  ')}</p>
                   <div className="vsc-extension-meta">
-                    <Star size={11} strokeWidth={1.5} aria-hidden="true" style={{ verticalAlign: 'text-bottom' }} /> winssh ·{' '}
-                    {language === 'zh-CN' ? '开源' : 'Open Source'} · MIT
+                    <Star
+                      size={11}
+                      strokeWidth={1.5}
+                      aria-hidden="true"
+                      style={{ verticalAlign: 'text-bottom' }}
+                    />{' '}
+                    winssh · {language === 'zh-CN' ? '开源' : 'Open Source'} · MIT
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

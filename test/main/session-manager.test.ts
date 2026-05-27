@@ -1026,7 +1026,11 @@ describe('SessionManager session data forwarding', () => {
     return { manager, emitToRenderer }
   }
 
-  function pushData(manager: SessionManager, runtime: ReturnType<typeof createRuntime>, data: string) {
+  function pushData(
+    manager: SessionManager,
+    runtime: ReturnType<typeof createRuntime>,
+    data: string
+  ) {
     const emit = Reflect.get(manager as object, 'emitSessionData') as (
       r: ReturnType<typeof createRuntime>,
       data: string
@@ -1053,5 +1057,4 @@ describe('SessionManager session data forwarding', () => {
     ])
     expect(runtime.summary.currentPath).toBe('/')
   })
-
 })

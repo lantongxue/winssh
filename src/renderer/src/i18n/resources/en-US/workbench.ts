@@ -897,7 +897,8 @@ const workbench = {
       clearConfirm: 'Clear all recorded commands for this scope?',
       clearDialog: {
         title: 'Clear Command History',
-        description: 'This permanently removes all recorded commands for this scope. This action cannot be undone.'
+        description:
+          'This permanently removes all recorded commands for this scope. This action cannot be undone.'
       },
       deleteEntry: 'Delete',
       reRun: 'Double-click to insert into terminal',

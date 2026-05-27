@@ -80,9 +80,7 @@ export function SftpEntryContextMenu({
 
         {singleContextTarget ? (
           <ContextMenuItem
-            onClick={() =>
-              void sftpClient.downloadFile(sessionId, singleContextTarget.path)
-            }
+            onClick={() => void sftpClient.downloadFile(sessionId, singleContextTarget.path)}
           >
             <DownloadIcon className="size-4" />
             {t('common.actions.download')}

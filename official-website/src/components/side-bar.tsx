@@ -23,7 +23,14 @@ interface SideBarProps {
   footer?: ReactNode
 }
 
-export function SideBar({ title, workspaceTitle, sections, activeId, onSelect, footer }: SideBarProps) {
+export function SideBar({
+  title,
+  workspaceTitle,
+  sections,
+  activeId,
+  onSelect,
+  footer
+}: SideBarProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
 
   return (
@@ -83,7 +90,11 @@ export function SideBar({ title, workspaceTitle, sections, activeId, onSelect, f
           )
         })}
       </div>
-      {footer ? <div style={{ padding: '8px 16px', borderTop: '1px solid var(--workbench-border)' }}>{footer}</div> : null}
+      {footer ? (
+        <div style={{ padding: '8px 16px', borderTop: '1px solid var(--workbench-border)' }}>
+          {footer}
+        </div>
+      ) : null}
     </aside>
   )
 }

@@ -223,7 +223,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
     sessions: {
       connect: async () => ({ code: 'connection_failed', message: 'not implemented', ok: false }),
       disconnect: async () => undefined,
-getResourceSnapshot: async () => ({
+      getResourceSnapshot: async () => ({
         cpu: {
           usagePercent: 42.5
         },

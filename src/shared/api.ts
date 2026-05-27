@@ -197,6 +197,8 @@ export interface WinsshApi {
       isMaximized: () => Promise<boolean>
       onStateChange: (callback: (state: WindowState) => void) => Unsubscribe
     }
-    onHostTrustRequest: (callback: (request: import('./types').HostTrustRequest) => void) => Unsubscribe
+    onHostTrustRequest: (
+      callback: (request: import('./types').HostTrustRequest) => void
+    ) => Unsubscribe
   }
 }

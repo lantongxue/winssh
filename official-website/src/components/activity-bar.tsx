@@ -21,9 +21,7 @@ const TOP_ITEMS: Item[] = [
   { id: 'docs', icon: BookOpen, href: ROUTES.docs.path }
 ]
 
-const BOTTOM_ITEMS: Item[] = [
-  { id: 'changelog', icon: History, href: ROUTES.changelog.path }
-]
+const BOTTOM_ITEMS: Item[] = [{ id: 'changelog', icon: History, href: ROUTES.changelog.path }]
 
 export function ActivityBar({ activeRoute }: ActivityBarProps) {
   const { language } = useLanguage()

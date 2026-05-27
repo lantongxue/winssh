@@ -320,10 +320,7 @@ export class LocalTerminalManager {
     }
   }
 
-  private handleLocalCommandDone(
-    record: LocalTerminalRecord,
-    exitCode: number | null
-  ): void {
+  private handleLocalCommandDone(record: LocalTerminalRecord, exitCode: number | null): void {
     const pending = record.pendingCommand
     record.pendingCommand = { text: null, startedAt: null }
     if (!pending.text || !this.database) {

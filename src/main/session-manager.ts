@@ -10,11 +10,7 @@ import {
   type Stats,
   type TcpConnectionDetails
 } from 'ssh2'
-import {
-  dialog,
-  type BrowserWindow,
-  type OpenDialogOptions
-} from 'electron'
+import { dialog, type BrowserWindow, type OpenDialogOptions } from 'electron'
 import { normalizeRemotePath, sortRemoteEntries } from '@shared/sftp'
 import { runWithConcurrency } from './concurrency-pool'
 import { smartDecodeBuffer } from './encoding'
@@ -833,10 +829,7 @@ export class SessionManager {
   private readonly resourceNetworkBaselines = new Map<string, NetworkBytesSample>()
   private readonly editorReadControllers = new Map<string, AbortController>()
   private readonly transferControllers = new Map<string, AbortController>()
-  private readonly hostTrustResolvers = new Map<
-    string,
-    (result: boolean) => void
-  >()
+  private readonly hostTrustResolvers = new Map<string, (result: boolean) => void>()
 
   constructor(
     private readonly database: DatabaseService,
@@ -906,15 +899,21 @@ export class SessionManager {
     // Phase 1: Latency measurement (cross-platform)
     const latencyStart = Date.now()
     try {
-      const latencyResult = await execCommand(runtime.client, 'printf \'%s\\n\' "$(uname -s 2>/dev/null || echo unknown)"')
+      const latencyResult = await execCommand(
+        runtime.client,
+        'printf \'%s\\n\' "$(uname -s 2>/dev/null || echo unknown)"'
+      )
       const rttMs = Date.now() - latencyStart
       const platformName = latencyResult.stdout.trim()
 
       const platform: SessionResourceSnapshot['platform'] =
-        platformName === 'Linux' ? 'linux' :
-        platformName === 'Darwin' ? 'darwin' :
-        platformName === 'Windows' || platformName.startsWith('Windows') ? 'windows' :
-        'unknown'
+        platformName === 'Linux'
+          ? 'linux'
+          : platformName === 'Darwin'
+            ? 'darwin'
+            : platformName === 'Windows' || platformName.startsWith('Windows')
+              ? 'windows'
+              : 'unknown'
 
       const sampledAt = now()
       const sampledAtMs = Date.parse(sampledAt)
@@ -940,7 +939,9 @@ export class SessionManager {
           const sections = parseSectionedOutput(resourceResult.stdout)
           const cpuTimes = parseCpuTimes(sections.get(RESOURCE_MONITOR_MARKERS.procStat) ?? '')
           const memory = parseMemInfo(sections.get(RESOURCE_MONITOR_MARKERS.procMeminfo) ?? '')
-          const networkBytes = parseNetworkBytes(sections.get(RESOURCE_MONITOR_MARKERS.procNetDev) ?? '')
+          const networkBytes = parseNetworkBytes(
+            sections.get(RESOURCE_MONITOR_MARKERS.procNetDev) ?? ''
+          )
           const disk = parseDiskUsage(sections.get(RESOURCE_MONITOR_MARKERS.df) ?? '')
 
           const previousCpuTimes = this.resourceCpuBaselines.get(sessionId)
@@ -961,8 +962,14 @@ export class SessionManager {
           let txBytesPerSecond: number | null = null
           if (previousNetworkBytes && sampledAtMs > previousNetworkBytes.sampledAt) {
             const elapsedSeconds = (sampledAtMs - previousNetworkBytes.sampledAt) / 1000
-            rxBytesPerSecond = Math.max(0, Math.round((networkBytes.rxBytes - previousNetworkBytes.rxBytes) / elapsedSeconds))
-            txBytesPerSecond = Math.max(0, Math.round((networkBytes.txBytes - previousNetworkBytes.txBytes) / elapsedSeconds))
+            rxBytesPerSecond = Math.max(
+              0,
+              Math.round((networkBytes.rxBytes - previousNetworkBytes.rxBytes) / elapsedSeconds)
+            )
+            txBytesPerSecond = Math.max(
+              0,
+              Math.round((networkBytes.txBytes - previousNetworkBytes.txBytes) / elapsedSeconds)
+            )
           }
 
           return {
@@ -1590,7 +1597,15 @@ export class SessionManager {
     const stats = await sftpStat(sftp, remotePath)
 
     if (!stats.isDirectory()) {
-      await this.downloadRemoteFile(sessionId, sftp, remotePath, localPath, batchId, batchTotal, signal)
+      await this.downloadRemoteFile(
+        sessionId,
+        sftp,
+        remotePath,
+        localPath,
+        batchId,
+        batchTotal,
+        signal
+      )
       return
     }
 
@@ -2201,17 +2216,22 @@ export class SessionManager {
 
       const { sftpUploadConcurrency } = this.database.getSettings()
 
-      await runWithConcurrency(childNames, sftpUploadConcurrency, async (childName, s) => {
-        await this.uploadLocalEntry(
-          sessionId,
-          sftp,
-          path.join(localPath, childName),
-          posix.join(normalizedRemotePath, childName),
-          batchId,
-          batchTotal,
-          s
-        )
-      }, signal)
+      await runWithConcurrency(
+        childNames,
+        sftpUploadConcurrency,
+        async (childName, s) => {
+          await this.uploadLocalEntry(
+            sessionId,
+            sftp,
+            path.join(localPath, childName),
+            posix.join(normalizedRemotePath, childName),
+            batchId,
+            batchTotal,
+            s
+          )
+        },
+        signal
+      )
 
       return
     }

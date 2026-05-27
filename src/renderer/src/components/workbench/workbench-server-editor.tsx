@@ -1088,10 +1088,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                     </div>
                   </div>
                   <FormControl>
-                    <Switch
-                      checked={field.value !== false}
-                      onCheckedChange={field.onChange}
-                    />
+                    <Switch checked={field.value !== false} onCheckedChange={field.onChange} />
                   </FormControl>
                 </FormItem>
               )}

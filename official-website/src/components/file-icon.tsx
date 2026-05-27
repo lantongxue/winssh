@@ -30,7 +30,15 @@ const GLYPH_MAP: Record<FileLanguage, ReactNode> = {
   typescript: (
     <>
       <rect x="2" y="2" width="12" height="12" rx="1" />
-      <text x="8" y="11" fill="white" fontSize="6" fontWeight="700" textAnchor="middle" fontFamily="monospace">
+      <text
+        x="8"
+        y="11"
+        fill="white"
+        fontSize="6"
+        fontWeight="700"
+        textAnchor="middle"
+        fontFamily="monospace"
+      >
         TS
       </text>
     </>
@@ -38,7 +46,14 @@ const GLYPH_MAP: Record<FileLanguage, ReactNode> = {
   terminal: (
     <>
       <rect x="2" y="3" width="12" height="10" rx="1" />
-      <path d="M4.5 6l2 2-2 2M8 10h3" stroke="white" strokeWidth="1" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M4.5 6l2 2-2 2M8 10h3"
+        stroke="white"
+        strokeWidth="1"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </>
   ),
   plain: <rect x="3" y="2" width="10" height="12" />

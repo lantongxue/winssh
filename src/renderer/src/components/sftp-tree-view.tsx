@@ -17,7 +17,11 @@ import type { RemoteEntry, SftpListResult } from '@shared/types'
 import { getParentRemotePath } from '@shared/sftp'
 import { sftpClient } from '@/features/sftp/api/sftp-client'
 import { actionIcons } from '@/lib/action-icons'
-import { writeTerminalPathDragData, writeSftpMoveDragData, clearSftpMoveDragData } from '@/lib/terminal-path-dnd'
+import {
+  writeTerminalPathDragData,
+  writeSftpMoveDragData,
+  clearSftpMoveDragData
+} from '@/lib/terminal-path-dnd'
 import type { SessionTab } from '@/store/sessions-store'
 import { cn } from '@/lib/utils'
 import { SftpEntryContextMenu } from '@/components/sftp-entry-context-menu'
@@ -191,7 +195,11 @@ function SftpTreeEntryRow({
       }}
       onDragStart={(event) => {
         writeTerminalPathDragData(event.dataTransfer, entry.path)
-        writeSftpMoveDragData(event.dataTransfer, entry.path, entry.kind === 'directory' ? 'directory' : 'file')
+        writeSftpMoveDragData(
+          event.dataTransfer,
+          entry.path,
+          entry.kind === 'directory' ? 'directory' : 'file'
+        )
       }}
       onDragEnd={clearSftpMoveDragData}
     >
@@ -253,14 +261,21 @@ function SftpTreeEntryRow({
     </button>
   )
 
-  const isDropTarget = isDirectory && (dropState === 'valid' || dropState === 'invalid-self' || dropState === 'invalid-descendant' || dropState === 'invalid-same-dir')
+  const isDropTarget =
+    isDirectory &&
+    (dropState === 'valid' ||
+      dropState === 'invalid-self' ||
+      dropState === 'invalid-descendant' ||
+      dropState === 'invalid-same-dir')
 
   return (
     <div
       style={wrapperStyle ?? { height: `${ENTRY_ITEM_HEIGHT}px` }}
       {...(isDirectory ? dropHandlers : {})}
       className={cn(
-        isDropTarget && dropState === 'valid' && 'bg-[color-mix(in_srgb,var(--workbench-active)_12%,transparent)]',
+        isDropTarget &&
+          dropState === 'valid' &&
+          'bg-[color-mix(in_srgb,var(--workbench-active)_12%,transparent)]',
         isDropTarget && dropState !== 'valid' && 'bg-destructive/10'
       )}
     >
@@ -275,9 +290,7 @@ function SftpTreeEntryRow({
           onEditFile={onEditFile}
           onRename={onSetRenameTarget}
           onRefresh={
-            refreshContextTarget
-              ? () => void onRefreshDirectory(refreshContextTarget)
-              : onRefresh
+            refreshContextTarget ? () => void onRefreshDirectory(refreshContextTarget) : onRefresh
           }
           onCopyEntryPaths={onCopyEntryPaths}
           onSendPathToTerminal={onSendPathToTerminal}

@@ -1,12 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent
-} from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { ChevronRight, Maximize2, Sparkle, X } from 'lucide-react'
 import { FileIcon, type FileLanguage } from './file-icon'
 import type { FeatureSpotlight } from '@/content/site'
@@ -40,7 +32,11 @@ export function FeatureShowcase({
   const triggerRef = useRef<HTMLButtonElement | null>(null)
 
   const activeIndex = useMemo(
-    () => Math.max(0, features.findIndex((f) => f.id === activeId)),
+    () =>
+      Math.max(
+        0,
+        features.findIndex((f) => f.id === activeId)
+      ),
     [features, activeId]
   )
   const active = features[activeIndex] ?? features[0]
@@ -241,10 +237,7 @@ function Lightbox({ src, alt, caption, onClose }: LightboxProps) {
       >
         <X size={18} strokeWidth={2} aria-hidden="true" />
       </button>
-      <figure
-        className="vsc-lightbox-figure"
-        onClick={(event) => event.stopPropagation()}
-      >
+      <figure className="vsc-lightbox-figure" onClick={(event) => event.stopPropagation()}>
         <img src={src} alt={alt} className="vsc-lightbox-image" decoding="async" />
         <figcaption className="vsc-lightbox-caption">{caption}</figcaption>
       </figure>

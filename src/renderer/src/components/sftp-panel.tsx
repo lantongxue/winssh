@@ -32,7 +32,11 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { SftpTreeView, type SftpTreeViewHandle, type SftpViewMode } from '@/components/sftp-tree-view'
+import {
+  SftpTreeView,
+  type SftpTreeViewHandle,
+  type SftpViewMode
+} from '@/components/sftp-tree-view'
 import { SftpFlatView } from '@/components/sftp-flat-view'
 
 interface SftpPanelProps {
@@ -111,7 +115,13 @@ function getDroppedLocalPaths(dataTransfer: DataTransfer | null | undefined) {
   return [...localPaths]
 }
 
-export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, onHeaderDragEnd }: SftpPanelProps) {
+export function SftpPanel({
+  session,
+  className,
+  onEditFile,
+  onHeaderDragStart,
+  onHeaderDragEnd
+}: SftpPanelProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const setCurrentPath = useSessionsStore((state) => state.setCurrentPath)
@@ -154,7 +164,7 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
     queryFn: () => sftpClient.list(session!.sessionId, session!.currentPath),
     enabled: Boolean(session && session.status === 'ready')
   })
-  const currentPath = listingQuery.data?.path ?? (session?.currentPath ?? '/')
+  const currentPath = listingQuery.data?.path ?? session?.currentPath ?? '/'
   const [pathInputValue, setPathInputValue] = useState(currentPath)
 
   useEffect(() => {
@@ -164,11 +174,7 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
   }, [])
 
   useEffect(() => {
-    if (
-      session &&
-      listingQuery.data?.path &&
-      listingQuery.data.path !== session.currentPath
-    ) {
+    if (session && listingQuery.data?.path && listingQuery.data.path !== session.currentPath) {
       setCurrentPath(session.sessionId, listingQuery.data.path)
     }
   }, [listingQuery.data?.path, session, setCurrentPath])
@@ -733,7 +739,9 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
                   onSendPathToTerminal={sendPathToTerminal}
                   onResolveContextMenuTargets={resolveContextMenuTargets}
                   onGetEntryMeta={getEntryMeta}
-                  onDirectoryMoved={(oldPath, newPath) => treeViewRef.current?.renameExpandedPath(oldPath, newPath)}
+                  onDirectoryMoved={(oldPath, newPath) =>
+                    treeViewRef.current?.renameExpandedPath(oldPath, newPath)
+                  }
                   onEditFile={onEditFile}
                 />
               ) : null}

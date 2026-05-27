@@ -69,9 +69,7 @@ export function ConfirmDialog({
       >
         <AlertDialogHeader className="border-b border-[var(--workbench-border)] px-4 py-4">
           <AlertDialogTitle>{title}</AlertDialogTitle>
-          {description && (
-            <AlertDialogDescription>{description}</AlertDialogDescription>
-          )}
+          {description && <AlertDialogDescription>{description}</AlertDialogDescription>}
         </AlertDialogHeader>
         <AlertDialogFooter className="border-t border-[var(--workbench-border)] px-4 py-3">
           <AlertDialogCancel asChild>
@@ -81,16 +79,8 @@ export function ConfirmDialog({
             </Button>
           </AlertDialogCancel>
           <AlertDialogAction asChild>
-            <Button
-              variant={variant}
-              disabled={spinning}
-              onClick={() => void handleConfirm()}
-            >
-              {spinning ? (
-                <LoaderCircle className="size-4 animate-spin" />
-              ) : (
-                confirmIcon
-              )}
+            <Button variant={variant} disabled={spinning} onClick={() => void handleConfirm()}>
+              {spinning ? <LoaderCircle className="size-4 animate-spin" /> : confirmIcon}
               {confirmLabel ?? t('common.actions.delete')}
             </Button>
           </AlertDialogAction>

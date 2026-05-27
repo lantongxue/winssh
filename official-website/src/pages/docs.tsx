@@ -53,11 +53,7 @@ export function DocsPage() {
         <p>{copy.docs.subtitle}</p>
         <hr />
         {copy.docs.sections.map((section) => (
-          <section
-            key={section.id}
-            id={section.id}
-            onMouseEnter={() => setActiveId(section.id)}
-          >
+          <section key={section.id} id={section.id} onMouseEnter={() => setActiveId(section.id)}>
             <h2>{section.title}</h2>
             <p>{section.description}</p>
           </section>

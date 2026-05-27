@@ -1006,9 +1006,7 @@ export function WorkbenchSettingsEditor() {
                     name="sftpUploadConcurrency"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>
-                          {t('workbench.settings.form.sftpUploadConcurrency')}
-                        </FormLabel>
+                        <FormLabel>{t('workbench.settings.form.sftpUploadConcurrency')}</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -1018,10 +1016,9 @@ export function WorkbenchSettingsEditor() {
                             {...field}
                             onBlur={() => {
                               field.onBlur()
-                              const parsed =
-                                settingsSchema.shape.sftpUploadConcurrency.safeParse(
-                                  form.getValues('sftpUploadConcurrency')
-                                )
+                              const parsed = settingsSchema.shape.sftpUploadConcurrency.safeParse(
+                                form.getValues('sftpUploadConcurrency')
+                              )
                               if (!parsed.success) {
                                 resetSavedField(
                                   'sftpUploadConcurrency',
@@ -1059,10 +1056,9 @@ export function WorkbenchSettingsEditor() {
                             {...field}
                             onBlur={() => {
                               field.onBlur()
-                              const parsed =
-                                settingsSchema.shape.sftpDownloadConcurrency.safeParse(
-                                  form.getValues('sftpDownloadConcurrency')
-                                )
+                              const parsed = settingsSchema.shape.sftpDownloadConcurrency.safeParse(
+                                form.getValues('sftpDownloadConcurrency')
+                              )
                               if (!parsed.success) {
                                 resetSavedField(
                                   'sftpDownloadConcurrency',

@@ -100,7 +100,11 @@ export function HomePage() {
   const { language } = useLanguage()
 
   const [tabs, setTabs] = useState<EditorTab[]>([
-    { id: DOCUMENTS.welcome.id, label: DOCUMENTS.welcome.label, language: DOCUMENTS.welcome.language }
+    {
+      id: DOCUMENTS.welcome.id,
+      label: DOCUMENTS.welcome.label,
+      language: DOCUMENTS.welcome.language
+    }
   ])
   const [activeTabId, setActiveTabId] = useState<DocumentId>('welcome')
 
@@ -271,20 +275,12 @@ function WelcomeTab({ onOpenFeatures }: WelcomeTabProps) {
           <p className="vsc-welcome-tagline">{copy.tagline}</p>
           <p className="vsc-welcome-lede">{copy.hero.subline}</p>
           <div className="vsc-welcome-ctas">
-            <a
-              className="vsc-cta is-primary"
-              href={withBasePath(ROUTES.download.path)}
-            >
+            <a className="vsc-cta is-primary" href={withBasePath(ROUTES.download.path)}>
               <Download size={16} strokeWidth={2} aria-hidden="true" />
               {copy.hero.primaryCta}
               <ArrowRight size={14} strokeWidth={2} aria-hidden="true" />
             </a>
-            <a
-              className="vsc-cta"
-              href={REPOSITORY_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <a className="vsc-cta" href={REPOSITORY_URL} target="_blank" rel="noopener noreferrer">
               <Github size={16} strokeWidth={1.75} aria-hidden="true" />
               {copy.hero.secondaryCta}
               <ExternalLink size={12} strokeWidth={1.75} aria-hidden="true" />
@@ -317,9 +313,7 @@ function WelcomeTab({ onOpenFeatures }: WelcomeTabProps) {
           initialPosition={50}
           ariaLabel={t.compare.ariaLabel}
           ariaValueTextFormat={(pct) =>
-            language === 'zh-CN'
-              ? `深色显示 ${pct}%`
-              : `Dark theme visible ${pct}%`
+            language === 'zh-CN' ? `深色显示 ${pct}%` : `Dark theme visible ${pct}%`
           }
         />
         <p className="vsc-compare-hint" aria-hidden="true">
@@ -373,10 +367,7 @@ function WelcomeTab({ onOpenFeatures }: WelcomeTabProps) {
           <ul className="vsc-recent-list">
             {recent.map((r, idx) => (
               <li key={r.version}>
-                <a
-                  href={withBasePath(ROUTES.changelog.path)}
-                  className="vsc-recent-item"
-                >
+                <a href={withBasePath(ROUTES.changelog.path)} className="vsc-recent-item">
                   <span className="vsc-recent-version">v{r.version}</span>
                   {idx === 0 ? <span className="vsc-recent-badge">{t.recent.latest}</span> : null}
                   <span className="vsc-recent-date">{r.date}</span>
@@ -384,10 +375,7 @@ function WelcomeTab({ onOpenFeatures }: WelcomeTabProps) {
               </li>
             ))}
           </ul>
-          <a
-            href={withBasePath(ROUTES.changelog.path)}
-            className="vsc-welcome-more"
-          >
+          <a href={withBasePath(ROUTES.changelog.path)} className="vsc-welcome-more">
             {t.recent.viewAll}
             <ArrowRight size={12} strokeWidth={2} aria-hidden="true" />
           </a>
@@ -438,11 +426,7 @@ function WelcomeTab({ onOpenFeatures }: WelcomeTabProps) {
           </h2>
           <p className="vsc-welcome-section-sub">{copy.features.subtitle}</p>
         </header>
-        <button
-          type="button"
-          className="vsc-features-pointer"
-          onClick={onOpenFeatures}
-        >
+        <button type="button" className="vsc-features-pointer" onClick={onOpenFeatures}>
           <span className="vsc-features-pointer-icon" aria-hidden="true">
             <FileJson size={18} strokeWidth={1.5} />
           </span>
@@ -490,9 +474,7 @@ function FeaturesTab() {
         </div>
         <h1 className="vsc-features-doc-title">{copy.features.title}</h1>
         <p className="vsc-features-doc-sub">{copy.features.subtitle}</p>
-        <p className="vsc-features-doc-hint">
-          {t.featuresDoc.hint}
-        </p>
+        <p className="vsc-features-doc-hint">{t.featuresDoc.hint}</p>
       </header>
       <FeatureShowcase
         features={copy.features.items}

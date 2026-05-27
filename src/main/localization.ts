@@ -104,7 +104,7 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
           allFiles: 'All Files'
         }
       },
-uploadFiles: {
+      uploadFiles: {
         title: 'Choose Files to Upload'
       },
       downloadFile: {
@@ -214,7 +214,7 @@ uploadFiles: {
       uploadFiles: {
         title: '选择要上传的文件'
       },
-downloadFile: {
+      downloadFile: {
         title: '保存远程文件'
       }
     },
