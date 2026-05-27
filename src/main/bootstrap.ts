@@ -6,6 +6,7 @@ import { APP_ID, APP_NAME } from '@shared/constants'
 import { normalizeLocalTerminalShell } from '@shared/local-terminal-shells'
 import type { AppSettings } from '@shared/types'
 import { createAppInfo } from './app-info'
+import { setupAppFocusAndActivityListeners } from './app-focus-activity'
 import { syncApplicationMenu } from './app-menu'
 import { DatabaseService } from './database'
 import { LocalTerminalManager } from './local-terminal-manager'
@@ -330,6 +331,7 @@ export async function bootstrap(): Promise<void> {
   })
 
   mainWindow = createWindow(settingsService.getSettings(), themeRegistry)
+  setupAppFocusAndActivityListeners(mainWindow)
   mainWindow.webContents.once('did-finish-load', () => {
     if (updateService.getState().autoCheckEnabled) {
       void updateService.check()

@@ -336,6 +336,12 @@ const api: WinsshApi = {
       isMaximized: () => ipcRenderer.invoke('system:window:isMaximized'),
       onStateChange: (callback) => subscribe('system:windowState', callback)
     },
+    appFocus: {
+      onStateChange: (callback) => subscribe('system:appFocus', callback)
+    },
+    appActivity: {
+      onStateChange: (callback) => subscribe('system:appActivity', callback)
+    },
     onHostTrustRequest: (callback) => subscribe('system:hostTrustRequest', callback)
   }
 }

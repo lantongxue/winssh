@@ -886,6 +886,19 @@ const workbench = {
         updated: 'Credential updated.'
       }
     },
+    awayReminder: {
+      title: 'Safety Reminder',
+      description: 'Confirm that you are still present to continue the current connection.',
+      confirmButton: 'Confirm Continue',
+      serverIdentity: 'Server Identity',
+      localTerminal: 'Local Terminal',
+      sshSession: 'SSH Session',
+      shellType: 'Shell Type',
+      timeoutSetting: 'Away Timeout',
+      enableSetting: 'Enable Away Reminder',
+      timeoutDescription: 'After this duration of inactivity, the overlay will appear.',
+      secondsUnit: 'seconds'
+    },
     commandHistory: {
       title: 'Command History',
       subtitle: 'Recorded shell commands',

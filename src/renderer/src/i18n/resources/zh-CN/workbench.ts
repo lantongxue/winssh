@@ -864,6 +864,19 @@ const workbench = {
         updated: '凭据已更新。'
       }
     },
+    awayReminder: {
+      title: '安全提醒',
+      description: '请确认你仍在当前连接旁，以继续使用。',
+      confirmButton: '确认继续',
+      serverIdentity: '服务器标识',
+      localTerminal: '本地终端',
+      sshSession: 'SSH 会话',
+      shellType: 'Shell 类型',
+      timeoutSetting: '离开时长阈值',
+      enableSetting: '启用离开提醒',
+      timeoutDescription: '超过此时间无操作后，将弹出确认覆盖层。',
+      secondsUnit: '秒'
+    },
     commandHistory: {
       title: '命令历史',
       subtitle: '已记录的 Shell 命令',

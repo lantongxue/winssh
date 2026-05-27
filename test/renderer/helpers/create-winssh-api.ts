@@ -130,6 +130,8 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
   const systemOverrides = overrides.system
   const menuOverrides = systemOverrides?.menu
   const windowOverrides = systemOverrides?.window
+  const appFocusOverrides = systemOverrides?.appFocus
+  const appActivityOverrides = systemOverrides?.appActivity
   const defaultMenuApi: WinsshApi['system']['menu'] = {
     onAction: () => noopUnsubscribe
   }
@@ -149,6 +151,12 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
     minimize: windowOverrides?.minimize ?? defaultWindowApi.minimize,
     onStateChange: windowOverrides?.onStateChange ?? defaultWindowApi.onStateChange,
     toggleMaximize: windowOverrides?.toggleMaximize ?? defaultWindowApi.toggleMaximize
+  }
+  const resolvedAppFocusApi: WinsshApi['system']['appFocus'] = {
+    onStateChange: appFocusOverrides?.onStateChange ?? (() => noopUnsubscribe)
+  }
+  const resolvedAppActivityApi: WinsshApi['system']['appActivity'] = {
+    onStateChange: appActivityOverrides?.onStateChange ?? (() => noopUnsubscribe)
   }
   const resolvedSystemApi: WinsshApi['system'] = {
     getCapabilities:
@@ -173,7 +181,9 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
     pickServerIcon: systemOverrides?.pickServerIcon ?? (async () => null),
     relaunch: systemOverrides?.relaunch ?? (async () => undefined),
     menu: resolvedMenuApi,
-    window: resolvedWindowApi
+    window: resolvedWindowApi,
+    appFocus: resolvedAppFocusApi,
+    appActivity: resolvedAppActivityApi
   }
 
   return {

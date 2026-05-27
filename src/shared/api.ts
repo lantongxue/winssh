@@ -1,4 +1,6 @@
 import type {
+  AppActivityEvent,
+  AppFocusEvent,
   AppInfo,
   AppSettings,
   CommandHistoryEntry,
@@ -196,6 +198,12 @@ export interface WinsshApi {
       close: () => Promise<void>
       isMaximized: () => Promise<boolean>
       onStateChange: (callback: (state: WindowState) => void) => Unsubscribe
+    }
+    appFocus: {
+      onStateChange: (callback: (event: AppFocusEvent) => void) => Unsubscribe
+    }
+    appActivity: {
+      onStateChange: (callback: (event: AppActivityEvent) => void) => Unsubscribe
     }
     onHostTrustRequest: (
       callback: (request: import('./types').HostTrustRequest) => void

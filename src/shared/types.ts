@@ -129,6 +129,8 @@ export interface AppSettings {
   sftpUploadConcurrency: number
   sftpDownloadConcurrency: number
   commandHistoryEnabled: boolean
+  awayReminderEnabled: boolean
+  awayReminderTimeoutMs: number
 }
 
 export interface WebDAVBackupState {
@@ -440,6 +442,14 @@ export type SystemMenuAction =
 
 export interface WindowState {
   isMaximized: boolean
+}
+
+export interface AppFocusEvent {
+  phase: 'blurred' | 'focused'
+}
+
+export interface AppActivityEvent {
+  phase: 'sleep' | 'wake' | 'lock-screen' | 'unlock-screen'
 }
 
 export interface QuickConnectTarget {

@@ -204,7 +204,9 @@ export const settingsSchema = z.object({
   resourceMonitorIntervalMs: z.coerce.number().int().min(500).max(30000),
   sftpUploadConcurrency: z.coerce.number().int().min(1).max(16),
   sftpDownloadConcurrency: z.coerce.number().int().min(1).max(16),
-  commandHistoryEnabled: z.boolean()
+  commandHistoryEnabled: z.boolean(),
+  awayReminderEnabled: z.boolean(),
+  awayReminderTimeoutMs: z.coerce.number().int().min(5000).max(3600000)
 })
 
 export const hostTrustRequestSchema = z.object({
