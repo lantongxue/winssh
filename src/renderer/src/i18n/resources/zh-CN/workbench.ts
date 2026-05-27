@@ -894,6 +894,47 @@ const workbench = {
       filterAll: '全部',
       filterSuccess: '成功',
       filterFailed: '失败'
+    },
+    commandPanel: {
+      title: '命令面板',
+      subtitle: '执行、复用与自定义常用命令',
+      tabs: {
+        history: '历史记录',
+        custom: '自定义命令'
+      },
+      searchPlaceholder: {
+        history: '在历史记录中搜索…',
+        custom: '在自定义命令中搜索…'
+      },
+      history: {
+        emptyTitle: '暂无历史命令',
+        emptyDescription: '在终端中执行的命令会自动记录在这里'
+      },
+      custom: {
+        emptyTitle: '暂无自定义命令',
+        emptyDescription: '保存常用命令以便快速访问',
+        run: '执行命令',
+        copy: '复制命令',
+        delete: '删除命令',
+        deleteConfirm: '确定要删除这条自定义命令吗？'
+      },
+      drawer: {
+        title: '新建自定义命令',
+        editTitle: '编辑自定义命令',
+        nameLabel: '命令别名',
+        namePlaceholder: '例如: 启动本地前端开发',
+        commandLabel: '具体 Shell 命令',
+        commandPlaceholder: 'git pull && yarn install && yarn start',
+        cancel: '取消',
+        save: '保存命令'
+      },
+      bookmark: '收藏到自定义命令',
+      insertIntoTerminal: '插入终端',
+      runImmediately: '立即执行',
+      copyToClipboard: '复制到剪贴板',
+      deleteEntry: '删除',
+      clearHistory: '清空历史',
+      close: '关闭面板'
     }
   }
 }

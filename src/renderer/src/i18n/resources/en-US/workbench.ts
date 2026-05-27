@@ -917,6 +917,47 @@ const workbench = {
       filterAll: 'All',
       filterSuccess: 'Success',
       filterFailed: 'Failed'
+    },
+    commandPanel: {
+      title: 'Command Panel',
+      subtitle: 'Execute, reuse & customize common commands',
+      tabs: {
+        history: 'History',
+        custom: 'Custom Commands'
+      },
+      searchPlaceholder: {
+        history: 'Search history…',
+        custom: 'Search custom commands…'
+      },
+      history: {
+        emptyTitle: 'No Command History',
+        emptyDescription: 'Commands executed in the terminal will be recorded here'
+      },
+      custom: {
+        emptyTitle: 'No Custom Commands',
+        emptyDescription: 'Save frequently used commands for quick access',
+        run: 'Run command',
+        copy: 'Copy command',
+        delete: 'Delete command',
+        deleteConfirm: 'Delete this custom command?'
+      },
+      drawer: {
+        title: 'New Custom Command',
+        editTitle: 'Edit Custom Command',
+        nameLabel: 'Command Alias',
+        namePlaceholder: 'e.g. Start frontend dev server',
+        commandLabel: 'Shell Command',
+        commandPlaceholder: 'git pull && yarn install && yarn start',
+        cancel: 'Cancel',
+        save: 'Save Command'
+      },
+      bookmark: 'Save to custom commands',
+      insertIntoTerminal: 'Insert into terminal',
+      runImmediately: 'Run immediately',
+      copyToClipboard: 'Copy to clipboard',
+      deleteEntry: 'Delete',
+      clearHistory: 'Clear history',
+      close: 'Close panel'
     }
   }
 }

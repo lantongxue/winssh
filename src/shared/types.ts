@@ -495,3 +495,16 @@ export interface HostTrustResult {
   requestId: string
   trusted: boolean
 }
+
+export interface CustomCommand {
+  id: string
+  name: string
+  command: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CustomCommandInput {
+  name: string
+  command: string
+}

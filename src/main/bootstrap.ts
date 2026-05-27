@@ -19,6 +19,7 @@ import { registerServerIpc } from './ipc/register-server-ipc'
 import { registerSessionIpc } from './ipc/register-session-ipc'
 import { registerSystemIpc } from './ipc/register-system-ipc'
 import { registerCommandHistoryIpc } from './ipc/register-command-history-ipc'
+import { registerCustomCommandIpc } from './ipc/register-custom-command-ipc'
 import { SecureStoreService } from './secure-store'
 import { SessionManager } from './session-manager'
 import { ThemeRegistry } from './theme-registry'
@@ -304,6 +305,7 @@ export async function bootstrap(): Promise<void> {
   })
   registerSessionIpc(sessionsService)
   registerCommandHistoryIpc(database)
+  registerCustomCommandIpc(database)
   registerSystemIpc({
     appInfo,
     credentialStorageAvailable: () => Promise.resolve(true),

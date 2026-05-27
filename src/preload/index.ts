@@ -272,6 +272,12 @@ const api: WinsshApi = {
       ipcRenderer.invoke('commandHistory:setServerCapture', serverId, enabled),
     onCommandAdded: (callback) => subscribe('commandHistory:added', callback)
   },
+  customCommands: {
+    list: () => ipcRenderer.invoke('customCommands:list'),
+    create: (input) => ipcRenderer.invoke('customCommands:create', input),
+    update: (id, input) => ipcRenderer.invoke('customCommands:update', id, input),
+    delete: (id) => ipcRenderer.invoke('customCommands:delete', id)
+  },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
     update: (input) => ipcRenderer.invoke('settings:update', input)

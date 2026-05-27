@@ -77,6 +77,16 @@ const validation = {
         max: 'Tag name must be 32 characters or fewer.',
         required: 'Enter a tag name.'
       }
+    },
+    customCommand: {
+      name: {
+        max: 'Command alias must be 60 characters or fewer.',
+        required: 'Enter a command alias.'
+      },
+      command: {
+        max: 'Shell command must be 2000 characters or fewer.',
+        required: 'Enter a shell command.'
+      }
     }
   }
 }

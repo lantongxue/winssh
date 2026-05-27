@@ -10,6 +10,8 @@ import type {
   Credential,
   CredentialSecret,
   CredentialUpsertInput,
+  CustomCommand,
+  CustomCommandInput,
   GroupInput,
   HostTrustResult,
   KnownHost,
@@ -137,6 +139,12 @@ export interface WinsshApi {
     deleteEntry: (id: string) => Promise<void>
     setServerCapture: (serverId: string, enabled: boolean) => Promise<void>
     onCommandAdded: (callback: (event: CommandRecordedEvent) => void) => Unsubscribe
+  }
+  customCommands: {
+    list: () => Promise<CustomCommand[]>
+    create: (input: CustomCommandInput) => Promise<CustomCommand>
+    update: (id: string, input: Partial<CustomCommandInput>) => Promise<CustomCommand>
+    delete: (id: string) => Promise<void>
   }
   settings: {
     get: () => Promise<AppSettings>
