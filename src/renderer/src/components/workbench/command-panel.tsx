@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils'
 import { useCommandHistory } from '@/features/command-history/hooks/use-command-history'
 import { useCustomCommands } from '@/features/custom-commands/hooks/use-custom-commands'
 
-const ROW_HEIGHT = 64
+const ROW_HEIGHT = 76
 
 function TooltipIconButton({
   children,
@@ -319,7 +319,7 @@ export function CommandPanel({
         </div>
 
         {/* ── Main Tabs ── */}
-        <div className="flex gap-5 px-4 border-b border-[var(--workbench-border)] bg-[color-mix(in_srgb,var(--workbench-hover)_20%,transparent)]">
+        <div className="flex gap-5 px-4 ">
           <button
             onClick={() => setActiveTab('history')}
             className={cn(
@@ -371,7 +371,7 @@ export function CommandPanel({
         </div>
 
         {/* ── Search & Filters ── */}
-        <div className="flex flex-col gap-3 px-4 py-3 border-b border-[var(--workbench-border)]/50">
+        <div className="flex flex-col gap-2 px-4 py-2 border-b border-[var(--workbench-border)]/50">
           <div className="relative group">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground group-focus-within:text-[var(--workbench-active)] transition-colors" />
             <Input
@@ -382,19 +382,19 @@ export function CommandPanel({
                   ? t('workbench.commandPanel.searchPlaceholder.history')
                   : t('workbench.commandPanel.searchPlaceholder.custom')
               }
-              className="h-8.5 pl-9 text-[11px] rounded border-[var(--workbench-border)] bg-[var(--workbench-input)] focus-visible:bg-[var(--workbench-input)] focus-visible:border-[var(--workbench-active)] focus-visible:ring-1 focus-visible:ring-[var(--workbench-active)]/50 focus-visible:ring-offset-0 transition-all"
+              className="pl-9 text-[11px] border-[var(--workbench-border)] bg-[var(--workbench-input)]"
             />
           </div>
 
           {activeTab === 'history' && (
             <div className="flex items-center justify-between gap-4">
-              <div className="flex flex-1 bg-[color-mix(in_srgb,var(--workbench-hover)_40%,transparent)] p-0.5 rounded-md border border-[var(--workbench-border)]/50">
+              <div className="flex flex-1 gap-1">
                 <button
                   onClick={() => setHistoryFilter('all')}
                   className={cn(
-                    'flex-1 text-[11px] py-1 rounded transition-all font-medium focus-visible:outline-none cursor-default',
+                    'flex-1 text-[11px] py-0.5',
                     historyFilter === 'all'
-                      ? 'bg-[var(--workbench-input)] text-foreground shadow-sm border border-[var(--workbench-border)]/20'
+                      ? 'bg-[var(--workbench-input)]'
                       : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
@@ -403,9 +403,9 @@ export function CommandPanel({
                 <button
                   onClick={() => setHistoryFilter('success')}
                   className={cn(
-                    'flex-1 text-[11px] py-1 rounded transition-all font-medium focus-visible:outline-none cursor-default',
+                    'flex-1 text-[11px] py-0.5t',
                     historyFilter === 'success'
-                      ? 'bg-[var(--workbench-input)] text-foreground shadow-sm border border-[var(--workbench-border)]/20'
+                      ? 'bg-[var(--workbench-input)]'
                       : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
@@ -414,9 +414,9 @@ export function CommandPanel({
                 <button
                   onClick={() => setHistoryFilter('failed')}
                   className={cn(
-                    'flex-1 text-[11px] py-1 rounded transition-all font-medium focus-visible:outline-none cursor-default',
+                    'flex-1 text-[11px] py-0.5',
                     historyFilter === 'failed'
-                      ? 'bg-[var(--workbench-input)] text-foreground shadow-sm border border-[var(--workbench-border)]/20'
+                      ? 'bg-[var(--workbench-input)]'
                       : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
@@ -644,28 +644,16 @@ function HistoryRow({
   const isSuccess = entry.exitCode === 0
 
   return (
-    <div
-      style={style}
-      className="group relative flex items-center px-4.5 border-b border-[var(--workbench-border)]/50 hover:bg-[var(--workbench-hover)] transition-colors cursor-pointer select-none"
-      onDoubleClick={onInsert}
-    >
-        {/* Status dot */}
-        <div
-          className={cn(
-            'w-1.5 h-1.5 rounded-full mr-3.5 shrink-0 transition-transform duration-200 group-hover:scale-110',
-            hasExitCode === false
-              ? 'bg-transparent'
-              : isSuccess
-                ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]'
-                : 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]'
-          )}
-        />
-
+    <div style={style} className="px-3 py-1">
+      <div
+        className="group relative flex flex-col h-full px-3.5 py-2.5 bg-[var(--workbench-editor)] border border-[var(--workbench-border)]/70 hover:border-[var(--workbench-active)]/50 transition-colors cursor-pointer select-none overflow-hidden"
+        onDoubleClick={onInsert}
+      >
         {/* Content */}
-        <div className="flex-1 min-w-0 pr-10 leading-tight">
+        <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
           <Tooltip>
             <TooltipTrigger asChild>
-              <code className="block truncate font-mono text-[11px] text-foreground bg-[var(--workbench-hover)]/20 px-1.5 py-0.5 rounded border border-[var(--workbench-border)]/20 w-fit max-w-full leading-normal cursor-help">
+              <code className="block truncate font-mono text-[12px] text-foreground w-full leading-relaxed cursor-help pr-10">
                 {entry.command}
               </code>
             </TooltipTrigger>
@@ -678,39 +666,37 @@ function HistoryRow({
               </span>
             </TooltipContent>
           </Tooltip>
-          <div className="flex items-center gap-2 text-[10.5px] text-muted-foreground mt-2 leading-none">
-            <span className="tabular-nums opacity-85">{time}</span>
+          <div className="flex items-center gap-4 text-[11px] text-muted-foreground mt-2.5 leading-none pr-2">
+            <span className="tabular-nums opacity-85 shrink-0">{time}</span>
             {entry.cwd && (
-              <>
-                <span className="opacity-35 select-none">&bull;</span>
-                <span className="flex items-center gap-1 truncate max-w-[120px]">
-                  <Folder className="size-3 shrink-0 text-muted-foreground/75" />
-                  <span className="truncate opacity-85">{entry.cwd}</span>
-                </span>
-              </>
+              <span className="flex items-center gap-1.5 truncate max-w-[200px] shrink">
+                <Folder className="size-3.5 shrink-0 text-muted-foreground/75" />
+                <span className="truncate opacity-85">{entry.cwd}</span>
+              </span>
             )}
-            {entry.durationMs !== null && (
-              <>
-                <span className="opacity-35 select-none">&bull;</span>
-                <span className="flex items-center gap-1">
-                  <Clock className="size-3 text-muted-foreground/75" />
+            <div className="flex items-center gap-3 ml-auto shrink-0">
+              {entry.durationMs !== null && (
+                <span className="flex items-center gap-1.5">
+                  <Clock className="size-3.5 text-muted-foreground/75" />
                   <span className="opacity-85">{formatDuration(entry.durationMs)}</span>
                 </span>
-              </>
-            )}
-            {hasExitCode && !isSuccess && (
-              <>
-                <span className="opacity-35 select-none">&bull;</span>
-                <span className="text-red-500 dark:text-red-400 font-semibold uppercase tracking-wider text-[9.5px]">
-                  Exit: {entry.exitCode}
+              )}
+              {hasExitCode && (
+                <span className={cn(
+                  "px-1.5 py-0.5 rounded-sm font-medium",
+                  isSuccess 
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" 
+                    : "bg-red-500/10 text-red-600 dark:text-red-400"
+                )}>
+                  {t('workbench.commandHistory.exitCode', { defaultValue: '退出码' })}:{entry.exitCode}
                 </span>
-              </>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
         {/* Hover actions */}
-        <div className="absolute right-0 top-0 bottom-0 flex items-center gap-1.5 px-3 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-150 bg-gradient-to-l from-[var(--workbench-sidebar)] via-[var(--workbench-sidebar)] to-transparent pl-12">
+        <div className="absolute right-0 top-0 bottom-0 flex items-center gap-1.5 px-3 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-150 bg-gradient-to-l from-[var(--workbench-editor)] via-[var(--workbench-editor)] to-transparent pl-12">
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -771,6 +757,7 @@ function HistoryRow({
             <TooltipContent>{t('workbench.commandPanel.deleteEntry')}</TooltipContent>
           </Tooltip>
         </div>
+      </div>
     </div>
   )
 }
@@ -790,20 +777,20 @@ function CustomRow({ command, style, onInsert, onRun, onCopy, onEdit, onDelete }
   const { t } = useTranslation()
 
   return (
-    <div
-      style={style}
-      className="group relative flex items-center px-4.5 border-b border-[var(--workbench-border)]/50 hover:bg-[var(--workbench-hover)] transition-colors cursor-pointer select-none"
-      onDoubleClick={onInsert}
-    >
-        {/* Star icon */}
-        <Star className="size-3.5 text-[var(--workbench-active)] mr-3.5 shrink-0 fill-current opacity-85 transition-transform duration-200 group-hover:scale-110" />
-
+    <div style={style} className="px-3 py-1">
+      <div
+        className="group relative flex flex-col h-full px-3.5 py-2.5 bg-[var(--workbench-editor)] border border-[var(--workbench-border)]/70 hover:border-[var(--workbench-active)]/50 transition-colors cursor-pointer select-none overflow-hidden"
+        onDoubleClick={onInsert}
+      >
         {/* Content */}
-        <div className="flex-1 min-w-0 pr-10 leading-tight">
-          <div className="text-xs font-semibold text-foreground mb-1">{command.name}</div>
+        <div className="flex-1 min-w-0 flex flex-col justify-between h-full pr-10">
+          <div className="flex items-center gap-2 mb-1.5">
+            <Star className="size-3.5 text-[var(--workbench-active)] shrink-0 fill-current opacity-85" />
+            <div className="text-xs font-semibold text-foreground truncate">{command.name}</div>
+          </div>
           <Tooltip>
             <TooltipTrigger asChild>
-              <code className="block truncate font-mono text-[11px] text-foreground/75 leading-normal bg-[var(--workbench-hover)]/20 px-1.5 py-0.5 rounded border border-[var(--workbench-border)]/20 w-fit max-w-full leading-normal cursor-help">
+              <code className="block truncate font-mono text-[11.5px] text-foreground/75 w-full leading-relaxed cursor-help">
                 {command.command}
               </code>
             </TooltipTrigger>
@@ -819,7 +806,7 @@ function CustomRow({ command, style, onInsert, onRun, onCopy, onEdit, onDelete }
         </div>
 
         {/* Hover actions */}
-        <div className="absolute right-0 top-0 bottom-0 flex items-center gap-1.5 px-3 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-150 bg-gradient-to-l from-[var(--workbench-sidebar)] via-[var(--workbench-sidebar)] to-transparent pl-12">
+        <div className="absolute right-0 top-0 bottom-0 flex items-center gap-1.5 px-3 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-150 bg-gradient-to-l from-[var(--workbench-editor)] via-[var(--workbench-editor)] to-transparent pl-12">
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -880,6 +867,7 @@ function CustomRow({ command, style, onInsert, onRun, onCopy, onEdit, onDelete }
             <TooltipContent>{t('workbench.commandPanel.custom.delete')}</TooltipContent>
           </Tooltip>
         </div>
+      </div>
     </div>
   )
 }
