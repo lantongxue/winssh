@@ -21,6 +21,7 @@ import type {
   Credential,
   CredentialSecret,
   CredentialUpsertInput,
+  CustomCommand,
   GroupInput,
   KnownHost,
   RecentSession,
@@ -131,6 +132,14 @@ type CommandHistoryRow = {
   duration_ms: number | null
 }
 
+type CustomCommandRow = {
+  id: string
+  name: string
+  command: string
+  created_at: string
+  updated_at: string
+}
+
 type SettingsRow = {
   key: string
   value: string
@@ -193,7 +202,8 @@ function mapServer(row: ServerRow, tags: Tag[]): Server {
     credentialId: row.credential_id,
     jumpServerId: row.jump_server_id,
     favorite: Boolean(row.favorite),
-    captureCommandHistory: row.capture_command_history === null ? true : Boolean(row.capture_command_history),
+    captureCommandHistory:
+      row.capture_command_history === null ? true : Boolean(row.capture_command_history),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     lastConnectedAt: row.last_connected_at,
@@ -233,6 +243,16 @@ function mapCommandHistory(row: CommandHistoryRow): CommandHistoryEntry {
     cwd: row.cwd,
     exitCode: row.exit_code,
     durationMs: row.duration_ms
+  }
+}
+
+function mapCustomCommand(row: CustomCommandRow): CustomCommand {
+  return {
+    id: row.id,
+    name: row.name,
+    command: row.command,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
   }
 }
 
@@ -374,7 +394,32 @@ export class DatabaseService {
       CREATE INDEX IF NOT EXISTS idx_cmdhist_local
         ON command_history(local_scope, executed_at DESC)
         WHERE scope_kind = 'local';
+
+      CREATE TABLE IF NOT EXISTS custom_commands (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        command TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
     `)
+
+    const customCommandColumns = this.db
+      .prepare('PRAGMA table_info(custom_commands)')
+      .all() as TableColumnRow[]
+    if (
+      !customCommandColumns.some((column) => column.name === 'updated_at') ||
+      customCommandColumns.some((column) => column.name === 'scope_kind')
+    ) {
+      this.db.exec('DROP TABLE IF EXISTS custom_commands')
+      this.db.exec(`CREATE TABLE custom_commands (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        command TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`)
+    }
 
     const groupColumns = this.db
       .prepare('PRAGMA table_info(server_groups)')
@@ -1045,9 +1090,7 @@ export class DatabaseService {
 
   setServerCaptureCommandHistory(serverId: string, enabled: boolean): void {
     this.db
-      .prepare(
-        'UPDATE servers SET capture_command_history = ?, updated_at = ? WHERE id = ?'
-      )
+      .prepare('UPDATE servers SET capture_command_history = ?, updated_at = ? WHERE id = ?')
       .run(enabled ? 1 : 0, nowIso(), serverId)
   }
 
@@ -1115,9 +1158,9 @@ export class DatabaseService {
     })
 
     transaction()
-    const row = this.db
-      .prepare('SELECT * FROM command_history WHERE id = ?')
-      .get(id) as CommandHistoryRow | undefined
+    const row = this.db.prepare('SELECT * FROM command_history WHERE id = ?').get(id) as
+      | CommandHistoryRow
+      | undefined
     return row ? mapCommandHistory(row) : null
   }
 
@@ -1205,5 +1248,52 @@ export class DatabaseService {
 
   clearAllCommands(): void {
     this.db.prepare('DELETE FROM command_history').run()
+  }
+
+  // ── Custom commands ──────────────────────────────────────────────────────
+
+  listCustomCommands(): CustomCommand[] {
+    const rows = this.db
+      .prepare('SELECT * FROM custom_commands ORDER BY updated_at DESC')
+      .all() as CustomCommandRow[]
+    return rows.map(mapCustomCommand)
+  }
+
+  createCustomCommand(input: { name: string; command: string }): CustomCommand {
+    const id = randomUUID()
+    const now = nowIso()
+    this.db
+      .prepare(
+        'INSERT INTO custom_commands (id, name, command, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
+      )
+      .run(id, input.name, input.command, now, now)
+    const row = this.db
+      .prepare('SELECT * FROM custom_commands WHERE id = ?')
+      .get(id) as CustomCommandRow
+    return mapCustomCommand(row)
+  }
+
+  updateCustomCommand(
+    id: string,
+    input: { name?: string; command?: string }
+  ): CustomCommand | null {
+    const existing = this.db.prepare('SELECT * FROM custom_commands WHERE id = ?').get(id) as
+      | CustomCommandRow
+      | undefined
+    if (!existing) return null
+    const name = input.name ?? existing.name
+    const command = input.command ?? existing.command
+    const now = nowIso()
+    this.db
+      .prepare('UPDATE custom_commands SET name = ?, command = ?, updated_at = ? WHERE id = ?')
+      .run(name, command, now, id)
+    const row = this.db
+      .prepare('SELECT * FROM custom_commands WHERE id = ?')
+      .get(id) as CustomCommandRow
+    return mapCustomCommand(row)
+  }
+
+  deleteCustomCommand(id: string): void {
+    this.db.prepare('DELETE FROM custom_commands WHERE id = ?').run(id)
   }
 }

@@ -171,7 +171,10 @@ export function SessionResourceMonitor({
     event.preventDefault()
   }, [])
 
-  const errorMessage = monitorQuery.error instanceof Error ? t('workbench.sessionEditor.resourceMonitor.unavailable') : undefined
+  const errorMessage =
+    monitorQuery.error instanceof Error
+      ? t('workbench.sessionEditor.resourceMonitor.unavailable')
+      : undefined
 
   return (
     <div

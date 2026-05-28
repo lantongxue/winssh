@@ -474,7 +474,10 @@ describe('SftpPanel', () => {
     fireEvent.dragStart(entryButton as HTMLElement, { dataTransfer })
 
     expect(dataTransfer.effectAllowed).toBe('copyMove')
-    expect(dataTransfer.setData).toHaveBeenCalledWith(TERMINAL_PATH_DRAG_MIME, '/var/www/config.json')
+    expect(dataTransfer.setData).toHaveBeenCalledWith(
+      TERMINAL_PATH_DRAG_MIME,
+      '/var/www/config.json'
+    )
     expect(dataTransfer.setData).toHaveBeenCalledWith('text/plain', '/var/www/config.json')
     expect(dataTransfer.setData).toHaveBeenCalledWith(
       SFTP_MOVE_DRAG_MIME,
@@ -519,11 +522,7 @@ describe('SftpPanel', () => {
     fireEvent.drop(targetButton as HTMLElement, { dataTransfer })
 
     await waitFor(() => {
-      expect(move).toHaveBeenCalledWith(
-        'session-1',
-        '/var/www/config.json',
-        '/var/www/assets'
-      )
+      expect(move).toHaveBeenCalledWith('session-1', '/var/www/config.json', '/var/www/assets')
     })
   })
 
@@ -583,11 +582,7 @@ describe('SftpPanel', () => {
     fireEvent.drop(targetButton as HTMLElement, { dataTransfer })
 
     await waitFor(() => {
-      expect(move).toHaveBeenCalledWith(
-        'session-1',
-        '/var/www/config.json',
-        '/var/www/assets'
-      )
+      expect(move).toHaveBeenCalledWith('session-1', '/var/www/config.json', '/var/www/assets')
     })
     await waitFor(() => {
       expect(list.mock.calls.filter((call) => call[1] === '/var/www/assets')).toHaveLength(2)

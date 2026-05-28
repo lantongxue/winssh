@@ -72,9 +72,7 @@ export function HostTrustDialogHost() {
         }
       }}
     >
-      <AlertDialogContent
-        className="max-w-md rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-0 shadow-2xl"
-      >
+      <AlertDialogContent className="max-w-md rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-editor)] p-0 shadow-2xl">
         <AlertDialogHeader className="border-b border-[var(--workbench-border)] px-4 py-4">
           <AlertDialogTitle className="flex items-center gap-2">
             {isChanged ? (
@@ -84,18 +82,16 @@ export function HostTrustDialogHost() {
             )}
             {title}
           </AlertDialogTitle>
+        </AlertDialogHeader>
+        <div className="px-4 py-4">
           <AlertDialogDescription>
             <p>{message}</p>
-            <pre className="mt-2 whitespace-pre-wrap text-xs font-mono opacity-80">
-              {detail}
-            </pre>
+            <pre className="mt-2 whitespace-pre-wrap text-xs font-mono opacity-80">{detail}</pre>
           </AlertDialogDescription>
-        </AlertDialogHeader>
+        </div>
         <AlertDialogFooter className="border-t border-[var(--workbench-border)] px-4 py-3">
           <AlertDialogCancel asChild>
-            <Button variant={isChanged ? 'destructive' : 'ghost'}>
-              {cancelLabel}
-            </Button>
+            <Button variant={isChanged ? 'destructive' : 'ghost'}>{cancelLabel}</Button>
           </AlertDialogCancel>
           <AlertDialogAction asChild>
             <Button

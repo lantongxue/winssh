@@ -6,6 +6,7 @@ import { APP_ID, APP_NAME } from '@shared/constants'
 import { normalizeLocalTerminalShell } from '@shared/local-terminal-shells'
 import type { AppSettings } from '@shared/types'
 import { createAppInfo } from './app-info'
+import { setupAppFocusAndActivityListeners } from './app-focus-activity'
 import { syncApplicationMenu } from './app-menu'
 import { DatabaseService } from './database'
 import { LocalTerminalManager } from './local-terminal-manager'
@@ -19,6 +20,7 @@ import { registerServerIpc } from './ipc/register-server-ipc'
 import { registerSessionIpc } from './ipc/register-session-ipc'
 import { registerSystemIpc } from './ipc/register-system-ipc'
 import { registerCommandHistoryIpc } from './ipc/register-command-history-ipc'
+import { registerCustomCommandIpc } from './ipc/register-custom-command-ipc'
 import { SecureStoreService } from './secure-store'
 import { SessionManager } from './session-manager'
 import { ThemeRegistry } from './theme-registry'
@@ -304,6 +306,7 @@ export async function bootstrap(): Promise<void> {
   })
   registerSessionIpc(sessionsService)
   registerCommandHistoryIpc(database)
+  registerCustomCommandIpc(database)
   registerSystemIpc({
     appInfo,
     credentialStorageAvailable: () => Promise.resolve(true),
@@ -328,6 +331,7 @@ export async function bootstrap(): Promise<void> {
   })
 
   mainWindow = createWindow(settingsService.getSettings(), themeRegistry)
+  setupAppFocusAndActivityListeners(mainWindow)
   mainWindow.webContents.once('did-finish-load', () => {
     if (updateService.getState().autoCheckEnabled) {
       void updateService.check()

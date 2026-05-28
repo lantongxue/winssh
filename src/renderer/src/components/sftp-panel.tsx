@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Send, Undo2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { getParentRemotePath } from '@shared/sftp'
+import { getParentRemotePath, normalizeRemotePath } from '@shared/sftp'
 import type { RemoteEntry } from '@shared/types'
 import { sessionsClient } from '@/features/sessions/api/sessions-client'
 import { sftpClient } from '@/features/sftp/api/sftp-client'
@@ -32,7 +32,11 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { SftpTreeView, type SftpTreeViewHandle, type SftpViewMode } from '@/components/sftp-tree-view'
+import {
+  SftpTreeView,
+  type SftpTreeViewHandle,
+  type SftpViewMode
+} from '@/components/sftp-tree-view'
 import { SftpFlatView } from '@/components/sftp-flat-view'
 
 interface SftpPanelProps {
@@ -111,7 +115,13 @@ function getDroppedLocalPaths(dataTransfer: DataTransfer | null | undefined) {
   return [...localPaths]
 }
 
-export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, onHeaderDragEnd }: SftpPanelProps) {
+export function SftpPanel({
+  session,
+  className,
+  onEditFile,
+  onHeaderDragStart,
+  onHeaderDragEnd
+}: SftpPanelProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const setCurrentPath = useSessionsStore((state) => state.setCurrentPath)
@@ -152,19 +162,9 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
   const listingQuery = useQuery({
     queryKey: ['sftp', session?.sessionId, session?.currentPath],
     queryFn: () => sftpClient.list(session!.sessionId, session!.currentPath),
-    enabled: Boolean(session && session.status === 'ready'),
-    placeholderData: (previousData, previousQuery) => {
-      if (previousQuery?.queryKey[1] === session?.sessionId) {
-        return previousData
-      }
-
-      return undefined
-    }
+    enabled: Boolean(session && session.status === 'ready')
   })
-  const currentPath =
-    !listingQuery.isPlaceholderData && listingQuery.data?.path
-      ? listingQuery.data.path
-      : (session?.currentPath ?? '/')
+  const currentPath = listingQuery.data?.path ?? session?.currentPath ?? '/'
   const [pathInputValue, setPathInputValue] = useState(currentPath)
 
   useEffect(() => {
@@ -174,22 +174,17 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
   }, [])
 
   useEffect(() => {
-    if (
-      session &&
-      !listingQuery.isPlaceholderData &&
-      listingQuery.data?.path &&
-      listingQuery.data.path !== session.currentPath
-    ) {
+    if (session && listingQuery.data?.path && listingQuery.data.path !== session.currentPath) {
       setCurrentPath(session.sessionId, listingQuery.data.path)
     }
-  }, [listingQuery.data?.path, listingQuery.isPlaceholderData, session, setCurrentPath])
+  }, [listingQuery.data?.path, session, setCurrentPath])
 
   useEffect(() => {
     setPathInputValue(currentPath)
   }, [currentPath])
 
   useEffect(() => {
-    if (!listingQuery.data?.entries || listingQuery.isPlaceholderData) {
+    if (!listingQuery.data?.entries) {
       return
     }
 
@@ -197,7 +192,7 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
 
     setSelectedEntryPaths((current) => current.filter((path) => availablePaths.has(path)))
     setSelectionAnchorPath((current) => (current && availablePaths.has(current) ? current : null))
-  }, [listingQuery.data?.entries, listingQuery.isPlaceholderData])
+  }, [listingQuery.data?.entries])
 
   const entries = useMemo(() => listingQuery.data?.entries ?? [], [listingQuery.data?.entries])
   const selectedEntrySet = useMemo(() => new Set(selectedEntryPaths), [selectedEntryPaths])
@@ -328,7 +323,7 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
 
   const openDirectory = (path: string) => {
     clearSelection()
-    setCurrentPath(session.sessionId, path)
+    setCurrentPath(session.sessionId, normalizeRemotePath(path))
   }
 
   const jumpToPath = () => {
@@ -521,30 +516,31 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
       <div
         role="region"
         aria-label={t('workbench.sftp.explorer')}
-        className={cn('relative flex h-full flex-col bg-background', className)}
+        className={cn('relative flex h-full flex-col bg-[var(--workbench-sidebar)]', className)}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
-        <div className="border-b px-3 py-3">
+        <div className="border-b border-[var(--workbench-border)] px-4 py-3.5">
           <div
             draggable={!!onHeaderDragStart}
             className={cn(
-              'flex items-start justify-between gap-3',
+              'flex items-center justify-between gap-3',
               onHeaderDragStart && 'cursor-grab active:cursor-grabbing'
             )}
             onDragStart={onHeaderDragStart}
             onDragEnd={onHeaderDragEnd}
           >
-            <div className="min-w-0">
-              <div className="text-sm font-semibold">{t('workbench.sftp.explorer')}</div>
-              <div className="truncate text-xs text-muted-foreground">{session.serverName}</div>
+            <div className="min-w-0 flex flex-col">
+              <span className="text-sm font-bold tracking-tight text-foreground">{t('workbench.sftp.explorer')}</span>
+              <span className="truncate text-[11px] text-muted-foreground mt-0.5 opacity-80">{session.serverName}</span>
             </div>
             <div className="flex items-center gap-1">
               <TooltipIconButton
-                variant="outline"
+                variant="ghost"
                 size="icon-sm"
+                className="size-7 text-muted-foreground hover:text-foreground hover:bg-[var(--workbench-hover)]"
                 label={t('common.actions.close')}
                 onClick={() => setAuxView(session.sessionId, null)}
               >
@@ -553,16 +549,16 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
             </div>
           </div>
 
-          <div className="mt-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+          <div className="mt-3.5 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase opacity-85">
                 {t('workbench.sftp.labels.currentPath')}
               </div>
               <div className="flex items-center gap-1">
                 <TooltipIconButton
                   variant="ghost"
                   size="icon-xs"
-                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                  className="shrink-0 size-6 text-muted-foreground hover:text-foreground hover:bg-[var(--workbench-hover)]"
                   label={t('workbench.sftp.actions.copyPath')}
                   onClick={() => void copyPath(currentPath)}
                 >
@@ -571,7 +567,7 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
                 <TooltipIconButton
                   variant="ghost"
                   size="icon-xs"
-                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                  className="shrink-0 size-6 text-muted-foreground hover:text-foreground hover:bg-[var(--workbench-hover)]"
                   label={t('workbench.sftp.actions.sendPathToTerminal')}
                   onClick={() => {
                     sendPathToTerminal(currentPath)
@@ -585,7 +581,7 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
 
             <Textarea
               aria-label={t('workbench.sftp.labels.currentPath')}
-              className="mt-2 min-h-[72px] resize-none overflow-y-auto border-border/60 bg-background font-mono text-[12px] leading-5 shadow-none [overflow-wrap:anywhere]"
+              className="min-h-[58px] resize-none overflow-y-auto border-[var(--workbench-border)] bg-[var(--workbench-input)] font-mono text-[11px] leading-relaxed shadow-none [overflow-wrap:anywhere] focus-visible:border-[var(--workbench-active)] focus-visible:ring-1 focus-visible:ring-[var(--workbench-active)]/50 focus-visible:ring-offset-0 focus-visible:bg-[var(--workbench-input)] focus:bg-[var(--workbench-input)]"
               rows={3}
               spellCheck={false}
               value={pathInputValue}
@@ -601,30 +597,35 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
             />
           </div>
 
-          <div className="mt-2 flex items-center gap-1 pt-2">
-            <TooltipIconButton
-              variant={viewMode === 'flat' ? 'secondary' : 'ghost'}
-              size="icon-sm"
-              label={t('workbench.sftp.actions.flatView')}
-              onClick={() => setViewMode('flat')}
-            >
-              <ListIcon className="size-4" />
-            </TooltipIconButton>
-            <TooltipIconButton
-              variant={viewMode === 'tree' ? 'secondary' : 'ghost'}
-              size="icon-sm"
-              label={t('workbench.sftp.actions.treeView')}
-              onClick={() => {
-                setViewMode('tree')
-                setCurrentPath(session.sessionId, '/')
-              }}
-            >
-              <FolderTreeIcon className="size-4" />
-            </TooltipIconButton>
-            <div className="mx-1 h-4 w-px bg-border" />
+          <div className="mt-3 flex items-center gap-1">
+            <div className="flex items-center gap-0.5 rounded-lg border border-[var(--workbench-border)] bg-[color-mix(in_srgb,var(--workbench-hover)_40%,transparent)] p-0.5">
+              <TooltipIconButton
+                variant={viewMode === 'flat' ? 'secondary' : 'ghost'}
+                size="icon-xs"
+                className="size-7"
+                label={t('workbench.sftp.actions.flatView')}
+                onClick={() => setViewMode('flat')}
+              >
+                <ListIcon className="size-3.5" />
+              </TooltipIconButton>
+              <TooltipIconButton
+                variant={viewMode === 'tree' ? 'secondary' : 'ghost'}
+                size="icon-xs"
+                className="size-7"
+                label={t('workbench.sftp.actions.treeView')}
+                onClick={() => {
+                  setViewMode('tree')
+                  setCurrentPath(session.sessionId, '/')
+                }}
+              >
+                <FolderTreeIcon className="size-3.5" />
+              </TooltipIconButton>
+            </div>
+            <div className="h-4 w-px bg-[var(--workbench-border)] mx-1" />
             <TooltipIconButton
               variant="ghost"
-              size="icon-sm"
+              size="icon-xs"
+              className="size-7 text-muted-foreground hover:text-foreground hover:bg-[var(--workbench-hover)]"
               label={t('workbench.sftp.actions.backToParent')}
               onClick={() => {
                 clearSelection()
@@ -634,41 +635,45 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
                 setCurrentPath(session.sessionId, getParentRemotePath(currentPath))
               }}
             >
-              <Undo2 className="size-4" />
+              <Undo2 className="size-3.5" />
             </TooltipIconButton>
             <TooltipIconButton
               variant="ghost"
-              size="icon-sm"
+              size="icon-xs"
+              className="size-7 text-muted-foreground hover:text-foreground hover:bg-[var(--workbench-hover)]"
               label={t('common.actions.newFile')}
               onClick={() => openCreateFileDialog(currentPath)}
             >
-              <NewFileIcon className="size-4" />
+              <NewFileIcon className="size-3.5" />
             </TooltipIconButton>
             <TooltipIconButton
               variant="ghost"
-              size="icon-sm"
+              size="icon-xs"
+              className="size-7 text-muted-foreground hover:text-foreground hover:bg-[var(--workbench-hover)]"
               label={t('common.actions.newFolder')}
               onClick={() => openCreateFolderDialog(currentPath)}
             >
-              <NewFolderIcon className="size-4" />
+              <NewFolderIcon className="size-3.5" />
             </TooltipIconButton>
             <TooltipIconButton
               variant="ghost"
-              size="icon-sm"
+              size="icon-xs"
+              className="size-7 text-muted-foreground hover:text-foreground hover:bg-[var(--workbench-hover)]"
               label={t('common.actions.upload')}
               onClick={() =>
                 void runUpload(() => sftpClient.uploadFiles(session.sessionId, currentPath))
               }
             >
-              <UploadIcon className="size-4" />
+              <UploadIcon className="size-3.5" />
             </TooltipIconButton>
             <TooltipIconButton
               variant="ghost"
-              size="icon-sm"
+              size="icon-xs"
+              className="size-7 text-muted-foreground hover:text-foreground hover:bg-[var(--workbench-hover)]"
               label={t('common.actions.refresh')}
               onClick={() => void refresh()}
             >
-              <RefreshIcon className="size-4" />
+              <RefreshIcon className="size-3.5" />
             </TooltipIconButton>
           </div>
         </div>
@@ -744,7 +749,9 @@ export function SftpPanel({ session, className, onEditFile, onHeaderDragStart, o
                   onSendPathToTerminal={sendPathToTerminal}
                   onResolveContextMenuTargets={resolveContextMenuTargets}
                   onGetEntryMeta={getEntryMeta}
-                  onDirectoryMoved={(oldPath, newPath) => treeViewRef.current?.renameExpandedPath(oldPath, newPath)}
+                  onDirectoryMoved={(oldPath, newPath) =>
+                    treeViewRef.current?.renameExpandedPath(oldPath, newPath)
+                  }
                   onEditFile={onEditFile}
                 />
               ) : null}

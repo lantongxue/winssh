@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WinSSH 命令面板 - 规范范式原型</title>
+    <!-- 引入 Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* 1. 主应用设计规范变量声明 (符合 VSCode/WinSSH FLAT 设计范式) */
+        :root {
+            /* 模拟主题变量，默认使用 Dark Plus */
+            --bg-page: #0b0f19;
+            --workbench-bg: #181a1f;
+            --workbench-titlebar: #181a1f;
+            --workbench-activity-bar: #20242b;
+            --workbench-sidebar: #20242b;
+            --workbench-tabs: #20242b;
+            --workbench-editor: #181a1f;
+            --workbench-panel: #15171b;
+            --workbench-border: #2a3038;
+            --workbench-hover: rgba(255, 255, 255, 0.07);
+            --workbench-active: #3794ff;
+            --workbench-input: #20242b;
+            --foreground: #d7dbe0;
+            --muted-foreground: #97a3b6;
+            
+            /* 状态颜色 */
+            --status-success: #33c481;
+            --status-error: #f14c4c;
+            
+            /* 字体定义 */
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-mono: 'Fira Code', Consolas, Monaco, monospace;
+            
+            /* 主应用规范：直角直边 (0px)，无气泡圆角 */
+            --radius-app: 0px;
+            --radius-inner: 2px;
+            
+            /* 阴影规范 */
+            --shadow-popover: 0 10px 25px rgba(0, 0, 0, 0.35);
+        }
+
+        /* 2. 预设内置主题样式表 */
+        .theme-dark-plus {
+            --workbench-bg: #181a1f;
+            --workbench-titlebar: #181a1f;
+            --workbench-activity-bar: #20242b;
+            --workbench-sidebar: #20242b;
+            --workbench-tabs: #20242b;
+            --workbench-editor: #181a1f;
+            --workbench-border: #2a3038;
+            --workbench-hover: rgba(255, 255, 255, 0.07);
+            --workbench-active: #3794ff;
+            --workbench-input: #20242b;
+            --foreground: #d7dbe0;
+            --muted-foreground: #97a3b6;
+            --status-success: #33c481;
+            --status-error: #f14c4c;
+            --radius-app: 0px;
+        }
+
+        .theme-light-plus {
+            --workbench-bg: #f3f3f3;
+            --workbench-titlebar: #e1e1e1;
+            --workbench-activity-bar: #2c2c2c;
+            --workbench-sidebar: #f3f3f3;
+            --workbench-tabs: #ececec;
+            --workbench-editor: #ffffff;
+            --workbench-border: #e4e4e7;
+            --workbench-hover: rgba(0, 0, 0, 0.06);
+            --workbench-active: #007acc;
+            --workbench-input: #ffffff;
+            --foreground: #333333;
+            --muted-foreground: #71717a;
+            --status-success: #10b981;
+            --status-error: #ef4444;
+            --radius-app: 0px;
+        }
+
+        .theme-cyber-retro {
+            --workbench-bg: #0c0e14;
+            --workbench-titlebar: #141620;
+            --workbench-activity-bar: #141620;
+            --workbench-sidebar: #141620;
+            --workbench-tabs: #1a1c2c;
+            --workbench-editor: #0c0e14;
+            --workbench-border: #2a2d3d;
+            --workbench-hover: rgba(255, 107, 53, 0.12);
+            --workbench-active: #ff6b35;
+            --workbench-input: #141620;
+            --foreground: #e8e4dc;
+            --muted-foreground: #8a8a8a;
+            --status-success: #00d4aa;
+            --status-error: #ff2a6d;
+            --radius-app: 0px;
+        }
+
+        .theme-pixel-crt {
+            --workbench-bg: #001100;
+            --workbench-titlebar: #002200;
+            --workbench-activity-bar: #002200;
+            --workbench-sidebar: #002200;
+            --workbench-tabs: #001100;
+            --workbench-editor: #001100;
+            --workbench-border: #00ff00;
+            --workbench-hover: rgba(0, 255, 0, 0.15);
+            --workbench-active: #00ff00;
+            --workbench-input: #001100;
+            --foreground: #33ff33;
+            --muted-foreground: #00aa00;
+            --status-success: #33ff33;
+            --status-error: #ff0000;
+            --radius-app: 0px;
+        }
+
+        /* 3. 基础页面排布 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--workbench-bg);
+            color: var(--foreground);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        /* 原型演示控制栏 */
+        .demo-bar {
+            position: absolute;
+            top: 15px;
+            z-index: 100;
+            display: flex;
+            gap: 10px;
+            background: var(--workbench-sidebar);
+            padding: 6px 12px;
+            border: 1px solid var(--workbench-border);
+            align-items: center;
+            font-size: 11px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .demo-label {
+            font-weight: 600;
+            color: var(--muted-foreground);
+            margin-right: 6px;
+        }
+
+        .demo-select {
+            background: var(--workbench-input);
+            border: 1px solid var(--workbench-border);
+            color: var(--foreground);
+            padding: 4px 8px;
+            font-size: 11px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .demo-btn {
+            background: var(--workbench-input);
+            border: 1px solid var(--workbench-border);
+            color: var(--foreground);
+            padding: 4px 10px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .demo-btn:hover, .demo-select:hover {
+            background: var(--workbench-hover);
+        }
+
+        /* 4. WinSSH App 主窗口仿真布局 (100% 还原主应用设计范式) */
+        .app-window {
+            width: 1000px;
+            height: 620px;
+            background-color: var(--workbench-bg);
+            border: 1px solid var(--workbench-border);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 顶部标题栏 */
+        .titlebar {
+            height: 35px;
+            background-color: var(--workbench-titlebar);
+            border-bottom: 1px solid var(--workbench-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            font-size: 11px;
+            color: var(--muted-foreground);
+        }
+
+        .titlebar-center {
+            color: var(--foreground);
+            font-weight: 500;
+        }
+
+        .titlebar-windows-btn {
+            display: flex;
+            gap: 15px;
+        }
+
+        /* 主体内容区 */
+        .main-container {
+            flex: 1;
+            display: flex;
+            min-height: 0;
+        }
+
+        /* 左侧活动栏 */
+        .activity-bar {
+            width: 48px;
+            background-color: var(--workbench-activity-bar);
+            border-right: 1px solid var(--workbench-border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 10px;
+            gap: 16px;
+        }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted-foreground);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .activity-icon.active {
+            color: var(--workbench-active);
+            border-left: 2px solid var(--workbench-active);
+        }
+
+        /* 编辑器及终端区 */
+        .editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background: var(--workbench-editor);
+        }
+
+        /* 编辑器标签栏 */
+        .editor-tabs {
+            height: 32px;
+            background-color: var(--workbench-tabs);
+            border-bottom: 1px solid var(--workbench-border);
+            display: flex;
+        }
+
+        .tab-item {
+            height: 100%;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            border-right: 1px solid var(--workbench-border);
+            background: var(--workbench-tabs);
+            color: var(--muted-foreground);
+            cursor: pointer;
+        }
+
+        .tab-item.active {
+            background: var(--workbench-editor);
+            color: var(--foreground);
+            border-bottom: 1px solid transparent;
+            font-weight: 500;
+        }
+
+        /* 终端编辑器工作区（分栏布局） */
+        .terminal-editor-workspace {
+            flex: 1;
+            display: flex;
+            min-height: 0;
+            position: relative;
+        }
+
+        /* 左栏：终端屏幕 */
+        .terminal-panel {
+            flex: 1;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            background: var(--workbench-editor);
+        }
+
+        /* 终端工具栏 */
+        .terminal-header {
+            height: 36px;
+            border-bottom: 1px solid var(--workbench-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+        }
+
+        .terminal-title-text {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--foreground);
+        }
+
+        .terminal-subtitle-text {
+            font-size: 10px;
+            color: var(--muted-foreground);
+            margin-left: 6px;
+        }
+
+        .terminal-header-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .terminal-screen {
+            flex: 1;
+            background-color: #0c0e14;
+            color: #33c481;
+            font-family: var(--font-mono);
+            font-size: 11.5px;
+            padding: 12px;
+            overflow-y: auto;
+            line-height: 1.4;
+        }
+
+        /* 分栏拉伸条 */
+        .resizable-handle {
+            width: 4px;
+            background-color: var(--workbench-border);
+            cursor: col-resize;
+            transition: background-color 0.2s;
+            position: relative;
+            z-index: 10;
+        }
+
+        .resizable-handle:hover, .resizable-handle.dragging {
+            background-color: var(--workbench-active);
+        }
+
+        /* 右栏：命令面板 (作为 Editor 侧栏嵌在 Resizable 布局中) */
+        .command-panel-host {
+            width: 320px; /* 直嵌侧栏宽度 */
+            min-width: 260px;
+            max-width: 500px;
+            background-color: var(--workbench-sidebar);
+            border-left: 1px solid var(--workbench-border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: width 0.1s ease;
+        }
+
+        /* 底部状态栏 */
+        .statusbar {
+            height: 22px;
+            background-color: var(--workbench-active);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            font-size: 11px;
+            justify-content: space-between;
+        }
+
+        /* 5. 命令面板组件 (100% 还原 React/Tailwind 扁平化架构) */
+        .panel-header {
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--workbench-border);
+        }
+
+        .panel-title-area {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--foreground);
+        }
+
+        .panel-subtitle {
+            font-size: 10px;
+            color: var(--muted-foreground);
+            margin-top: 1px;
+            opacity: 0.85;
+        }
+
+        .panel-header-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        /* 按钮规范 */
+        .btn-icon {
+            background: transparent;
+            border: none;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted-foreground);
+            cursor: pointer;
+            border-radius: var(--radius-inner);
+        }
+
+        .btn-icon:hover {
+            background-color: var(--workbench-hover);
+            color: var(--foreground);
+        }
+
+        .btn-add-custom {
+            color: var(--workbench-active);
+        }
+
+        /* Tab 导航 (扁平滑块下划线) */
+        .panel-tabs-bar {
+            display: flex;
+            padding: 0 12px;
+            border-bottom: 1px solid var(--workbench-border);
+            background: rgba(0,0,0,0.08);
+            gap: 16px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            font-size: 12px;
+            padding: 8px 0;
+            color: var(--muted-foreground);
+            cursor: pointer;
+            position: relative;
+            font-weight: 500;
+        }
+
+        .tab-btn:hover {
+            color: var(--foreground);
+        }
+
+        .tab-btn.active {
+            color: var(--workbench-active);
+            font-weight: 600;
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 1.5px;
+            background-color: var(--workbench-active);
+        }
+
+        /* 检索过滤区域 */
+        .panel-controls {
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .input-search-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-search {
+            width: 100%;
+            height: 28px;
+            padding: 0 10px 0 28px;
+            font-size: 11px;
+            background-color: var(--workbench-input);
+            border: 1px solid var(--workbench-border);
+            color: var(--foreground);
+            outline: none;
+            border-radius: var(--radius-inner);
+        }
+
+        .input-search:focus {
+            border-color: var(--workbench-active);
+        }
+
+        .search-icon-svg {
+            position: absolute;
+            left: 8px;
+            color: var(--muted-foreground);
+            pointer-events: none;
+        }
+
+        /* 过滤按钮组 (符合 shadcn 合并形态) */
+        .filter-actions-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .filter-btn-group {
+            display: flex;
+            background-color: rgba(0,0,0,0.08);
+            padding: 2px;
+            border: 1px solid var(--workbench-border);
+            border-radius: var(--radius-inner);
+        }
+
+        .filter-btn {
+            font-size: 10.5px;
+            padding: 3px 10px;
+            border: none;
+            background: transparent;
+            color: var(--muted-foreground);
+            cursor: pointer;
+            border-radius: var(--radius-inner);
+        }
+
+        .filter-btn.active {
+            background-color: var(--workbench-input);
+            color: var(--foreground);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .btn-clear-history {
+            background: none;
+            border: none;
+            font-size: 10.5px;
+            color: var(--muted-foreground);
+            cursor: pointer;
+        }
+
+        .btn-clear-history:hover {
+            color: var(--status-error);
+        }
+
+        /* 列表展示区 */
+        .list-container {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* 自定义滚动条 (直角，直边) */
+        .list-container::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .list-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .list-container::-webkit-scrollbar-thumb {
+            background: var(--workbench-border);
+        }
+
+        .list-container::-webkit-scrollbar-thumb:hover {
+            background: var(--muted-foreground);
+        }
+
+        .panel-list {
+            display: none;
+        }
+
+        .panel-list.active {
+            display: block;
+        }
+
+        /* 列表项扁平规范 (无圆角，无立体阴影) */
+        .row-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--workbench-border);
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.1s;
+        }
+
+        .row-item:hover {
+            background-color: var(--workbench-hover);
+        }
+
+        /* 状态指示点 (精简，无多圈扩散动效，只做简单阴影高亮) */
+        .row-status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-top: 5px;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+
+        .dot-ok {
+            background-color: var(--status-success);
+            box-shadow: 0 0 4px var(--status-success);
+        }
+
+        .dot-err {
+            background-color: var(--status-error);
+            box-shadow: 0 0 4px var(--status-error);
+        }
+
+        .row-content {
+            flex: 1;
+            min-width: 0;
+            padding-right: 48px;
+        }
+
+        /* 代码 Badge (符合主应用 code 规范) */
+        .code-badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--foreground);
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--workbench-border);
+            padding: 1px 5px;
+            border-radius: var(--radius-inner);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        /* 元信息列 */
+        .row-meta {
+            display: flex;
+            gap: 8px;
+            font-size: 10px;
+            color: var(--muted-foreground);
+            margin-top: 5px;
+            align-items: center;
+        }
+
+        .meta-dot-divider {
+            color: var(--workbench-border);
+        }
+
+        /* 自定义命令专属样式 */
+        .custom-row-star {
+            color: var(--workbench-active);
+            margin-right: 10px;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .custom-name-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--foreground);
+            margin-bottom: 2px;
+        }
+
+        /* 列表悬浮快捷按键 */
+        .row-hover-actions {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding-right: 12px;
+            opacity: 0;
+            pointer-events: none;
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, var(--workbench-sidebar) 40%, var(--workbench-sidebar) 100%);
+            padding-left: 30px;
+            transition: opacity 0.1s;
+        }
+
+        .theme-light-plus .row-hover-actions {
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, #f3f3f3 40%, #f3f3f3 100%);
+        }
+
+        .row-item:hover .row-hover-actions {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .action-button {
+            background: var(--workbench-input);
+            border: 1px solid var(--workbench-border);
+            color: var(--muted-foreground);
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: var(--radius-inner);
+        }
+
+        .action-button:hover {
+            color: var(--foreground);
+            border-color: var(--workbench-active);
+        }
+
+        .action-button.delete-action:hover {
+            color: var(--status-error);
+            border-color: var(--status-error);
+        }
+
+        /* 6. 主应用标准 Dialog (新建/编辑对话框 popover，居中弹窗) */
+        .dialog-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .dialog-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .dialog-box {
+            width: 400px;
+            background-color: var(--workbench-sidebar);
+            border: 1px solid var(--workbench-border);
+            box-shadow: var(--shadow-popover);
+            display: flex;
+            flex-direction: column;
+            transform: scale(0.95);
+            transition: transform 0.2s;
+        }
+
+        .dialog-overlay.show .dialog-box {
+            transform: scale(1);
+        }
+
+        .dialog-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--workbench-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dialog-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--foreground);
+        }
+
+        .dialog-body {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .form-label {
+            font-size: 11px;
+            color: var(--muted-foreground);
+            font-weight: 500;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .form-input {
+            width: 100%;
+            height: 28px;
+            background-color: var(--workbench-input);
+            border: 1px solid var(--workbench-border);
+            color: var(--foreground);
+            padding: 0 8px;
+            font-size: 11px;
+            outline: none;
+            border-radius: var(--radius-inner);
+        }
+
+        .form-input:focus {
+            border-color: var(--workbench-active);
+        }
+
+        .form-textarea {
+            width: 100%;
+            height: 56px;
+            background-color: var(--workbench-input);
+            border: 1px solid var(--workbench-border);
+            color: var(--foreground);
+            padding: 6px 8px;
+            font-size: 11px;
+            font-family: var(--font-mono);
+            outline: none;
+            resize: none;
+            border-radius: var(--radius-inner);
+        }
+
+        .form-textarea:focus {
+            border-color: var(--workbench-active);
+        }
+
+        .dialog-footer {
+            padding: 10px 16px;
+            border-t: 1px solid var(--workbench-border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            background-color: rgba(0,0,0,0.05);
+        }
+
+        .btn-standard {
+            padding: 5px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid var(--workbench-border);
+            background-color: var(--workbench-input);
+            color: var(--foreground);
+            border-radius: var(--radius-inner);
+        }
+
+        .btn-standard:hover {
+            background-color: var(--workbench-hover);
+        }
+
+        .btn-primary {
+            background-color: var(--workbench-active);
+            color: #ffffff;
+            border-color: var(--workbench-active);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--workbench-active);
+            opacity: 0.9;
+        }
+
+        /* 顶部吐司通知 toast */
+        .toast-popup {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            background-color: var(--workbench-sidebar);
+            border: 1px solid var(--workbench-border);
+            padding: 8px 12px;
+            font-size: 11px;
+            color: var(--foreground);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 200;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.2s;
+        }
+
+        .toast-popup.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="theme-dark-plus">
+
+    <!-- 原型演示控制栏 -->
+    <div class="demo-bar">
+        <span class="demo-label">应用内置主题:</span>
+        <select class="demo-select" id="themeSelect" onchange="changeTheme(this.value)">
+            <option value="theme-dark-plus">Dark Plus (默认暗色)</option>
+            <option value="theme-light-plus">Light Plus (默认亮色)</option>
+            <option value="theme-cyber-retro">Cyber Retro Dark (霓虹极客)</option>
+            <option value="theme-pixel-crt">Pixel CRT (绿色荧光)</option>
+        </select>
+        <span style="color: var(--workbench-border);">|</span>
+        <span class="demo-label">模拟拉伸侧栏:</span>
+        <button class="demo-btn" onclick="resizeSidebar(260)">窄 (260px)</button>
+        <button class="demo-btn" onclick="resizeSidebar(320)">中 (320px)</button>
+        <button class="demo-btn" onclick="resizeSidebar(420)">宽 (420px)</button>
+    </div>
+
+    <!-- WinSSH App 主窗口仿真布局 -->
+    <div class="app-window">
+        <!-- 顶部标题栏 -->
+        <div class="titlebar">
+            <div>WinSSH Client v1.2.0</div>
+            <div class="titlebar-center">ubuntu-server-prod (SSH)</div>
+            <div class="titlebar-windows-btn">
+                <span>—</span>
+                <span>❐</span>
+                <span>✕</span>
+            </div>
+        </div>
+
+        <!-- 主体内容区 -->
+        <div class="main-container">
+            <!-- 左侧活动栏 -->
+            <div class="activity-bar">
+                <div class="activity-icon active">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+                </div>
+                <div class="activity-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </div>
+            </div>
+
+            <!-- 主编辑器容器 -->
+            <div class="editor-container">
+                <!-- 标签栏 -->
+                <div class="editor-tabs">
+                    <div class="tab-item active">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                        <span>ubuntu-server-prod</span>
+                    </div>
+                    <div class="tab-item">local-terminal</div>
+                </div>
+
+                <!-- 终端和历史编辑器分栏 -->
+                <div class="terminal-editor-workspace">
+                    <!-- 终端屏 -->
+                    <div class="terminal-panel">
+                        <div class="terminal-header">
+                            <div>
+                                <span class="terminal-title-text">ubuntu-server-prod</span>
+                                <span class="terminal-subtitle-text">/usr/bin/bash · /var/www</span>
+                            </div>
+                            <div class="terminal-header-actions">
+                                <button class="btn-standard" style="padding: 2px 8px; display:flex; align-items:center; gap:4px;" onclick="togglePanelVisibility()">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                                    命令面板
+                                </button>
+                            </div>
+                        </div>
+                        <div class="terminal-screen" id="terminalScreen">
+                            <div style="opacity: 0.5;"># Connection established to ubuntu-server-prod (10.0.4.15)</div>
+                            <div style="opacity: 0.5;"># Last login: Thu May 28 10:44:02 2026 from 192.168.1.100</div>
+                            <div>root@prod-ubuntu:/var/www# <span id="cursorLine"></span><span style="background:var(--status-success); width:6px; height:12px; display:inline-block;"></span></div>
+                        </div>
+                    </div>
+
+                    <!-- 分栏拉伸条 -->
+                    <div class="resizable-handle" id="resizableHandle"></div>
+
+                    <!-- 右侧 docked 命令面板 -->
+                    <div class="command-panel-host" id="commandPanelHost">
+                        
+                        <!-- Header -->
+                        <div class="panel-header">
+                            <div class="panel-title-area">
+                                <span class="panel-title">命令面板</span>
+                                <span class="panel-subtitle">执行、复用与自定义常用命令</span>
+                            </div>
+                            <div class="panel-header-actions">
+                                <button class="btn-icon btn-add-custom" title="新建自定义命令" onclick="openFormDialog()">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                </button>
+                                <button class="btn-icon" title="关闭面板" onclick="togglePanelVisibility()">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Main Tab (符合 App 设计的平底线样式) -->
+                        <div class="panel-tabs-bar">
+                            <button class="tab-btn active" id="tabHistoryBtn" onclick="switchTab('history')">历史记录</button>
+                            <button class="tab-btn" id="tabCustomBtn" onclick="switchTab('custom')">自定义命令</button>
+                        </div>
+
+                        <!-- 搜索与过滤器 -->
+                        <div class="panel-controls">
+                            <div class="input-search-wrapper">
+                                <input type="text" class="input-search" id="searchInput" placeholder="在历史记录中搜索..." oninput="handleSearch()">
+                                <svg class="search-icon-svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            </div>
+                            <div class="filter-actions-row" id="historyFiltersRow">
+                                <div class="filter-btn-group">
+                                    <button class="filter-btn active" onclick="filterHistory('all', this)">全部</button>
+                                    <button class="filter-btn" onclick="filterHistory('success', this)">成功</button>
+                                    <button class="filter-btn" onclick="filterHistory('failed', this)">失败</button>
+                                </div>
+                                <button class="btn-clear-history" onclick="clearHistory()">清空历史</button>
+                            </div>
+                        </div>
+
+                        <!-- 列表展示区 -->
+                        <div class="list-container" id="listContainer">
+                            
+                            <!-- 历史列表 -->
+                            <div class="panel-list active" id="list-history">
+                                <!-- 历史项 1 -->
+                                <div class="row-item" data-status="success" data-cmd="PROMPT_COMMAND=&quot;__wsh_post${PROMPT_COMMAND}&quot;">
+                                    <div class="row-status-dot dot-ok"></div>
+                                    <div class="row-content">
+                                        <code class="code-badge">PROMPT_COMMAND="__wsh_post${PROMPT_COMMAND}"</code>
+                                        <div class="row-meta">
+                                            <span>2026-05-28 10:44:52</span>
+                                            <span class="meta-dot-divider">&bull;</span>
+                                            <span style="display:flex; align-items:center; gap:2px;">
+                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                                                /root
+                                            </span>
+                                            <span class="meta-dot-divider">&bull;</span>
+                                            <span>0ms</span>
+                                        </div>
+                                    </div>
+                                    <div class="row-hover-actions">
+                                        <button class="action-button" title="执行此命令" onclick="executeCmd('PROMPT_COMMAND=&quot;__wsh_post${PROMPT_COMMAND}&quot;', event)">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                        </button>
+                                        <button class="action-button" title="复制" onclick="copyCmd('PROMPT_COMMAND=&quot;__wsh_post${PROMPT_COMMAND}&quot;', event)">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                        </button>
+                                        <button class="action-button" title="另存为自定义命令" onclick="saveAsCustom('PROMPT_COMMAND=&quot;__wsh_post${PROMPT_COMMAND}&quot;', event)">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- 历史项 2 -->
+                                <div class="row-item" data-status="success" data-cmd="clear">
+                                    <div class="row-status-dot dot-ok"></div>
+                                    <div class="row-content">
+                                        <code class="code-badge">clear</code>
+                                        <div class="row-meta">
+                                            <span>2026-05-28 10:43:10</span>
+                                            <span class="meta-dot-divider">&bull;</span>
+                                            <span>/root</span>
+                                            <span class="meta-dot-divider">&bull;</span>
+                                            <span>0ms</span>
+                                        </div>
+                                    </div>
+                                    <div class="row-hover-actions">
+                                        <button class="action-button" onclick="executeCmd('clear', event)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></button>
+                                        <button class="action-button" onclick="copyCmd('clear', event)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                        <button class="action-button" onclick="saveAsCustom('clear', event)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></button>
+                                    </div>
+                                </div>
+
+                                <!-- 历史项 3 -->
+                                <div class="row-item" data-status="failed" data-cmd="git push origin main">
+                                    <div class="row-status-dot dot-err"></div>
+                                    <div class="row-content">
+                                        <code class="code-badge">git push origin main</code>
+                                        <div class="row-meta">
+                                            <span>2026-05-28 10:15:28</span>
+                                            <span class="meta-dot-divider">&bull;</span>
+                                            <span>/var/workspace</span>
+                                            <span class="meta-dot-divider">&bull;</span>
+                                            <span style="color:var(--status-error); font-weight:600;">Exit: 128</span>
+                                        </div>
+                                    </div>
+                                    <div class="row-hover-actions">
+                                        <button class="action-button" onclick="executeCmd('git push origin main', event)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></button>
+                                        <button class="action-button" onclick="copyCmd('git push origin main', event)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                        <button class="action-button" onclick="saveAsCustom('git push origin main', event)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 自定义命令列表 -->
+                            <div class="panel-list" id="list-custom">
+                                <div id="customItemsContainer">
+                                    <!-- 自定义项 1 -->
+                                    <div class="row-item" data-id="c1" data-cmd="npm run dev -- --host">
+                                        <svg class="custom-row-star" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                        <div class="row-content">
+                                            <div class="custom-name-title">运行前端项目</div>
+                                            <code class="code-badge">npm run dev -- --host</code>
+                                        </div>
+                                        <div class="row-hover-actions">
+                                            <button class="action-button" title="运行" onclick="executeCmd('npm run dev -- --host', event)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></button>
+                                            <button class="action-button" title="复制" onclick="copyCmd('npm run dev -- --host', event)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                            <button class="action-button delete-action" title="删除" onclick="deleteCustomCmd('c1', event)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                                        </div>
+                                    </div>
+
+                                    <!-- 自定义项 2 -->
+                                    <div class="row-item" data-id="c2" data-cmd="git pull origin main &amp;&amp; yarn install">
+                                        <svg class="custom-row-star" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                        <div class="row-content">
+                                            <div class="custom-name-title">同步代码并加载依赖</div>
+                                            <code class="code-badge">git pull origin main &amp;&amp; yarn install</code>
+                                        </div>
+                                        <div class="row-hover-actions">
+                                            <button class="action-button" onclick="executeCmd('git pull origin main &amp;&amp; yarn install', event)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></button>
+                                            <button class="action-button" onclick="copyCmd('git pull origin main &amp;&amp; yarn install', event)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                                            <button class="action-button delete-action" onclick="deleteCustomCmd('c2', event)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部状态栏 -->
+        <div class="statusbar">
+            <div>✓ 已就绪</div>
+            <div>UTF-8</div>
+        </div>
+
+        <!-- 6. 新增自定义命令 Dialog (居中浮动弹窗，严格还原 Dialog 组件表现) -->
+        <div class="dialog-overlay" id="dialogOverlay" onclick="closeFormDialog()">
+            <div class="dialog-box" onclick="event.stopPropagation()">
+                <div class="dialog-header">
+                    <span class="dialog-title" id="dialogTitle">新建自定义命令</span>
+                    <button class="btn-icon" onclick="closeFormDialog()" title="关闭">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
+                <div class="dialog-body">
+                    <div>
+                        <label class="form-label">命令名称 (别名)</label>
+                        <input type="text" id="customNameInput" class="form-input" placeholder="例如: 部署到测试环境">
+                    </div>
+                    <div>
+                        <label class="form-label">具体 Shell 命令代码</label>
+                        <textarea id="customCmdInput" class="form-textarea" placeholder="例如: ./deploy.sh --env=test"></textarea>
+                    </div>
+                </div>
+                <div class="dialog-footer">
+                    <button class="btn-standard" onclick="closeFormDialog()">取消</button>
+                    <button class="btn-standard btn-primary" onclick="saveCustomCmd()">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. 全局 Toast 通知 -->
+        <div class="toast-popup" id="toastPopup">
+            <span>📋</span>
+            <span id="toastMsg">通知内容</span>
+        </div>
+    </div>
+
+    <!-- 交互逻辑 JS -->
+    <script>
+        // 初始化全局变量
+        let activeTab = 'history';
+        let historyFilter = 'all';
+
+        // 1. 切换内置主题
+        function changeTheme(themeClass) {
+            document.body.className = '';
+            document.body.classList.add(themeClass);
+            showToast(`🎨 主题已切换至: ${document.getElementById('themeSelect').selectedOptions[0].text}`);
+        }
+
+        // 2. 模拟拉伸侧栏
+        function resizeSidebar(width) {
+            const host = document.getElementById('commandPanelHost');
+            host.style.width = width + 'px';
+            showToast(`↔ 侧栏宽度调整为: ${width}px`);
+        }
+
+        // 3. 收起/展开命令面板
+        function togglePanelVisibility() {
+            const host = document.getElementById('commandPanelHost');
+            if (host.style.display === 'none') {
+                host.style.display = 'flex';
+                showToast("👁 显示命令面板");
+            } else {
+                host.style.display = 'none';
+                showToast("👁 隐藏命令面板");
+            }
+        }
+
+        // 4. 双 Tab 切换逻辑
+        function switchTab(tab) {
+            activeTab = tab;
+            
+            // 更新导航按钮状态
+            document.getElementById('tabHistoryBtn').classList.toggle('active', tab === 'history');
+            document.getElementById('tabCustomBtn').classList.toggle('active', tab === 'custom');
+
+            // 切换列表容器
+            document.getElementById('list-history').classList.toggle('active', tab === 'history');
+            document.getElementById('list-custom').classList.toggle('active', tab === 'custom');
+
+            // 联动控制条件筛选行的显示
+            document.getElementById('historyFiltersRow').style.display = tab === 'history' ? 'flex' : 'none';
+
+            // 修改 Search Placeholder
+            const searchInput = document.getElementById('searchInput');
+            if (tab === 'history') {
+                searchInput.placeholder = "在历史记录中搜索...";
+            } else {
+                searchInput.placeholder = "在自定义命令中搜索...";
+            }
+
+            searchInput.value = '';
+            handleSearch();
+        }
+
+        // 5. 历史记录过滤
+        function filterHistory(filter, btn) {
+            historyFilter = filter;
+
+            // 按钮状态排他激活
+            const filterBtns = document.querySelectorAll('.filter-btn');
+            filterBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            handleSearch();
+        }
+
+        // 6. 清空历史
+        function clearHistory() {
+            if (confirm('确定要清空所有历史命令记录吗？')) {
+                document.getElementById('list-history').innerHTML = `
+                    <div style="padding: 40px; text-align:center; color: var(--muted-foreground); font-size:11px;">
+                        暂无历史命令记录
+                    </div>
+                `;
+                showToast("🧹 历史记录已清空");
+            }
+        }
+
+        // 7. 搜索功能实现
+        function handleSearch() {
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+
+            if (activeTab === 'history') {
+                const items = document.querySelectorAll('#list-history .row-item');
+                items.forEach(item => {
+                    const cmd = item.getAttribute('data-cmd').toLowerCase();
+                    const status = item.getAttribute('data-status');
+                    
+                    let matchesFilter = true;
+                    if (historyFilter === 'success' && status !== 'success') matchesFilter = false;
+                    if (historyFilter === 'failed' && status !== 'failed') matchesFilter = false;
+
+                    const matchesQuery = cmd.includes(query);
+
+                    item.style.display = (matchesFilter && matchesQuery) ? 'flex' : 'none';
+                });
+            } else {
+                const items = document.querySelectorAll('#customItemsContainer .row-item');
+                items.forEach(item => {
+                    const cmd = item.getAttribute('data-cmd').toLowerCase();
+                    const name = item.querySelector('.custom-name-title').innerText.toLowerCase();
+
+                    const matchesQuery = cmd.includes(query) || name.includes(query);
+                    item.style.display = matchesQuery ? 'flex' : 'none';
+                });
+            }
+        }
+
+        // 8. 新增自定义命令 Dialog 开启/关闭
+        function openFormDialog() {
+            document.getElementById('dialogOverlay').classList.add('show');
+            document.getElementById('customNameInput').focus();
+        }
+
+        function closeFormDialog() {
+            document.getElementById('dialogOverlay').classList.remove('show');
+            document.getElementById('customNameInput').value = '';
+            document.getElementById('customCmdInput').value = '';
+        }
+
+        // 另存为自定义命令快捷跳转
+        function saveAsCustom(cmd, event) {
+            event.stopPropagation();
+            openFormDialog();
+            document.getElementById('customCmdInput').value = cmd;
+        }
+
+        // 9. 保存自定义命令逻辑
+        function saveCustomCmd() {
+            const name = document.getElementById('customNameInput').value.trim();
+            const cmd = document.getElementById('customCmdInput').value.trim();
+
+            if (!name || !cmd) {
+                alert('请填写完整的别名和命令代码！');
+                return;
+            }
+
+            const id = 'c_' + Date.now();
+            const newItemHtml = `
+                <div class="row-item" data-id="${id}" data-cmd="${cmd}">
+                    <svg class="custom-row-star" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    <div class="row-content">
+                        <div class="custom-name-title">${name}</div>
+                        <code class="code-badge">${escapeHtml(cmd)}</code>
+                    </div>
+                    <div class="row-hover-actions">
+                        <button class="action-button" title="运行" onclick="executeCmd('${escapeQuote(cmd)}', event)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></button>
+                        <button class="action-button" title="复制" onclick="copyCmd('${escapeQuote(cmd)}', event)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                        <button class="action-button delete-action" title="删除" onclick="deleteCustomCmd('${id}', event)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('customItemsContainer').insertAdjacentHTML('beforeend', newItemHtml);
+            closeFormDialog();
+            switchTab('custom');
+            showToast("🚀 已保存至自定义命令");
+        }
+
+        // 删除自定义命令
+        function deleteCustomCmd(id, event) {
+            event.stopPropagation();
+            if (confirm('确认删除此自定义命令吗？')) {
+                const item = document.querySelector(`.row-item[data-id="${id}"]`);
+                if (item) {
+                    item.remove();
+                    showToast("🗑 自定义命令已删除");
+                }
+            }
+        }
+
+        // 10. 执行及复制操作回显模拟
+        function executeCmd(cmd, event) {
+            event.stopPropagation();
+            
+            // 终端显示命令注入
+            const term = document.getElementById('terminalScreen');
+            const line = document.getElementById('cursorLine');
+            
+            // 模拟输入动画
+            let idx = 0;
+            line.innerText = "";
+            const interval = setInterval(() => {
+                if (idx < cmd.length) {
+                    line.innerText += cmd[idx];
+                    idx++;
+                } else {
+                    clearInterval(interval);
+                    // 追加换行
+                    setTimeout(() => {
+                        const runLog = document.createElement('div');
+                        runLog.innerText = `root@prod-ubuntu:/var/www# ${cmd}`;
+                        term.insertBefore(runLog, line.parentElement);
+                        
+                        const resultLog = document.createElement('div');
+                        resultLog.style.color = 'var(--muted-foreground)';
+                        resultLog.innerText = `[WinSSH Command Panel] Executed successfully.`;
+                        term.insertBefore(resultLog, line.parentElement);
+                        
+                        line.innerText = "";
+                        term.scrollTop = term.scrollHeight;
+                        showToast("⚡ 命令执行成功");
+                    }, 200);
+                }
+            }, 30);
+        }
+
+        function copyCmd(cmd, event) {
+            event.stopPropagation();
+            navigator.clipboard.writeText(cmd).then(() => {
+                showToast("📋 命令已复制到剪切板");
+            });
+        }
+
+        // Toast 浮窗组件
+        let toastTimer = null;
+        function showToast(msg) {
+            const toast = document.getElementById('toastPopup');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function escapeQuote(str) {
+            return str.replace(/'/g, "\\'");
+        }
+
+        // 拖拽调整大小简单仿真 (拖拽 resizableHandle 更改 sidebar 宽度)
+        const resizableHandle = document.getElementById('resizableHandle');
+        const sidebar = document.getElementById('commandPanelHost');
+        let isDragging = false;
+
+        resizableHandle.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            resizableHandle.classList.add('dragging');
+            document.body.style.cursor = 'col-resize';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const containerRect = document.querySelector('.terminal-editor-workspace').getBoundingClientRect();
+            // 计算新的 sidebar 宽度 (从右边界计算)
+            const newWidth = containerRect.right - e.clientX;
+            if (newWidth >= 260 && newWidth <= 500) {
+                sidebar.style.width = newWidth + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                resizableHandle.classList.remove('dragging');
+                document.body.style.cursor = '';
+            }
+        });
+    </script>
+</body>
+</html>

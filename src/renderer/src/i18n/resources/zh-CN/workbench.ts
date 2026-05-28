@@ -864,6 +864,20 @@ const workbench = {
         updated: '凭据已更新。'
       }
     },
+    awayReminder: {
+      title: '安全提醒',
+      description: '请确认你仍在当前连接旁，以继续使用。',
+      confirmButton: '确认继续',
+      serverIdentity: '服务器标识',
+      localTerminal: '本地终端',
+      sshInfo: 'SSH 信息',
+      currentSession: '当前会话',
+      shellType: 'Shell 类型',
+      timeoutSetting: '离开时长阈值',
+      enableSetting: '启用离开提醒',
+      timeoutDescription: '超过此时间无操作后，将弹出确认覆盖层。',
+      secondsUnit: '秒'
+    },
     commandHistory: {
       title: '命令历史',
       subtitle: '已记录的 Shell 命令',
@@ -894,6 +908,47 @@ const workbench = {
       filterAll: '全部',
       filterSuccess: '成功',
       filterFailed: '失败'
+    },
+    commandPanel: {
+      title: '命令面板',
+      subtitle: '执行、复用与自定义常用命令',
+      tabs: {
+        history: '历史记录',
+        custom: '自定义命令'
+      },
+      searchPlaceholder: {
+        history: '在历史记录中搜索…',
+        custom: '在自定义命令中搜索…'
+      },
+      history: {
+        emptyTitle: '暂无历史命令',
+        emptyDescription: '在终端中执行的命令会自动记录在这里'
+      },
+      custom: {
+        emptyTitle: '暂无自定义命令',
+        emptyDescription: '保存常用命令以便快速访问',
+        run: '执行命令',
+        copy: '复制命令',
+        delete: '删除命令',
+        deleteConfirm: '确定要删除这条自定义命令吗？'
+      },
+      drawer: {
+        title: '新建自定义命令',
+        editTitle: '编辑自定义命令',
+        nameLabel: '命令别名',
+        namePlaceholder: '例如: 启动本地前端开发',
+        commandLabel: '具体 Shell 命令',
+        commandPlaceholder: 'git pull && yarn install && yarn start',
+        cancel: '取消',
+        save: '保存命令'
+      },
+      bookmark: '收藏到自定义命令',
+      insertIntoTerminal: '插入终端',
+      runImmediately: '立即执行',
+      copyToClipboard: '复制到剪贴板',
+      deleteEntry: '删除',
+      clearHistory: '清空历史',
+      close: '关闭面板'
     }
   }
 }

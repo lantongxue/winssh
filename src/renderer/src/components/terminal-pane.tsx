@@ -242,9 +242,7 @@ function TerminalPaneImpl({
     replayingCompletedConnection ||
     (session.status === 'ready' && showConnectedOverlay)
   const focusKey =
-    session.status === 'ready'
-      ? `ready:${connectionCycleKey}:${session.focusNonce ?? 0}`
-      : null
+    session.status === 'ready' ? `ready:${connectionCycleKey}:${session.focusNonce ?? 0}` : null
   return (
     <TerminalSurface
       active={active}

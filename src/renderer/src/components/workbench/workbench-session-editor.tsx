@@ -1,6 +1,6 @@
 import { memo, useCallback, useState, type DragEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { History } from 'lucide-react'
+import { TerminalSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useShallow } from 'zustand/react/shallow'
@@ -12,7 +12,7 @@ import { themesClient } from '@/features/themes/api/themes-client'
 import { actionIcons } from '@/lib/action-icons'
 import { usePrefersDark } from '@/hooks/use-prefers-dark'
 import { resolveThemeDefinition } from '@/lib/theme'
-import { CommandHistoryPanel } from '@/components/workbench/command-history-panel'
+import { CommandPanel } from '@/components/workbench/command-panel'
 import { PortForwardPanel } from '@/components/port-forward-panel'
 import { SessionResourceMonitor } from '@/components/session-resource-monitor'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
@@ -195,7 +195,7 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
         onHeaderDragEnd={handleAuxHeaderDragEnd}
       />
     ) : auxView === 'command-history' ? (
-      <CommandHistoryPanel
+      <CommandPanel
         scope={{ kind: 'ssh', serverId: session.serverId }}
         onInsertCommand={(text) => sessionsClient.write(session.sessionId, text)}
         onClose={() => setAuxView(session.sessionId, null)}
@@ -273,7 +273,7 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
           <TooltipIconButton
             variant={auxView === 'command-history' ? 'secondary' : 'ghost'}
             size="icon-sm"
-            label={t('workbench.commandHistory.title')}
+            label={t('workbench.commandPanel.title')}
             aria-pressed={auxView === 'command-history'}
             disabled={session.provisional}
             onClick={() =>
@@ -283,7 +283,7 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
               )
             }
           >
-            <History className="size-4" />
+            <TerminalSquare className="size-4" />
           </TooltipIconButton>
           {session.status !== 'ready' && session.status !== 'connecting' ? (
             <TooltipIconButton

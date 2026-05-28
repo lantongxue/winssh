@@ -1278,12 +1278,14 @@ export function WorkbenchPrimarySidebar() {
         >
           <DialogHeader className="border-b border-[var(--workbench-border)] px-4 py-4">
             <DialogTitle>{t('workbench.primarySidebar.dialogs.deleteServer.title')}</DialogTitle>
+          </DialogHeader>
+          <div className="px-4 py-4">
             <DialogDescription>
               {t('workbench.primarySidebar.dialogs.deleteServer.description', {
                 name: pendingDeleteServer?.name ?? ''
               })}
             </DialogDescription>
-          </DialogHeader>
+          </div>
           <DialogFooter className="border-t border-[var(--workbench-border)] px-4 py-3">
             <Button variant="ghost" disabled={isDeletingServer} onClick={closeDeleteServerDialog}>
               <CancelIcon className="size-4" />

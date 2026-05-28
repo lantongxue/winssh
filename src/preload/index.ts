@@ -272,6 +272,12 @@ const api: WinsshApi = {
       ipcRenderer.invoke('commandHistory:setServerCapture', serverId, enabled),
     onCommandAdded: (callback) => subscribe('commandHistory:added', callback)
   },
+  customCommands: {
+    list: () => ipcRenderer.invoke('customCommands:list'),
+    create: (input) => ipcRenderer.invoke('customCommands:create', input),
+    update: (id, input) => ipcRenderer.invoke('customCommands:update', id, input),
+    delete: (id) => ipcRenderer.invoke('customCommands:delete', id)
+  },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
     update: (input) => ipcRenderer.invoke('settings:update', input)
@@ -329,6 +335,12 @@ const api: WinsshApi = {
       close: () => ipcRenderer.invoke('system:window:close'),
       isMaximized: () => ipcRenderer.invoke('system:window:isMaximized'),
       onStateChange: (callback) => subscribe('system:windowState', callback)
+    },
+    appFocus: {
+      onStateChange: (callback) => subscribe('system:appFocus', callback)
+    },
+    appActivity: {
+      onStateChange: (callback) => subscribe('system:appActivity', callback)
     },
     onHostTrustRequest: (callback) => subscribe('system:hostTrustRequest', callback)
   }

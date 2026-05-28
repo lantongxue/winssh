@@ -24,5 +24,6 @@ export const queryKeys = {
   commandHistory: (scope: CommandHistoryScope) =>
     scope.kind === 'ssh'
       ? (['command-history', 'ssh', scope.serverId] as const)
-      : (['command-history', 'local'] as const)
+      : (['command-history', 'local'] as const),
+  customCommands: ['custom-commands'] as const
 }

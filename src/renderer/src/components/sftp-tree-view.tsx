@@ -17,14 +17,18 @@ import type { RemoteEntry, SftpListResult } from '@shared/types'
 import { getParentRemotePath } from '@shared/sftp'
 import { sftpClient } from '@/features/sftp/api/sftp-client'
 import { actionIcons } from '@/lib/action-icons'
-import { writeTerminalPathDragData, writeSftpMoveDragData, clearSftpMoveDragData } from '@/lib/terminal-path-dnd'
+import {
+  writeTerminalPathDragData,
+  writeSftpMoveDragData,
+  clearSftpMoveDragData
+} from '@/lib/terminal-path-dnd'
 import type { SessionTab } from '@/store/sessions-store'
 import { cn } from '@/lib/utils'
 import { SftpEntryContextMenu } from '@/components/sftp-entry-context-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { type SftpMoveCompleteEvent, useSftpEntryDrop } from '@/hooks/use-sftp-entry-drop'
 
-const ENTRY_ITEM_HEIGHT = 56
+const ENTRY_ITEM_HEIGHT = 46
 
 export type SftpViewMode = 'flat' | 'tree'
 
@@ -94,15 +98,15 @@ function SftpTreeEntryRow({
 
   if (node.isLoading) {
     return (
-      <div style={wrapperStyle ?? { height: `${ENTRY_ITEM_HEIGHT}px` }} className="">
+      <div style={wrapperStyle ?? { height: `${ENTRY_ITEM_HEIGHT}px` }}>
         <div
           style={{ paddingLeft: `${node.depth * 16 + 12}px` }}
-          className="flex h-full items-center gap-3 border-b px-3 py-2"
+          className="flex h-full items-center gap-3 border-b border-[var(--workbench-border)]/50 px-4 py-1"
         >
-          <Skeleton className="size-6 rounded-sm" />
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <Skeleton className="h-4 w-3/5 rounded-sm" />
-            <Skeleton className="h-3 w-2/5 rounded-sm" />
+          <Skeleton className="size-6 rounded" />
+          <div className="min-w-0 flex-1 space-y-1">
+            <Skeleton className="h-3.5 w-3/5 rounded-sm" />
+            <Skeleton className="h-2.5 w-2/5 rounded-sm" />
           </div>
         </div>
       </div>
@@ -138,10 +142,10 @@ function SftpTreeEntryRow({
       disabled={isRemoving}
       draggable={!isRemoving}
       className={cn(
-        'flex h-full w-full items-start gap-3 border-b px-3 py-2 text-left transition-[opacity,transform,background-color,color] duration-200 ease-out',
+        'relative flex h-full w-full items-center gap-3 border-b border-[var(--workbench-border)]/50 px-4 py-1 text-left transition-[opacity,transform,background-color,color] duration-150 ease-out',
         isSelected
-          ? 'bg-[var(--workbench-hover)] text-foreground'
-          : 'hover:bg-[var(--workbench-hover)] hover:text-foreground',
+          ? 'bg-[var(--workbench-hover)] text-foreground font-medium'
+          : 'hover:bg-[var(--workbench-hover)] text-muted-foreground hover:text-foreground',
         isRemoving && 'translate-x-1 scale-[0.985] opacity-35'
       )}
       style={{ paddingLeft: `${depth * 16 + 12}px` }}
@@ -191,11 +195,18 @@ function SftpTreeEntryRow({
       }}
       onDragStart={(event) => {
         writeTerminalPathDragData(event.dataTransfer, entry.path)
-        writeSftpMoveDragData(event.dataTransfer, entry.path, entry.kind === 'directory' ? 'directory' : 'file')
+        writeSftpMoveDragData(
+          event.dataTransfer,
+          entry.path,
+          entry.kind === 'directory' ? 'directory' : 'file'
+        )
       }}
       onDragEnd={clearSftpMoveDragData}
     >
-      <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center">
+      {isSelected && (
+        <div className="absolute inset-y-0 left-0 w-[3px] bg-[var(--workbench-active)] rounded-r" />
+      )}
+      <div className="flex size-5 shrink-0 items-center justify-center">
         {isDirectory ? (
           <span
             role="button"
@@ -225,11 +236,11 @@ function SftpTreeEntryRow({
       </div>
       <div
         className={cn(
-          'mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-sm transition-colors',
+          'flex size-6 shrink-0 items-center justify-center rounded transition-colors',
           isDirectory
-            ? 'bg-[color-mix(in_srgb,var(--workbench-active)_14%,transparent)] text-[var(--workbench-active)] ring-1 ring-[color-mix(in_srgb,var(--workbench-active)_28%,transparent)]'
+            ? 'bg-[color-mix(in_srgb,var(--workbench-active)_10%,transparent)] text-[var(--workbench-active)] border border-[color-mix(in_srgb,var(--workbench-active)_20%,transparent)]'
             : isSelected
-              ? 'bg-[var(--workbench-hover)] text-foreground'
+              ? 'bg-[var(--workbench-hover)] text-foreground font-medium'
               : 'bg-muted text-muted-foreground'
         )}
         data-entry-icon={isDirectory ? 'directory' : 'file'}
@@ -242,25 +253,32 @@ function SftpTreeEntryRow({
           <File className="size-3.5" />
         )}
       </div>
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[13px] leading-5 font-medium text-foreground">
+      <div className="min-w-0 flex-1 leading-tight">
+        <div className="truncate text-xs font-semibold text-foreground">
           {entry.name}
         </div>
-        <div className="truncate font-mono text-[11px] leading-4 text-muted-foreground">
+        <div className="truncate font-mono text-[10px] text-muted-foreground/75 mt-0.5">
           {onGetEntryMeta(entry)}
         </div>
       </div>
     </button>
   )
 
-  const isDropTarget = isDirectory && (dropState === 'valid' || dropState === 'invalid-self' || dropState === 'invalid-descendant' || dropState === 'invalid-same-dir')
+  const isDropTarget =
+    isDirectory &&
+    (dropState === 'valid' ||
+      dropState === 'invalid-self' ||
+      dropState === 'invalid-descendant' ||
+      dropState === 'invalid-same-dir')
 
   return (
     <div
       style={wrapperStyle ?? { height: `${ENTRY_ITEM_HEIGHT}px` }}
       {...(isDirectory ? dropHandlers : {})}
       className={cn(
-        isDropTarget && dropState === 'valid' && 'bg-[color-mix(in_srgb,var(--workbench-active)_12%,transparent)]',
+        isDropTarget &&
+          dropState === 'valid' &&
+          'bg-[color-mix(in_srgb,var(--workbench-active)_12%,transparent)]',
         isDropTarget && dropState !== 'valid' && 'bg-destructive/10'
       )}
     >
@@ -275,9 +293,7 @@ function SftpTreeEntryRow({
           onEditFile={onEditFile}
           onRename={onSetRenameTarget}
           onRefresh={
-            refreshContextTarget
-              ? () => void onRefreshDirectory(refreshContextTarget)
-              : onRefresh
+            refreshContextTarget ? () => void onRefreshDirectory(refreshContextTarget) : onRefresh
           }
           onCopyEntryPaths={onCopyEntryPaths}
           onSendPathToTerminal={onSendPathToTerminal}

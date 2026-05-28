@@ -204,7 +204,9 @@ export const settingsSchema = z.object({
   resourceMonitorIntervalMs: z.coerce.number().int().min(500).max(30000),
   sftpUploadConcurrency: z.coerce.number().int().min(1).max(16),
   sftpDownloadConcurrency: z.coerce.number().int().min(1).max(16),
-  commandHistoryEnabled: z.boolean()
+  commandHistoryEnabled: z.boolean(),
+  awayReminderEnabled: z.boolean(),
+  awayReminderTimeoutMs: z.coerce.number().int().min(5000).max(3600000)
 })
 
 export const hostTrustRequestSchema = z.object({
@@ -222,9 +224,28 @@ export const hostTrustResultSchema = z.object({
   trusted: z.boolean()
 })
 
+export const customCommandSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, 'validation.customCommand.name.required')
+    .max(60, 'validation.customCommand.name.max'),
+  command: z
+    .string()
+    .trim()
+    .min(1, 'validation.customCommand.command.required')
+    .max(2000, 'validation.customCommand.command.max')
+})
+
+export const customCommandUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(60).optional(),
+  command: z.string().trim().min(1).max(2000).optional()
+})
+
 export type ServerFormValues = z.infer<typeof serverSchema>
 export type GroupFormValues = z.infer<typeof groupSchema>
 export type TagFormValues = z.infer<typeof tagSchema>
 export type PortForwardFormValues = z.infer<typeof portForwardSchema>
 export type SettingsFormValues = z.infer<typeof settingsSchema>
 export type CredentialFormValues = z.infer<typeof credentialSchema>
+export type CustomCommandFormValues = z.infer<typeof customCommandSchema>

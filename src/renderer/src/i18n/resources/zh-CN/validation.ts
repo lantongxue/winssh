@@ -76,6 +76,16 @@ const validation = {
         max: '标签名称不能超过 32 个字符。',
         required: '请输入标签名称。'
       }
+    },
+    customCommand: {
+      name: {
+        max: '命令别名不能超过 60 个字符。',
+        required: '请输入命令别名。'
+      },
+      command: {
+        max: 'Shell 命令不能超过 2000 个字符。',
+        required: '请输入 Shell 命令。'
+      }
     }
   }
 }

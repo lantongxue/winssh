@@ -9,21 +9,23 @@ WinSSH is a cross-platform SSH/SFTP desktop client built with Electron 39, React
 ## Common Commands
 
 ```bash
-npm run dev              # Start Electron app in dev mode
-npm run build            # Typecheck + electron-vite build
-npm run typecheck        # Run both node and web TypeScript checks
-npm run typecheck:node   # tsc for main/preload/shared
-npm run typecheck:web    # tsc for renderer/shared
-npm run test             # Vitest (jsdom, globals: true)
-npx vitest run <file>    # Run a single test file
-npm run lint             # ESLint (has pre-existing failures - not fully green)
-npm run format           # Prettier (single quotes, no semicolons, 100 char width)
-npm run dist             # Build + electron-builder for current platform
-npm run dist:win         # Windows NSIS + ZIP
-npm run dist:mac         # macOS DMG + ZIP
-npm run dist:linux       # Linux AppImage + DEB
-npm run updates:mock     # Generate mock update release files for local testing
-npm run updates:serve    # Start a local update server for end-to-end update testing
+npm run dev                  # Start Electron app in dev mode
+npm run start                # Preview a built Electron app (electron-vite preview)
+npm run build                # Typecheck + electron-vite build
+npm run typecheck            # Run both node and web TypeScript checks
+npm run typecheck:node       # tsc for main/preload/shared
+npm run typecheck:web        # tsc for renderer/shared
+npm run test                 # Vitest (jsdom, globals: true)
+npx vitest run <file>        # Run a single test file
+npx vitest run -t "<name>"   # Filter tests by name pattern
+npm run lint                 # ESLint (has pre-existing failures - not fully green)
+npm run format               # Prettier (single quotes, no semicolons, 100 char width)
+npm run dist                 # Build + electron-builder for current platform
+npm run dist:win             # Windows NSIS + ZIP
+npm run dist:mac             # macOS DMG + ZIP
+npm run dist:linux           # Linux AppImage + DEB
+npm run updates:mock         # Generate mock update release files for local testing
+npm run updates:serve        # Start a local update server for end-to-end update testing
 ```
 
 ## Test Infrastructure
@@ -46,7 +48,7 @@ The typed IPC contract flows through 4 files:
 3. `src/shared/ipc-channels.ts` — typed push event channels
 4. `src/preload/index.ts` — bridge implementation
 
-Main process handlers are in `src/main/ipc/` (3 registrars: server, session, system).
+Main process handlers are in `src/main/ipc/` (5 registrars: server, session, system, command-history, custom-command).
 
 ### Renderer Feature API Gateway
 
@@ -98,9 +100,24 @@ Zustand stores in `src/renderer/src/store/`: `workbench-store.ts` (persisted UI 
 - i18n supports zh-CN and en-US via i18next/react-i18next
 - Tests live in `test/` (not alongside source), organized by `test/main/`, `test/renderer/`, `test/shared/`
 
-## Web Sub-Project
+## Sub-Projects
 
-The `web/` directory is a separate brand-site project with its own `package.json`, Vite config, and test runner. Use `npm run web:dev`, `npm run web:build`, `npm run web:test` from the repo root.
+Both sub-projects are independent npm workspaces (own `package.json`, Vite config, and vitest runner) and are excluded from the root Vitest run.
+
+- `web/` — brand site / docs landing. Use `npm run web:dev`, `npm run web:build`, `npm run web:test` from the repo root.
+- `official-website/` — separate marketing site. Use `npm run site:dev`, `npm run site:build`, `npm run site:test` from the repo root.
+
+## Environment Variables
+
+- `WINSSH_UPDATE_BASE_URL` — base URL for the Windows electron-updater generic feed.
+- `WINSSH_ALLOW_DEV_UPDATES` — allow writing `dev-app-update.yml` to exercise the update flow in dev.
+- `WINSSH_HARDWARE_ACCELERATION` — override the default policy (Windows disables hardware acceleration by default).
+
+## Environment Requirements
+
+- Node.js 22 LTS and npm 10+ recommended.
+- Native deps (`better-sqlite3`, `node-pty`, `keytar`) require a working native toolchain when no prebuilt binary matches the platform. `postinstall` runs `electron-builder install-app-deps`.
+- Verification order when validating changes: `npm run typecheck` → `npm run test`. `npm run lint` is not a gate (see Key Constraints).
 
 ## Existing Documentation
 

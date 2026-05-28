@@ -1,6 +1,6 @@
 import { memo, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { History } from 'lucide-react'
+import { TerminalSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
@@ -11,15 +11,11 @@ import { themesClient } from '@/features/themes/api/themes-client'
 import { actionIcons } from '@/lib/action-icons'
 import { usePrefersDark } from '@/hooks/use-prefers-dark'
 import { resolveThemeDefinition } from '@/lib/theme'
-import { CommandHistoryPanel } from '@/components/workbench/command-history-panel'
+import { CommandPanel } from '@/components/workbench/command-panel'
 import { TerminalSurface } from '@/components/terminal-surface'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import { Button } from '@/components/ui/button'
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup
-} from '@/components/ui/resizable'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { useLocalTerminalsStore } from '@/store/local-terminals-store'
 
 interface WorkbenchLocalTerminalEditorProps {
@@ -100,11 +96,11 @@ function WorkbenchLocalTerminalEditorImpl({
             variant={historyOpen ? 'secondary' : 'ghost'}
             size="sm"
             onClick={() => setHistoryOpen((prev) => !prev)}
-            title={t('workbench.commandHistory.toggleButton')}
-            aria-label={t('workbench.commandHistory.toggleButton')}
+            title={t('workbench.commandPanel.title')}
+            aria-label={t('workbench.commandPanel.title')}
           >
-            <History className="size-4" />
-            {t('workbench.commandHistory.title')}
+            <TerminalSquare className="size-4" />
+            {t('workbench.commandPanel.title')}
           </Button>
           <Button variant="ghost" size="sm" onClick={() => void closeLocalTerminal(terminalId)}>
             <CloseIcon className="size-4" />
@@ -153,7 +149,7 @@ function WorkbenchLocalTerminalEditorImpl({
               maxSize="55%"
             >
               <div className="h-full min-w-0 bg-[var(--workbench-sidebar)] p-3">
-                <CommandHistoryPanel
+                <CommandPanel
                   scope={{ kind: 'local' }}
                   onInsertCommand={(text) => localTerminalsClient.write(terminalId, text)}
                   onClose={() => setHistoryOpen(false)}

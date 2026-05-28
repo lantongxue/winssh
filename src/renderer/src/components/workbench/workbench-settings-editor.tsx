@@ -1006,9 +1006,7 @@ export function WorkbenchSettingsEditor() {
                     name="sftpUploadConcurrency"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>
-                          {t('workbench.settings.form.sftpUploadConcurrency')}
-                        </FormLabel>
+                        <FormLabel>{t('workbench.settings.form.sftpUploadConcurrency')}</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -1018,10 +1016,9 @@ export function WorkbenchSettingsEditor() {
                             {...field}
                             onBlur={() => {
                               field.onBlur()
-                              const parsed =
-                                settingsSchema.shape.sftpUploadConcurrency.safeParse(
-                                  form.getValues('sftpUploadConcurrency')
-                                )
+                              const parsed = settingsSchema.shape.sftpUploadConcurrency.safeParse(
+                                form.getValues('sftpUploadConcurrency')
+                              )
                               if (!parsed.success) {
                                 resetSavedField(
                                   'sftpUploadConcurrency',
@@ -1059,10 +1056,9 @@ export function WorkbenchSettingsEditor() {
                             {...field}
                             onBlur={() => {
                               field.onBlur()
-                              const parsed =
-                                settingsSchema.shape.sftpDownloadConcurrency.safeParse(
-                                  form.getValues('sftpDownloadConcurrency')
-                                )
+                              const parsed = settingsSchema.shape.sftpDownloadConcurrency.safeParse(
+                                form.getValues('sftpDownloadConcurrency')
+                              )
                               if (!parsed.success) {
                                 resetSavedField(
                                   'sftpDownloadConcurrency',
@@ -1163,6 +1159,76 @@ export function WorkbenchSettingsEditor() {
                     </TableBody>
                   </Table>
                 </div>
+                <FormField
+                  control={form.control}
+                  name="awayReminderEnabled"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-sm border border-[var(--workbench-border)] px-4 py-3">
+                      <div>
+                        <div className="font-medium">
+                          {t('workbench.awayReminder.enableSetting')}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {t('workbench.awayReminder.description')}
+                        </div>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          aria-label={t('workbench.awayReminder.enableSetting')}
+                          checked={field.value}
+                          onCheckedChange={(checked) => {
+                            field.onChange(checked)
+                            void handleSettingSave('awayReminderEnabled', checked)
+                          }}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                {form.watch('awayReminderEnabled') ? (
+                  <FormField
+                    control={form.control}
+                    name="awayReminderTimeoutMs"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('workbench.awayReminder.timeoutSetting')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={5}
+                            max={3600}
+                            step={1}
+                            value={field.value / 1000}
+                            onChange={(e) => {
+                              const seconds = Number(e.target.value)
+                              field.onChange(seconds * 1000)
+                            }}
+                            onBlur={() => {
+                              field.onBlur()
+                              const parsed =
+                                settingsSchema.shape.awayReminderTimeoutMs.safeParse(
+                                  form.getValues('awayReminderTimeoutMs')
+                                )
+                              if (!parsed.success) {
+                                resetSavedField(
+                                  'awayReminderTimeoutMs',
+                                  savedSettingsRef.current?.awayReminderTimeoutMs ?? DEFAULT_SETTINGS_FORM_VALUES.awayReminderTimeoutMs
+                                )
+                                toast.error(t('workbench.settings.validation.failed'))
+                                return
+                              }
+                              void handleSettingSave('awayReminderTimeoutMs', parsed.data)
+                            }}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          {t('workbench.awayReminder.timeoutDescription')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : null}
               </section>
             ) : null}
 

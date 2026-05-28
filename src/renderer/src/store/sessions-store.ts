@@ -177,9 +177,7 @@ export const useSessionsStore = create<SessionsState>((set) => ({
       const tab = state.tabs.find((t) => t.sessionId === sessionId)
       if (!tab || tab.currentPath === path) return state
       return {
-        tabs: state.tabs.map((t) =>
-          t.sessionId === sessionId ? { ...t, currentPath: path } : t
-        )
+        tabs: state.tabs.map((t) => (t.sessionId === sessionId ? { ...t, currentPath: path } : t))
       }
     }),
   requestTerminalFocus: (sessionId) =>

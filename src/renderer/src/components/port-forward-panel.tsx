@@ -3,7 +3,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import type { PortForwardRule } from '@shared/types'
 import { portForwardSchema, type PortForwardFormValues } from '@shared/validation'
 import { portForwardsClient } from '@/features/port-forwards/api/port-forwards-client'
 import { queryKeys } from '@/features/shared/query-keys'
@@ -57,23 +56,7 @@ function isPublicBindHost(host: string) {
   return host.trim() === '0.0.0.0' || host.trim() === '::'
 }
 
-function getStatusVariant(
-  rule: PortForwardRule
-): 'default' | 'secondary' | 'destructive' | 'outline' {
-  if (rule.status === 'active') {
-    return 'default'
-  }
 
-  if (rule.status === 'error') {
-    return 'destructive'
-  }
-
-  if (rule.status === 'starting') {
-    return 'secondary'
-  }
-
-  return 'outline'
-}
 
 export function PortForwardPanel({
   session,
@@ -129,53 +112,54 @@ export function PortForwardPanel({
 
   return (
     <>
-      <div className={cn('flex h-full flex-col bg-background', className)}>
-        <div className="border-b px-3 py-3">
+      <div className={cn('flex h-full flex-col bg-[var(--workbench-sidebar)]', className)}>
+        <div className="border-b border-[var(--workbench-border)] px-4 py-3.5">
           <div
             draggable={!!onHeaderDragStart}
             className={cn(
-              'flex items-start justify-between gap-3',
+              'flex items-center justify-between gap-3',
               onHeaderDragStart && 'cursor-grab active:cursor-grabbing'
             )}
             onDragStart={onHeaderDragStart}
             onDragEnd={onHeaderDragEnd}
           >
-            <div className="min-w-0">
-              <div className="text-sm font-semibold">{t('workbench.portForward.title')}</div>
-              <div className="truncate text-xs text-muted-foreground">
+            <div className="min-w-0 flex flex-col">
+              <span className="text-sm font-bold tracking-tight text-foreground">{t('workbench.portForward.title')}</span>
+              <span className="truncate text-[11px] text-muted-foreground mt-0.5 opacity-80">
                 {t('workbench.portForward.subtitle')}
-              </div>
+              </span>
             </div>
             <Button
               size="sm"
+              className="h-8 px-3 text-[11px] font-medium"
               disabled={!canManage}
               onClick={() => {
                 form.reset(DEFAULT_VALUES)
                 setCreateOpen(true)
               }}
             >
-              <NewRuleIcon className="size-4" />
+              <NewRuleIcon className="size-3.5" />
               {t('workbench.portForward.actions.newRule')}
             </Button>
           </div>
           {!canManage ? (
-            <div className="mt-3 rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
+            <div className="mt-3 rounded border border-dashed border-[var(--workbench-border)] bg-[var(--workbench-hover)]/30 px-3 py-2 text-xs text-muted-foreground">
               {t('workbench.portForward.unavailableHint')}
             </div>
           ) : null}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto p-3">
+        <div className="min-h-0 flex-1 overflow-auto p-4">
           <div className="space-y-3">
             {rulesQuery.isLoading ? (
               <>
-                <Skeleton className="h-24 rounded-lg" />
-                <Skeleton className="h-24 rounded-lg" />
+                <Skeleton className="h-[96px] rounded-lg" />
+                <Skeleton className="h-[96px] rounded-lg" />
               </>
             ) : null}
 
             {!rulesQuery.isLoading && (rulesQuery.data?.length ?? 0) === 0 ? (
-              <div className="rounded-md border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+              <div className="rounded-md border border-dashed border-[var(--workbench-border)] px-4 py-6 text-center text-xs text-muted-foreground">
                 {t('workbench.portForward.empty.rules')}
               </div>
             ) : null}
@@ -184,17 +168,44 @@ export function PortForwardPanel({
               const active = rule.status === 'active' || rule.status === 'starting'
 
               return (
-                <div key={rule.id} className="rounded-lg border border-border/70 px-3 py-3">
+                <div
+                  key={rule.id}
+                  className={cn(
+                    'relative overflow-hidden rounded-md border border-[var(--workbench-border)] bg-[color-mix(in_srgb,var(--workbench-hover)_20%,transparent)] px-3.5 py-3 transition-all hover:bg-[color-mix(in_srgb,var(--workbench-hover)_35%,transparent)] shadow-sm',
+                    rule.status === 'active' && 'border-l-[3px] border-l-emerald-500',
+                    rule.status === 'starting' && 'border-l-[3px] border-l-amber-500',
+                    rule.status === 'error' && 'border-l-[3px] border-l-red-500',
+                    rule.status === 'stopped' && 'border-l-[3px] border-l-[var(--workbench-muted)]/50'
+                  )}
+                >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-foreground">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-semibold text-foreground leading-normal">
                         {t(`workbench.portForward.kinds.${rule.kind}`)}
                       </div>
-                      <div className="mt-1 break-all text-xs text-muted-foreground">
+                      <div className="mt-1.5 font-mono text-[11px] text-muted-foreground break-all bg-[var(--workbench-hover)]/30 px-1.5 py-0.5 rounded border border-[var(--workbench-border)]/20 inline-block leading-normal select-text">
                         {rule.bindHost}:{rule.bindPort} -&gt; {rule.targetHost}:{rule.targetPort}
                       </div>
                     </div>
-                    <Badge variant={getStatusVariant(rule)}>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        'flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-semibold border shrink-0',
+                        rule.status === 'active' && 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+                        rule.status === 'starting' && 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+                        rule.status === 'error' && 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
+                        rule.status === 'stopped' && 'bg-muted/50 text-muted-foreground border-muted-foreground/20'
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'size-1.5 rounded-full shrink-0',
+                          rule.status === 'active' && 'bg-emerald-500 animate-pulse',
+                          rule.status === 'starting' && 'bg-amber-500 animate-pulse',
+                          rule.status === 'error' && 'bg-red-500',
+                          rule.status === 'stopped' && 'bg-muted-foreground'
+                        )}
+                      />
                       {t(`workbench.portForward.statuses.${rule.status}`)}
                     </Badge>
                   </div>
@@ -202,7 +213,7 @@ export function PortForwardPanel({
                   {rule.lastError ? (
                     <div
                       className={cn(
-                        'mt-3 text-xs',
+                        'mt-2.5 text-[11px] font-medium leading-relaxed bg-destructive/5 px-2 py-1.5 border border-destructive/10 rounded',
                         rule.status === 'error' ? 'text-destructive' : 'text-muted-foreground'
                       )}
                     >
@@ -210,44 +221,47 @@ export function PortForwardPanel({
                     </div>
                   ) : null}
 
-                  <div className="mt-3 flex items-center gap-2">
+                  <div className="mt-3 flex items-center gap-2 border-t border-[var(--workbench-border)]/50 pt-2.5">
                     {active ? (
                       <Button
                         variant="outline"
                         size="sm"
+                        className="h-7 px-2.5 text-[11px] font-medium border-[var(--workbench-border)] hover:bg-[var(--workbench-hover)] hover:text-foreground shrink-0"
                         disabled={!canManage}
                         onClick={async () => {
                           await portForwardsClient.stop(session.sessionId, rule.id)
                           await refresh()
                         }}
                       >
-                        <StopIcon className="size-4" />
+                        <StopIcon className="size-3.5 text-muted-foreground" />
                         {t('common.actions.stop')}
                       </Button>
                     ) : (
                       <Button
                         variant="outline"
                         size="sm"
+                        className="h-7 px-2.5 text-[11px] font-medium border-[var(--workbench-border)] hover:bg-[var(--workbench-hover)] hover:text-foreground shrink-0"
                         disabled={!canManage}
                         onClick={async () => {
                           await portForwardsClient.start(session.sessionId, rule.id)
                           await refresh()
                         }}
                       >
-                        <StartIcon className="size-4" />
+                        <StartIcon className="size-3.5 text-muted-foreground" />
                         {t('common.actions.start')}
                       </Button>
                     )}
                     <Button
                       variant="ghost"
                       size="sm"
+                      className="h-7 px-2.5 text-[11px] font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
                       disabled={!canManage}
                       onClick={async () => {
                         await portForwardsClient.remove(session.sessionId, rule.id)
                         await refresh()
                       }}
                     >
-                      <DeleteIcon className="size-4" />
+                      <DeleteIcon className="size-3.5" />
                       {t('common.actions.delete')}
                     </Button>
                   </div>

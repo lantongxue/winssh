@@ -56,5 +56,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   resourceMonitorIntervalMs: 2000,
   sftpUploadConcurrency: 3,
   sftpDownloadConcurrency: 3,
-  commandHistoryEnabled: true
+  commandHistoryEnabled: true,
+  awayReminderEnabled: true,
+  awayReminderTimeoutMs: 30000
 }

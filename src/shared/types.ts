@@ -129,6 +129,8 @@ export interface AppSettings {
   sftpUploadConcurrency: number
   sftpDownloadConcurrency: number
   commandHistoryEnabled: boolean
+  awayReminderEnabled: boolean
+  awayReminderTimeoutMs: number
 }
 
 export interface WebDAVBackupState {
@@ -442,6 +444,14 @@ export interface WindowState {
   isMaximized: boolean
 }
 
+export interface AppFocusEvent {
+  phase: 'blurred' | 'focused'
+}
+
+export interface AppActivityEvent {
+  phase: 'sleep' | 'wake' | 'lock-screen' | 'unlock-screen'
+}
+
 export interface QuickConnectTarget {
   authType: 'password'
   host: string
@@ -494,4 +504,17 @@ export interface HostTrustRequest {
 export interface HostTrustResult {
   requestId: string
   trusted: boolean
+}
+
+export interface CustomCommand {
+  id: string
+  name: string
+  command: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CustomCommandInput {
+  name: string
+  command: string
 }

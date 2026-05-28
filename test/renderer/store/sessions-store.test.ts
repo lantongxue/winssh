@@ -170,5 +170,4 @@ describe('sessions store', () => {
     expect(session?.connectionPhase).toBe('validate')
     expect(session?.connectionStartedAt).toBe('2026-04-02T12:00:01.000Z')
   })
-
 })

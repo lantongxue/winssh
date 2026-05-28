@@ -1,4 +1,6 @@
 import type {
+  AppActivityEvent,
+  AppFocusEvent,
   AppInfo,
   AppSettings,
   CommandHistoryEntry,
@@ -10,6 +12,8 @@ import type {
   Credential,
   CredentialSecret,
   CredentialUpsertInput,
+  CustomCommand,
+  CustomCommandInput,
   GroupInput,
   HostTrustResult,
   KnownHost,
@@ -138,6 +142,12 @@ export interface WinsshApi {
     setServerCapture: (serverId: string, enabled: boolean) => Promise<void>
     onCommandAdded: (callback: (event: CommandRecordedEvent) => void) => Unsubscribe
   }
+  customCommands: {
+    list: () => Promise<CustomCommand[]>
+    create: (input: CustomCommandInput) => Promise<CustomCommand>
+    update: (id: string, input: Partial<CustomCommandInput>) => Promise<CustomCommand>
+    delete: (id: string) => Promise<void>
+  }
   settings: {
     get: () => Promise<AppSettings>
     update: (input: Partial<AppSettings>) => Promise<AppSettings>
@@ -189,6 +199,14 @@ export interface WinsshApi {
       isMaximized: () => Promise<boolean>
       onStateChange: (callback: (state: WindowState) => void) => Unsubscribe
     }
-    onHostTrustRequest: (callback: (request: import('./types').HostTrustRequest) => void) => Unsubscribe
+    appFocus: {
+      onStateChange: (callback: (event: AppFocusEvent) => void) => Unsubscribe
+    }
+    appActivity: {
+      onStateChange: (callback: (event: AppActivityEvent) => void) => Unsubscribe
+    }
+    onHostTrustRequest: (
+      callback: (request: import('./types').HostTrustRequest) => void
+    ) => Unsubscribe
   }
 }
