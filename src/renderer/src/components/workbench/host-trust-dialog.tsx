@@ -82,11 +82,13 @@ export function HostTrustDialogHost() {
             )}
             {title}
           </AlertDialogTitle>
+        </AlertDialogHeader>
+        <div className="px-4 py-4">
           <AlertDialogDescription>
             <p>{message}</p>
             <pre className="mt-2 whitespace-pre-wrap text-xs font-mono opacity-80">{detail}</pre>
           </AlertDialogDescription>
-        </AlertDialogHeader>
+        </div>
         <AlertDialogFooter className="border-t border-[var(--workbench-border)] px-4 py-3">
           <AlertDialogCancel asChild>
             <Button variant={isChanged ? 'destructive' : 'ghost'}>{cancelLabel}</Button>

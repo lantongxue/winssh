@@ -53,8 +53,7 @@ export function WorkbenchAwayReminderOverlay() {
 
   const identityItems = openDocuments
     .filter(
-      (document) =>
-        document.kind === 'session-editor' || document.kind === 'local-terminal-editor'
+      (document) => document.kind === 'session-editor' || document.kind === 'local-terminal-editor'
     )
     .map((document) => {
       if (document.kind === 'session-editor') {
@@ -92,9 +91,7 @@ export function WorkbenchAwayReminderOverlay() {
       className="absolute inset-0 z-40 flex items-center justify-center bg-[var(--terminal-overlay-backdrop)] backdrop-blur-[var(--terminal-overlay-backdrop-blur)]"
       onKeyDown={handleKeyDown}
     >
-      <div
-        className="flex w-[min(560px,calc(100%-2rem))] flex-col gap-4 rounded-[var(--terminal-overlay-radius)] border border-[var(--terminal-overlay-border)] bg-[var(--terminal-overlay-panel)] px-6 py-5 text-left shadow-xl"
-      >
+      <div className="flex w-[min(560px,calc(100%-2rem))] flex-col gap-4 rounded-[var(--terminal-overlay-radius)] border border-[var(--terminal-overlay-border)] bg-[var(--terminal-overlay-panel)] px-6 py-5 text-left shadow-xl">
         <div className="flex items-start gap-4">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[var(--terminal-overlay-accent-soft)] text-[var(--terminal-overlay-accent)]">
             <ShieldCheck className="size-5" />
@@ -118,31 +115,56 @@ export function WorkbenchAwayReminderOverlay() {
               {identityItems.map((item) => {
                 if (item.type === 'ssh') {
                   return (
-                    <div key={item.id} className="flex items-center gap-2 text-sm">
-                      <span className="text-[var(--terminal-overlay-label)]">
-                        {t('workbench.awayReminder.sshSession')}
-                      </span>
-                      <span className="text-[var(--terminal-overlay-accent)]">
-                        {item.username}
-                      </span>
-                      <span className="text-[var(--terminal-overlay-accent)]">
-                        @{item.host}:{item.port}
-                      </span>
+                    <div
+                      key={item.id}
+                      className="flex flex-col gap-1 py-1"
+                    >
+                      {item.serverName ? (
+                        <div className="flex items-center gap-1.5 text-base font-bold text-[var(--terminal-overlay-text)]">
+                          <span>{t('workbench.awayReminder.currentSession')}</span>
+                          <span className="text-[var(--terminal-overlay-accent)]">
+                            {item.serverName}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="text-base font-bold text-[var(--terminal-overlay-text)]">
+                          {item.username}@{item.host}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5 text-base font-bold text-[var(--terminal-overlay-text)]">
+                        <span>{t('workbench.awayReminder.sshInfo')}</span>
+                        {item.serverName && (
+                          <>
+                            <span className="text-[var(--terminal-overlay-accent)]">
+                              {item.username}
+                            </span>
+                            <span className="text-[var(--terminal-overlay-accent)]">
+                              @{item.host}
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   )
                 }
 
                 return (
-                  <div key={item.id} className="flex items-center gap-2 text-sm">
-                    <span className="text-[var(--terminal-overlay-label)]">
-                      {t('workbench.awayReminder.localTerminal')}
-                    </span>
-                    <span className="text-[var(--terminal-overlay-label)]">
-                      {t('workbench.awayReminder.shellType')}
-                    </span>
-                    <span className="text-[var(--terminal-overlay-accent)]">
+                  <div
+                    key={item.id}
+                    className="flex flex-col gap-1 border-l-2 border-[var(--terminal-overlay-border)] pl-3 py-1"
+                  >
+                    <div className="text-base font-bold text-[var(--terminal-overlay-text)]">
                       {item.shell}
-                    </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-[var(--terminal-overlay-muted)]">
+                      <span className="text-[var(--terminal-overlay-label)]">
+                        {t('workbench.awayReminder.localTerminal')}
+                      </span>
+                      <span>•</span>
+                      <span className="text-[var(--terminal-overlay-label)]">
+                        {t('workbench.awayReminder.shellType')}
+                      </span>
+                    </div>
                   </div>
                 )
               })}

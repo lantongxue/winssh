@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
 import i18n from '@/i18n'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { WorkbenchSessionEditor } from '@/components/workbench/workbench-session-editor'
 import { createWinsshApiMock } from '@test/renderer/helpers/create-winssh-api'
 import { useSessionsStore } from '@/store/sessions-store'
@@ -52,7 +53,9 @@ function renderSessionEditor() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <WorkbenchSessionEditor sessionId="session-1" />
+      <TooltipProvider>
+        <WorkbenchSessionEditor sessionId="session-1" />
+      </TooltipProvider>
     </QueryClientProvider>
   )
 }
@@ -100,7 +103,7 @@ describe('WorkbenchSessionEditor', () => {
     expect(screen.getByText('Network')).toBeInTheDocument()
     expect(screen.getByText('Disk (/)')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('switch', { name: 'Toggle resource monitor' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Resource Monitor' }))
 
     await waitFor(() => {
       expect(screen.getByTestId('session-resource-monitor')).toHaveAttribute(
@@ -110,7 +113,7 @@ describe('WorkbenchSessionEditor', () => {
     })
 
     expect(screen.queryByText('Memory')).not.toBeInTheDocument()
-    expect(screen.getByText('Resource Monitor')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Resource Monitor' })).toBeInTheDocument()
   })
 
   it('copies the session host when the header summary is clicked', async () => {

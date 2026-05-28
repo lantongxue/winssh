@@ -24,6 +24,9 @@ export const useAwayReminderStore = create<AwayReminderState>()((set) => ({
     }),
   handleFocusReturn: (currentTimeoutMs) =>
     set((state) => {
+      if (state.overlayVisible) {
+        return {}
+      }
       if (state.awayTimestamp === null) {
         return { overlayVisible: false }
       }

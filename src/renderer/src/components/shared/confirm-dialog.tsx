@@ -69,8 +69,12 @@ export function ConfirmDialog({
       >
         <AlertDialogHeader className="border-b border-[var(--workbench-border)] px-4 py-4">
           <AlertDialogTitle>{title}</AlertDialogTitle>
-          {description && <AlertDialogDescription>{description}</AlertDialogDescription>}
         </AlertDialogHeader>
+        {description && (
+          <div className="px-4 py-4">
+            <AlertDialogDescription>{description}</AlertDialogDescription>
+          </div>
+        )}
         <AlertDialogFooter className="border-t border-[var(--workbench-border)] px-4 py-3">
           <AlertDialogCancel asChild>
             <Button variant="ghost" disabled={spinning}>

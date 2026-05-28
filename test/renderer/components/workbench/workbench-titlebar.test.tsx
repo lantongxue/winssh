@@ -10,7 +10,8 @@ import { useLocalTerminalsStore } from '@/store/local-terminals-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 
 vi.mock('@/lib/platform', () => ({
-  getPlatform: () => 'win32'
+  getPlatform: () => 'win32',
+  isWindowsPlatform: () => true
 }))
 
 function renderTitlebar() {
