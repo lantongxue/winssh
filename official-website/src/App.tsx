@@ -1,5 +1,5 @@
 import React from 'react';
-import { 
+import {
   Download, Sparkles
 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -10,6 +10,7 @@ import Header from './components/Header';
 import ProductShowcase from './components/ProductShowcase';
 import FeatureGallery from './components/FeatureGallery';
 import DownloadGuide from './components/DownloadGuide';
+import ScrollToTop from './components/ScrollToTop';
 
 export default function App() {
   // Smooth scroll handler helper
@@ -19,7 +20,7 @@ export default function App() {
       const headerOffset = 80; // height of navbar
       const elementPosition = el.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-      
+
       window.scrollTo({
         top: offsetPosition,
         behavior: 'smooth'
@@ -29,23 +30,23 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#fafafc] dark:bg-zinc-950 text-gray-800 dark:text-zinc-200 transition-colors duration-200 font-sans selection:bg-cyan-500/20 antialiased overflow-x-hidden">
-      
+
       {/* 1. Transparent Navbar Header */}
       <Header onScrollToSection={handleScrollToSection} />
 
       {/* 2. Brand Hero Segment Banner */}
       <main className="relative pt-10 pb-16 md:pt-16 md:pb-24 overflow-hidden border-b border-gray-100 dark:border-zinc-900">
-        
+
         {/* Abstract glowing backdrop circles */}
         <div className="absolute top-[-20%] left-[-10%] w-[50%] aspect-square bg-cyan-400/10 dark:bg-cyan-500/5 blur-[120px] pointer-events-none" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[55%] aspect-square bg-blue-500/10 dark:bg-blue-600/5 blur-[140px] pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          
+
           <div className="text-center max-w-4xl mx-auto mb-14">
-            
+
             {/* Super premium top launcher badge */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
@@ -56,7 +57,7 @@ export default function App() {
             </motion.div>
 
             {/* Main title typography */}
-            <motion.h1 
+            <motion.h1
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
@@ -68,7 +69,7 @@ export default function App() {
             </motion.h1>
 
             {/* Explanatory description lines */}
-            <motion.p 
+            <motion.p
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
@@ -78,7 +79,7 @@ export default function App() {
             </motion.p>
 
             {/* CTA anchor buttons */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
@@ -91,11 +92,11 @@ export default function App() {
                 <Download size={15} />
                 <span>立即免费下载客户端</span>
               </button>
-              
+
             </motion.div>
 
             {/* Bold energetic performance showcase declaration banner */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
@@ -162,11 +163,11 @@ export default function App() {
       {/* 9. Polished brand footer */}
       <footer className="bg-gray-50 dark:bg-zinc-950 py-10 border-t border-gray-150 dark:border-zinc-900 select-none text-xs text-gray-400 selection:bg-cyan-500/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-6">
-          
+
           <div className="flex items-center space-x-2.5">
-            <img 
-              src="/assets/logo.png" 
-              alt="WinSSH Logo" 
+            <img
+              src="/assets/logo.png"
+              alt="WinSSH Logo"
               className="w-8 h-8 object-contain shadow-sm"
               referrerPolicy="no-referrer"
             />
@@ -181,6 +182,9 @@ export default function App() {
           </p>
         </div>
       </footer>
+
+      {/* 10. Scroll To Top Floating Button */}
+      <ScrollToTop />
 
     </div>
   );
