@@ -1,0 +1,6 @@
+{
+  "name": "WinSSH 官网",
+  "description": "WinSSH 是一款为现代极客与云运维专家量身打造的高效跨平台加密 SSH 终端及仪表盘管理工具。支持会话状态可视化、Cmd+P 智能全局命令面板与高精细的主题换肤切换。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
