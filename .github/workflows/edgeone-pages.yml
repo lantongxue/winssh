@@ -30,11 +30,11 @@ jobs:
           fi
 
       - name: Build web site
-        run: npm run web:build
+        run: npm run site:build
 
       - name: Deploy to EdgeOne Pages
         shell: bash
         env:
           EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
         run: |
-          npx edgeone pages deploy web/dist -n winssh-web -t $EDGEONE_API_TOKEN
+          npx edgeone pages deploy official-website/dist -n winssh-web -t $EDGEONE_API_TOKEN
