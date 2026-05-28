@@ -1,7 +1,7 @@
 {
-  "name": "react-example",
+  "name": "official-website",
   "private": true,
-  "version": "1.4.2",
+  "version": "1.1.10",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
