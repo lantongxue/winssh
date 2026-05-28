@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.1.11](https://cnb.cool/webqteam/winssh/compare/v1.1.10...v1.1.11) (2026-05-28)
+
+### Features
+
+* 移除旧版官网，增加全新官网 ([dbecb40](https://cnb.cool/webqteam/winssh/commit/dbecb40c78fdccfe5716cd7e800b4a3a89592da6))
+* 增加命令面板原型设计 ([4aa76fc](https://cnb.cool/webqteam/winssh/commit/4aa76fc5bfe0583ba84a6a89bd3f4ea146f46b1c))
+* 重写命令面板 ([183e440](https://cnb.cool/webqteam/winssh/commit/183e440945fc791d129fa979fde92e75aa6f31f9))
+* 重新优化面板UI设计 ([8faf9e1](https://cnb.cool/webqteam/winssh/commit/8faf9e1b0b1980937c39fd93ffbda56e412849d9))
+* redesign command panel with custom commands and workbench styling ([0496a77](https://cnb.cool/webqteam/winssh/commit/0496a77a6477eb9b80dd085c3b0aec02f22e6066))
+* **security:** add away reminder safety overlay ([174e528](https://cnb.cool/webqteam/winssh/commit/174e528e369205acf245a06a5f33c9545fbbc954))
+
+### Bug Fixes
+
+* 优化sftp跳转不跟手的问题 ([7538119](https://cnb.cool/webqteam/winssh/commit/753811982a64104ad02c73359806332a705f246a))
+
 ## [1.1.10](https://github.com/lantongxue/winssh/compare/v1.1.9...v1.1.10) (2026-05-25)
 
 ## [1.1.9](https://cnb.cool/webqteam/winssh/compare/v1.1.8...v1.1.9) (2026-05-25)

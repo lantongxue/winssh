@@ -6,7 +6,7 @@
 
   <p>
     <a href="https://github.com/lantongxue/winssh/releases">
-      <img src="https://img.shields.io/badge/version-1.1.10-blue?style=flat-square&logo=gittag" alt="version" />
+      <img src="https://img.shields.io/badge/version-1.1.11-blue?style=flat-square&logo=gittag" alt="version" />
     </a>
     <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square" alt="platform" />
     <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="license" />
