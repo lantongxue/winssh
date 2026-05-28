@@ -4,7 +4,7 @@
   "description": "WinSSH is a cross-platform SSH and SFTP client.",
   "main": "./out/main/index.js",
   "author": "winssh",
-  "homepage": "https://github.com/example/winssh",
+  "homepage": "https://github.com/lantongxue/winssh",
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --cache .",
