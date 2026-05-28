@@ -164,7 +164,8 @@ describe('WorkbenchAwayReminderOverlay', () => {
     renderOverlay()
 
     await waitFor(() => {
-      expect(screen.getByText('SSH Session')).toBeInTheDocument()
+      expect(screen.getByText('Current session')).toBeInTheDocument()
+      expect(screen.getByText('Test Host')).toBeInTheDocument()
       expect(screen.getByText('ops')).toBeInTheDocument()
     })
   })
@@ -262,7 +263,10 @@ describe('WorkbenchAwayReminderOverlay', () => {
 
     expect(useAwayReminderStore.getState().overlayVisible).toBe(true)
 
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Confirm Continue' }).closest('[class*="z-40"]')!, { key: 'Enter' })
+    fireEvent.keyDown(
+      screen.getByRole('button', { name: 'Confirm Continue' }).closest('[class*="z-40"]')!,
+      { key: 'Enter' }
+    )
 
     expect(useAwayReminderStore.getState().overlayVisible).toBe(false)
   })
@@ -354,7 +358,10 @@ describe('WorkbenchAwayReminderOverlay', () => {
 
     expect(useAwayReminderStore.getState().overlayVisible).toBe(true)
 
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Confirm Continue' }).closest('[class*="z-40"]')!, { key: 'Escape' })
+    fireEvent.keyDown(
+      screen.getByRole('button', { name: 'Confirm Continue' }).closest('[class*="z-40"]')!,
+      { key: 'Escape' }
+    )
 
     expect(useAwayReminderStore.getState().overlayVisible).toBe(true)
   })

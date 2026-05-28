@@ -125,4 +125,19 @@ describe('away-reminder store', () => {
     const state = useAwayReminderStore.getState()
     expect(state.overlayVisible).toBe(true)
   })
+
+  it('handleFocusReturn() does not dismiss overlay if overlayVisible is already true', () => {
+    useAwayReminderStore.getState().markAway()
+    vi.advanceTimersByTime(60_000)
+    useAwayReminderStore.getState().handleFocusReturn(30_000)
+    expect(useAwayReminderStore.getState().overlayVisible).toBe(true)
+
+    // Simulate switching applications again, triggering markAway and handleFocusReturn (<30s)
+    useAwayReminderStore.getState().markAway()
+    vi.advanceTimersByTime(5_000)
+    useAwayReminderStore.getState().handleFocusReturn(30_000)
+
+    // The overlay must still be visible
+    expect(useAwayReminderStore.getState().overlayVisible).toBe(true)
+  })
 })
