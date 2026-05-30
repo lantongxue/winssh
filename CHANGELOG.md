@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.12](https://github.com/lantongxue/winssh/compare/v1.1.11...v1.1.12) (2026-05-30)
+
+### Features
+
+* 增加快速切换主题 ([af71307](https://github.com/lantongxue/winssh/commit/af71307084c6b87576eaf7366d1452c803f92fab))
+
+### Bug Fixes
+
+* 优化端口转发面板 UI 和命令面板 UI ([8de3fa7](https://github.com/lantongxue/winssh/commit/8de3fa7bcc18425b2cd3e2c07f6f659c294e75b8))
+
 ## [1.1.11](https://cnb.cool/webqteam/winssh/compare/v1.1.10...v1.1.11) (2026-05-28)
 
 ### Features
