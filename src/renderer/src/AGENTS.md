@@ -8,20 +8,20 @@ React 19 + Tailwind 4 + Zustand workbench app. Single-page shell (no pages/ dir)
 
 ## WHERE TO LOOK
 
-| Task | File(s) | Notes |
-|------|---------|-------|
-| Add new IPC method client | features/<domain>/api/* + features/shared/query-keys.ts | Must go through features/*/api — ESLint bans window.winsshApi |
-| Add new document/tab type | lib/workbench.ts (WorkbenchDocument union) + store/workbench-store.ts | 7 document kinds; add factory + open/close logic |
-| Modify session UI | store/sessions-store.ts + workbench-context.tsx + workbench-session-editor.tsx | Keep-mounted strategy — do NOT change to conditional render |
-| Modify local terminal | hooks/use-terminal.ts (600 lines) + store/local-terminals-store.ts | Shared terminal surface for SSH + local |
-| Add SFTP UI feature | features/sftp/api + components/sftp-* + workbench-sftp-file-*-editor | SFTP remote editing is text-only (Monaco) |
-| Add settings section | components/workbench/workbench-settings-editor.tsx (1719 lines) | 6 sections in monolith; use handleSettingSave() + auto-save hook |
-| Add server editor field | components/workbench/workbench-server-editor.tsx (1684 lines) | Two forms: main + jump server dialog; auth type toggles fields |
-| Add sidebar feature | components/workbench/workbench-primary-sidebar.tsx (1309 lines) | Tree structure + search ranking + drag-and-drop |
-| Add theme resolution | lib/theme.ts + hooks/use-prefers-dark.ts | resolveThemeDefinition + applyThemeToRoot |
-| Add React Query domain | features/shared/query-keys.ts | NEVER hardcode keys — pre-existing violations exist but do NOT replicate |
-| Add i18n key | i18n/resources/{en-US,zh-CN}/{namespace}.ts | Both locales + type definitions required |
-| Add global push event | hooks/use-session-events.ts | THE event hub — routes IPC push events to stores + toast + invalidation |
+| Task                      | File(s)                                                                        | Notes                                                                    |
+| ------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| Add new IPC method client | features/<domain>/api/\* + features/shared/query-keys.ts                       | Must go through features/\*/api — ESLint bans window.winsshApi           |
+| Add new document/tab type | lib/workbench.ts (WorkbenchDocument union) + store/workbench-store.ts          | 7 document kinds; add factory + open/close logic                         |
+| Modify session UI         | store/sessions-store.ts + workbench-context.tsx + workbench-session-editor.tsx | Keep-mounted strategy — do NOT change to conditional render              |
+| Modify local terminal     | hooks/use-terminal.ts (600 lines) + store/local-terminals-store.ts             | Shared terminal surface for SSH + local                                  |
+| Add SFTP UI feature       | features/sftp/api + components/sftp-_ + workbench-sftp-file-_-editor           | SFTP remote editing is text-only (Monaco)                                |
+| Add settings section      | components/workbench/workbench-settings-editor.tsx (1719 lines)                | 6 sections in monolith; use handleSettingSave() + auto-save hook         |
+| Add server editor field   | components/workbench/workbench-server-editor.tsx (1684 lines)                  | Two forms: main + jump server dialog; auth type toggles fields           |
+| Add sidebar feature       | components/workbench/workbench-primary-sidebar.tsx (1309 lines)                | Tree structure + search ranking + drag-and-drop                          |
+| Add theme resolution      | lib/theme.ts + hooks/use-prefers-dark.ts                                       | resolveThemeDefinition + applyThemeToRoot                                |
+| Add React Query domain    | features/shared/query-keys.ts                                                  | NEVER hardcode keys — pre-existing violations exist but do NOT replicate |
+| Add i18n key              | i18n/resources/{en-US,zh-CN}/{namespace}.ts                                    | Both locales + type definitions required                                 |
+| Add global push event     | hooks/use-session-events.ts                                                    | THE event hub — routes IPC push events to stores + toast + invalidation  |
 
 ## CONVENTIONS
 

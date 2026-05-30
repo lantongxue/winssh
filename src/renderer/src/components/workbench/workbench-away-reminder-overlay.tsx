@@ -115,10 +115,7 @@ export function WorkbenchAwayReminderOverlay() {
               {identityItems.map((item) => {
                 if (item.type === 'ssh') {
                   return (
-                    <div
-                      key={item.id}
-                      className="flex flex-col gap-1 py-1"
-                    >
+                    <div key={item.id} className="flex flex-col gap-1 py-1">
                       {item.serverName ? (
                         <div className="flex items-center gap-1.5 text-base font-bold text-[var(--terminal-overlay-text)]">
                           <span>{t('workbench.awayReminder.currentSession')}</span>

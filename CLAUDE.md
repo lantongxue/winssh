@@ -43,6 +43,7 @@ Vitest runs with `globals: true` (no imports needed for `describe`/`it`/`expect`
 ### IPC Contract
 
 The typed IPC contract flows through 4 files:
+
 1. `src/shared/types.ts` — domain types
 2. `src/shared/api.ts` — `WinsshApi` interface (the contract)
 3. `src/shared/ipc-channels.ts` — typed push event channels

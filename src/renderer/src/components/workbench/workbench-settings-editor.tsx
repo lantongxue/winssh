@@ -1205,14 +1205,14 @@ export function WorkbenchSettingsEditor() {
                             }}
                             onBlur={() => {
                               field.onBlur()
-                              const parsed =
-                                settingsSchema.shape.awayReminderTimeoutMs.safeParse(
-                                  form.getValues('awayReminderTimeoutMs')
-                                )
+                              const parsed = settingsSchema.shape.awayReminderTimeoutMs.safeParse(
+                                form.getValues('awayReminderTimeoutMs')
+                              )
                               if (!parsed.success) {
                                 resetSavedField(
                                   'awayReminderTimeoutMs',
-                                  savedSettingsRef.current?.awayReminderTimeoutMs ?? DEFAULT_SETTINGS_FORM_VALUES.awayReminderTimeoutMs
+                                  savedSettingsRef.current?.awayReminderTimeoutMs ??
+                                    DEFAULT_SETTINGS_FORM_VALUES.awayReminderTimeoutMs
                                 )
                                 toast.error(t('workbench.settings.validation.failed'))
                                 return

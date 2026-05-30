@@ -28,7 +28,13 @@ vi.mock('@/components/sftp-panel', () => ({
 }))
 
 vi.mock('@/components/port-forward-panel', () => ({
-  PortForwardPanel: () => <div data-testid="port-forward-panel" />
+  PortForwardPanel: ({ onClose }: { onClose: () => void }) => (
+    <div data-testid="port-forward-panel">
+      <button data-testid="port-forward-close" onClick={onClose}>
+        Close
+      </button>
+    </div>
+  )
 }))
 
 vi.mock('@/components/workbench/workbench-context', () => ({
@@ -125,5 +131,19 @@ describe('WorkbenchSessionEditor', () => {
       expect(clipboard.writeText).toHaveBeenCalledWith('127.0.0.1')
     })
     expect(toast.success).toHaveBeenCalledWith('IP copied.')
+  })
+
+  it('closes the port-forward panel when the close callback is triggered', async () => {
+    useSessionsStore.getState().setAuxView('session-1', 'port-forward')
+
+    renderSessionEditor()
+
+    expect(screen.getByTestId('port-forward-panel')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('port-forward-close'))
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('port-forward-panel')).not.toBeInTheDocument()
+    })
   })
 })

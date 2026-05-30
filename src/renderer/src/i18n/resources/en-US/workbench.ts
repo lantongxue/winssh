@@ -412,7 +412,11 @@ const workbench = {
       },
       kinds: {
         local: 'Local Forward',
-        remote: 'Remote Forward'
+        remote: 'Remote Forward',
+        localSource: 'Local Listener',
+        remoteSource: 'Remote Listener',
+        localDest: 'Remote Target',
+        remoteDest: 'Local Target'
       },
       statuses: {
         active: 'Active',

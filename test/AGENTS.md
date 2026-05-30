@@ -8,16 +8,16 @@ Vitest tests mirroring `src/` structure. NOT co-located with source. 56 test fil
 
 ## WHERE TO LOOK
 
-| Task | File(s) | Notes |
-|------|---------|-------|
-| Write renderer component test | test/renderer/components/ + create-winssh-api mock | Mirror src/renderer/src/components/ path |
-| Write renderer hook test | test/renderer/hooks/ | Mirror src/renderer/src/hooks/ path |
-| Write renderer store test | test/renderer/store/ | Mirror src/renderer/src/store/ path |
-| Write renderer lib test | test/renderer/lib/ | Mirror src/renderer/src/lib/ path |
-| Write main process test | test/main/ + test/main/application/ | vi.mock('electron'), MockClient, constructor doubles |
-| Write shared module test | test/shared/ | Zod schema validation, sftp path utils, etc. |
-| Write i18n test | test/renderer/i18n/ | Translation key completeness |
-| Override bridge mock behavior | test/renderer/helpers/create-winssh-api.ts | DeepPartial<WinsshApi> overrides pattern |
+| Task                          | File(s)                                            | Notes                                                |
+| ----------------------------- | -------------------------------------------------- | ---------------------------------------------------- |
+| Write renderer component test | test/renderer/components/ + create-winssh-api mock | Mirror src/renderer/src/components/ path             |
+| Write renderer hook test      | test/renderer/hooks/                               | Mirror src/renderer/src/hooks/ path                  |
+| Write renderer store test     | test/renderer/store/                               | Mirror src/renderer/src/store/ path                  |
+| Write renderer lib test       | test/renderer/lib/                                 | Mirror src/renderer/src/lib/ path                    |
+| Write main process test       | test/main/ + test/main/application/                | vi.mock('electron'), MockClient, constructor doubles |
+| Write shared module test      | test/shared/                                       | Zod schema validation, sftp path utils, etc.         |
+| Write i18n test               | test/renderer/i18n/                                | Translation key completeness                         |
+| Override bridge mock behavior | test/renderer/helpers/create-winssh-api.ts         | DeepPartial<WinsshApi> overrides pattern             |
 
 ## CONVENTIONS
 
