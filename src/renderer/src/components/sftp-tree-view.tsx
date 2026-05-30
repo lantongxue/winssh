@@ -254,9 +254,7 @@ function SftpTreeEntryRow({
         )}
       </div>
       <div className="min-w-0 flex-1 leading-tight">
-        <div className="truncate text-xs font-semibold text-foreground">
-          {entry.name}
-        </div>
+        <div className="truncate text-xs font-semibold text-foreground">{entry.name}</div>
         <div className="truncate font-mono text-[10px] text-muted-foreground/75 mt-0.5">
           {onGetEntryMeta(entry)}
         </div>

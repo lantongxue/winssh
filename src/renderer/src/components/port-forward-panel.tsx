@@ -36,10 +36,13 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { X, ArrowRight, Lock, Monitor, Server } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface PortForwardPanelProps {
   session: SessionTab | null
   className?: string
+  onClose: () => void
   onHeaderDragStart?: (event: React.DragEvent<HTMLDivElement>) => void
   onHeaderDragEnd?: (event: React.DragEvent<HTMLDivElement>) => void
 }
@@ -56,11 +59,29 @@ function isPublicBindHost(host: string) {
   return host.trim() === '0.0.0.0' || host.trim() === '::'
 }
 
-
+function TooltipIconButton({
+  children,
+  label,
+  ...props
+}: React.ComponentProps<typeof Button> & {
+  label: string
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button aria-label={label} {...props}>
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
+}
 
 export function PortForwardPanel({
   session,
   className,
+  onClose,
   onHeaderDragStart,
   onHeaderDragEnd
 }: PortForwardPanelProps) {
@@ -124,23 +145,37 @@ export function PortForwardPanel({
             onDragEnd={onHeaderDragEnd}
           >
             <div className="min-w-0 flex flex-col">
-              <span className="text-sm font-bold tracking-tight text-foreground">{t('workbench.portForward.title')}</span>
+              <span className="text-sm font-bold tracking-tight text-foreground">
+                {t('workbench.portForward.title')}
+              </span>
               <span className="truncate text-[11px] text-muted-foreground mt-0.5 opacity-80">
                 {t('workbench.portForward.subtitle')}
               </span>
             </div>
-            <Button
-              size="sm"
-              className="h-8 px-3 text-[11px] font-medium"
-              disabled={!canManage}
-              onClick={() => {
-                form.reset(DEFAULT_VALUES)
-                setCreateOpen(true)
-              }}
-            >
-              <NewRuleIcon className="size-3.5" />
-              {t('workbench.portForward.actions.newRule')}
-            </Button>
+            <div className="flex items-center gap-1">
+              <TooltipIconButton
+                variant="ghost"
+                size="icon-sm"
+                className="size-7 text-[var(--workbench-active)] hover:bg-[var(--workbench-hover)]"
+                disabled={!canManage}
+                label={t('workbench.portForward.actions.newRule')}
+                onClick={() => {
+                  form.reset(DEFAULT_VALUES)
+                  setCreateOpen(true)
+                }}
+              >
+                <NewRuleIcon className="size-4" />
+              </TooltipIconButton>
+              <TooltipIconButton
+                variant="ghost"
+                size="icon-sm"
+                className="size-7 text-muted-foreground hover:text-foreground hover:bg-[var(--workbench-hover)]"
+                label={t('common.actions.close')}
+                onClick={onClose}
+              >
+                <X className="size-4" />
+              </TooltipIconButton>
+            </div>
           </div>
           {!canManage ? (
             <div className="mt-3 rounded border border-dashed border-[var(--workbench-border)] bg-[var(--workbench-hover)]/30 px-3 py-2 text-xs text-muted-foreground">
@@ -171,30 +206,30 @@ export function PortForwardPanel({
                 <div
                   key={rule.id}
                   className={cn(
-                    'relative overflow-hidden rounded-md border border-[var(--workbench-border)] bg-[color-mix(in_srgb,var(--workbench-hover)_20%,transparent)] px-3.5 py-3 transition-all hover:bg-[color-mix(in_srgb,var(--workbench-hover)_35%,transparent)] shadow-sm',
-                    rule.status === 'active' && 'border-l-[3px] border-l-emerald-500',
-                    rule.status === 'starting' && 'border-l-[3px] border-l-amber-500',
-                    rule.status === 'error' && 'border-l-[3px] border-l-red-500',
-                    rule.status === 'stopped' && 'border-l-[3px] border-l-[var(--workbench-muted)]/50'
+                    'relative overflow-hidden border border-[var(--workbench-border)] px-3.5 py-3'
                   )}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-semibold text-foreground leading-normal">
-                        {t(`workbench.portForward.kinds.${rule.kind}`)}
-                      </div>
-                      <div className="mt-1.5 font-mono text-[11px] text-muted-foreground break-all bg-[var(--workbench-hover)]/30 px-1.5 py-0.5 rounded border border-[var(--workbench-border)]/20 inline-block leading-normal select-text">
-                        {rule.bindHost}:{rule.bindPort} -&gt; {rule.targetHost}:{rule.targetPort}
-                      </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground leading-normal">
+                      {rule.kind === 'local' ? (
+                        <Monitor className="size-3.5 text-[var(--workbench-active)]" />
+                      ) : (
+                        <Server className="size-3.5 text-[var(--workbench-active)]" />
+                      )}
+                      <span>{t(`workbench.portForward.kinds.${rule.kind}`)}</span>
                     </div>
                     <Badge
                       variant="outline"
                       className={cn(
                         'flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-semibold border shrink-0',
-                        rule.status === 'active' && 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-                        rule.status === 'starting' && 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-                        rule.status === 'error' && 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
-                        rule.status === 'stopped' && 'bg-muted/50 text-muted-foreground border-muted-foreground/20'
+                        rule.status === 'active' &&
+                          'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+                        rule.status === 'starting' &&
+                          'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+                        rule.status === 'error' &&
+                          'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
+                        rule.status === 'stopped' &&
+                          'bg-muted/50 text-muted-foreground border-muted-foreground/20'
                       )}
                     >
                       <span
@@ -210,6 +245,78 @@ export function PortForwardPanel({
                     </Badge>
                   </div>
 
+                  {/* Redesigned Visual Flow Map */}
+                  <div className="mt-3.5 flex items-center justify-between gap-3 bg-[color-mix(in_srgb,var(--workbench-hover)_10%,transparent)] p-3 rounded-lg border border-[var(--workbench-border)]/40 relative">
+                    {/* Source Node */}
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1 text-left block">
+                        {rule.kind === 'local'
+                          ? t('workbench.portForward.kinds.localSource')
+                          : t('workbench.portForward.kinds.remoteSource')}
+                      </span>
+                      <span className="font-mono text-[11px] text-foreground font-semibold truncate bg-[var(--workbench-input)] px-2 py-1.5 rounded border border-[var(--workbench-border)]/50 leading-none select-text text-left block">
+                        {rule.bindHost}:{rule.bindPort}
+                      </span>
+                    </div>
+
+                    {/* Connector */}
+                    <div className="flex flex-col items-center justify-center shrink-0 px-1 select-none">
+                      <div
+                        className={cn(
+                          'flex items-center justify-center size-6 rounded-full border mb-1 transition-all',
+                          rule.status === 'active'
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.15)]'
+                            : rule.status === 'starting'
+                              ? 'bg-amber-500/10 border-amber-500/30 text-amber-500 animate-pulse'
+                              : 'bg-muted/30 border-muted-foreground/10 text-muted-foreground/75'
+                        )}
+                      >
+                        <Lock className="size-3" />
+                      </div>
+                      <div className="flex items-center gap-0.5 relative w-12 justify-center">
+                        <span
+                          className={cn(
+                            'h-[2px] flex-1 rounded-full',
+                            rule.status === 'active'
+                              ? 'bg-emerald-500/40'
+                              : 'bg-muted-foreground/20'
+                          )}
+                        />
+                        <ArrowRight
+                          className={cn(
+                            'size-3 shrink-0',
+                            rule.status === 'active'
+                              ? 'text-emerald-500 animate-pulse'
+                              : 'text-muted-foreground/50'
+                          )}
+                        />
+                        <span
+                          className={cn(
+                            'h-[2px] flex-1 rounded-full',
+                            rule.status === 'active'
+                              ? 'bg-emerald-500/40'
+                              : 'bg-muted-foreground/20'
+                          )}
+                        />
+                      </div>
+                      <span className="text-[9px] text-muted-foreground/60 font-medium scale-90 mt-0.5 whitespace-nowrap">
+                        SSH Tunnel
+                      </span>
+                    </div>
+
+                    {/* Destination Node */}
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1 text-right block">
+                        {rule.kind === 'local'
+                          ? t('workbench.portForward.kinds.localDest')
+                          : t('workbench.portForward.kinds.remoteDest')}
+                      </span>
+                      <span className="font-mono text-[11px] text-foreground font-semibold truncate bg-[var(--workbench-input)] px-2 py-1.5 rounded border border-[var(--workbench-border)]/50 leading-none select-text text-right block">
+                        {rule.targetHost}:{rule.targetPort}
+                      </span>
+                    </div>
+                  </div>
+
                   {rule.lastError ? (
                     <div
                       className={cn(
@@ -221,40 +328,43 @@ export function PortForwardPanel({
                     </div>
                   ) : null}
 
-                  <div className="mt-3 flex items-center gap-2 border-t border-[var(--workbench-border)]/50 pt-2.5">
-                    {active ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 px-2.5 text-[11px] font-medium border-[var(--workbench-border)] hover:bg-[var(--workbench-hover)] hover:text-foreground shrink-0"
-                        disabled={!canManage}
-                        onClick={async () => {
-                          await portForwardsClient.stop(session.sessionId, rule.id)
-                          await refresh()
-                        }}
-                      >
-                        <StopIcon className="size-3.5 text-muted-foreground" />
-                        {t('common.actions.stop')}
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 px-2.5 text-[11px] font-medium border-[var(--workbench-border)] hover:bg-[var(--workbench-hover)] hover:text-foreground shrink-0"
-                        disabled={!canManage}
-                        onClick={async () => {
-                          await portForwardsClient.start(session.sessionId, rule.id)
-                          await refresh()
-                        }}
-                      >
-                        <StartIcon className="size-3.5 text-muted-foreground" />
-                        {t('common.actions.start')}
-                      </Button>
-                    )}
+                  {/* Redesigned Actions Row */}
+                  <div className="mt-3 flex items-center justify-between border-t border-[var(--workbench-border)]/50 pt-2.5">
+                    <div>
+                      {active ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2.5 text-[11px] font-medium border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/15 hover:text-amber-600 dark:hover:text-amber-400 text-amber-600 dark:text-amber-500 shrink-0 gap-1.5 transition-colors"
+                          disabled={!canManage}
+                          onClick={async () => {
+                            await portForwardsClient.stop(session.sessionId, rule.id)
+                            await refresh()
+                          }}
+                        >
+                          <StopIcon className="size-3.5" />
+                          {t('common.actions.stop')}
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2.5 text-[11px] font-medium border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/15 hover:text-emerald-600 dark:hover:text-emerald-400 text-emerald-600 dark:text-emerald-500 shrink-0 gap-1.5 transition-colors"
+                          disabled={!canManage}
+                          onClick={async () => {
+                            await portForwardsClient.start(session.sessionId, rule.id)
+                            await refresh()
+                          }}
+                        >
+                          <StartIcon className="size-3.5" />
+                          {t('common.actions.start')}
+                        </Button>
+                      )}
+                    </div>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 px-2.5 text-[11px] font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                      className="h-7 px-2.5 text-[11px] font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 gap-1.5 transition-colors"
                       disabled={!canManage}
                       onClick={async () => {
                         await portForwardsClient.remove(session.sessionId, rule.id)

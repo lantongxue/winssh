@@ -191,6 +191,7 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
       <PortForwardPanel
         session={session}
         className="h-full overflow-hidden bg-[var(--workbench-sidebar)]"
+        onClose={() => setAuxView(session.sessionId, null)}
         onHeaderDragStart={handleAuxHeaderDragStart}
         onHeaderDragEnd={handleAuxHeaderDragEnd}
       />

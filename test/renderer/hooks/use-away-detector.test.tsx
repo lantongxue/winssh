@@ -63,7 +63,7 @@ describe('useAwayDetector', () => {
       },
       settings: {
         get: async () => mockSettings,
-        update: async (input) => ({ ...mockSettings, ...input } as AppSettings)
+        update: async (input) => ({ ...mockSettings, ...input }) as AppSettings
       }
     })
   })

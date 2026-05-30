@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { useCommandHistory } from '@/features/command-history/hooks/use-command-history'
@@ -371,7 +372,7 @@ export function CommandPanel({
         </div>
 
         {/* ── Search & Filters ── */}
-        <div className="flex flex-col gap-2 px-4 py-2 border-b border-[var(--workbench-border)]/50">
+        <div className="flex flex-col gap-2 px-4 py-4">
           <div className="relative group">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground group-focus-within:text-[var(--workbench-active)] transition-colors" />
             <Input
@@ -388,49 +389,42 @@ export function CommandPanel({
 
           {activeTab === 'history' && (
             <div className="flex items-center justify-between gap-4">
-              <div className="flex flex-1 gap-1">
-                <button
-                  onClick={() => setHistoryFilter('all')}
-                  className={cn(
-                    'flex-1 text-[11px] py-0.5',
-                    historyFilter === 'all'
-                      ? 'bg-[var(--workbench-input)]'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
+              <ToggleGroup
+                type="single"
+                value={historyFilter}
+                onValueChange={(val) => {
+                  if (val) setHistoryFilter(val as 'all' | 'success' | 'failed')
+                }}
+                className="flex flex-1 items-center bg-[var(--workbench-hover)]/40 p-1"
+              >
+                <ToggleGroupItem
+                  value="all"
+                  className="flex-1 text-[11px] py-0.5 font-normal h-7 transition-all data-[state=on]:bg-[var(--workbench-input)] data-[state=on]:text-foreground data-[state=on]:font-semibold data-[state=on]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
                 >
                   {t('workbench.commandHistory.filterAll')}
-                </button>
-                <button
-                  onClick={() => setHistoryFilter('success')}
-                  className={cn(
-                    'flex-1 text-[11px] py-0.5t',
-                    historyFilter === 'success'
-                      ? 'bg-[var(--workbench-input)]'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="success"
+                  className="flex-1 text-[11px] py-0.5 font-normal h-7 transition-all data-[state=on]:bg-emerald-500/10 data-[state=on]:text-emerald-600 dark:data-[state=on]:text-emerald-400 data-[state=on]:font-semibold data-[state=on]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
                 >
                   {t('workbench.commandHistory.filterSuccess')}
-                </button>
-                <button
-                  onClick={() => setHistoryFilter('failed')}
-                  className={cn(
-                    'flex-1 text-[11px] py-0.5',
-                    historyFilter === 'failed'
-                      ? 'bg-[var(--workbench-input)]'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="failed"
+                  className="flex-1 text-[11px] py-0.5 font-normal h-7 transition-all data-[state=on]:bg-red-500/10 data-[state=on]:text-red-600 dark:data-[state=on]:text-red-400 data-[state=on]:font-semibold data-[state=on]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
                 >
                   {t('workbench.commandHistory.filterFailed')}
-                </button>
-              </div>
+                </ToggleGroupItem>
+              </ToggleGroup>
 
               {entries.length > 0 && (
-                <button
+                <Button
+                  variant="ghost"
                   onClick={handleClear}
-                  className="shrink-0 text-[11px] font-medium text-muted-foreground hover:text-destructive transition-colors px-1 cursor-default"
+                  className="text-[11px] font-medium text-muted-foreground hover:text-destructive"
                 >
                   {t('workbench.commandPanel.clearHistory')}
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -644,16 +638,16 @@ function HistoryRow({
   const isSuccess = entry.exitCode === 0
 
   return (
-    <div style={style} className="px-3 py-1">
+    <div style={style} className="px-4 py-1">
       <div
-        className="group relative flex flex-col h-full px-3.5 py-2.5 bg-[var(--workbench-editor)] border border-[var(--workbench-border)]/70 hover:border-[var(--workbench-active)]/50 transition-colors cursor-pointer select-none overflow-hidden"
+        className="group relative flex flex-col h-full px-3.5 py-2.5 border border-[var(--workbench-border)]/70 hover:border-[var(--workbench-active)]/50 transition-colors cursor-pointer select-none overflow-hidden"
         onDoubleClick={onInsert}
       >
         {/* Content */}
-        <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
+        <div className="flex-1 min-w-0 flex flex-col justify-between h-full pr-10">
           <Tooltip>
             <TooltipTrigger asChild>
-              <code className="block truncate font-mono text-[12px] text-foreground w-full leading-relaxed cursor-help pr-10">
+              <code className="block truncate font-mono text-[12px] text-foreground w-full leading-relaxed cursor-help">
                 {entry.command}
               </code>
             </TooltipTrigger>
@@ -682,13 +676,16 @@ function HistoryRow({
                 </span>
               )}
               {hasExitCode && (
-                <span className={cn(
-                  "px-1.5 py-0.5 rounded-sm font-medium",
-                  isSuccess 
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" 
-                    : "bg-red-500/10 text-red-600 dark:text-red-400"
-                )}>
-                  {t('workbench.commandHistory.exitCode', { defaultValue: '退出码' })}:{entry.exitCode}
+                <span
+                  className={cn(
+                    'px-1.5 py-0.5 rounded-sm font-medium',
+                    isSuccess
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-red-500/10 text-red-600 dark:text-red-400'
+                  )}
+                >
+                  {t('workbench.commandHistory.exitCode', { defaultValue: '退出码' })}:
+                  {entry.exitCode}
                 </span>
               )}
             </div>
@@ -777,7 +774,7 @@ function CustomRow({ command, style, onInsert, onRun, onCopy, onEdit, onDelete }
   const { t } = useTranslation()
 
   return (
-    <div style={style} className="px-3 py-1">
+    <div style={style} className="px-4 py-1">
       <div
         className="group relative flex flex-col h-full px-3.5 py-2.5 bg-[var(--workbench-editor)] border border-[var(--workbench-border)]/70 hover:border-[var(--workbench-active)]/50 transition-colors cursor-pointer select-none overflow-hidden"
         onDoubleClick={onInsert}

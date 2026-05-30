@@ -533,8 +533,12 @@ export function SftpPanel({
             onDragEnd={onHeaderDragEnd}
           >
             <div className="min-w-0 flex flex-col">
-              <span className="text-sm font-bold tracking-tight text-foreground">{t('workbench.sftp.explorer')}</span>
-              <span className="truncate text-[11px] text-muted-foreground mt-0.5 opacity-80">{session.serverName}</span>
+              <span className="text-sm font-bold tracking-tight text-foreground">
+                {t('workbench.sftp.explorer')}
+              </span>
+              <span className="truncate text-[11px] text-muted-foreground mt-0.5 opacity-80">
+                {session.serverName}
+              </span>
             </div>
             <div className="flex items-center gap-1">
               <TooltipIconButton

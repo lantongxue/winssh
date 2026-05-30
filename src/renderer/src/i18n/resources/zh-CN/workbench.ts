@@ -404,7 +404,11 @@ const workbench = {
       },
       kinds: {
         local: '本地转发',
-        remote: '远程转发'
+        remote: '远程转发',
+        localSource: '本地监听',
+        remoteSource: '远程监听',
+        localDest: '远程目标',
+        remoteDest: '本地目标'
       },
       statuses: {
         active: '活动中',
