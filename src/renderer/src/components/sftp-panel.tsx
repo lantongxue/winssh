@@ -485,14 +485,14 @@ export function SftpPanel({
 
     const modifiedText = entry.modifiedAt
       ? new Intl.DateTimeFormat(getResolvedLocale(), {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: false
-        }).format(new Date(entry.modifiedAt))
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).format(new Date(entry.modifiedAt))
       : null
     const kindText =
       entry.kind === 'directory'
@@ -600,22 +600,31 @@ export function SftpPanel({
               }}
             />
           </div>
-
           <div className="mt-3 flex items-center gap-1">
-            <div className="flex items-center gap-0.5 rounded-lg border border-[var(--workbench-border)] bg-[color-mix(in_srgb,var(--workbench-hover)_40%,transparent)] p-0.5">
+            <div className="flex items-center gap-0.5">
               <TooltipIconButton
-                variant={viewMode === 'flat' ? 'secondary' : 'ghost'}
+                variant="ghost"
                 size="icon-xs"
-                className="size-7"
+                className={cn(
+                  'size-7 transition-all',
+                  viewMode === 'flat'
+                    ? 'bg-[var(--workbench-active)] text-white shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
                 label={t('workbench.sftp.actions.flatView')}
                 onClick={() => setViewMode('flat')}
               >
                 <ListIcon className="size-3.5" />
               </TooltipIconButton>
               <TooltipIconButton
-                variant={viewMode === 'tree' ? 'secondary' : 'ghost'}
+                variant="ghost"
                 size="icon-xs"
-                className="size-7"
+                className={cn(
+                  'size-7 transition-all',
+                  viewMode === 'tree'
+                    ? 'bg-[var(--workbench-active)] text-white shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
                 label={t('workbench.sftp.actions.treeView')}
                 onClick={() => {
                   setViewMode('tree')
