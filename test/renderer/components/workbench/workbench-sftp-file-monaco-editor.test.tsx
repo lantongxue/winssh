@@ -11,6 +11,7 @@ import { createWinsshApiMock } from '@test/renderer/helpers/create-winssh-api'
 import { useSessionsStore } from '@/store/sessions-store'
 
 const monacoModel = {
+  detectIndentation: vi.fn(),
   dispose: vi.fn(),
   setValue: vi.fn()
 }
@@ -66,6 +67,7 @@ vi.mock('monaco-editor/esm/vs/editor/editor.api.js', () => ({
     createModel: vi.fn(() => monacoModel),
     defineTheme: vi.fn(),
     getModel: vi.fn(() => null),
+    remeasureFonts: vi.fn(),
     setModelLanguage: vi.fn(),
     setTheme: vi.fn()
   },
@@ -133,6 +135,7 @@ describe('WorkbenchSftpFileMonacoEditor', () => {
     document.documentElement.dataset.themeAppearance = 'dark'
     useSessionsStore.getState().clear()
     useSessionsStore.getState().addSession(sessionSummary)
+    monacoModel.detectIndentation.mockReset()
     monacoModel.dispose.mockReset()
     monacoModel.setValue.mockReset()
     monacoEditor.addCommand.mockReset()
@@ -148,7 +151,7 @@ describe('WorkbenchSftpFileMonacoEditor', () => {
     vi.mocked(monaco.editor.setTheme).mockClear()
     window.winsshApi = createWinsshApiMock({
       sftp: {
-        readFile: vi.fn().mockResolvedValue('user nginx;')
+        readFile: vi.fn().mockResolvedValue({ content: 'user nginx;', encoding: 'utf8' })
       }
     })
   })
@@ -177,7 +180,7 @@ describe('WorkbenchSftpFileMonacoEditor', () => {
         })
       },
       sftp: {
-        readFile: vi.fn().mockResolvedValue('user nginx;')
+        readFile: vi.fn().mockResolvedValue({ content: 'user nginx;', encoding: 'utf8' })
       },
       themes: {
         list: vi.fn().mockResolvedValue([highContrastDarkTheme])

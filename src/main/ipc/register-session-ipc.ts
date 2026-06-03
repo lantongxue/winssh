@@ -67,8 +67,8 @@ export function registerSessionIpc(service: SessionsApplicationService) {
   )
   ipcMain.handle(
     'sftp:writeFile',
-    (_event, sessionId: string, remotePath: string, contents: string) =>
-      service.writeFile(sessionId, remotePath, contents)
+    (_event, sessionId: string, remotePath: string, contents: string, encoding?: string) =>
+      service.writeFile(sessionId, remotePath, contents, encoding)
   )
   ipcMain.handle('sftp:mkdir', (_event, sessionId: string, remotePath: string, name: string) =>
     service.makeDirectory(sessionId, remotePath, name)

@@ -24,6 +24,24 @@ export const DEFAULT_EDITOR_FONT_ID: IntegratedFontId | null = null
 
 export type IntegratedFontScope = 'ui' | 'terminal' | 'editor'
 
+export const MONOSPACE_FONT_IDS: string[] = [
+  'jetbrains-mono',
+  'fira-code',
+  'roboto-mono',
+  'source-code-pro',
+  'cascadia-mono',
+  'cascadia-code',
+  'ibm-plex-mono',
+  'ubuntu-mono',
+  'ubuntu-sans-mono',
+  'pt-mono',
+  'vt323'
+]
+
+export function isMonospaceFontId(value: unknown): boolean {
+  return typeof value === 'string' && MONOSPACE_FONT_IDS.includes(value)
+}
+
 export interface IntegratedFontDefinition {
   cssFamily: string
   id: IntegratedFontId
@@ -151,7 +169,7 @@ export const INTEGRATED_FONTS: IntegratedFontDefinition[] = [
 ]
 
 export const INTEGRATED_UI_FALLBACK_FAMILIES = ['sans-serif'] as const
-export const INTEGRATED_TERMINAL_FALLBACK_FAMILIES = ['monospace'] as const
+export const INTEGRATED_TERMINAL_FALLBACK_FAMILIES = ['Consolas', 'Courier New', 'monospace'] as const
 
 const FONT_ID_SET = new Set<string>(INTEGRATED_FONT_IDS)
 
@@ -185,7 +203,7 @@ export function normalizeIntegratedUiFontId(value: unknown): IntegratedFontId {
 }
 
 export function normalizeIntegratedTerminalFontId(value: unknown): IntegratedFontId {
-  return normalizeIntegratedFontId(value, DEFAULT_TERMINAL_FONT_ID)
+  return isMonospaceFontId(value) ? (value as IntegratedFontId) : DEFAULT_TERMINAL_FONT_ID
 }
 
 export function normalizeIntegratedEditorFontId(value: unknown): IntegratedFontId | null {

@@ -13,7 +13,7 @@ import {
 import { dialog, type BrowserWindow, type OpenDialogOptions } from 'electron'
 import { normalizeRemotePath, sortRemoteEntries } from '@shared/sftp'
 import { runWithConcurrency } from './concurrency-pool'
-import { smartDecodeBuffer } from './encoding'
+import { smartDecode, encodeContent } from './encoding'
 import { DEFAULT_SERVER_BRAND_ID, resolveServerBrandFromOsRelease } from '@shared/server-brands'
 import {
   type ConnectionSecretInput,
@@ -292,7 +292,7 @@ async function sftpReadFile(
   onProgress?: SftpReadFileProgressCallback,
   totalSize?: number,
   signal?: AbortSignal
-): Promise<string> {
+): Promise<{ content: string; encoding: string }> {
   const handle = await sftpOpen(sftp, remotePath, 'r')
   const chunks: Buffer[] = []
   let position = 0
@@ -325,7 +325,7 @@ async function sftpReadFile(
       onProgress(totalSize, totalSize)
     }
 
-    return smartDecodeBuffer(Buffer.concat(chunks))
+    return smartDecode(Buffer.concat(chunks))
   } finally {
     await sftpClose(sftp, handle).catch(() => undefined)
   }
@@ -334,10 +334,11 @@ async function sftpReadFile(
 async function sftpWriteFile(
   sftp: SFTPWrapper,
   remotePath: string,
-  contents: string
+  contents: string,
+  encoding?: string
 ): Promise<void> {
   const handle = await sftpOpen(sftp, remotePath, 'w')
-  const buffer = Buffer.from(contents, 'utf8')
+  const buffer = encodeContent(contents, encoding)
   let position = 0
 
   try {
@@ -1283,7 +1284,7 @@ export class SessionManager {
     await sftpCreateFile(runtime.sftp, posix.join(normalizeRemotePath(currentPath), name.trim()))
   }
 
-  async readFile(sessionId: string, remotePath: string): Promise<string> {
+  async readFile(sessionId: string, remotePath: string): Promise<{ content: string; encoding: string; cancelled?: boolean }> {
     const runtime = this.requireSession(sessionId)
     const normalized = normalizeRemotePath(remotePath)
     const stats = await sftpStat(runtime.sftp, normalized)
@@ -1300,7 +1301,7 @@ export class SessionManager {
     this.editorReadControllers.set(controllerKey, controller)
 
     try {
-      const content = await sftpReadFile(
+      const result = await sftpReadFile(
         runtime.sftp,
         normalized,
         (transferred, total) => {
@@ -1341,24 +1342,25 @@ export class SessionManager {
         })
       )
 
-      return content
+      return result
     } catch (error) {
-      if (!(error instanceof SftpReadCancelledError)) {
-        this.emitToRenderer(
-          'sftp:transfer',
-          this.withObservableMetadata(sessionId, {
-            sessionId,
-            direction: 'download',
-            fileName,
-            localPath: '__editor__',
-            remotePath: normalized,
-            transferred: 0,
-            total: totalSize,
-            status: 'error',
-            error: error instanceof Error ? error.message : String(error)
-          })
-        )
+      if (error instanceof SftpReadCancelledError) {
+        return { content: '', encoding: 'utf8', cancelled: true }
       }
+      this.emitToRenderer(
+        'sftp:transfer',
+        this.withObservableMetadata(sessionId, {
+          sessionId,
+          direction: 'download',
+          fileName,
+          localPath: '__editor__',
+          remotePath: normalized,
+          transferred: 0,
+          total: totalSize,
+          status: 'error',
+          error: error instanceof Error ? error.message : String(error)
+        })
+      )
       throw error
     } finally {
       if (this.editorReadControllers.get(controllerKey) === controller) {
@@ -1377,10 +1379,15 @@ export class SessionManager {
     }
   }
 
-  async writeFile(sessionId: string, remotePath: string, contents: string): Promise<void> {
+  async writeFile(
+    sessionId: string,
+    remotePath: string,
+    contents: string,
+    encoding?: string
+  ): Promise<void> {
     const runtime = this.requireSession(sessionId)
     const normalized = normalizeRemotePath(remotePath)
-    await sftpWriteFile(runtime.sftp, normalized, contents)
+    await sftpWriteFile(runtime.sftp, normalized, contents, encoding)
   }
 
   async makeDirectory(sessionId: string, currentPath: string, name: string): Promise<void> {
@@ -2155,7 +2162,7 @@ export class SessionManager {
       for (const remotePath of ['/etc/os-release', '/usr/lib/os-release']) {
         try {
           const contents = await sftpReadFile(sftp, remotePath)
-          brandId = resolveServerBrandFromOsRelease(contents)
+          brandId = resolveServerBrandFromOsRelease(contents.content)
           break
         } catch {
           continue

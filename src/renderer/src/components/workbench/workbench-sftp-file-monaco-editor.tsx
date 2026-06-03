@@ -165,10 +165,15 @@ function defineMonacoTheme(theme: ThemeDefinition) {
   const active = normalizeMonacoColor(colors['workbench-active'], '#0969da')
   const border = normalizeMonacoColor(colors['workbench-border'], '#d7dce2')
   const input = normalizeMonacoColor(colors['workbench-input'], editorBackground)
-  const hover = normalizeMonacoColor(colors['workbench-hover'], border)
   const cursor = normalizeMonacoColor(theme.terminal.cursor, active)
   const selection = normalizeMonacoColor(theme.terminal.selectionBackground, `${active}66`)
   const themeId = getMonacoThemeId(theme)
+
+  // Derive scrollbar slider colors with proper opacity to guarantee visibility
+  const scrollbarBase = mutedForeground.slice(0, 7)
+  const scrollbarSliderBg = `${scrollbarBase}44` // ~27% opacity
+  const scrollbarSliderHoverBg = `${scrollbarBase}77` // ~47% opacity
+  const scrollbarSliderActiveBg = `${scrollbarBase}aa` // ~66% opacity
 
   monaco.editor.defineTheme(themeId, {
     base: getMonacoBaseTheme(theme),
@@ -188,9 +193,9 @@ function defineMonacoTheme(theme: ThemeDefinition) {
       'editorWidget.background': input,
       'editorWidget.border': border,
       focusBorder: active,
-      'scrollbarSlider.activeBackground': active,
-      'scrollbarSlider.background': hover,
-      'scrollbarSlider.hoverBackground': hover
+      'scrollbarSlider.activeBackground': scrollbarSliderActiveBg,
+      'scrollbarSlider.background': scrollbarSliderBg,
+      'scrollbarSlider.hoverBackground': scrollbarSliderHoverBg
     }
   })
 
@@ -214,6 +219,7 @@ export function WorkbenchSftpFileMonacoEditor({
   const modelRef = useRef<monaco.editor.ITextModel | null>(null)
   const [editorContent, setEditorContent] = useState('')
   const [savedContent, setSavedContent] = useState('')
+  const [fileEncoding, setFileEncoding] = useState('utf8')
   const settingsQuery = useQuery({
     queryKey: queryKeys.settings,
     queryFn: () => settingsClient.get(),
@@ -230,8 +236,8 @@ export function WorkbenchSftpFileMonacoEditor({
     refetchOnWindowFocus: false
   })
   const saveMutation = useMutation({
-    mutationFn: (contents: string) =>
-      sftpClient.writeFile(document.sessionId, document.remotePath, contents)
+    mutationFn: ({ contents, encoding }: { contents: string; encoding: string }) =>
+      sftpClient.writeFile(document.sessionId, document.remotePath, contents, encoding)
   })
   const closeDocument = useWorkbenchStore((state) => state.closeDocument)
   const resolvedTheme = resolveThemeDefinition(
@@ -309,7 +315,21 @@ export function WorkbenchSftpFileMonacoEditor({
       minimap: { enabled: false },
       model,
       scrollBeyondLastLine: false,
-      theme: resolvedTheme ? defineMonacoTheme(resolvedTheme) : getFallbackMonacoThemeId()
+      theme: resolvedTheme ? defineMonacoTheme(resolvedTheme) : getFallbackMonacoThemeId(),
+      guides: {
+        indentation: true,
+        bracketPairs: true
+      },
+      renderLineHighlight: 'all',
+      renderWhitespace: 'selection',
+      fontLigatures: true,
+      scrollbar: {
+        vertical: 'auto',
+        horizontal: 'auto',
+        verticalScrollbarSize: 10,
+        horizontalScrollbarSize: 10,
+        useShadows: false
+      }
     })
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       const form = window.document.getElementById(getSftpFileEditorFormId(document.id))
@@ -331,6 +351,7 @@ export function WorkbenchSftpFileMonacoEditor({
         return
       }
 
+      monaco.editor.remeasureFonts?.()
       editor.updateOptions({ fontFamily: getTerminalFontStack(editorFontId) })
       editor.layout()
     })
@@ -346,13 +367,16 @@ export function WorkbenchSftpFileMonacoEditor({
   }, [document.id])
 
   useEffect(() => {
-    if (fileQuery.data === undefined || !modelRef.current) {
+    if (fileQuery.data === undefined || fileQuery.data.cancelled || !modelRef.current) {
       return
     }
 
-    modelRef.current.setValue(fileQuery.data)
-    setEditorContent(fileQuery.data)
-    setSavedContent(fileQuery.data)
+    const { content, encoding } = fileQuery.data
+    modelRef.current.setValue(content)
+    modelRef.current.detectIndentation?.(true, 4)
+    setEditorContent(content)
+    setSavedContent(content)
+    setFileEncoding(encoding)
   }, [document.id, fileQuery.data])
 
   useEffect(() => {
@@ -384,6 +408,7 @@ export function WorkbenchSftpFileMonacoEditor({
         return
       }
 
+      monaco.editor.remeasureFonts?.()
       editor.updateOptions({
         fontFamily: getTerminalFontStack(editorFontId),
         fontSize: terminalAppearance.fontSize
@@ -415,10 +440,10 @@ export function WorkbenchSftpFileMonacoEditor({
     const nextContent = editorRef.current?.getValue() ?? editorContent
 
     try {
-      await saveMutation.mutateAsync(nextContent)
+      await saveMutation.mutateAsync({ contents: nextContent, encoding: fileEncoding })
       setSavedContent(nextContent)
       setEditorContent(nextContent)
-      queryClient.setQueryData(fileQueryKey, nextContent)
+      queryClient.setQueryData(fileQueryKey, { content: nextContent, encoding: fileEncoding })
       await queryClient.invalidateQueries({ queryKey: ['sftp', document.sessionId] })
       toast.success(t('workbench.sftpFileEditor.toasts.saved'))
     } catch {
@@ -463,6 +488,9 @@ export function WorkbenchSftpFileMonacoEditor({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <span className="rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2 py-1 text-[11px] text-muted-foreground uppercase">
+            {fileEncoding}
+          </span>
           <span className="rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2 py-1 text-[11px] text-muted-foreground">
             {language}
           </span>
