@@ -1,4 +1,4 @@
-import { Folder } from 'lucide-react'
+import { Folder, Star } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { RemoteEntry } from '@shared/types'
 import { sftpClient } from '@/features/sftp/api/sftp-client'
@@ -27,6 +27,8 @@ interface SftpEntryContextMenuProps {
   onOpenCreateFileDialog: (targetPath: string) => void
   onOpenCreateFolderDialog: (targetPath: string) => void
   onOpenDeleteDialog: (entries: RemoteEntry[]) => void
+  isBookmarked?: (path: string) => boolean
+  onToggleBookmarkDirectory?: (path: string) => void
 }
 
 export function SftpEntryContextMenu({
@@ -44,7 +46,9 @@ export function SftpEntryContextMenu({
   onSendPathToTerminal,
   onOpenCreateFileDialog,
   onOpenCreateFolderDialog,
-  onOpenDeleteDialog
+  onOpenDeleteDialog,
+  isBookmarked,
+  onToggleBookmarkDirectory
 }: SftpEntryContextMenuProps) {
   const { t } = useTranslation()
 
@@ -63,10 +67,24 @@ export function SftpEntryContextMenu({
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent className="ml-2 mr-2">
         {singleContextTarget?.kind === 'directory' ? (
-          <ContextMenuItem onClick={() => onOpenDirectory(singleContextTarget.path)}>
-            <Folder className="size-4" />
-            {t('workbench.sftp.actions.openDirectory')}
-          </ContextMenuItem>
+          <>
+            <ContextMenuItem onClick={() => onOpenDirectory(singleContextTarget.path)}>
+              <Folder className="size-4" />
+              {t('workbench.sftp.actions.openDirectory')}
+            </ContextMenuItem>
+            {isBookmarked && onToggleBookmarkDirectory ? (
+              <ContextMenuItem onClick={() => onToggleBookmarkDirectory(singleContextTarget.path)}>
+                <Star
+                  className={`size-4 ${
+                    isBookmarked(singleContextTarget.path) ? 'fill-amber-400 text-amber-400' : ''
+                  }`}
+                />
+                {isBookmarked(singleContextTarget.path)
+                  ? t('workbench.sftp.bookmarks.removeBookmark')
+                  : t('workbench.sftp.bookmarks.addBookmark')}
+              </ContextMenuItem>
+            ) : null}
+          </>
         ) : null}
 
         {singleContextTarget && singleContextTarget.kind !== 'directory' ? (

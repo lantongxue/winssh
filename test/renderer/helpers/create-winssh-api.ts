@@ -180,6 +180,8 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
     pickPrivateKey: systemOverrides?.pickPrivateKey ?? (async () => null),
     pickServerIcon: systemOverrides?.pickServerIcon ?? (async () => null),
     relaunch: systemOverrides?.relaunch ?? (async () => undefined),
+    respondHostTrust: systemOverrides?.respondHostTrust ?? (async () => undefined),
+    onHostTrustRequest: systemOverrides?.onHostTrustRequest ?? (() => noopUnsubscribe),
     menu: resolvedMenuApi,
     window: resolvedWindowApi,
     appFocus: resolvedAppFocusApi,
@@ -410,6 +412,34 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       importArchive: async () => null,
       list: async () => defaultThemes,
       ...overrides.themes
+    },
+    commandHistory: {
+      list: async () => [],
+      search: async () => [],
+      clear: async () => undefined,
+      clearAll: async () => undefined,
+      deleteEntry: async () => undefined,
+      setServerCapture: async () => undefined,
+      onCommandAdded: () => noopUnsubscribe,
+      ...overrides.commandHistory
+    },
+    customCommands: {
+      list: async () => [],
+      create: async () => {
+        throw new Error('not implemented')
+      },
+      update: async () => {
+        throw new Error('not implemented')
+      },
+      delete: async () => undefined,
+      ...overrides.customCommands
+    },
+    sftpBookmarks: {
+      list: async () => [],
+      add: async () => ({ id: 'mock-id', serverId: 'mock-server-id', path: '/', createdAt: new Date().toISOString() }),
+      delete: async () => undefined,
+      deleteByPath: async () => undefined,
+      ...overrides.sftpBookmarks
     },
     system: resolvedSystemApi
   }

@@ -278,6 +278,12 @@ const api: WinsshApi = {
     update: (id, input) => ipcRenderer.invoke('customCommands:update', id, input),
     delete: (id) => ipcRenderer.invoke('customCommands:delete', id)
   },
+  sftpBookmarks: {
+    list: (serverId) => ipcRenderer.invoke('sftpBookmarks:list', serverId),
+    add: (serverId, path) => ipcRenderer.invoke('sftpBookmarks:add', serverId, path),
+    delete: (id) => ipcRenderer.invoke('sftpBookmarks:delete', id),
+    deleteByPath: (serverId, path) => ipcRenderer.invoke('sftpBookmarks:deleteByPath', serverId, path)
+  },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
     update: (input) => ipcRenderer.invoke('settings:update', input)

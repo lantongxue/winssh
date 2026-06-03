@@ -697,6 +697,19 @@ const workbench = {
       }
     },
     sftp: {
+      bookmarks: {
+        title: 'Bookmarked Directories',
+        empty: 'No bookmarked directories for this server yet.',
+        addBookmark: 'Bookmark current directory',
+        removeBookmark: 'Remove bookmark',
+        jumpToBookmark: 'Jump to bookmark in terminal',
+        toasts: {
+          addSuccess: 'Directory bookmarked.',
+          addFailed: 'Failed to bookmark directory.',
+          removeSuccess: 'Bookmark removed.',
+          removeFailed: 'Failed to remove bookmark.'
+        }
+      },
       actions: {
         backToParent: 'Go to Parent Directory',
         copyPath: 'Copy Path',
@@ -897,6 +910,7 @@ const workbench = {
       serverIdentity: 'Server Identity',
       localTerminal: 'Local Terminal',
       sshInfo: 'SSH Info',
+      sshSession: 'SSH Session',
       currentSession: 'Current session',
       shellType: 'Shell Type',
       timeoutSetting: 'Away Timeout',

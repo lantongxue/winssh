@@ -47,7 +47,8 @@ import type {
   UpdateState,
   WebDAVBackupEntry,
   WebDAVBackupState,
-  WindowState
+  WindowState,
+  SftpBookmark
 } from './types'
 import type { AppLogEvent } from './observability'
 import type { ServerIconMimeType } from './server-brands'
@@ -147,6 +148,12 @@ export interface WinsshApi {
     create: (input: CustomCommandInput) => Promise<CustomCommand>
     update: (id: string, input: Partial<CustomCommandInput>) => Promise<CustomCommand>
     delete: (id: string) => Promise<void>
+  }
+  sftpBookmarks: {
+    list: (serverId: string) => Promise<SftpBookmark[]>
+    add: (serverId: string, path: string) => Promise<SftpBookmark>
+    delete: (id: string) => Promise<void>
+    deleteByPath: (serverId: string, path: string) => Promise<void>
   }
   settings: {
     get: () => Promise<AppSettings>

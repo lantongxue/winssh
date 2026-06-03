@@ -29,7 +29,8 @@ import type {
   ServerGroup,
   ServerUpsertInput,
   Tag,
-  TagInput
+  TagInput,
+  SftpBookmark
 } from '@shared/types'
 
 type GroupRow = {
@@ -138,6 +139,13 @@ type CustomCommandRow = {
   command: string
   created_at: string
   updated_at: string
+}
+
+type SftpBookmarkRow = {
+  id: string
+  server_id: string
+  path: string
+  created_at: string
 }
 
 type SettingsRow = {
@@ -253,6 +261,15 @@ function mapCustomCommand(row: CustomCommandRow): CustomCommand {
     command: row.command,
     createdAt: row.created_at,
     updatedAt: row.updated_at
+  }
+}
+
+function mapSftpBookmark(row: SftpBookmarkRow): SftpBookmark {
+  return {
+    id: row.id,
+    serverId: row.server_id,
+    path: row.path,
+    createdAt: row.created_at
   }
 }
 
@@ -401,6 +418,14 @@ export class DatabaseService {
         command TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS sftp_bookmarks (
+        id TEXT PRIMARY KEY,
+        server_id TEXT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+        path TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        UNIQUE(server_id, path)
       );
     `)
 
@@ -1296,4 +1321,44 @@ export class DatabaseService {
   deleteCustomCommand(id: string): void {
     this.db.prepare('DELETE FROM custom_commands WHERE id = ?').run(id)
   }
+
+  // ── SFTP Bookmarks ───────────────────────────────────────────────────────
+
+  listSftpBookmarks(serverId: string): SftpBookmark[] {
+    const rows = this.db
+      .prepare('SELECT * FROM sftp_bookmarks WHERE server_id = ? ORDER BY created_at DESC')
+      .all(serverId) as SftpBookmarkRow[]
+    return rows.map(mapSftpBookmark)
+  }
+
+  createSftpBookmark(serverId: string, path: string): SftpBookmark {
+    const existing = this.db
+      .prepare('SELECT * FROM sftp_bookmarks WHERE server_id = ? AND path = ?')
+      .get(serverId, path) as SftpBookmarkRow | undefined
+    if (existing) {
+      return mapSftpBookmark(existing)
+    }
+    const id = randomUUID()
+    const now = nowIso()
+    this.db
+      .prepare(
+        'INSERT INTO sftp_bookmarks (id, server_id, path, created_at) VALUES (?, ?, ?, ?)'
+      )
+      .run(id, serverId, path, now)
+    const row = this.db
+      .prepare('SELECT * FROM sftp_bookmarks WHERE id = ?')
+      .get(id) as SftpBookmarkRow
+    return mapSftpBookmark(row)
+  }
+
+  deleteSftpBookmark(id: string): void {
+    this.db.prepare('DELETE FROM sftp_bookmarks WHERE id = ?').run(id)
+  }
+
+  deleteSftpBookmarkByPath(serverId: string, path: string): void {
+    this.db
+      .prepare('DELETE FROM sftp_bookmarks WHERE server_id = ? AND path = ?')
+      .run(serverId, path)
+  }
 }
+

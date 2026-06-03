@@ -21,6 +21,7 @@ import { registerSessionIpc } from './ipc/register-session-ipc'
 import { registerSystemIpc } from './ipc/register-system-ipc'
 import { registerCommandHistoryIpc } from './ipc/register-command-history-ipc'
 import { registerCustomCommandIpc } from './ipc/register-custom-command-ipc'
+import { registerSftpBookmarkIpc } from './ipc/register-sftp-bookmark-ipc'
 import { SecureStoreService } from './secure-store'
 import { SessionManager } from './session-manager'
 import { ThemeRegistry } from './theme-registry'
@@ -307,6 +308,7 @@ export async function bootstrap(): Promise<void> {
   registerSessionIpc(sessionsService)
   registerCommandHistoryIpc(database)
   registerCustomCommandIpc(database)
+  registerSftpBookmarkIpc(database)
   registerSystemIpc({
     appInfo,
     credentialStorageAvailable: () => Promise.resolve(true),

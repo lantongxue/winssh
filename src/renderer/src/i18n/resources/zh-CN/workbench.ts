@@ -677,6 +677,19 @@ const workbench = {
       }
     },
     sftp: {
+      bookmarks: {
+        title: '已收藏的目录',
+        empty: '该服务器暂无已收藏的目录。',
+        addBookmark: '收藏当前目录',
+        removeBookmark: '取消收藏',
+        jumpToBookmark: '在终端中跳转到该目录',
+        toasts: {
+          addSuccess: '目录已收藏。',
+          addFailed: '收藏目录失败。',
+          removeSuccess: '收藏已取消。',
+          removeFailed: '取消收藏失败。'
+        }
+      },
       actions: {
         backToParent: '返回上级目录',
         copyPath: '复制路径',
@@ -875,6 +888,7 @@ const workbench = {
       serverIdentity: '服务器标识',
       localTerminal: '本地终端',
       sshInfo: 'SSH 信息',
+      sshSession: 'SSH 会话',
       currentSession: '当前会话',
       shellType: 'Shell 类型',
       timeoutSetting: '离开时长阈值',

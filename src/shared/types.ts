@@ -518,3 +518,11 @@ export interface CustomCommandInput {
   name: string
   command: string
 }
+
+export interface SftpBookmark {
+  id: string
+  serverId: string
+  path: string
+  createdAt: string
+}
+
