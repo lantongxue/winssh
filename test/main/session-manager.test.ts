@@ -1057,4 +1057,74 @@ describe('SessionManager session data forwarding', () => {
     ])
     expect(runtime.summary.currentPath).toBe('/')
   })
+
+  it('extracts OSC 133;P;Cwd sequences and updates summary.currentPath', () => {
+    const { manager, emitToRenderer } = createManagerWithEmitSpy()
+    const runtime = createRuntime('session-1', new MockClient())
+
+    pushData(manager, runtime, `prefix\x1b]133;P;Cwd=/var/log\x07suffix`)
+
+    expect(getDataPayloads(emitToRenderer)).toEqual(['prefixsuffix'])
+    expect(runtime.summary.currentPath).toBe('/var/log')
+  })
+
+  it('correctly associates Cwd with commands when executing a sequence of cd and subsequent commands', () => {
+    const recordedCommands: any[] = []
+    const databaseMock = {
+      getKnownHost: vi.fn(),
+      getServerById: vi.fn(),
+      recordRecentSession: vi.fn(),
+      upsertKnownHost: vi.fn(),
+      getSettings: vi.fn(() => ({
+        commandHistoryEnabled: true
+      })),
+      recordCommand: vi.fn((input) => {
+        recordedCommands.push(input)
+        return {
+          id: 'test-command-id',
+          ...input
+        }
+      })
+    }
+    const emitToRenderer = vi.fn()
+    const manager = new SessionManager(
+      databaseMock as any,
+      () => null,
+      emitToRenderer as never,
+      ((key: string) => key) as never
+    )
+
+    const runtime = createRuntime('session-1', new MockClient())
+    runtime.historyCaptureEnabled = true
+    runtime.historyCaptureStatus = 'active'
+    runtime.summary.currentPath = '/root'
+
+    const send = (data: string) => {
+      const emit = Reflect.get(manager as object, 'emitSessionData') as (
+        r: typeof runtime,
+        data: string
+      ) => void
+      emit.call(manager, runtime, data)
+    }
+
+    // 1. User runs `cd /var/`
+    send(`\x1b]633;E;${Buffer.from('cd /var/', 'utf8').toString('base64')}\x07`)
+    send(`\x1b]133;C\x07`)
+    send(`\x1b]133;D;0\x07`)
+    send(`\x1b]133;P;Cwd=/var\x07`)
+    send(`\x1b]133;A\x07`)
+
+    // 2. User runs `ifconfig`
+    send(`\x1b]633;E;${Buffer.from('ifconfig', 'utf8').toString('base64')}\x07`)
+    send(`\x1b]133;C\x07`)
+    send(`\x1b]133;D;0\x07`)
+    send(`\x1b]133;P;Cwd=/var\x07`)
+    send(`\x1b]133;A\x07`)
+
+    expect(recordedCommands.length).toBe(2)
+    expect(recordedCommands[0].command).toBe('cd /var/')
+    expect(recordedCommands[0].cwd).toBe('/root')
+    expect(recordedCommands[1].command).toBe('ifconfig')
+    expect(recordedCommands[1].cwd).toBe('/var')
+  })
 })

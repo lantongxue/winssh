@@ -6,6 +6,7 @@ interface CapturedEvents {
   commandPre: number
   commandDone: Array<number | null>
   commandText: string[]
+  cwd: string[]
 }
 
 function makeHandlers() {
@@ -13,7 +14,8 @@ function makeHandlers() {
     promptStart: 0,
     commandPre: 0,
     commandDone: [],
-    commandText: []
+    commandText: [],
+    cwd: []
   }
   const handlers = {
     onPromptStart: () => {
@@ -27,6 +29,9 @@ function makeHandlers() {
     },
     onCommandText: (text: string) => {
       events.commandText.push(text)
+    },
+    onCwd: (cwd: string) => {
+      events.cwd.push(cwd)
     }
   }
   return { events, handlers }
@@ -86,6 +91,14 @@ describe('scanOscChunk', () => {
     const out = scanOscChunk(state, input, handlers)
     expect(out).toBe('prepost')
     expect(events.commandText).toEqual([cmd])
+  })
+
+  it('extracts working directory from OSC 133;P;Cwd and OSC 633;P;Cwd', () => {
+    const state = createOscScannerState()
+    const { handlers, events } = makeHandlers()
+    const out = scanOscChunk(state, `prefix${osc('133;P;Cwd=/var/log')}suffix`, handlers)
+    expect(out).toBe('prefixsuffix')
+    expect(events.cwd).toEqual(['/var/log'])
   })
 
   it('forwards unknown OSC sequences verbatim', () => {

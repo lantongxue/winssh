@@ -17,7 +17,7 @@
 // One-line form keeps the visible echo to a single terminal line.
 
 const SHELL_INTEGRATION_ONE_LINER = [
-  '__wsh_emit() { printf "\\033]%s\\033\\\\" "$1"; };',
+  '__wsh_emit() { printf "\\033]%s\\033\\134" "$1"; };',
   '__wsh_b64() { printf "%s" "$1" | base64 | tr -d "\\n"; };',
   'if [ -n "$BASH_VERSION" ]; then',
   '  __wsh_state=A;',
@@ -31,6 +31,7 @@ const SHELL_INTEGRATION_ONE_LINER = [
   '  __wsh_post() {',
   '    __wsh_ec=$?;',
   '    [ "$__wsh_state" = "C" ] && __wsh_emit "133;D;$__wsh_ec";',
+  '    __wsh_emit "133;P;Cwd=$PWD";',
   '    __wsh_emit "133;A";',
   '    __wsh_state=A;',
   '  };',
@@ -44,6 +45,7 @@ const SHELL_INTEGRATION_ONE_LINER = [
   '  __wsh_post() {',
   '    __wsh_ec=$?;',
   '    __wsh_emit "133;D;$__wsh_ec";',
+  '    __wsh_emit "133;P;Cwd=$PWD";',
   '    __wsh_emit "133;A";',
   '  };',
   '  autoload -Uz add-zsh-hook;',
@@ -59,6 +61,8 @@ const SHELL_INTEGRATION_ONE_LINER = [
  */
 export const SHELL_INTEGRATION_SCRIPT = ` ${SHELL_INTEGRATION_ONE_LINER}\r`
 
+export const SHELL_INTEGRATION_FILE_CONTENT = SHELL_INTEGRATION_ONE_LINER
+
 /** Commands that start with these prefixes are shell-integration internals and should not be recorded. */
 const SHELL_INTEGRATION_INTERNAL_PREFIXES = ['__wsh_']
 
@@ -68,6 +72,9 @@ const SHELL_INTEGRATION_INTERNAL_PREFIXES = ['__wsh_']
  * PROMPT_COMMAND execution under certain shell configurations).
  */
 export function isShellIntegrationInternal(command: string): boolean {
-  const trimmed = command.trimStart()
-  return SHELL_INTEGRATION_INTERNAL_PREFIXES.some((prefix) => trimmed.startsWith(prefix))
+  const trimmed = command.trim()
+  return (
+    SHELL_INTEGRATION_INTERNAL_PREFIXES.some((prefix) => trimmed.startsWith(prefix)) ||
+    trimmed.includes('__wsh_')
+  )
 }
