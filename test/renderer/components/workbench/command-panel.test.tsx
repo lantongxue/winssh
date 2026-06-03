@@ -190,4 +190,3 @@ describe('CommandPanel', () => {
     }
   })
 })
-

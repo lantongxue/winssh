@@ -942,6 +942,8 @@ const workbench = {
       captureUnavailable: 'Capture unavailable (shell integration not detected).',
       captureHint:
         'Commands are captured via shell integration. Bash and zsh are supported; fish and other shells are not.',
+      injectionWarning:
+        'Enabling this option will automatically inject the following integration script into the server upon connection:',
       enableForServer: 'Record command history for this server',
       enableGlobal: 'Enable command history globally',
       cwdLabel: 'cwd',

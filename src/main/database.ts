@@ -1341,9 +1341,7 @@ export class DatabaseService {
     const id = randomUUID()
     const now = nowIso()
     this.db
-      .prepare(
-        'INSERT INTO sftp_bookmarks (id, server_id, path, created_at) VALUES (?, ?, ?, ?)'
-      )
+      .prepare('INSERT INTO sftp_bookmarks (id, server_id, path, created_at) VALUES (?, ?, ?, ?)')
       .run(id, serverId, path, now)
     const row = this.db
       .prepare('SELECT * FROM sftp_bookmarks WHERE id = ?')
@@ -1361,4 +1359,3 @@ export class DatabaseService {
       .run(serverId, path)
   }
 }
-

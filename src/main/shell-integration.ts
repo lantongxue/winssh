@@ -16,7 +16,7 @@
 //
 // One-line form keeps the visible echo to a single terminal line.
 
-const SHELL_INTEGRATION_ONE_LINER = [
+const SHELL_INTEGRATION_LINES = [
   '__wsh_emit() { printf "\\033]%s\\033\\134" "$1"; };',
   '__wsh_b64() { printf "%s" "$1" | base64 | tr -d "\\n"; };',
   'if [ -n "$BASH_VERSION" ]; then',
@@ -52,7 +52,11 @@ const SHELL_INTEGRATION_ONE_LINER = [
   '  add-zsh-hook preexec __wsh_pre;',
   '  add-zsh-hook precmd __wsh_post;',
   'fi'
-].join(' ')
+]
+
+const SHELL_INTEGRATION_ONE_LINER = SHELL_INTEGRATION_LINES.join(' ')
+
+export const SHELL_INTEGRATION_MULTILINE = SHELL_INTEGRATION_LINES.join('\n')
 
 /**
  * Bytes to write to the PTY to install command-history capture. Leading space

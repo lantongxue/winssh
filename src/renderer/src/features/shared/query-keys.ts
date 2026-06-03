@@ -4,6 +4,7 @@ export const queryKeys = {
   appInfo: ['app-info'] as const,
   capabilities: ['capabilities'] as const,
   credentials: ['credentials'] as const,
+  shellIntegrationScript: ['shell-integration-script'] as const,
   groups: ['groups'] as const,
   knownHosts: ['known-hosts'] as const,
   logEntries: ['logs', 'entries'] as const,

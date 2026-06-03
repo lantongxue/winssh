@@ -303,7 +303,7 @@ export class LocalTerminalManager {
     if (record.integrationBuffer !== undefined) {
       record.integrationBuffer += data
       const command = ` . ~/.winssh_init_${terminalId} && rm -f ~/.winssh_init_${terminalId}`
-      
+
       if (record.integrationBuffer.includes(command)) {
         if (record.integrationTimeoutTimer) {
           clearTimeout(record.integrationTimeoutTimer)
@@ -335,7 +335,7 @@ export class LocalTerminalManager {
     try {
       const tempFilePath = path.join(homedir(), `.winssh_init_${terminalId}`)
       writeFileSync(tempFilePath, SHELL_INTEGRATION_FILE_CONTENT, 'utf8')
-      
+
       const command = ` . ~/.winssh_init_${terminalId} && rm -f ~/.winssh_init_${terminalId}`
       record.integrationBuffer = ''
       record.pty?.write(`${command}\r`)

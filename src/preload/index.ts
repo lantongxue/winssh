@@ -282,7 +282,8 @@ const api: WinsshApi = {
     list: (serverId) => ipcRenderer.invoke('sftpBookmarks:list', serverId),
     add: (serverId, path) => ipcRenderer.invoke('sftpBookmarks:add', serverId, path),
     delete: (id) => ipcRenderer.invoke('sftpBookmarks:delete', id),
-    deleteByPath: (serverId, path) => ipcRenderer.invoke('sftpBookmarks:deleteByPath', serverId, path)
+    deleteByPath: (serverId, path) =>
+      ipcRenderer.invoke('sftpBookmarks:deleteByPath', serverId, path)
   },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
@@ -332,6 +333,7 @@ const api: WinsshApi = {
     getCapabilities: () => ipcRenderer.invoke('system:getCapabilities'),
     relaunch: () => ipcRenderer.invoke('system:relaunch'),
     respondHostTrust: (result) => ipcRenderer.invoke('system:respondHostTrust', result),
+    getShellIntegrationScript: () => ipcRenderer.invoke('system:getShellIntegrationScript'),
     menu: {
       onAction: (callback) => subscribe('system:menuAction', callback)
     },

@@ -918,6 +918,7 @@ const workbench = {
       captureDisabled: '该服务器已关闭命令记录。',
       captureUnavailable: '未检测到 shell 集成，无法记录命令。',
       captureHint: '通过 shell 集成捕获命令，目前支持 bash 和 zsh，fish 等其他 shell 暂不支持。',
+      injectionWarning: '开启此选项会在连接服务器时自动向服务器注入以下集成脚本：',
       enableForServer: '记录该服务器的命令历史',
       enableGlobal: '全局启用命令历史',
       cwdLabel: '目录',

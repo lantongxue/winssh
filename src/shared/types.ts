@@ -525,4 +525,3 @@ export interface SftpBookmark {
   path: string
   createdAt: string
 }
-

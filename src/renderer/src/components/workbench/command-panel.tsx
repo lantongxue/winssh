@@ -31,7 +31,6 @@ import { cn } from '@/lib/utils'
 import { useCommandHistory } from '@/features/command-history/hooks/use-command-history'
 import { useCustomCommands } from '@/features/custom-commands/hooks/use-custom-commands'
 
-
 function TooltipIconButton({
   children,
   label,

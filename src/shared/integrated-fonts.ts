@@ -169,7 +169,11 @@ export const INTEGRATED_FONTS: IntegratedFontDefinition[] = [
 ]
 
 export const INTEGRATED_UI_FALLBACK_FAMILIES = ['sans-serif'] as const
-export const INTEGRATED_TERMINAL_FALLBACK_FAMILIES = ['Consolas', 'Courier New', 'monospace'] as const
+export const INTEGRATED_TERMINAL_FALLBACK_FAMILIES = [
+  'Consolas',
+  'Courier New',
+  'monospace'
+] as const
 
 const FONT_ID_SET = new Set<string>(INTEGRATED_FONT_IDS)
 

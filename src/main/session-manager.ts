@@ -1199,13 +1199,13 @@ export class SessionManager {
     if (runtime.integrationBuffer !== undefined) {
       runtime.integrationBuffer += data
       const command = ` . ~/.winssh_init_${runtime.sessionId} && rm -f ~/.winssh_init_${runtime.sessionId}`
-      
+
       if (runtime.integrationBuffer.includes(command)) {
         if (runtime.integrationTimeoutTimer) {
           clearTimeout(runtime.integrationTimeoutTimer)
           runtime.integrationTimeoutTimer = undefined
         }
-        
+
         let cleaned = runtime.integrationBuffer
         const idx = cleaned.indexOf(command)
         if (idx !== -1) {
@@ -1215,7 +1215,7 @@ export class SessionManager {
           suffix = suffix.replace(/^\r?\n?/, '')
           cleaned = prefix + suffix
         }
-        
+
         runtime.integrationBuffer = undefined
         if (cleaned) {
           this.emitSessionDataToRenderer(runtime, cleaned)
@@ -1372,7 +1372,10 @@ export class SessionManager {
     await sftpCreateFile(runtime.sftp, posix.join(normalizeRemotePath(currentPath), name.trim()))
   }
 
-  async readFile(sessionId: string, remotePath: string): Promise<{ content: string; encoding: string; cancelled?: boolean }> {
+  async readFile(
+    sessionId: string,
+    remotePath: string
+  ): Promise<{ content: string; encoding: string; cancelled?: boolean }> {
     const runtime = this.requireSession(sessionId)
     const normalized = normalizeRemotePath(remotePath)
     const stats = await sftpStat(runtime.sftp, normalized)

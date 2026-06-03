@@ -111,9 +111,17 @@ export interface WinsshApi {
   sftp: {
     list: (sessionId: string, path: string) => Promise<SftpListResult>
     createFile: (sessionId: string, path: string, name: string) => Promise<void>
-    readFile: (sessionId: string, remotePath: string) => Promise<{ content: string; encoding: string; cancelled?: boolean }>
+    readFile: (
+      sessionId: string,
+      remotePath: string
+    ) => Promise<{ content: string; encoding: string; cancelled?: boolean }>
     cancelReadFile: (sessionId: string, remotePath: string) => void
-    writeFile: (sessionId: string, remotePath: string, contents: string, encoding?: string) => Promise<void>
+    writeFile: (
+      sessionId: string,
+      remotePath: string,
+      contents: string,
+      encoding?: string
+    ) => Promise<void>
     mkdir: (sessionId: string, path: string, name: string) => Promise<void>
     rename: (sessionId: string, path: string, newName: string) => Promise<void>
     move: (sessionId: string, sourcePath: string, destinationDirPath: string) => Promise<void>
@@ -196,6 +204,7 @@ export interface WinsshApi {
     getCapabilities: () => Promise<RuntimeCapabilities>
     relaunch: () => Promise<void>
     respondHostTrust: (result: HostTrustResult) => Promise<void>
+    getShellIntegrationScript: () => Promise<string>
     menu: {
       onAction: (callback: (action: SystemMenuAction) => void) => Unsubscribe
     }

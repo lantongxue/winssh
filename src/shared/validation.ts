@@ -256,4 +256,3 @@ export const sftpBookmarkSchema = z.object({
 })
 
 export type SftpBookmarkFormValues = z.infer<typeof sftpBookmarkSchema>
-

@@ -560,14 +560,14 @@ export function SftpPanel({
 
     const modifiedText = entry.modifiedAt
       ? new Intl.DateTimeFormat(getResolvedLocale(), {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      }).format(new Date(entry.modifiedAt))
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        }).format(new Date(entry.modifiedAt))
       : null
     const kindText =
       entry.kind === 'directory'
@@ -702,7 +702,12 @@ export function SftpPanel({
               onClick={() => setBookmarksCollapsed(!bookmarksCollapsed)}
             >
               <div className="flex items-center gap-1.5">
-                <Star className={cn('size-3.5', bookmarks.length > 0 && 'fill-amber-500 text-amber-500')} />
+                <Star
+                  className={cn(
+                    'size-3.5',
+                    bookmarks.length > 0 && 'fill-amber-500 text-amber-500'
+                  )}
+                />
                 <span>{t('workbench.sftp.bookmarks.title')}</span>
                 {bookmarks.length > 0 && (
                   <span className="ml-1.5 rounded-full bg-[var(--workbench-border)] px-1.5 py-0.5 text-[9px] font-medium normal-case">

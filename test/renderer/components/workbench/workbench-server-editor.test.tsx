@@ -16,6 +16,13 @@ vi.mock('sonner', () => ({
   }
 }))
 
+vi.mock('monaco-editor/esm/vs/basic-languages/shell/shell.contribution.js', () => ({}))
+vi.mock('monaco-editor/esm/vs/editor/editor.api.js', () => ({
+  editor: {
+    colorize: vi.fn().mockImplementation((text) => Promise.resolve(`<div>${text}</div>`))
+  }
+}))
+
 function renderServerEditor(document = createServerEditorDocument()) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -622,5 +629,51 @@ describe('WorkbenchServerEditor credentials field', () => {
 
     expect(deleteTag).toHaveBeenCalledWith('tag-db')
     expect(screen.queryByText('Database')).not.toBeInTheDocument()
+  })
+
+  it('displays shell integration warning and script when command history is enabled for server', async () => {
+    const getShellIntegrationScript = vi
+      .fn()
+      .mockResolvedValue('__wsh_emit() { printf "\\033]%s\\033\\134" "$1"; };')
+    window.winsshApi = createWinsshApiMock({
+      servers: {
+        getSecrets: vi.fn().mockResolvedValue({
+          password: 'hunter2',
+          passphrase: null,
+          privateKey: null
+        }),
+        list: vi.fn().mockResolvedValue([
+          {
+            ...savedServer,
+            captureCommandHistory: true
+          }
+        ])
+      },
+      system: {
+        getShellIntegrationScript
+      }
+    })
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false
+        }
+      }
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <WorkbenchProvider>
+          <WorkbenchServerEditor document={createServerEditorDocument(savedServer.id)} />
+        </WorkbenchProvider>
+      </QueryClientProvider>
+    )
+
+    expect(
+      await screen.findByText(/automatically inject the following integration script/i)
+    ).toBeInTheDocument()
+    expect(await screen.findByText(/__wsh_emit/)).toBeInTheDocument()
+    expect(getShellIntegrationScript).toHaveBeenCalled()
   })
 })
