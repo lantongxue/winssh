@@ -908,7 +908,7 @@ export function WorkbenchPrimarySidebar() {
             <label className="sr-only" htmlFor="workbench-primary-sidebar-search">
               {t('workbench.primarySidebar.search.label')}
             </label>
-            <div className="flex items-center gap-2 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2.5 text-[var(--workbench-muted)] shadow-xs transition-colors focus-within:border-[var(--workbench-active)]/50 focus-within:text-foreground">
+            <div className="flex items-center gap-2 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2.5 text-[var(--workbench-muted)] shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 focus-within:text-foreground">
               <Search className="size-3.5 shrink-0" />
               <Input
                 id="workbench-primary-sidebar-search"

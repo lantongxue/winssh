@@ -678,7 +678,7 @@ export function SftpPanel({
 
             <Textarea
               aria-label={t('workbench.sftp.labels.currentPath')}
-              className="min-h-[58px] resize-none overflow-y-auto border-[var(--workbench-border)] bg-[var(--workbench-input)] font-mono text-[11px] leading-relaxed shadow-none [overflow-wrap:anywhere] focus-visible:border-[var(--workbench-active)] focus-visible:ring-1 focus-visible:ring-[var(--workbench-active)]/50 focus-visible:ring-offset-0 focus-visible:bg-[var(--workbench-input)] focus:bg-[var(--workbench-input)]"
+              className="min-h-[58px] resize-none overflow-y-auto border-[var(--workbench-border)] bg-[var(--workbench-input)] font-mono text-[11px] leading-relaxed shadow-none [overflow-wrap:anywhere] focus-visible:bg-[var(--workbench-input)] focus:bg-[var(--workbench-input)]"
               rows={3}
               spellCheck={false}
               value={pathInputValue}
