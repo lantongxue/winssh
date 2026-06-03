@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ShieldCheck } from 'lucide-react'
@@ -18,8 +18,10 @@ export function WorkbenchAwayReminderOverlay() {
   const overlayVisible = useAwayReminderStore((state) => state.overlayVisible)
   const dismissOverlay = useAwayReminderStore((state) => state.dismissOverlay)
   const openDocuments = useWorkbenchStore((state) => state.openDocuments)
+  const activeDocumentId = useWorkbenchStore((state) => state.activeDocumentId)
   const sessionTabs = useSessionsStore((state) => state.tabs)
   const localTerminalTabs = useLocalTerminalsStore((state) => state.tabs)
+  const confirmButtonRef = useRef<HTMLButtonElement>(null)
 
   const settingsQuery = useQuery({
     queryKey: queryKeys.settings,
@@ -35,14 +37,50 @@ export function WorkbenchAwayReminderOverlay() {
 
   const shouldShowOverlay = overlayVisible && awayReminderEnabled && openDocuments.length > 0
 
-  const handleKeyDown = useCallback(
+  // When the overlay becomes visible, blur the active element (e.g. xterm textarea)
+  // and focus the confirm button so keyboard input goes to the overlay, not the terminal.
+  useEffect(() => {
+    if (!shouldShowOverlay) {
+      return
+    }
+
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+
+    // Use requestAnimationFrame to ensure the button is rendered before focusing
+    const frame = window.requestAnimationFrame(() => {
+      confirmButtonRef.current?.focus()
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+    }
+  }, [shouldShowOverlay])
+
+  // Block all keyboard events from propagating to the terminal while overlay is visible.
+  const handleKeyDownCapture = useCallback(
     (event: React.KeyboardEvent) => {
+      event.stopPropagation()
+
       if (event.key === 'Enter') {
+        event.preventDefault()
         dismissOverlay()
       }
     },
     [dismissOverlay]
   )
+
+  // Prevent mouse interactions from reaching the terminal underneath.
+  const handleMouseDownCapture = useCallback((event: React.MouseEvent) => {
+    // Allow clicks on the confirm button itself to pass through
+    if (event.target instanceof HTMLElement && event.target.closest('button')) {
+      return
+    }
+
+    event.stopPropagation()
+    event.preventDefault()
+  }, [])
 
   if (!shouldShowOverlay) {
     return null
@@ -51,7 +89,8 @@ export function WorkbenchAwayReminderOverlay() {
   const servers = (serversQuery.data ?? []) as Server[]
   const serverMap = new Map(servers.map((server) => [server.id, server]))
 
-  const identityItems = openDocuments
+  const activeDocument = openDocuments.find((document) => document.id === activeDocumentId)
+  const identityItems = (activeDocument ? [activeDocument] : [])
     .filter(
       (document) => document.kind === 'session-editor' || document.kind === 'local-terminal-editor'
     )
@@ -88,8 +127,10 @@ export function WorkbenchAwayReminderOverlay() {
 
   return (
     <div
-      className="absolute inset-0 z-40 flex items-center justify-center bg-[var(--terminal-overlay-backdrop)] backdrop-blur-[var(--terminal-overlay-backdrop-blur)]"
-      onKeyDown={handleKeyDown}
+      className="fixed inset-0 z-40 flex items-center justify-center bg-[var(--terminal-overlay-backdrop)] backdrop-blur-[var(--terminal-overlay-backdrop-blur)]"
+      tabIndex={-1}
+      onKeyDownCapture={handleKeyDownCapture}
+      onMouseDownCapture={handleMouseDownCapture}
     >
       <div className="flex w-[min(560px,calc(100%-2rem))] flex-col gap-4 rounded-[var(--terminal-overlay-radius)] border border-[var(--terminal-overlay-border)] bg-[var(--terminal-overlay-panel)] px-6 py-5 text-left shadow-xl">
         <div className="flex items-start gap-4">
@@ -169,7 +210,9 @@ export function WorkbenchAwayReminderOverlay() {
           </div>
         ) : null}
 
-        <Button onClick={dismissOverlay}>{t('workbench.awayReminder.confirmButton')}</Button>
+        <Button ref={confirmButtonRef} onClick={dismissOverlay}>
+          {t('workbench.awayReminder.confirmButton')}
+        </Button>
       </div>
     </div>
   )

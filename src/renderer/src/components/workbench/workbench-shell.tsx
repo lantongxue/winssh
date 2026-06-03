@@ -400,7 +400,6 @@ function WorkbenchShellContent() {
           <div className="relative h-full min-h-0 overflow-hidden bg-[var(--workbench-editor)]">
             {!hasActiveDocument ? <WorkbenchExplorerHome /> : null}
             {documentLayers}
-            <WorkbenchAwayReminderOverlay />
           </div>
         </ResizablePanel>
         <ResizableHandle
@@ -475,6 +474,7 @@ function WorkbenchShellContent() {
       <WorkbenchStatusBar />
       <WorkbenchCommandCenter activeDocument={activeDocument} />
       <WorkbenchQuickInput />
+      <WorkbenchAwayReminderOverlay />
     </div>
   )
 }
