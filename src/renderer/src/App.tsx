@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog'
 import { WorkbenchShell } from '@/components/workbench/workbench-shell'
 import { HostTrustDialogHost } from '@/components/workbench/host-trust-dialog'
+import { ReleaseNotesRenderer } from '@/components/workbench/release-notes-renderer'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { queryKeys } from '@/features/shared/query-keys'
 import { settingsClient } from '@/features/settings/api/settings-client'
@@ -158,9 +159,10 @@ function UpdateDialog() {
           <DialogDescription>{dialogDescription}</DialogDescription>
         </DialogHeader>
         {releaseNotes ? (
-          <div className="max-h-64 overflow-auto rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-sidebar)] px-3 py-3 text-sm text-muted-foreground whitespace-pre-wrap">
-            {releaseNotes}
-          </div>
+          <ReleaseNotesRenderer
+            content={releaseNotes}
+            className="max-h-64 overflow-auto rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-sidebar)] px-3 py-3 text-sm text-muted-foreground"
+          />
         ) : null}
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={handleClose}>

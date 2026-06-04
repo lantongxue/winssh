@@ -14,6 +14,7 @@ import { formatDateTime } from '@/i18n/format'
 import { actionIcons } from '@/lib/action-icons'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import { ReleaseNotesRenderer } from '@/components/workbench/release-notes-renderer'
 
 function formatPlatformLabel(platform: string) {
   switch (platform) {
@@ -366,9 +367,10 @@ export function WorkbenchUpdatesEditor() {
 
               {releaseNotes &&
               (updateState?.phase === 'available' || updateState?.phase === 'downloaded') ? (
-                <div className="mt-4 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-sidebar)] px-3 py-3 text-sm text-muted-foreground whitespace-pre-wrap">
-                  {releaseNotes}
-                </div>
+                <ReleaseNotesRenderer
+                  content={releaseNotes}
+                  className="mt-4 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-sidebar)] px-3 py-3 text-sm text-muted-foreground"
+                />
               ) : null}
             </div>
           </section>

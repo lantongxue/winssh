@@ -537,3 +537,107 @@ button,
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
+
+/* Release Notes HTML Styles */
+.changelog-html {
+  word-break: break-word;
+}
+.changelog-html h1,
+.changelog-html h2,
+.changelog-html h3,
+.changelog-html h4,
+.changelog-html h5,
+.changelog-html h6 {
+  font-weight: 600;
+  color: var(--foreground);
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+.changelog-html h1 { font-size: 1.4rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; }
+.changelog-html h2 { font-size: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.2rem; }
+.changelog-html h3 { font-size: 1.1rem; }
+.changelog-html h4 { font-size: 1rem; }
+
+.changelog-html p {
+  margin-top: 0px;
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+}
+
+.changelog-html ul {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+  margin-top: 0px;
+  margin-bottom: 0.75rem;
+}
+
+.changelog-html ol {
+  list-style-type: decimal;
+  padding-left: 1.25rem;
+  margin-top: 0px;
+  margin-bottom: 0.75rem;
+}
+
+.changelog-html li {
+  margin-bottom: 0.25rem;
+}
+
+.changelog-html li > ul,
+.changelog-html li > ol {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.changelog-html a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.changelog-html a:hover {
+  opacity: 0.85;
+}
+
+.changelog-html code {
+  font-family: var(--terminal-font-family, monospace);
+  font-size: 0.875em;
+  background-color: var(--workbench-bg);
+  padding: 0.15rem 0.3rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.changelog-html pre {
+  margin-top: 0px;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+  overflow: auto;
+  font-size: 0.875em;
+  background-color: var(--workbench-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.changelog-html pre code {
+  padding: 0;
+  background-color: transparent;
+  border: none;
+  font-size: inherit;
+}
+
+.changelog-html blockquote {
+  margin-top: 0px;
+  margin-bottom: 0.75rem;
+  padding-left: 0.75rem;
+  border-left: 4px solid var(--border);
+  color: var(--muted-foreground);
+}
+
+.changelog-html hr {
+  height: 0px;
+  border: 0px;
+  border-top: 1px solid var(--border);
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
