@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://cnb.cool/webqteam/winssh/compare/v1.2.0...v1.2.1) (2026-06-04)
+
+### Bug Fixes
+
+* 增加更新日志富文本渲染 ([4360c49](https://cnb.cool/webqteam/winssh/commit/4360c4984264e5cfecc11e1c3d7af3b05e9aa5ac))
+* update website ([2f6ce0c](https://cnb.cool/webqteam/winssh/commit/2f6ce0cc39ad8d2ed8cf9a0db85e954dd72528c4))
+
 ## [1.2.0](https://github.com/lantongxue/winssh/compare/v1.1.12...v1.2.0) (2026-06-04)
 
 ### Features
