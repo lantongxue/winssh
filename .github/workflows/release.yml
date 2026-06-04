@@ -85,7 +85,6 @@ jobs:
           npm run dist:mac -- --publish=never
         fi
       env:
-        WINSSH_UPDATE_BASE_URL: ${{ secrets.WINSSH_UPDATE_BASE_URL }}
         SKIP_PUBLISH: 'true'
 
     - name: Determine release files
@@ -96,11 +95,11 @@ jobs:
         dir="release/${version}"
 
         if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-          patterns=("*.AppImage" "*.deb")
+          patterns=("*.AppImage" "*.deb" "latest-linux.yml")
         elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-          patterns=("*-Setup.exe" "*.zip")
+          patterns=("*-Setup.exe" "*.zip" "latest.yml")
         elif [ "${{ matrix.os }}" == "macos-15-intel" ] || [ "${{ matrix.os }}" == "macos-latest" ]; then
-          patterns=("*.dmg" "*.zip")
+          patterns=("*.dmg" "*.zip" "latest-mac.yml")
         else
           echo "Unsupported OS: ${{ matrix.os }}" >&2
           exit 1
@@ -140,7 +139,7 @@ jobs:
         echo "EOF" >> $GITHUB_OUTPUT
 
     - name: Publish GitHub Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         tag_name: ${{ steps.release_tag.outputs.tag }}
@@ -148,5 +147,4 @@ jobs:
         body: ${{ steps.release_notes.outputs.body }}
         files: ${{ steps.release_files.outputs.files }}
       env:
-        WINSSH_UPDATE_BASE_URL: ${{ secrets.WINSSH_UPDATE_BASE_URL }}
         SKIP_PUBLISH: 'true'

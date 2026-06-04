@@ -127,9 +127,7 @@ function normalizeAppSettingsForPlatform(settings: AppSettings): AppSettings {
   }
 }
 
-function isEnabledEnvironmentFlag(value: string | undefined): boolean {
-  return value === '1' || value?.toLowerCase() === 'true'
-}
+
 
 function parseVersionSegments(version: string): number[] {
   const [coreVersion] = version.split('-')
@@ -235,13 +233,10 @@ export async function bootstrap(): Promise<void> {
     version: app.getVersion()
   })
   const updateService = new UpdateService({
-    allowDevUpdates: isEnabledEnvironmentFlag(process.env['WINSSH_ALLOW_DEV_UPDATES']),
     autoCheckEnabled: themeRegistry.normalizeSettings(
       normalizeAppSettingsForPlatform(database.getSettings())
     ).autoUpdateCheckEnabled,
     currentVersion: appInfo.version,
-    devConfigPath: join(app.getAppPath(), 'dev-app-update.yml'),
-    feedUrl: process.env['WINSSH_UPDATE_BASE_URL']?.trim() || null,
     githubOwner: 'lantongxue',
     githubRepo: 'winssh',
     isPackaged: app.isPackaged,

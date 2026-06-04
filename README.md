@@ -174,8 +174,6 @@ winssh/
 | `npm run lint` | 运行 ESLint 代码规范扫描与约束排查 |
 | `npm run site:dev` | 启动 `official-website/` 品牌官网的本地开发服务器 |
 | `npm run site:build` | 打包构建品牌官网静态部署产物 |
-| `npm run updates:mock` | 生成本地更新包的 Mock 签名元数据 |
-| `npm run updates:serve`| 启动本地更新包静态托管服务，用于联调 Windows 自动升级 |
 
 ---
 
@@ -185,15 +183,13 @@ WinSSH 支持通过环境变量修改特定运行时行为：
 
 | 环境变量 | 默认值 | 说明 |
 | :--- | :--- | :--- |
-| `WINSSH_UPDATE_BASE_URL` | - | 覆盖自动更新的 Feed 基础服务器地址 |
-| `WINSSH_ALLOW_DEV_UPDATES` | - | 设为 `true` 时，允许在开发模式 (dev) 下调试完整自动更新链路 |
 | `WINSSH_HARDWARE_ACCELERATION` | - | 设为 `false` 可在 Windows 平台强制关闭硬件加速 (解决部分设备渲染卡顿) |
 
 ---
 
 ## ⚠️ 已知限制说明
 
-*   **自动更新局限性**：自动更新功能仅在 Windows 平台且在打包好的安装包下支持，macOS/Linux 以及本地开发模式下该功能会返回 unsupported。
+*   **自动更新局限性**：自动更新功能支持 Windows、macOS 和 Linux 平台，但仅在打包好的安装包下生效，本地开发模式下该功能会返回 unsupported。
 *   **单跳代理限制**：Jump Server 目前仅支持单级跳板机跳转，暂不支持多级链式代理。
 *   **主机监控兼容性**：主机资源监控依赖远端 Linux 主机的 `/proc/*` 伪文件系统和 `df` 指令，非 Linux 系统该监控组件会静默退回隐藏。
 *   **文件编辑适用面**：SFTP 远端双击直接编辑适用于一般的配置文件或文本文件，不建议使用它打开二进制文件或超大日志文件。
