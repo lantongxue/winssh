@@ -194,14 +194,7 @@ WinSSH 支持通过环境变量修改特定运行时行为：
 
 ---
 
-## ⚠️ 已知限制说明
 
-- **自动更新局限性**：自动更新功能支持 Windows、macOS 和 Linux 平台，但仅在打包好的安装包下生效，本地开发模式下该功能会返回 unsupported。
-- **单跳代理限制**：Jump Server 目前仅支持单级跳板机跳转，暂不支持多级链式代理。
-- **主机监控兼容性**：主机资源监控依赖远端 Linux 主机的 `/proc/*` 伪文件系统和 `df` 指令，非 Linux 系统该监控组件会静默退回隐藏。
-- **文件编辑适用面**：SFTP 远端双击直接编辑适用于一般的配置文件或文本文件，不建议使用它打开二进制文件或超大日志文件。
-
----
 
 ## 🤝 参与贡献
 
@@ -219,13 +212,6 @@ npm run typecheck && npm run test
 
 ---
 
-## 📄 文档索引
-
-- 📄 **[架构快照与指南](AGENTS.md)** — 系统架构概述、层级数据流向与 IPC 通讯标准
-- 🎨 **[主题开发文档](docs/theme-dev.md)** — 如何为 WinSSH 制作并导入自定义 JSON 主题包
-- 🌐 **[品牌官方网站](official-website/)** — WinSSH 官方网站工程源码与详细部署说明
-
----
 
 <div align="center">
   <p>Made with ❤️ by the WinSSH Team.</p>

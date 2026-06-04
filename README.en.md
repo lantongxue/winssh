@@ -194,14 +194,6 @@ WinSSH supports configuring specific runtime behaviors via environment variables
 
 ---
 
-## ⚠️ Known Limitations
-
-- **Auto-Update Scope**: Auto-update is supported on Windows, macOS, and Linux, but is only active in packaged production installations. Local development mode will return `unsupported`.
-- **Jump Server Limit**: Jump Server support is single-hop only; multi-stage or chained jump proxies are currently not supported.
-- **Host Monitoring Compatibility**: Host resource monitoring relies on the `/proc/*` pseudo-filesystem and the `df` command on remote Linux servers. On non-Linux hosts, monitoring UI elements will be silently hidden.
-- **Inline Editing Scope**: Direct editing via double-clicking in SFTP is designed for general configuration or text files; it is not recommended for binary files or extremely large log files.
-
----
 
 ## 🤝 Contributing
 
@@ -219,13 +211,6 @@ npm run typecheck && npm run test
 
 ---
 
-## 📄 Document Directory
-
-- 📄 **[Architecture Blueprint & Guide](AGENTS.md)** — System architecture overview, hierarchical data flow, and IPC communication standards.
-- 🎨 **[Theme Development Guide](docs/theme-dev.md)** — Guide on how to build and import custom VSCode-style JSON themes for WinSSH.
-- 🌐 **[Brand Website](official-website/)** — Brand website source code and deployment guide.
-
----
 
 <div align="center">
   <p>Made with ❤️ by the WinSSH Team.</p>
