@@ -23,8 +23,9 @@ win:
     - zip
   artifactName: ${productName}-Windows-${version}-${arch}.${ext}
   publish:
-    - provider: generic
-      url: ${env.WINSSH_UPDATE_BASE_URL}
+    - provider: github
+      owner: lantongxue
+      repo: winssh
 nsis:
   include: build/installer.nsh
   artifactName: ${productName}-Windows-${version}-${arch}-Setup.${ext}

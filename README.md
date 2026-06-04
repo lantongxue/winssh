@@ -128,7 +128,7 @@ npm run start
 
 | 变量                           | 用途                                               |
 | ------------------------------ | -------------------------------------------------- |
-| `WINSSH_UPDATE_BASE_URL`       | Windows 自动更新 generic feed 的基础地址           |
+| `WINSSH_UPDATE_BASE_URL`       | Windows 自动更新本地开发/测试的 generic feed 基础地址 |
 | `WINSSH_ALLOW_DEV_UPDATES`     | 允许开发态写出 `dev-app-update.yml` 并测试更新链路 |
 | `WINSSH_HARDWARE_ACCELERATION` | 覆盖 Windows 默认关闭硬件加速的策略                |
 

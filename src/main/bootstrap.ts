@@ -242,6 +242,8 @@ export async function bootstrap(): Promise<void> {
     currentVersion: appInfo.version,
     devConfigPath: join(app.getAppPath(), 'dev-app-update.yml'),
     feedUrl: process.env['WINSSH_UPDATE_BASE_URL']?.trim() || null,
+    githubOwner: 'lantongxue',
+    githubRepo: 'winssh',
     isPackaged: app.isPackaged,
     platform: process.platform
   })
