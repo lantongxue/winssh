@@ -325,4 +325,33 @@ describe('WorkbenchUpdatesEditor', () => {
 
     expect(await screen.findByText('network unavailable')).toBeInTheDocument()
   })
+
+  it('renders HTML release notes as rich text and fallback plain text correctly', async () => {
+    window.winsshApi = createWinsshApiMock({
+      updates: {
+        getState: vi.fn().mockResolvedValue({
+          autoCheckEnabled: true,
+          availableUpdate: {
+            releaseDate: '2026-04-08T00:00:00.000Z',
+            releaseName: '0.2.0',
+            releaseNotes: '<h1>V0.2.0</h1><ul><li>Feature A</li></ul>',
+            version: '0.2.0'
+          },
+          currentVersion: APP_PACKAGE_VERSION,
+          downloadProgressPercent: null,
+          errorMessage: null,
+          phase: 'available',
+          supported: true,
+          unsupportedReason: null
+        })
+      }
+    })
+
+    renderUpdatesEditor()
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'V0.2.0' })
+    expect(heading).toBeInTheDocument()
+    expect(heading.closest('.changelog-html')).toBeInTheDocument()
+    expect(screen.getByText('Feature A')).toBeInTheDocument()
+  })
 })

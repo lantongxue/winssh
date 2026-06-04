@@ -260,4 +260,58 @@ describe('App update dialog', () => {
     expect(await screen.findByText('You Are Up to Date')).toBeInTheDocument()
     expect(screen.getByText('You are already on the latest available version.')).toBeInTheDocument()
   })
+
+  it('renders HTML release notes as rich text inside the update dialog', async () => {
+    const stateChangeCallbacks: Array<(state: UpdateState) => void> = []
+
+    window.winsshApi = createWinsshApiMock({
+      updates: {
+        getState: vi.fn().mockResolvedValue({
+          autoCheckEnabled: true,
+          availableUpdate: null,
+          currentVersion: '1.0.0',
+          downloadProgressPercent: null,
+          errorMessage: null,
+          phase: 'idle',
+          supported: true,
+          unsupportedReason: null
+        }),
+        onStateChange: (callback) => {
+          stateChangeCallbacks.push(callback)
+          return () => undefined
+        }
+      }
+    })
+
+    renderApp()
+
+    await screen.findByText('Workbench')
+    await waitFor(() => {
+      expect(stateChangeCallbacks).toHaveLength(1)
+    })
+
+    if (stateChangeCallbacks[0]) {
+      stateChangeCallbacks[0]({
+        autoCheckEnabled: true,
+        availableUpdate: {
+          releaseDate: '2026-04-09T00:00:00.000Z',
+          releaseName: '0.1.1',
+          releaseNotes: '<h2>Fixes</h2><ul><li>XSS vulnerability solved</li></ul>',
+          version: '0.1.1'
+        },
+        currentVersion: '1.0.0',
+        downloadProgressPercent: null,
+        errorMessage: null,
+        phase: 'available',
+        supported: true,
+        unsupportedReason: null
+      })
+    }
+
+    expect(await screen.findByText('Update Available')).toBeInTheDocument()
+    const heading = screen.getByRole('heading', { level: 2, name: 'Fixes' })
+    expect(heading).toBeInTheDocument()
+    expect(heading.closest('.changelog-html')).toBeInTheDocument()
+    expect(screen.getByText('XSS vulnerability solved')).toBeInTheDocument()
+  })
 })
