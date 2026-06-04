@@ -162,6 +162,7 @@ const workbench = {
         createSubgroup: 'New Subgroup',
         createTag: 'New Tag',
         edit: 'Edit',
+        editGroup: 'Edit',
         moveToGroup: 'Move to Group',
         removeFromFavorites: 'Remove from Favorites',
         rename: 'Rename'
@@ -234,7 +235,7 @@ const workbench = {
         titles: {
           createGroup: 'New Group',
           createTag: 'New Tag',
-          renameGroup: 'Rename Group',
+          renameGroup: 'Edit Group',
           renameTag: 'Rename Tag'
         }
       },

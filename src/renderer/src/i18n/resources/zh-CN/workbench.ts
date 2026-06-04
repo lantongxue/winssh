@@ -159,6 +159,7 @@ const workbench = {
         createSubgroup: '新建子分组',
         createTag: '新建标签',
         edit: '编辑',
+        editGroup: '修改',
         moveToGroup: '移动到分组',
         removeFromFavorites: '取消收藏',
         rename: '重命名'
@@ -230,7 +231,7 @@ const workbench = {
         titles: {
           createGroup: '新建分组',
           createTag: '新建标签',
-          renameGroup: '重命名分组',
+          renameGroup: '修改分组',
           renameTag: '重命名标签'
         }
       },
