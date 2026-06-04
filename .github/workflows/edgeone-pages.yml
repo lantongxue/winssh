@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          npm ci
+          cd official-website
           if [ $? -ne 0 ]; then
             rm -rf node_modules package-lock.json
             npm install
