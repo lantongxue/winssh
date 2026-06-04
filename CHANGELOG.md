@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.2.0](https://github.com/lantongxue/winssh/compare/v1.1.12...v1.2.0) (2026-06-04)
+
+### Features
+
+* 全新官网 ([398417f](https://github.com/lantongxue/winssh/commit/398417f46cb7062660fa072e59b6f0c98c2979e7))
+* 命令版本改为分页滚动，去掉虚拟滚动 ([fc39e0d](https://github.com/lantongxue/winssh/commit/fc39e0df4ad39fb76d16d7ca4f1b896f24edae10))
+* 增加启用历史命令记录shell脚本注入提示 ([04a4c5e](https://github.com/lantongxue/winssh/commit/04a4c5ec9c755131debebccb8a5ff53f453f3f12))
+* 增加目录收藏功能 ([7f94480](https://github.com/lantongxue/winssh/commit/7f94480f86132ea767a420feb84aa71563c8abc8))
+
+### Bug Fixes
+
+* 优化更新逻辑 ([c812761](https://github.com/lantongxue/winssh/commit/c8127619e91d289623e7b76375ba800c1155b422))
+* 优化自动更新逻辑 ([664d668](https://github.com/lantongxue/winssh/commit/664d668deb5d63512c3a996439ea52a4439b870b))
+* 使用github托管更新 ([38821b7](https://github.com/lantongxue/winssh/commit/38821b7433441ba8e9cd7c994a83f95c4dede6c5))
+* 修复离开提醒时仍可以输入命令的bug ([b541f2e](https://github.com/lantongxue/winssh/commit/b541f2e0ce860b1ada34d51da5bdeade44a33a88))
+* 修复编辑器缩进对齐的问题 ([c47a81e](https://github.com/lantongxue/winssh/commit/c47a81e20b0e87d265d856353f519be08aae9265))
+* 修复记录历史命令中执行路径不对的问题（OSC脚本的问题） ([119a4bf](https://github.com/lantongxue/winssh/commit/119a4bf03901338c3d1e3d455891f8273ea6e947))
+* 增加分组文件夹icon，改进修改分组逻辑 ([4d3c418](https://github.com/lantongxue/winssh/commit/4d3c4181eb56fe7a05ef7f227d877bea67d68d0f))
+* 统一输入框的激活样式 ([f176927](https://github.com/lantongxue/winssh/commit/f1769278cdfab0080e43e608cfc5dceb83255ace))
+
 ## [1.1.12](https://github.com/lantongxue/winssh/compare/v1.1.11...v1.1.12) (2026-05-30)
 
 ### Features
