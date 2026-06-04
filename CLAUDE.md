@@ -43,6 +43,7 @@ Vitest runs with `globals: true` (no imports needed for `describe`/`it`/`expect`
 ### IPC Contract
 
 The typed IPC contract flows through 4 files:
+
 1. `src/shared/types.ts` — domain types
 2. `src/shared/api.ts` — `WinsshApi` interface (the contract)
 3. `src/shared/ipc-channels.ts` — typed push event channels
@@ -109,7 +110,7 @@ Both sub-projects are independent npm workspaces (own `package.json`, Vite confi
 
 ## Environment Variables
 
-- `WINSSH_UPDATE_BASE_URL` — base URL for the Windows electron-updater generic feed.
+- `WINSSH_UPDATE_BASE_URL` — base URL for the Windows electron-updater generic feed (local development/testing only).
 - `WINSSH_ALLOW_DEV_UPDATES` — allow writing `dev-app-update.yml` to exercise the update flow in dev.
 - `WINSSH_HARDWARE_ACCELERATION` — override the default policy (Windows disables hardware acceleration by default).
 

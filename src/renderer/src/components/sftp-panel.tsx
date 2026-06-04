@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Send, Undo2, X } from 'lucide-react'
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
+import { Send, Undo2, X, Star, Trash2, ChevronRight, ChevronDown, Folder } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { getParentRemotePath, normalizeRemotePath } from '@shared/sftp'
 import type { RemoteEntry } from '@shared/types'
 import { sessionsClient } from '@/features/sessions/api/sessions-client'
 import { sftpClient } from '@/features/sftp/api/sftp-client'
+import { sftpBookmarksClient } from '@/features/sftp/api/sftp-bookmarks-client'
+import { queryKeys } from '@/features/shared/query-keys'
 import { systemClient } from '@/features/system/api/system-client'
 import { formatFileSize, getResolvedLocale } from '@/i18n/format'
 import { actionIcons } from '@/lib/action-icons'
@@ -201,6 +203,79 @@ export function SftpPanel({
     () => entries.filter((entry) => selectedEntrySet.has(entry.path)),
     [entries, selectedEntrySet]
   )
+
+  const [bookmarksCollapsed, setBookmarksCollapsed] = useState(true)
+
+  const bookmarksQuery = useQuery({
+    queryKey: queryKeys.sftpBookmarks(session?.serverId ?? ''),
+    queryFn: () => sftpBookmarksClient.list(session!.serverId),
+    enabled: Boolean(session && session.status === 'ready' && session.serverId)
+  })
+  const bookmarks = bookmarksQuery.data ?? []
+
+  const addBookmarkMutation = useMutation({
+    mutationFn: (path: string) => sftpBookmarksClient.add(session!.serverId, path),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.sftpBookmarks(session!.serverId) })
+      toast.success(t('workbench.sftp.bookmarks.toasts.addSuccess'))
+    },
+    onError: () => {
+      toast.error(t('workbench.sftp.bookmarks.toasts.addFailed'))
+    }
+  })
+
+  const removeBookmarkMutation = useMutation({
+    mutationFn: (id: string) => sftpBookmarksClient.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.sftpBookmarks(session!.serverId) })
+      toast.success(t('workbench.sftp.bookmarks.toasts.removeSuccess'))
+    },
+    onError: () => {
+      toast.error(t('workbench.sftp.bookmarks.toasts.removeFailed'))
+    }
+  })
+
+  const removeBookmarkByPathMutation = useMutation({
+    mutationFn: (path: string) => sftpBookmarksClient.deleteByPath(session!.serverId, path),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.sftpBookmarks(session!.serverId) })
+      toast.success(t('workbench.sftp.bookmarks.toasts.removeSuccess'))
+    },
+    onError: () => {
+      toast.error(t('workbench.sftp.bookmarks.toasts.removeFailed'))
+    }
+  })
+
+  const isBookmarked = (path: string) => {
+    return bookmarks.some((b) => b.path === normalizeRemotePath(path))
+  }
+  const isCurrentBookmarked = isBookmarked(currentPath)
+
+  const toggleCurrentBookmark = () => {
+    const normalized = normalizeRemotePath(currentPath)
+    if (isCurrentBookmarked) {
+      removeBookmarkByPathMutation.mutate(normalized)
+    } else {
+      addBookmarkMutation.mutate(normalized)
+    }
+  }
+
+  const toggleBookmarkDirectory = (path: string) => {
+    const normalized = normalizeRemotePath(path)
+    if (isBookmarked(normalized)) {
+      removeBookmarkByPathMutation.mutate(normalized)
+    } else {
+      addBookmarkMutation.mutate(normalized)
+    }
+  }
+
+  const handleBookmarkClick = (path: string) => {
+    openDirectory(path)
+    const escapedPath = path.replace(/(["\\])/g, '\\$1')
+    sessionsClient.write(session!.sessionId, `cd "${escapedPath}"\r`)
+    requestTerminalFocus(session!.sessionId)
+  }
+
   if (!session) {
     return (
       <div className="flex h-full items-center justify-center bg-muted/20">
@@ -533,8 +608,12 @@ export function SftpPanel({
             onDragEnd={onHeaderDragEnd}
           >
             <div className="min-w-0 flex flex-col">
-              <span className="text-sm font-bold tracking-tight text-foreground">{t('workbench.sftp.explorer')}</span>
-              <span className="truncate text-[11px] text-muted-foreground mt-0.5 opacity-80">{session.serverName}</span>
+              <span className="text-sm font-bold tracking-tight text-foreground">
+                {t('workbench.sftp.explorer')}
+              </span>
+              <span className="truncate text-[11px] text-muted-foreground mt-0.5 opacity-80">
+                {session.serverName}
+              </span>
             </div>
             <div className="flex items-center gap-1">
               <TooltipIconButton
@@ -555,6 +634,24 @@ export function SftpPanel({
                 {t('workbench.sftp.labels.currentPath')}
               </div>
               <div className="flex items-center gap-1">
+                <TooltipIconButton
+                  variant="ghost"
+                  size="icon-xs"
+                  className={cn(
+                    'shrink-0 size-6 transition-colors',
+                    isCurrentBookmarked
+                      ? 'text-amber-500 hover:text-amber-600'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-[var(--workbench-hover)]'
+                  )}
+                  label={
+                    isCurrentBookmarked
+                      ? t('workbench.sftp.bookmarks.removeBookmark')
+                      : t('workbench.sftp.bookmarks.addBookmark')
+                  }
+                  onClick={toggleCurrentBookmark}
+                >
+                  <Star className={cn('size-3.5', isCurrentBookmarked && 'fill-current')} />
+                </TooltipIconButton>
                 <TooltipIconButton
                   variant="ghost"
                   size="icon-xs"
@@ -581,7 +678,7 @@ export function SftpPanel({
 
             <Textarea
               aria-label={t('workbench.sftp.labels.currentPath')}
-              className="min-h-[58px] resize-none overflow-y-auto border-[var(--workbench-border)] bg-[var(--workbench-input)] font-mono text-[11px] leading-relaxed shadow-none [overflow-wrap:anywhere] focus-visible:border-[var(--workbench-active)] focus-visible:ring-1 focus-visible:ring-[var(--workbench-active)]/50 focus-visible:ring-offset-0 focus-visible:bg-[var(--workbench-input)] focus:bg-[var(--workbench-input)]"
+              className="min-h-[58px] resize-none overflow-y-auto border-[var(--workbench-border)] bg-[var(--workbench-input)] font-mono text-[11px] leading-relaxed shadow-none [overflow-wrap:anywhere] focus-visible:bg-[var(--workbench-input)] focus:bg-[var(--workbench-input)]"
               rows={3}
               spellCheck={false}
               value={pathInputValue}
@@ -597,21 +694,99 @@ export function SftpPanel({
             />
           </div>
 
+          {/* Bookmarks Collapsible Section */}
+          <div className="mt-3 border-t border-[var(--workbench-border)] pt-3">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between text-[10px] font-bold tracking-wider text-muted-foreground uppercase opacity-85 hover:text-foreground transition-colors"
+              onClick={() => setBookmarksCollapsed(!bookmarksCollapsed)}
+            >
+              <div className="flex items-center gap-1.5">
+                <Star
+                  className={cn(
+                    'size-3.5',
+                    bookmarks.length > 0 && 'fill-amber-500 text-amber-500'
+                  )}
+                />
+                <span>{t('workbench.sftp.bookmarks.title')}</span>
+                {bookmarks.length > 0 && (
+                  <span className="ml-1.5 rounded-full bg-[var(--workbench-border)] px-1.5 py-0.5 text-[9px] font-medium normal-case">
+                    {bookmarks.length}
+                  </span>
+                )}
+              </div>
+              <div>
+                {bookmarksCollapsed ? (
+                  <ChevronRight className="size-3.5" />
+                ) : (
+                  <ChevronDown className="size-3.5" />
+                )}
+              </div>
+            </button>
+
+            {!bookmarksCollapsed && (
+              <div className="mt-2 max-h-40 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
+                {bookmarks.length === 0 ? (
+                  <div className="text-[11px] text-muted-foreground/80 py-1 px-1.5 italic">
+                    {t('workbench.sftp.bookmarks.empty')}
+                  </div>
+                ) : (
+                  bookmarks.map((bookmark) => (
+                    <div
+                      key={bookmark.id}
+                      className="group flex items-center justify-between gap-2 rounded px-2 py-1 text-xs hover:bg-[var(--workbench-hover)] transition-colors"
+                    >
+                      <button
+                        type="button"
+                        className="flex-1 min-w-0 text-left flex items-center gap-2 font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                        title={bookmark.path}
+                        onClick={() => handleBookmarkClick(bookmark.path)}
+                      >
+                        <Folder className="size-3.5 text-[var(--workbench-active)] shrink-0" />
+                        <span className="truncate">{bookmark.path}</span>
+                      </button>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <TooltipIconButton
+                          variant="ghost"
+                          size="icon-xs"
+                          className="size-5 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          label={t('workbench.sftp.bookmarks.removeBookmark')}
+                          onClick={() => removeBookmarkMutation.mutate(bookmark.id)}
+                        >
+                          <Trash2 className="size-3" />
+                        </TooltipIconButton>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
           <div className="mt-3 flex items-center gap-1">
-            <div className="flex items-center gap-0.5 rounded-lg border border-[var(--workbench-border)] bg-[color-mix(in_srgb,var(--workbench-hover)_40%,transparent)] p-0.5">
+            <div className="flex items-center gap-0.5">
               <TooltipIconButton
-                variant={viewMode === 'flat' ? 'secondary' : 'ghost'}
+                variant="ghost"
                 size="icon-xs"
-                className="size-7"
+                className={cn(
+                  'size-7 transition-all',
+                  viewMode === 'flat'
+                    ? 'bg-[var(--workbench-active)] text-white shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
                 label={t('workbench.sftp.actions.flatView')}
                 onClick={() => setViewMode('flat')}
               >
                 <ListIcon className="size-3.5" />
               </TooltipIconButton>
               <TooltipIconButton
-                variant={viewMode === 'tree' ? 'secondary' : 'ghost'}
+                variant="ghost"
                 size="icon-xs"
-                className="size-7"
+                className={cn(
+                  'size-7 transition-all',
+                  viewMode === 'tree'
+                    ? 'bg-[var(--workbench-active)] text-white shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
                 label={t('workbench.sftp.actions.treeView')}
                 onClick={() => {
                   setViewMode('tree')
@@ -723,6 +898,8 @@ export function SftpPanel({
                   onResolveContextMenuTargets={resolveContextMenuTargets}
                   onGetEntryMeta={getEntryMeta}
                   onEditFile={onEditFile}
+                  isBookmarked={isBookmarked}
+                  onToggleBookmarkDirectory={toggleBookmarkDirectory}
                 />
               ) : null}
               {viewMode === 'tree' && !listingQuery.isLoading && session ? (
@@ -753,6 +930,8 @@ export function SftpPanel({
                     treeViewRef.current?.renameExpandedPath(oldPath, newPath)
                   }
                   onEditFile={onEditFile}
+                  isBookmarked={isBookmarked}
+                  onToggleBookmarkDirectory={toggleBookmarkDirectory}
                 />
               ) : null}
             </div>

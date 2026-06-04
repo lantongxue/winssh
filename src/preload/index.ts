@@ -234,8 +234,8 @@ const api: WinsshApi = {
     readFile: (sessionId, remotePath) => ipcRenderer.invoke('sftp:readFile', sessionId, remotePath),
     cancelReadFile: (sessionId, remotePath) =>
       ipcRenderer.send('sftp:cancelReadFile', sessionId, remotePath),
-    writeFile: (sessionId, remotePath, contents) =>
-      ipcRenderer.invoke('sftp:writeFile', sessionId, remotePath, contents),
+    writeFile: (sessionId, remotePath, contents, encoding) =>
+      ipcRenderer.invoke('sftp:writeFile', sessionId, remotePath, contents, encoding),
     mkdir: (sessionId, remotePath, name) =>
       ipcRenderer.invoke('sftp:mkdir', sessionId, remotePath, name),
     rename: (sessionId, remotePath, newName) =>
@@ -277,6 +277,13 @@ const api: WinsshApi = {
     create: (input) => ipcRenderer.invoke('customCommands:create', input),
     update: (id, input) => ipcRenderer.invoke('customCommands:update', id, input),
     delete: (id) => ipcRenderer.invoke('customCommands:delete', id)
+  },
+  sftpBookmarks: {
+    list: (serverId) => ipcRenderer.invoke('sftpBookmarks:list', serverId),
+    add: (serverId, path) => ipcRenderer.invoke('sftpBookmarks:add', serverId, path),
+    delete: (id) => ipcRenderer.invoke('sftpBookmarks:delete', id),
+    deleteByPath: (serverId, path) =>
+      ipcRenderer.invoke('sftpBookmarks:deleteByPath', serverId, path)
   },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
@@ -326,6 +333,7 @@ const api: WinsshApi = {
     getCapabilities: () => ipcRenderer.invoke('system:getCapabilities'),
     relaunch: () => ipcRenderer.invoke('system:relaunch'),
     respondHostTrust: (result) => ipcRenderer.invoke('system:respondHostTrust', result),
+    getShellIntegrationScript: () => ipcRenderer.invoke('system:getShellIntegrationScript'),
     menu: {
       onAction: (callback) => subscribe('system:menuAction', callback)
     },

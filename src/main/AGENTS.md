@@ -39,16 +39,16 @@ src/main/
 
 ## WHERE TO LOOK
 
-| Task | File(s) | Notes |
-|------|---------|-------|
-| Add IPC handler | application service + matching ipc/register-* | Handler delegates to app service, not manager directly |
-| Add server DB column | database.ts + servers-application-service.ts + shared/validation.ts | Cross-cutting: schema, row mapping, saveServer(), Zod |
-| Modify SSH connection flow | session-manager.ts establishConnection() + bindRuntimeClient() | ssh2 callback-to-Promise wrapping pattern throughout |
-| Add SFTP operation | session-manager.ts + sessions-application-service.ts + ipc/register-session | SFTP text-only — readFile/writeFile are string APIs |
-| Add port forward type | session-manager.ts + sessions-application-service.ts | Session-scoped memory only, no DB persistence |
-| Add theme pack feature | theme-registry.ts + themes/builtin/ | JSON theme packs, not CSS |
-| Modify backup/restore | webdav-backup-service.ts | Restore triggers system:relaunch — app exits |
-| Add main process dialog text | localization.ts | Must add both en-US and zh-CN strings |
+| Task                         | File(s)                                                                     | Notes                                                  |
+| ---------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Add IPC handler              | application service + matching ipc/register-\*                              | Handler delegates to app service, not manager directly |
+| Add server DB column         | database.ts + servers-application-service.ts + shared/validation.ts         | Cross-cutting: schema, row mapping, saveServer(), Zod  |
+| Modify SSH connection flow   | session-manager.ts establishConnection() + bindRuntimeClient()              | ssh2 callback-to-Promise wrapping pattern throughout   |
+| Add SFTP operation           | session-manager.ts + sessions-application-service.ts + ipc/register-session | SFTP text-only — readFile/writeFile are string APIs    |
+| Add port forward type        | session-manager.ts + sessions-application-service.ts                        | Session-scoped memory only, no DB persistence          |
+| Add theme pack feature       | theme-registry.ts + themes/builtin/                                         | JSON theme packs, not CSS                              |
+| Modify backup/restore        | webdav-backup-service.ts                                                    | Restore triggers system:relaunch — app exits           |
+| Add main process dialog text | localization.ts                                                             | Must add both en-US and zh-CN strings                  |
 
 ## CONVENTIONS
 

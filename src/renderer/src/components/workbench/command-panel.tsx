@@ -1,5 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
-import { useVirtualizer } from '@tanstack/react-virtual'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Clock,
   Copy,
@@ -26,12 +25,11 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { useCommandHistory } from '@/features/command-history/hooks/use-command-history'
 import { useCustomCommands } from '@/features/custom-commands/hooks/use-custom-commands'
-
-const ROW_HEIGHT = 76
 
 function TooltipIconButton({
   children,
@@ -137,19 +135,28 @@ export function CommandPanel({
   const displayItems = activeTab === 'history' ? filteredHistory : filteredCustom
   const isLoading = activeTab === 'history' ? historyLoading : customLoading
 
-  // ──── Virtualization ────
+  // ──── Pagination ────
   const scrollRef = useRef<HTMLDivElement | null>(null)
-  const virtualizer = useVirtualizer({
-    count: displayItems.length,
-    getScrollElement: () => scrollRef.current,
-    estimateSize: () => ROW_HEIGHT,
-    overscan: 8,
-    getItemKey: (index) => {
-      const item = displayItems[index]
-      if (!item) return index
-      return 'id' in item ? item.id : `custom-${index}`
+  const [visibleCount, setVisibleCount] = useState(20)
+
+  // Reset pagination when filter/search/tab changes
+  useEffect(() => {
+    setVisibleCount(20)
+  }, [activeTab, searchQuery, historyFilter])
+
+  const handleScroll = useCallback(() => {
+    const container = scrollRef.current
+    if (!container) return
+
+    const { scrollTop, scrollHeight, clientHeight } = container
+    // When scrolled near the bottom (within 50px of the bottom)
+    if (scrollHeight - scrollTop - clientHeight < 50) {
+      setVisibleCount((prev) => {
+        if (prev >= displayItems.length) return prev
+        return Math.min(prev + 20, displayItems.length)
+      })
     }
-  })
+  }, [displayItems.length])
 
   // ──── Drawer helpers ────
   const openAddDrawer = () => {
@@ -371,7 +378,7 @@ export function CommandPanel({
         </div>
 
         {/* ── Search & Filters ── */}
-        <div className="flex flex-col gap-2 px-4 py-2 border-b border-[var(--workbench-border)]/50">
+        <div className="flex flex-col gap-2 px-4 py-4">
           <div className="relative group">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground group-focus-within:text-[var(--workbench-active)] transition-colors" />
             <Input
@@ -388,56 +395,49 @@ export function CommandPanel({
 
           {activeTab === 'history' && (
             <div className="flex items-center justify-between gap-4">
-              <div className="flex flex-1 gap-1">
-                <button
-                  onClick={() => setHistoryFilter('all')}
-                  className={cn(
-                    'flex-1 text-[11px] py-0.5',
-                    historyFilter === 'all'
-                      ? 'bg-[var(--workbench-input)]'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
+              <ToggleGroup
+                type="single"
+                value={historyFilter}
+                onValueChange={(val) => {
+                  if (val) setHistoryFilter(val as 'all' | 'success' | 'failed')
+                }}
+                className="flex flex-1 items-center bg-[var(--workbench-hover)]/40 p-1"
+              >
+                <ToggleGroupItem
+                  value="all"
+                  className="flex-1 text-[11px] py-0.5 font-normal h-7 transition-all data-[state=on]:bg-[var(--workbench-input)] data-[state=on]:text-foreground data-[state=on]:font-semibold data-[state=on]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
                 >
                   {t('workbench.commandHistory.filterAll')}
-                </button>
-                <button
-                  onClick={() => setHistoryFilter('success')}
-                  className={cn(
-                    'flex-1 text-[11px] py-0.5t',
-                    historyFilter === 'success'
-                      ? 'bg-[var(--workbench-input)]'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="success"
+                  className="flex-1 text-[11px] py-0.5 font-normal h-7 transition-all data-[state=on]:bg-emerald-500/10 data-[state=on]:text-emerald-600 dark:data-[state=on]:text-emerald-400 data-[state=on]:font-semibold data-[state=on]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
                 >
                   {t('workbench.commandHistory.filterSuccess')}
-                </button>
-                <button
-                  onClick={() => setHistoryFilter('failed')}
-                  className={cn(
-                    'flex-1 text-[11px] py-0.5',
-                    historyFilter === 'failed'
-                      ? 'bg-[var(--workbench-input)]'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="failed"
+                  className="flex-1 text-[11px] py-0.5 font-normal h-7 transition-all data-[state=on]:bg-red-500/10 data-[state=on]:text-red-600 dark:data-[state=on]:text-red-400 data-[state=on]:font-semibold data-[state=on]:shadow-sm text-muted-foreground hover:text-foreground hover:bg-transparent"
                 >
                   {t('workbench.commandHistory.filterFailed')}
-                </button>
-              </div>
+                </ToggleGroupItem>
+              </ToggleGroup>
 
               {entries.length > 0 && (
-                <button
+                <Button
+                  variant="ghost"
                   onClick={handleClear}
-                  className="shrink-0 text-[11px] font-medium text-muted-foreground hover:text-destructive transition-colors px-1 cursor-default"
+                  className="text-[11px] font-medium text-muted-foreground hover:text-destructive"
                 >
                   {t('workbench.commandPanel.clearHistory')}
-                </button>
+                </Button>
               )}
             </div>
           )}
         </div>
 
         {/* ── List ── */}
-        <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
+        <div ref={scrollRef} onScroll={handleScroll} className="min-h-0 flex-1 overflow-auto">
           {isLoading ? (
             <div className="space-y-2 p-4">
               <div className="h-[64px] rounded-lg bg-[var(--workbench-hover)] animate-pulse" />
@@ -448,27 +448,14 @@ export function CommandPanel({
           ) : displayItems.length === 0 ? (
             emptyState()
           ) : (
-            <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
-              {virtualizer.getVirtualItems().map((virtualRow) => {
-                const item = displayItems[virtualRow.index]
-                if (!item) return null
-
-                const style: React.CSSProperties = {
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  transform: `translateY(${virtualRow.start}px)`,
-                  height: `${virtualRow.size}px`
-                }
-
+            <div className="flex flex-col py-1">
+              {displayItems.slice(0, visibleCount).map((item) => {
                 if (activeTab === 'history') {
                   const entry = item as CommandHistoryEntry
                   return (
                     <HistoryRow
                       key={entry.id}
                       entry={entry}
-                      style={style}
                       onInsert={() => handleInsert(entry.command)}
                       onRun={() => handleRun(entry.command)}
                       onCopy={() => handleCopy(entry.command)}
@@ -484,7 +471,6 @@ export function CommandPanel({
                   <CustomRow
                     key={cmd.id}
                     command={cmd}
-                    style={style}
                     onInsert={() => handleInsert(cmd.command)}
                     onRun={() => handleRun(cmd.command)}
                     onCopy={() => handleCopy(cmd.command)}
@@ -619,7 +605,6 @@ export function CommandPanel({
 // ──── History Row ────
 interface HistoryRowProps {
   entry: CommandHistoryEntry
-  style: React.CSSProperties
   onInsert: () => void
   onRun: () => void
   onCopy: () => void
@@ -630,7 +615,6 @@ interface HistoryRowProps {
 
 function HistoryRow({
   entry,
-  style,
   onInsert,
   onRun,
   onCopy,
@@ -644,28 +628,19 @@ function HistoryRow({
   const isSuccess = entry.exitCode === 0
 
   return (
-    <div style={style} className="px-3 py-1">
+    <div className="px-4 py-1">
       <div
-        className="group relative flex flex-col h-full px-3.5 py-2.5 bg-[var(--workbench-editor)] border border-[var(--workbench-border)]/70 hover:border-[var(--workbench-active)]/50 transition-colors cursor-pointer select-none overflow-hidden"
+        className="group relative flex flex-col px-3.5 py-2.5 border border-[var(--workbench-border)]/70 hover:border-[var(--workbench-active)]/50 transition-colors cursor-pointer select-none overflow-hidden"
         onDoubleClick={onInsert}
       >
         {/* Content */}
-        <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <code className="block truncate font-mono text-[12px] text-foreground w-full leading-relaxed cursor-help pr-10">
-                {entry.command}
-              </code>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-[320px] break-all flex flex-col gap-1 px-2.5 py-2">
-              <span className="font-mono text-[10.5px] select-text text-foreground leading-normal">
-                {entry.command}
-              </span>
-              <span className="text-[10px] text-muted-foreground border-t border-border/30 pt-1.5 mt-1">
-                {t('workbench.commandHistory.reRun')}
-              </span>
-            </TooltipContent>
-          </Tooltip>
+        <div className="flex-1 min-w-0 flex flex-col justify-between pr-10">
+          <code
+            className="block truncate font-mono text-[12px] text-foreground w-full leading-relaxed cursor-help"
+            title={`${entry.command}\n\n${t('workbench.commandHistory.reRun')}`}
+          >
+            {entry.command}
+          </code>
           <div className="flex items-center gap-4 text-[11px] text-muted-foreground mt-2.5 leading-none pr-2">
             <span className="tabular-nums opacity-85 shrink-0">{time}</span>
             {entry.cwd && (
@@ -682,13 +657,16 @@ function HistoryRow({
                 </span>
               )}
               {hasExitCode && (
-                <span className={cn(
-                  "px-1.5 py-0.5 rounded-sm font-medium",
-                  isSuccess 
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" 
-                    : "bg-red-500/10 text-red-600 dark:text-red-400"
-                )}>
-                  {t('workbench.commandHistory.exitCode', { defaultValue: '退出码' })}:{entry.exitCode}
+                <span
+                  className={cn(
+                    'px-1.5 py-0.5 rounded-sm font-medium',
+                    isSuccess
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-red-500/10 text-red-600 dark:text-red-400'
+                  )}
+                >
+                  {t('workbench.commandHistory.exitCode', { defaultValue: '退出码' })}:
+                  {entry.exitCode}
                 </span>
               )}
             </div>
@@ -697,65 +675,49 @@ function HistoryRow({
 
         {/* Hover actions */}
         <div className="absolute right-0 top-0 bottom-0 flex items-center gap-1.5 px-3 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-150 bg-gradient-to-l from-[var(--workbench-editor)] via-[var(--workbench-editor)] to-transparent pl-12">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                className="flex items-center justify-center size-7 rounded bg-[var(--workbench-input)] border border-[var(--workbench-border)] text-muted-foreground hover:text-emerald-600 hover:border-emerald-500/50 hover:bg-emerald-500/10 transition-all shadow-sm focus:outline-none"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onRun()
-                }}
-              >
-                <Play className="size-3.5 fill-current" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{t('workbench.commandPanel.runImmediately')}</TooltipContent>
-          </Tooltip>
+          <button
+            className="flex items-center justify-center size-7 rounded bg-[var(--workbench-input)] border border-[var(--workbench-border)] text-muted-foreground hover:text-emerald-600 hover:border-emerald-500/50 hover:bg-emerald-500/10 transition-all shadow-sm focus:outline-none"
+            title={t('workbench.commandPanel.runImmediately')}
+            onClick={(e) => {
+              e.stopPropagation()
+              onRun()
+            }}
+          >
+            <Play className="size-3.5 fill-current" />
+          </button>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                className="flex items-center justify-center size-7 rounded bg-[var(--workbench-input)] border border-[var(--workbench-border)] text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:bg-[var(--workbench-hover)] transition-all shadow-sm focus:outline-none"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onCopy()
-                }}
-              >
-                <Copy className="size-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{t('workbench.commandPanel.copyToClipboard')}</TooltipContent>
-          </Tooltip>
+          <button
+            className="flex items-center justify-center size-7 rounded bg-[var(--workbench-input)] border border-[var(--workbench-border)] text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:bg-[var(--workbench-hover)] transition-all shadow-sm focus:outline-none"
+            title={t('workbench.commandPanel.copyToClipboard')}
+            onClick={(e) => {
+              e.stopPropagation()
+              onCopy()
+            }}
+          >
+            <Copy className="size-3.5" />
+          </button>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                className="flex items-center justify-center size-7 rounded bg-[var(--workbench-input)] border border-[var(--workbench-border)] text-muted-foreground hover:text-[var(--workbench-active)] hover:border-[var(--workbench-active)]/50 hover:bg-[color-mix(in_srgb,var(--workbench-active)_10%,transparent)] transition-all shadow-sm focus:outline-none"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onBookmark()
-                }}
-              >
-                <Star className="size-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{t('workbench.commandPanel.bookmark')}</TooltipContent>
-          </Tooltip>
+          <button
+            className="flex items-center justify-center size-7 rounded bg-[var(--workbench-input)] border border-[var(--workbench-border)] text-muted-foreground hover:text-[var(--workbench-active)] hover:border-[var(--workbench-active)]/50 hover:bg-[color-mix(in_srgb,var(--workbench-active)_10%,transparent)] transition-all shadow-sm focus:outline-none"
+            title={t('workbench.commandPanel.bookmark')}
+            onClick={(e) => {
+              e.stopPropagation()
+              onBookmark()
+            }}
+          >
+            <Star className="size-3.5" />
+          </button>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                className="flex items-center justify-center size-7 rounded bg-[var(--workbench-input)] border border-[var(--workbench-border)] text-muted-foreground hover:text-destructive hover:border-destructive/50 hover:bg-destructive/10 transition-all shadow-sm focus:outline-none"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onDelete()
-                }}
-              >
-                <Trash2 className="size-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{t('workbench.commandPanel.deleteEntry')}</TooltipContent>
-          </Tooltip>
+          <button
+            className="flex items-center justify-center size-7 rounded bg-[var(--workbench-input)] border border-[var(--workbench-border)] text-muted-foreground hover:text-destructive hover:border-destructive/50 hover:bg-destructive/10 transition-all shadow-sm focus:outline-none"
+            title={t('workbench.commandPanel.deleteEntry')}
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete()
+            }}
+          >
+            <Trash2 className="size-3.5" />
+          </button>
         </div>
       </div>
     </div>
@@ -765,7 +727,6 @@ function HistoryRow({
 // ──── Custom Command Row ────
 interface CustomRowProps {
   command: { id: string; name: string; command: string }
-  style: React.CSSProperties
   onInsert: () => void
   onRun: () => void
   onCopy: () => void
@@ -773,99 +734,74 @@ interface CustomRowProps {
   onDelete: () => void
 }
 
-function CustomRow({ command, style, onInsert, onRun, onCopy, onEdit, onDelete }: CustomRowProps) {
+function CustomRow({ command, onInsert, onRun, onCopy, onEdit, onDelete }: CustomRowProps) {
   const { t } = useTranslation()
 
   return (
-    <div style={style} className="px-3 py-1">
+    <div className="px-4 py-1">
       <div
-        className="group relative flex flex-col h-full px-3.5 py-2.5 bg-[var(--workbench-editor)] border border-[var(--workbench-border)]/70 hover:border-[var(--workbench-active)]/50 transition-colors cursor-pointer select-none overflow-hidden"
+        className="group relative flex flex-col px-3.5 py-2.5 bg-[var(--workbench-editor)] border border-[var(--workbench-border)]/70 hover:border-[var(--workbench-active)]/50 transition-colors cursor-pointer select-none overflow-hidden"
         onDoubleClick={onInsert}
       >
         {/* Content */}
-        <div className="flex-1 min-w-0 flex flex-col justify-between h-full pr-10">
+        <div className="flex-1 min-w-0 flex flex-col justify-between pr-10">
           <div className="flex items-center gap-2 mb-1.5">
             <Star className="size-3.5 text-[var(--workbench-active)] shrink-0 fill-current opacity-85" />
             <div className="text-xs font-semibold text-foreground truncate">{command.name}</div>
           </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <code className="block truncate font-mono text-[11.5px] text-foreground/75 w-full leading-relaxed cursor-help">
-                {command.command}
-              </code>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-[320px] break-all flex flex-col gap-1 px-2.5 py-2">
-              <span className="font-mono text-[10.5px] select-text text-foreground leading-normal">
-                {command.command}
-              </span>
-              <span className="text-[10px] text-muted-foreground border-t border-border/30 pt-1.5 mt-1">
-                {t('workbench.commandHistory.reRun')}
-              </span>
-            </TooltipContent>
-          </Tooltip>
+          <code
+            className="block truncate font-mono text-[11.5px] text-foreground/75 w-full leading-relaxed cursor-help"
+            title={`${command.command}\n\n${t('workbench.commandHistory.reRun')}`}
+          >
+            {command.command}
+          </code>
         </div>
 
         {/* Hover actions */}
         <div className="absolute right-0 top-0 bottom-0 flex items-center gap-1.5 px-3 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-150 bg-gradient-to-l from-[var(--workbench-editor)] via-[var(--workbench-editor)] to-transparent pl-12">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                className="flex items-center justify-center size-7 rounded bg-[var(--workbench-input)] border border-[var(--workbench-border)] text-muted-foreground hover:text-emerald-600 hover:border-emerald-500/50 hover:bg-emerald-500/10 transition-all shadow-sm focus:outline-none"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onRun()
-                }}
-              >
-                <Play className="size-3.5 fill-current" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{t('workbench.commandPanel.runImmediately')}</TooltipContent>
-          </Tooltip>
+          <button
+            className="flex items-center justify-center size-7 rounded bg-[var(--workbench-input)] border border-[var(--workbench-border)] text-muted-foreground hover:text-emerald-600 hover:border-emerald-500/50 hover:bg-emerald-500/10 transition-all shadow-sm focus:outline-none"
+            title={t('workbench.commandPanel.runImmediately')}
+            onClick={(e) => {
+              e.stopPropagation()
+              onRun()
+            }}
+          >
+            <Play className="size-3.5 fill-current" />
+          </button>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                className="flex items-center justify-center size-7 rounded bg-[var(--workbench-input)] border border-[var(--workbench-border)] text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:bg-[var(--workbench-hover)] transition-all shadow-sm focus:outline-none"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onCopy()
-                }}
-              >
-                <Copy className="size-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{t('workbench.commandPanel.copyToClipboard')}</TooltipContent>
-          </Tooltip>
+          <button
+            className="flex items-center justify-center size-7 rounded bg-[var(--workbench-input)] border border-[var(--workbench-border)] text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:bg-[var(--workbench-hover)] transition-all shadow-sm focus:outline-none"
+            title={t('workbench.commandPanel.copyToClipboard')}
+            onClick={(e) => {
+              e.stopPropagation()
+              onCopy()
+            }}
+          >
+            <Copy className="size-3.5" />
+          </button>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                className="flex items-center justify-center size-7 rounded bg-[var(--workbench-input)] border border-[var(--workbench-border)] text-muted-foreground hover:text-[var(--workbench-active)] hover:border-[var(--workbench-active)]/50 hover:bg-[color-mix(in_srgb,var(--workbench-active)_10%,transparent)] transition-all shadow-sm focus:outline-none"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onEdit()
-                }}
-              >
-                <Pencil className="size-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{t('common.actions.edit')}</TooltipContent>
-          </Tooltip>
+          <button
+            className="flex items-center justify-center size-7 rounded bg-[var(--workbench-input)] border border-[var(--workbench-border)] text-muted-foreground hover:text-[var(--workbench-active)] hover:border-[var(--workbench-active)]/50 hover:bg-[color-mix(in_srgb,var(--workbench-active)_10%,transparent)] transition-all shadow-sm focus:outline-none"
+            title={t('common.actions.edit')}
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit()
+            }}
+          >
+            <Pencil className="size-3.5" />
+          </button>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                className="flex items-center justify-center size-7 rounded bg-[var(--workbench-input)] border border-[var(--workbench-border)] text-muted-foreground hover:text-destructive hover:border-destructive/50 hover:bg-destructive/10 transition-all shadow-sm focus:outline-none"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onDelete()
-                }}
-              >
-                <Trash2 className="size-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{t('workbench.commandPanel.custom.delete')}</TooltipContent>
-          </Tooltip>
+          <button
+            className="flex items-center justify-center size-7 rounded bg-[var(--workbench-input)] border border-[var(--workbench-border)] text-muted-foreground hover:text-destructive hover:border-destructive/50 hover:bg-destructive/10 transition-all shadow-sm focus:outline-none"
+            title={t('workbench.commandPanel.custom.delete')}
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete()
+            }}
+          >
+            <Trash2 className="size-3.5" />
+          </button>
         </div>
       </div>
     </div>

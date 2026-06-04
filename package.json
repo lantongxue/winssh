@@ -5,6 +5,10 @@
   "main": "./out/main/index.js",
   "author": "winssh",
   "homepage": "https://github.com/lantongxue/winssh",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lantongxue/winssh.git"
+  },
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --cache .",

@@ -92,12 +92,7 @@ describe('systemClient — appFocus/appActivity subscription methods', () => {
   })
 
   it('appActivity supports all phase types', () => {
-    const phases: AppActivityEvent['phase'][] = [
-      'sleep',
-      'wake',
-      'lock-screen',
-      'unlock-screen'
-    ]
+    const phases: AppActivityEvent['phase'][] = ['sleep', 'wake', 'lock-screen', 'unlock-screen']
 
     for (const phase of phases) {
       let capturedEvent: AppActivityEvent | null = null

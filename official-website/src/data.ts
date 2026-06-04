@@ -1,5 +1,5 @@
-import { DownloadPlatform } from './types';
-import pkg from '../package.json';
+import { DownloadPlatform } from './types'
+import pkg from '../package.json'
 
 export const DOWNLOADS: DownloadPlatform[] = [
   {
@@ -47,4 +47,4 @@ export const DOWNLOADS: DownloadPlatform[] = [
     fileSize: '35.4 MB',
     fileFormat: '.AppImage'
   }
-];
+]

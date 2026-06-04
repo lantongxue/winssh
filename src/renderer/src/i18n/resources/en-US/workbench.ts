@@ -162,6 +162,7 @@ const workbench = {
         createSubgroup: 'New Subgroup',
         createTag: 'New Tag',
         edit: 'Edit',
+        editGroup: 'Edit',
         moveToGroup: 'Move to Group',
         removeFromFavorites: 'Remove from Favorites',
         rename: 'Rename'
@@ -234,7 +235,7 @@ const workbench = {
         titles: {
           createGroup: 'New Group',
           createTag: 'New Tag',
-          renameGroup: 'Rename Group',
+          renameGroup: 'Edit Group',
           renameTag: 'Rename Tag'
         }
       },
@@ -412,7 +413,11 @@ const workbench = {
       },
       kinds: {
         local: 'Local Forward',
-        remote: 'Remote Forward'
+        remote: 'Remote Forward',
+        localSource: 'Local Listener',
+        remoteSource: 'Remote Listener',
+        localDest: 'Remote Target',
+        remoteDest: 'Local Target'
       },
       statuses: {
         active: 'Active',
@@ -693,6 +698,19 @@ const workbench = {
       }
     },
     sftp: {
+      bookmarks: {
+        title: 'Bookmarked Directories',
+        empty: 'No bookmarked directories for this server yet.',
+        addBookmark: 'Bookmark current directory',
+        removeBookmark: 'Remove bookmark',
+        jumpToBookmark: 'Jump to bookmark in terminal',
+        toasts: {
+          addSuccess: 'Directory bookmarked.',
+          addFailed: 'Failed to bookmark directory.',
+          removeSuccess: 'Bookmark removed.',
+          removeFailed: 'Failed to remove bookmark.'
+        }
+      },
       actions: {
         backToParent: 'Go to Parent Directory',
         copyPath: 'Copy Path',
@@ -893,6 +911,7 @@ const workbench = {
       serverIdentity: 'Server Identity',
       localTerminal: 'Local Terminal',
       sshInfo: 'SSH Info',
+      sshSession: 'SSH Session',
       currentSession: 'Current session',
       shellType: 'Shell Type',
       timeoutSetting: 'Away Timeout',
@@ -924,6 +943,8 @@ const workbench = {
       captureUnavailable: 'Capture unavailable (shell integration not detected).',
       captureHint:
         'Commands are captured via shell integration. Bash and zsh are supported; fish and other shells are not.',
+      injectionWarning:
+        'Enabling this option will automatically inject the following integration script into the server upon connection:',
       enableForServer: 'Record command history for this server',
       enableGlobal: 'Enable command history globally',
       cwdLabel: 'cwd',

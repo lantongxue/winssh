@@ -20,6 +20,13 @@ vi.mock('sonner', () => ({
   }
 }))
 
+vi.mock('monaco-editor/esm/vs/basic-languages/shell/shell.contribution.js', () => ({}))
+vi.mock('monaco-editor/esm/vs/editor/editor.api.js', () => ({
+  editor: {
+    colorize: vi.fn().mockImplementation((text) => Promise.resolve(`<div>${text}</div>`))
+  }
+}))
+
 function createTestQueryClient() {
   return new QueryClient({
     defaultOptions: {
@@ -794,5 +801,32 @@ describe('WorkbenchSettingsEditor theme selection', () => {
 
     expect(await screen.findByRole('button', { name: 'Appearance' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Updates' })).not.toBeInTheDocument()
+  })
+
+  it('displays shell integration injection warning and script when command history is enabled', async () => {
+    const getShellIntegrationScript = vi
+      .fn()
+      .mockResolvedValue('__wsh_emit() { printf "\\033]%s\\033\\134" "$1"; };')
+    window.winsshApi = createWinsshApiMock({
+      settings: {
+        get: vi.fn().mockResolvedValue({
+          ...persistedDarkSettings,
+          commandHistoryEnabled: true
+        })
+      },
+      system: {
+        getShellIntegrationScript
+      }
+    })
+
+    renderSettingsEditor()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Terminal' }))
+
+    expect(
+      await screen.findByText(/automatically inject the following integration script/i)
+    ).toBeInTheDocument()
+    expect(await screen.findByText(/__wsh_emit/)).toBeInTheDocument()
+    expect(getShellIntegrationScript).toHaveBeenCalled()
   })
 })

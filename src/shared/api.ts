@@ -47,7 +47,8 @@ import type {
   UpdateState,
   WebDAVBackupEntry,
   WebDAVBackupState,
-  WindowState
+  WindowState,
+  SftpBookmark
 } from './types'
 import type { AppLogEvent } from './observability'
 import type { ServerIconMimeType } from './server-brands'
@@ -110,9 +111,17 @@ export interface WinsshApi {
   sftp: {
     list: (sessionId: string, path: string) => Promise<SftpListResult>
     createFile: (sessionId: string, path: string, name: string) => Promise<void>
-    readFile: (sessionId: string, remotePath: string) => Promise<string>
+    readFile: (
+      sessionId: string,
+      remotePath: string
+    ) => Promise<{ content: string; encoding: string; cancelled?: boolean }>
     cancelReadFile: (sessionId: string, remotePath: string) => void
-    writeFile: (sessionId: string, remotePath: string, contents: string) => Promise<void>
+    writeFile: (
+      sessionId: string,
+      remotePath: string,
+      contents: string,
+      encoding?: string
+    ) => Promise<void>
     mkdir: (sessionId: string, path: string, name: string) => Promise<void>
     rename: (sessionId: string, path: string, newName: string) => Promise<void>
     move: (sessionId: string, sourcePath: string, destinationDirPath: string) => Promise<void>
@@ -147,6 +156,12 @@ export interface WinsshApi {
     create: (input: CustomCommandInput) => Promise<CustomCommand>
     update: (id: string, input: Partial<CustomCommandInput>) => Promise<CustomCommand>
     delete: (id: string) => Promise<void>
+  }
+  sftpBookmarks: {
+    list: (serverId: string) => Promise<SftpBookmark[]>
+    add: (serverId: string, path: string) => Promise<SftpBookmark>
+    delete: (id: string) => Promise<void>
+    deleteByPath: (serverId: string, path: string) => Promise<void>
   }
   settings: {
     get: () => Promise<AppSettings>
@@ -189,6 +204,7 @@ export interface WinsshApi {
     getCapabilities: () => Promise<RuntimeCapabilities>
     relaunch: () => Promise<void>
     respondHostTrust: (result: HostTrustResult) => Promise<void>
+    getShellIntegrationScript: () => Promise<string>
     menu: {
       onAction: (callback: (action: SystemMenuAction) => void) => Unsubscribe
     }

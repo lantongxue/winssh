@@ -21,6 +21,7 @@ import { registerSessionIpc } from './ipc/register-session-ipc'
 import { registerSystemIpc } from './ipc/register-system-ipc'
 import { registerCommandHistoryIpc } from './ipc/register-command-history-ipc'
 import { registerCustomCommandIpc } from './ipc/register-custom-command-ipc'
+import { registerSftpBookmarkIpc } from './ipc/register-sftp-bookmark-ipc'
 import { SecureStoreService } from './secure-store'
 import { SessionManager } from './session-manager'
 import { ThemeRegistry } from './theme-registry'
@@ -241,6 +242,8 @@ export async function bootstrap(): Promise<void> {
     currentVersion: appInfo.version,
     devConfigPath: join(app.getAppPath(), 'dev-app-update.yml'),
     feedUrl: process.env['WINSSH_UPDATE_BASE_URL']?.trim() || null,
+    githubOwner: 'lantongxue',
+    githubRepo: 'winssh',
     isPackaged: app.isPackaged,
     platform: process.platform
   })
@@ -307,6 +310,7 @@ export async function bootstrap(): Promise<void> {
   registerSessionIpc(sessionsService)
   registerCommandHistoryIpc(database)
   registerCustomCommandIpc(database)
+  registerSftpBookmarkIpc(database)
   registerSystemIpc({
     appInfo,
     credentialStorageAvailable: () => Promise.resolve(true),

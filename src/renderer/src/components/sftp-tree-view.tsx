@@ -66,6 +66,8 @@ interface SftpTreeEntryRowProps {
   onGetEntryMeta: (entry: RemoteEntry) => string
   onDirectoryMoved?: (oldPath: string, newPath: string) => void
   onEditFile?: (remotePath: string) => void
+  isBookmarked?: (path: string) => boolean
+  onToggleBookmarkDirectory?: (path: string) => void
 }
 
 function SftpTreeEntryRow({
@@ -91,7 +93,9 @@ function SftpTreeEntryRow({
   onResolveContextMenuTargets,
   onGetEntryMeta,
   onDirectoryMoved,
-  onEditFile
+  onEditFile,
+  isBookmarked,
+  onToggleBookmarkDirectory
 }: SftpTreeEntryRowProps) {
   const ExpandIcon = actionIcons.expand
   const CollapseIcon = actionIcons.collapse
@@ -254,9 +258,7 @@ function SftpTreeEntryRow({
         )}
       </div>
       <div className="min-w-0 flex-1 leading-tight">
-        <div className="truncate text-xs font-semibold text-foreground">
-          {entry.name}
-        </div>
+        <div className="truncate text-xs font-semibold text-foreground">{entry.name}</div>
         <div className="truncate font-mono text-[10px] text-muted-foreground/75 mt-0.5">
           {onGetEntryMeta(entry)}
         </div>
@@ -300,6 +302,8 @@ function SftpTreeEntryRow({
           onOpenCreateFileDialog={onOpenCreateFileDialog}
           onOpenCreateFolderDialog={onOpenCreateFolderDialog}
           onOpenDeleteDialog={onOpenDeleteDialog}
+          isBookmarked={isBookmarked}
+          onToggleBookmarkDirectory={onToggleBookmarkDirectory}
         >
           {entryButton}
         </SftpEntryContextMenu>
@@ -349,6 +353,8 @@ interface SftpTreeViewProps {
   onGetEntryMeta: (entry: RemoteEntry) => string
   onDirectoryMoved?: (oldPath: string, newPath: string) => void
   onEditFile?: (remotePath: string) => void
+  isBookmarked?: (path: string) => boolean
+  onToggleBookmarkDirectory?: (path: string) => void
 }
 
 export const SftpTreeView = forwardRef<SftpTreeViewHandle, SftpTreeViewProps>(function SftpTreeView(
@@ -372,7 +378,9 @@ export const SftpTreeView = forwardRef<SftpTreeViewHandle, SftpTreeViewProps>(fu
     onResolveContextMenuTargets,
     onGetEntryMeta,
     onDirectoryMoved,
-    onEditFile
+    onEditFile,
+    isBookmarked,
+    onToggleBookmarkDirectory
   },
   ref
 ) {
@@ -638,6 +646,8 @@ export const SftpTreeView = forwardRef<SftpTreeViewHandle, SftpTreeViewProps>(fu
       onGetEntryMeta={onGetEntryMeta}
       onDirectoryMoved={onDirectoryMoved}
       onEditFile={onEditFile}
+      isBookmarked={isBookmarked}
+      onToggleBookmarkDirectory={onToggleBookmarkDirectory}
     />
   )
 

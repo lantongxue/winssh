@@ -65,6 +65,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { ShellCodeHighlight } from './shell-code-highlight'
 
 const jumpServerSchema = z
   .object({
@@ -406,6 +407,13 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
       initialGroupId: document.initialGroupId
     })
   })
+
+  const shellScriptQuery = useQuery({
+    queryKey: queryKeys.shellIntegrationScript,
+    queryFn: () => systemClient.getShellIntegrationScript(),
+    enabled: form.watch('captureCommandHistory') !== false
+  })
+
   const jumpServerForm = useForm<JumpServerFormInputValues, unknown, JumpServerFormValues>({
     resolver: zodResolver(jumpServerSchema),
     defaultValues: createJumpServerDefaultValues(credentialStorageAvailable)
@@ -1078,18 +1086,34 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
               control={form.control}
               name="captureCommandHistory"
               render={({ field }) => (
-                <FormItem className="mt-3 flex items-center justify-between rounded-sm border border-[var(--workbench-border)] px-4 py-3">
-                  <div>
-                    <div className="font-medium">
-                      {t('workbench.commandHistory.enableForServer')}
+                <FormItem className="mt-3 rounded-sm border border-[var(--workbench-border)] p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">
+                        {t('workbench.commandHistory.enableForServer')}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {t('workbench.commandHistory.captureHint')}
+                      </div>
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      {t('workbench.commandHistory.captureHint')}
-                    </div>
+                    <FormControl>
+                      <Switch checked={field.value !== false} onCheckedChange={field.onChange} />
+                    </FormControl>
                   </div>
-                  <FormControl>
-                    <Switch checked={field.value !== false} onCheckedChange={field.onChange} />
-                  </FormControl>
+                  {field.value !== false && (
+                    <div className="space-y-2 pt-3 border-t border-[var(--workbench-border)]">
+                      <div className="text-sm text-amber-600 dark:text-amber-500 font-medium">
+                        {t('workbench.commandHistory.injectionWarning')}
+                      </div>
+                      {shellScriptQuery.data ? (
+                        <ShellCodeHighlight code={shellScriptQuery.data} />
+                      ) : (
+                        <div className="text-xs text-muted-foreground animate-pulse">
+                          Loading...
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </FormItem>
               )}
             />

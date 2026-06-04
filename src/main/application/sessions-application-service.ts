@@ -67,8 +67,8 @@ export class SessionsApplicationService {
     this.sessionManager.cancelReadFile(sessionId, remotePath)
   }
 
-  writeFile(sessionId: string, remotePath: string, contents: string) {
-    return this.sessionManager.writeFile(sessionId, remotePath, contents)
+  writeFile(sessionId: string, remotePath: string, contents: string, encoding?: string) {
+    return this.sessionManager.writeFile(sessionId, remotePath, contents, encoding)
   }
 
   makeDirectory(sessionId: string, remotePath: string, name: string) {

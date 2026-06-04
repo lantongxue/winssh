@@ -12,7 +12,7 @@ const requiredKeys = [
   'workbench.awayReminder.timeoutSetting',
   'workbench.awayReminder.enableSetting',
   'workbench.awayReminder.timeoutDescription',
-  'workbench.awayReminder.secondsUnit',
+  'workbench.awayReminder.secondsUnit'
 ] as const
 
 describe('workbench.awayReminder i18n keys', () => {
@@ -43,7 +43,7 @@ describe('workbench.awayReminder i18n keys', () => {
       'workbench.awayReminder.enableSetting',
       'workbench.awayReminder.timeoutSetting',
       'workbench.awayReminder.timeoutDescription',
-      'workbench.awayReminder.secondsUnit',
+      'workbench.awayReminder.secondsUnit'
     ] as const
 
     const latinPattern = /^[A-Za-z\s]+$/
@@ -51,7 +51,7 @@ describe('workbench.awayReminder i18n keys', () => {
       const value = i18n.t(key)
       expect(
         latinPattern.test(value),
-        `zh-CN key ${key} looks like an English placeholder: "${value}"`,
+        `zh-CN key ${key} looks like an English placeholder: "${value}"`
       ).toBe(false)
     }
   })

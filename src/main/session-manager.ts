@@ -13,7 +13,7 @@ import {
 import { dialog, type BrowserWindow, type OpenDialogOptions } from 'electron'
 import { normalizeRemotePath, sortRemoteEntries } from '@shared/sftp'
 import { runWithConcurrency } from './concurrency-pool'
-import { smartDecodeBuffer } from './encoding'
+import { smartDecode, encodeContent } from './encoding'
 import { DEFAULT_SERVER_BRAND_ID, resolveServerBrandFromOsRelease } from '@shared/server-brands'
 import {
   type ConnectionSecretInput,
@@ -45,7 +45,7 @@ import {
 import type { DatabaseService } from './database'
 import type { MainTranslator } from './localization'
 import { createOscScannerState, scanOscChunk, type OscScannerState } from './osc-scanner'
-import { isShellIntegrationInternal, SHELL_INTEGRATION_SCRIPT } from './shell-integration'
+import { isShellIntegrationInternal, SHELL_INTEGRATION_FILE_CONTENT } from './shell-integration'
 type WindowProvider = () => BrowserWindow | null
 type AcceptTcpConnection = () => ClientChannel
 type RejectConnection = () => void
@@ -99,6 +99,10 @@ interface SessionRuntime {
   historyCaptureEnabled: boolean
   historyCaptureStatus: 'pending' | 'active' | 'unavailable'
   historyProbeTimer?: NodeJS.Timeout
+  integrationBuffer?: string
+  integrationTimeoutTimer?: NodeJS.Timeout
+  integrationState?: 'none' | 'waiting' | 'delayed' | 'active' | 'failed'
+  integrationDelayTimer?: NodeJS.Timeout
 }
 
 interface ExecResult {
@@ -292,7 +296,7 @@ async function sftpReadFile(
   onProgress?: SftpReadFileProgressCallback,
   totalSize?: number,
   signal?: AbortSignal
-): Promise<string> {
+): Promise<{ content: string; encoding: string }> {
   const handle = await sftpOpen(sftp, remotePath, 'r')
   const chunks: Buffer[] = []
   let position = 0
@@ -325,7 +329,7 @@ async function sftpReadFile(
       onProgress(totalSize, totalSize)
     }
 
-    return smartDecodeBuffer(Buffer.concat(chunks))
+    return smartDecode(Buffer.concat(chunks))
   } finally {
     await sftpClose(sftp, handle).catch(() => undefined)
   }
@@ -334,10 +338,11 @@ async function sftpReadFile(
 async function sftpWriteFile(
   sftp: SFTPWrapper,
   remotePath: string,
-  contents: string
+  contents: string,
+  encoding?: string
 ): Promise<void> {
   const handle = await sftpOpen(sftp, remotePath, 'w')
-  const buffer = Buffer.from(contents, 'utf8')
+  const buffer = encodeContent(contents, encoding)
   let position = 0
 
   try {
@@ -1081,7 +1086,8 @@ export class SessionManager {
         oscState: createOscScannerState(),
         pendingCommand: { text: null, startedAt: null, cwd: null },
         historyCaptureEnabled: captureEnabled,
-        historyCaptureStatus: captureEnabled ? 'pending' : 'unavailable'
+        historyCaptureStatus: captureEnabled ? 'pending' : 'unavailable',
+        integrationState: captureEnabled ? 'waiting' : 'none'
       }
 
       shell.on('data', (chunk: Buffer | string) => {
@@ -1094,6 +1100,14 @@ export class SessionManager {
         if (runtime.historyProbeTimer) {
           clearTimeout(runtime.historyProbeTimer)
           runtime.historyProbeTimer = undefined
+        }
+        if (runtime.integrationTimeoutTimer) {
+          clearTimeout(runtime.integrationTimeoutTimer)
+          runtime.integrationTimeoutTimer = undefined
+        }
+        if (runtime.integrationDelayTimer) {
+          clearTimeout(runtime.integrationDelayTimer)
+          runtime.integrationDelayTimer = undefined
         }
         runtime.lastExit = this.withObservableMetadata(sessionId, { sessionId, code, signal })
         client?.end()
@@ -1115,9 +1129,6 @@ export class SessionManager {
       })
       this.database.recordRecentSession(server.id)
       await this.persistConnectionSecrets([...(jumpServer ? [jumpServer] : []), server], request)
-      if (captureEnabled) {
-        this.installShellIntegration(runtime)
-      }
       this.emitSessionState(sessionId, 'ready', undefined, this.t('session.connected'))
 
       return summary
@@ -1138,6 +1149,14 @@ export class SessionManager {
       if (runtime.historyProbeTimer) {
         clearTimeout(runtime.historyProbeTimer)
         runtime.historyProbeTimer = undefined
+      }
+      if (runtime.integrationTimeoutTimer) {
+        clearTimeout(runtime.integrationTimeoutTimer)
+        runtime.integrationTimeoutTimer = undefined
+      }
+      if (runtime.integrationDelayTimer) {
+        clearTimeout(runtime.integrationDelayTimer)
+        runtime.integrationDelayTimer = undefined
       }
       await this.releaseSessionPortForwards(sessionId)
       this.releaseRuntimeClients(runtime)
@@ -1162,6 +1181,53 @@ export class SessionManager {
       return
     }
 
+    if (runtime.integrationState === 'waiting') {
+      runtime.integrationState = 'delayed'
+      this.emitSessionDataToRenderer(runtime, data)
+      runtime.integrationDelayTimer = setTimeout(() => {
+        runtime.integrationDelayTimer = undefined
+        this.installShellIntegration(runtime)
+      }, 200)
+      return
+    }
+
+    if (runtime.integrationState === 'delayed') {
+      this.emitSessionDataToRenderer(runtime, data)
+      return
+    }
+
+    if (runtime.integrationBuffer !== undefined) {
+      runtime.integrationBuffer += data
+      const command = ` . ~/.winssh_init_${runtime.sessionId} && rm -f ~/.winssh_init_${runtime.sessionId}`
+
+      if (runtime.integrationBuffer.includes(command)) {
+        if (runtime.integrationTimeoutTimer) {
+          clearTimeout(runtime.integrationTimeoutTimer)
+          runtime.integrationTimeoutTimer = undefined
+        }
+
+        let cleaned = runtime.integrationBuffer
+        const idx = cleaned.indexOf(command)
+        if (idx !== -1) {
+          let prefix = cleaned.slice(0, idx)
+          prefix = prefix.replace(/[ \b]+$/, '')
+          let suffix = cleaned.slice(idx + command.length)
+          suffix = suffix.replace(/^\r?\n?/, '')
+          cleaned = prefix + suffix
+        }
+
+        runtime.integrationBuffer = undefined
+        if (cleaned) {
+          this.emitSessionDataToRenderer(runtime, cleaned)
+        }
+      }
+      return
+    }
+
+    this.emitSessionDataToRenderer(runtime, data)
+  }
+
+  private emitSessionDataToRenderer(runtime: SessionRuntime, data: string): void {
     const cleaned = scanOscChunk(runtime.oscState, data, {
       onPromptStart: () => {
         if (runtime.historyCaptureStatus === 'pending') {
@@ -1192,6 +1258,9 @@ export class SessionManager {
       },
       onCommandDone: (exitCode) => {
         this.handleCommandDone(runtime, exitCode)
+      },
+      onCwd: (cwd) => {
+        runtime.summary.currentPath = cwd
       }
     })
 
@@ -1208,13 +1277,33 @@ export class SessionManager {
     )
   }
 
-  private installShellIntegration(runtime: SessionRuntime): void {
+  private async installShellIntegration(runtime: SessionRuntime): Promise<void> {
+    const homePath = runtime.summary.currentPath || '/'
+    const tempFilePath = `${homePath === '/' ? '' : homePath}/.winssh_init_${runtime.sessionId}`
+    const command = ` . ~/.winssh_init_${runtime.sessionId} && rm -f ~/.winssh_init_${runtime.sessionId}`
+
     try {
-      runtime.shell.write(SHELL_INTEGRATION_SCRIPT)
+      await sftpWriteFile(runtime.sftp, tempFilePath, SHELL_INTEGRATION_FILE_CONTENT)
+      runtime.integrationBuffer = ''
+      runtime.shell.write(`${command}\r`)
+
+      runtime.integrationTimeoutTimer = setTimeout(() => {
+        if (runtime.integrationBuffer !== undefined) {
+          const data = runtime.integrationBuffer
+          runtime.integrationBuffer = undefined
+          if (data) {
+            this.emitSessionDataToRenderer(runtime, data)
+          }
+        }
+        runtime.integrationTimeoutTimer = undefined
+      }, 1000)
+      runtime.integrationState = 'active'
     } catch {
       runtime.historyCaptureStatus = 'unavailable'
+      runtime.integrationState = 'failed'
       return
     }
+
     runtime.historyProbeTimer = setTimeout(() => {
       if (runtime.historyCaptureStatus === 'pending') {
         runtime.historyCaptureStatus = 'unavailable'
@@ -1283,7 +1372,10 @@ export class SessionManager {
     await sftpCreateFile(runtime.sftp, posix.join(normalizeRemotePath(currentPath), name.trim()))
   }
 
-  async readFile(sessionId: string, remotePath: string): Promise<string> {
+  async readFile(
+    sessionId: string,
+    remotePath: string
+  ): Promise<{ content: string; encoding: string; cancelled?: boolean }> {
     const runtime = this.requireSession(sessionId)
     const normalized = normalizeRemotePath(remotePath)
     const stats = await sftpStat(runtime.sftp, normalized)
@@ -1300,7 +1392,7 @@ export class SessionManager {
     this.editorReadControllers.set(controllerKey, controller)
 
     try {
-      const content = await sftpReadFile(
+      const result = await sftpReadFile(
         runtime.sftp,
         normalized,
         (transferred, total) => {
@@ -1341,24 +1433,25 @@ export class SessionManager {
         })
       )
 
-      return content
+      return result
     } catch (error) {
-      if (!(error instanceof SftpReadCancelledError)) {
-        this.emitToRenderer(
-          'sftp:transfer',
-          this.withObservableMetadata(sessionId, {
-            sessionId,
-            direction: 'download',
-            fileName,
-            localPath: '__editor__',
-            remotePath: normalized,
-            transferred: 0,
-            total: totalSize,
-            status: 'error',
-            error: error instanceof Error ? error.message : String(error)
-          })
-        )
+      if (error instanceof SftpReadCancelledError) {
+        return { content: '', encoding: 'utf8', cancelled: true }
       }
+      this.emitToRenderer(
+        'sftp:transfer',
+        this.withObservableMetadata(sessionId, {
+          sessionId,
+          direction: 'download',
+          fileName,
+          localPath: '__editor__',
+          remotePath: normalized,
+          transferred: 0,
+          total: totalSize,
+          status: 'error',
+          error: error instanceof Error ? error.message : String(error)
+        })
+      )
       throw error
     } finally {
       if (this.editorReadControllers.get(controllerKey) === controller) {
@@ -1377,10 +1470,15 @@ export class SessionManager {
     }
   }
 
-  async writeFile(sessionId: string, remotePath: string, contents: string): Promise<void> {
+  async writeFile(
+    sessionId: string,
+    remotePath: string,
+    contents: string,
+    encoding?: string
+  ): Promise<void> {
     const runtime = this.requireSession(sessionId)
     const normalized = normalizeRemotePath(remotePath)
-    await sftpWriteFile(runtime.sftp, normalized, contents)
+    await sftpWriteFile(runtime.sftp, normalized, contents, encoding)
   }
 
   async makeDirectory(sessionId: string, currentPath: string, name: string): Promise<void> {
@@ -2155,7 +2253,7 @@ export class SessionManager {
       for (const remotePath of ['/etc/os-release', '/usr/lib/os-release']) {
         try {
           const contents = await sftpReadFile(sftp, remotePath)
-          brandId = resolveServerBrandFromOsRelease(contents)
+          brandId = resolveServerBrandFromOsRelease(contents.content)
           break
         } catch {
           continue

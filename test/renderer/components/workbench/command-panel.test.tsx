@@ -125,4 +125,68 @@ describe('CommandPanel', () => {
     // Verify duration is displayed for longer duration (>= 1s)
     expect(screen.getByText('2.5s')).toBeInTheDocument()
   })
+
+  it('displays 20 items initially and loads more on scroll', async () => {
+    // Generate 50 items
+    const entries = Array.from({ length: 50 }, (_, i) => ({
+      id: String(i + 1),
+      scopeKind: 'local',
+      serverId: null,
+      command: `command ${i + 1}`,
+      executedAt: '2026-05-28T01:45:00.000Z',
+      cwd: null,
+      exitCode: 0,
+      durationMs: 10
+    }))
+
+    const listHistory = vi.fn().mockResolvedValue(entries)
+    const listCustom = vi.fn().mockResolvedValue([])
+
+    window.winsshApi = {
+      ...createWinsshApiMock(),
+      commandHistory: {
+        list: listHistory,
+        search: vi.fn().mockResolvedValue([]),
+        clear: vi.fn().mockResolvedValue(undefined),
+        clearAll: vi.fn().mockResolvedValue(undefined),
+        deleteEntry: vi.fn().mockResolvedValue(undefined),
+        setServerCapture: vi.fn().mockResolvedValue(undefined),
+        onCommandAdded: () => () => undefined
+      },
+      customCommands: {
+        list: listCustom,
+        create: vi.fn(),
+        update: vi.fn(),
+        delete: vi.fn()
+      }
+    } as any
+
+    renderCommandPanel()
+
+    // It should display "command 1" through "command 20"
+    expect(await screen.findByText('command 1')).toBeInTheDocument()
+    expect(screen.getByText('command 20')).toBeInTheDocument()
+    // It should not display "command 21" initially
+    expect(screen.queryByText('command 21')).not.toBeInTheDocument()
+
+    // Trigger scroll event near bottom
+    const scrollContainer = screen.getByText('command 1').closest('.overflow-auto')
+    expect(scrollContainer).toBeInTheDocument()
+
+    if (scrollContainer) {
+      // Mock scrollHeight, scrollTop, clientHeight
+      Object.defineProperty(scrollContainer, 'scrollHeight', { value: 2000, configurable: true })
+      Object.defineProperty(scrollContainer, 'scrollTop', { value: 1460, configurable: true })
+      Object.defineProperty(scrollContainer, 'clientHeight', { value: 500, configurable: true })
+
+      // Dispatch scroll event
+      const fireEvent = (await import('@testing-library/react')).fireEvent
+      fireEvent.scroll(scrollContainer)
+
+      // Now "command 21" should be displayed, and up to "command 40"
+      expect(await screen.findByText('command 21')).toBeInTheDocument()
+      expect(screen.getByText('command 40')).toBeInTheDocument()
+      expect(screen.queryByText('command 41')).not.toBeInTheDocument()
+    }
+  })
 })

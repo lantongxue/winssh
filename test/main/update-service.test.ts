@@ -19,6 +19,8 @@ function createService(overrides: Partial<ConstructorParameters<typeof UpdateSer
     autoCheckEnabled: true,
     currentVersion: '1.0.0',
     feedUrl: 'https://updates.example.com/winssh',
+    githubOwner: 'lantongxue',
+    githubRepo: 'winssh',
     isPackaged: true,
     platform: 'win32',
     updaterFactory: () => updater,
@@ -81,11 +83,23 @@ describe('UpdateService', () => {
   })
 
   it('marks Windows builds without an update feed as unsupported', () => {
-    const { service } = createService({
-      feedUrl: null
+    const { service: servicePackaged } = createService({
+      githubOwner: ''
     })
 
-    expect(service.getState()).toMatchObject({
+    expect(servicePackaged.getState()).toMatchObject({
+      phase: 'unsupported',
+      supported: false,
+      unsupportedReason: 'feed_url_missing'
+    })
+
+    const { service: serviceUnpackaged } = createService({
+      feedUrl: null,
+      isPackaged: false,
+      allowDevUpdates: true
+    })
+
+    expect(serviceUnpackaged.getState()).toMatchObject({
       phase: 'unsupported',
       supported: false,
       unsupportedReason: 'feed_url_missing'

@@ -27,6 +27,7 @@ export interface OscHandlers {
   onCommandPre?: () => void
   onCommandDone?: (exitCode: number | null) => void
   onCommandText?: (command: string) => void
+  onCwd?: (cwd: string) => void
 }
 
 export function createOscScannerState(): OscScannerState {
@@ -161,6 +162,12 @@ function handleOscPayload(payload: string, handlers: OscHandlers): boolean {
   // Also accept OSC 133;B (prompt end / command start) silently to keep streams
   // clean for users whose shell emits it — we just don't act on it.
   if (payload === '133;B') {
+    return true
+  }
+
+  if (payload.startsWith('133;P;Cwd=') || payload.startsWith('633;P;Cwd=')) {
+    const cwd = payload.slice(payload.indexOf('Cwd=') + 4).trim()
+    handlers.onCwd?.(cwd)
     return true
   }
 

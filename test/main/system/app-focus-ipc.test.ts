@@ -112,9 +112,7 @@ describe('setupAppFocusAndActivityListeners', () => {
       expect(send).toHaveBeenCalledWith('system:appFocus', { phase: 'blurred' })
       expect(send).toHaveBeenCalledWith('system:appFocus', { phase: 'focused' })
       // Only 2 sends total: focused + blurred
-      const appFocusCalls = send.mock.calls.filter(
-        (c: unknown[]) => c[0] === 'system:appFocus'
-      )
+      const appFocusCalls = send.mock.calls.filter((c: unknown[]) => c[0] === 'system:appFocus')
       expect(appFocusCalls.length).toBe(2)
     })
   })

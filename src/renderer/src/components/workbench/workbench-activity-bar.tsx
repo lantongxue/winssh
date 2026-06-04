@@ -1,15 +1,25 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { UpdateState } from '@shared/types'
+import { SYSTEM_THEME_ID } from '@shared/themes'
 import { useTranslation } from 'react-i18next'
+import { Palette } from 'lucide-react'
 import { toast } from 'sonner'
 import { queryKeys } from '@/features/shared/query-keys'
+import { settingsClient } from '@/features/settings/api/settings-client'
+import { themesClient } from '@/features/themes/api/themes-client'
 import { updatesClient } from '@/features/updates/api/updates-client'
 import { useWorkbenchContext } from '@/components/workbench/workbench-context'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -30,6 +40,21 @@ export function WorkbenchActivityBar() {
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
   const SettingsIcon = actionIcons.openSettings
   const RefreshIcon = actionIcons.refresh
+
+  const settingsQuery = useQuery({
+    queryKey: queryKeys.settings,
+    queryFn: () => settingsClient.get()
+  })
+  const themesQuery = useQuery({
+    queryKey: queryKeys.themes,
+    queryFn: () => themesClient.list()
+  })
+  const updateTheme = useMutation({
+    mutationFn: (theme: string) => settingsClient.update({ theme }),
+    onSuccess: (updatedSettings) => {
+      queryClient.setQueryData(queryKeys.settings, updatedSettings)
+    }
+  })
   const visibleActivities = workbenchActivities.filter(
     (activity) => activity.activityId !== 'settings'
   )
@@ -147,6 +172,28 @@ export function WorkbenchActivityBar() {
               <SettingsIcon className="size-4" />
               {settingsTitle}
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Palette className="size-4" />
+                {t('workbench.settings.form.theme')}
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="border-[var(--workbench-border)] bg-[var(--workbench-editor)]">
+                <DropdownMenuRadioGroup
+                  value={settingsQuery.data?.theme ?? SYSTEM_THEME_ID}
+                  onValueChange={(value) => updateTheme.mutate(value)}
+                >
+                  <DropdownMenuRadioItem value={SYSTEM_THEME_ID}>
+                    {t('common.theme.system')}
+                  </DropdownMenuRadioItem>
+                  {(themesQuery.data ?? []).map((theme) => (
+                    <DropdownMenuRadioItem key={theme.id} value={theme.id}>
+                      {theme.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
             <DropdownMenuItem
               disabled={checkForUpdates.isPending}
               onSelect={() => handleCheckForUpdates()}

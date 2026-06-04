@@ -249,3 +249,10 @@ export type PortForwardFormValues = z.infer<typeof portForwardSchema>
 export type SettingsFormValues = z.infer<typeof settingsSchema>
 export type CredentialFormValues = z.infer<typeof credentialSchema>
 export type CustomCommandFormValues = z.infer<typeof customCommandSchema>
+
+export const sftpBookmarkSchema = z.object({
+  serverId: z.string().min(1, 'validation.sftpBookmark.serverId.required'),
+  path: z.string().trim().min(1, 'validation.sftpBookmark.path.required')
+})
+
+export type SftpBookmarkFormValues = z.infer<typeof sftpBookmarkSchema>

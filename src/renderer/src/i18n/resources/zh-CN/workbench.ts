@@ -159,6 +159,7 @@ const workbench = {
         createSubgroup: '新建子分组',
         createTag: '新建标签',
         edit: '编辑',
+        editGroup: '修改',
         moveToGroup: '移动到分组',
         removeFromFavorites: '取消收藏',
         rename: '重命名'
@@ -230,7 +231,7 @@ const workbench = {
         titles: {
           createGroup: '新建分组',
           createTag: '新建标签',
-          renameGroup: '重命名分组',
+          renameGroup: '修改分组',
           renameTag: '重命名标签'
         }
       },
@@ -404,7 +405,11 @@ const workbench = {
       },
       kinds: {
         local: '本地转发',
-        remote: '远程转发'
+        remote: '远程转发',
+        localSource: '本地监听',
+        remoteSource: '远程监听',
+        localDest: '远程目标',
+        remoteDest: '本地目标'
       },
       statuses: {
         active: '活动中',
@@ -673,6 +678,19 @@ const workbench = {
       }
     },
     sftp: {
+      bookmarks: {
+        title: '已收藏的目录',
+        empty: '该服务器暂无已收藏的目录。',
+        addBookmark: '收藏当前目录',
+        removeBookmark: '取消收藏',
+        jumpToBookmark: '在终端中跳转到该目录',
+        toasts: {
+          addSuccess: '目录已收藏。',
+          addFailed: '收藏目录失败。',
+          removeSuccess: '收藏已取消。',
+          removeFailed: '取消收藏失败。'
+        }
+      },
       actions: {
         backToParent: '返回上级目录',
         copyPath: '复制路径',
@@ -871,6 +889,7 @@ const workbench = {
       serverIdentity: '服务器标识',
       localTerminal: '本地终端',
       sshInfo: 'SSH 信息',
+      sshSession: 'SSH 会话',
       currentSession: '当前会话',
       shellType: 'Shell 类型',
       timeoutSetting: '离开时长阈值',
@@ -900,6 +919,7 @@ const workbench = {
       captureDisabled: '该服务器已关闭命令记录。',
       captureUnavailable: '未检测到 shell 集成，无法记录命令。',
       captureHint: '通过 shell 集成捕获命令，目前支持 bash 和 zsh，fish 等其他 shell 暂不支持。',
+      injectionWarning: '开启此选项会在连接服务器时自动向服务器注入以下集成脚本：',
       enableForServer: '记录该服务器的命令历史',
       enableGlobal: '全局启用命令历史',
       cwdLabel: '目录',

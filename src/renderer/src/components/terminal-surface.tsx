@@ -285,7 +285,7 @@ export function TerminalSurface({
       ) : null}
       {searchOpen ? (
         <div className="absolute right-4 top-4 z-20 w-[min(26rem,calc(100%-2rem))]">
-          <div className="terminal-search-overlay flex items-center gap-1.5 rounded-lg border border-[var(--workbench-border)] bg-[color-mix(in_srgb,var(--workbench-editor)_88%,transparent)] px-2 py-2 shadow-lg backdrop-blur-sm">
+          <div className="terminal-search-overlay flex items-center gap-1.5 rounded-lg border border-[var(--workbench-border)] bg-[color-mix(in_srgb,var(--workbench-editor)_88%,transparent)] px-2 py-2 shadow-lg backdrop-blur-sm transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
             <Search className="size-4 shrink-0 text-[var(--workbench-muted)]" />
             <Input
               ref={searchInputRef}

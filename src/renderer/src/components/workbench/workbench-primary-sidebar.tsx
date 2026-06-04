@@ -9,6 +9,8 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowRight,
+  Folder,
+  FolderOpen,
   FolderTree,
   Heart,
   LoaderCircle,
@@ -481,7 +483,8 @@ function EntityNode({
   onDoubleClick,
   onDrop,
   onDelete,
-  onRename
+  onRename,
+  renameLabel
 }: {
   active: boolean
   children: ReactNode
@@ -496,6 +499,7 @@ function EntityNode({
   onDrop?: (event: DragEvent<HTMLDivElement>) => void
   onDelete: () => void
   onRename: () => void
+  renameLabel?: string
 }) {
   const { t } = useTranslation()
   const NewConnectionIcon = actionIcons.newConnection
@@ -536,7 +540,7 @@ function EntityNode({
         ) : null}
         <ContextMenuItem onClick={onRename}>
           <RenameIcon className="size-4" />
-          {t('workbench.primarySidebar.actions.rename')}
+          {renameLabel || t('workbench.primarySidebar.actions.rename')}
         </ContextMenuItem>
         <ContextMenuItem variant="destructive" onClick={onDelete}>
           <DeleteIcon className="size-4" />
@@ -843,6 +847,7 @@ export function WorkbenchPrimarySidebar() {
               mode: 'rename'
             })
           }
+          renameLabel={t('workbench.primarySidebar.actions.editGroup')}
         >
           <button
             type="button"
@@ -857,7 +862,11 @@ export function WorkbenchPrimarySidebar() {
           >
             {expanded ? <CollapseIcon className="size-3.5" /> : <ExpandIcon className="size-3.5" />}
           </button>
-          <span className={`size-2 rounded-full ${style.dot}`} />
+          {expanded ? (
+            <FolderOpen className={cn('size-3.5 shrink-0', style.text)} />
+          ) : (
+            <Folder className={cn('size-3.5 shrink-0', style.text)} />
+          )}
           <span className="flex-1 truncate">{group.name}</span>
           <span className="text-xs text-muted-foreground">{groupCounts.get(group.id) ?? 0}</span>
         </EntityNode>
@@ -908,7 +917,7 @@ export function WorkbenchPrimarySidebar() {
             <label className="sr-only" htmlFor="workbench-primary-sidebar-search">
               {t('workbench.primarySidebar.search.label')}
             </label>
-            <div className="flex items-center gap-2 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2.5 text-[var(--workbench-muted)] shadow-xs transition-colors focus-within:border-[var(--workbench-active)]/50 focus-within:text-foreground">
+            <div className="flex items-center gap-2 rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-2.5 text-[var(--workbench-muted)] shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 focus-within:text-foreground">
               <Search className="size-3.5 shrink-0" />
               <Input
                 id="workbench-primary-sidebar-search"

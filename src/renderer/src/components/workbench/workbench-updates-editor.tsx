@@ -114,7 +114,13 @@ export function WorkbenchUpdatesEditor() {
   }, [queryClient])
 
   const checkForUpdates = useMutation({
-    mutationFn: () => updatesClient.check(),
+    mutationFn: async () => {
+      const [state] = await Promise.all([
+        updatesClient.check(),
+        new Promise<void>((resolve) => setTimeout(resolve, 800))
+      ])
+      return state
+    },
     onMutate: () => {
       const currentState = queryClient.getQueryData<UpdateState>(queryKeys.updatesState)
 
@@ -144,6 +150,10 @@ export function WorkbenchUpdatesEditor() {
     },
     onSuccess: (state) => {
       queryClient.setQueryData(queryKeys.updatesState, state)
+
+      if (state.phase === 'not-available') {
+        toast.success(t('workbench.settings.updates.status.notAvailable'))
+      }
     },
     onError: (error) => {
       toast.error(
@@ -301,7 +311,11 @@ export function WorkbenchUpdatesEditor() {
                   onClick={() => checkForUpdates.mutate()}
                 >
                   <RefreshIcon
-                    className={`size-4${checkForUpdates.isPending ? ' animate-spin' : ''}`}
+                    className={`size-4${
+                      checkForUpdates.isPending || updateState?.phase === 'checking'
+                        ? ' animate-spin'
+                        : ''
+                    }`}
                   />
                   {t('workbench.settings.updates.actions.check')}
                 </Button>

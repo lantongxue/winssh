@@ -39,6 +39,8 @@ interface FlatEntryRowProps {
   onResolveContextMenuTargets: (entry: RemoteEntry) => RemoteEntry[]
   onGetEntryMeta: (entry: RemoteEntry) => string
   onEditFile?: (remotePath: string) => void
+  isBookmarked?: (path: string) => boolean
+  onToggleBookmarkDirectory?: (path: string) => void
 }
 
 function FlatEntryRow({
@@ -61,7 +63,9 @@ function FlatEntryRow({
   onSendPathToTerminal,
   onResolveContextMenuTargets,
   onGetEntryMeta,
-  onEditFile
+  onEditFile,
+  isBookmarked,
+  onToggleBookmarkDirectory
 }: FlatEntryRowProps) {
   const isDirectory = entry.kind === 'directory'
   const isSelected = selectedEntrySet.has(entry.path)
@@ -171,9 +175,7 @@ function FlatEntryRow({
         )}
       </div>
       <div className="min-w-0 flex-1 leading-tight">
-        <div className="truncate text-xs font-semibold text-foreground">
-          {entry.name}
-        </div>
+        <div className="truncate text-xs font-semibold text-foreground">{entry.name}</div>
         <div className="truncate font-mono text-[10px] text-muted-foreground/75 mt-0.5">
           {onGetEntryMeta(entry)}
         </div>
@@ -220,6 +222,8 @@ function FlatEntryRow({
           onOpenCreateFileDialog={onOpenCreateFileDialog}
           onOpenCreateFolderDialog={onOpenCreateFolderDialog}
           onOpenDeleteDialog={onOpenDeleteDialog}
+          isBookmarked={isBookmarked}
+          onToggleBookmarkDirectory={onToggleBookmarkDirectory}
         >
           {entryButton}
         </SftpEntryContextMenu>
@@ -253,6 +257,8 @@ export interface SftpFlatViewProps {
   onResolveContextMenuTargets: (entry: RemoteEntry) => RemoteEntry[]
   onGetEntryMeta: (entry: RemoteEntry) => string
   onEditFile?: (remotePath: string) => void
+  isBookmarked?: (path: string) => boolean
+  onToggleBookmarkDirectory?: (path: string) => void
 }
 
 export function SftpFlatView({
@@ -274,7 +280,9 @@ export function SftpFlatView({
   onSendPathToTerminal,
   onResolveContextMenuTargets,
   onGetEntryMeta,
-  onEditFile
+  onEditFile,
+  isBookmarked,
+  onToggleBookmarkDirectory
 }: SftpFlatViewProps) {
   const shouldVirtualizeEntries = entries.length >= VIRTUALIZED_ENTRY_THRESHOLD
 
@@ -312,7 +320,9 @@ export function SftpFlatView({
     onSendPathToTerminal,
     onResolveContextMenuTargets,
     onGetEntryMeta,
-    onEditFile
+    onEditFile,
+    isBookmarked,
+    onToggleBookmarkDirectory
   }
 
   if (shouldRenderStaticRows) {

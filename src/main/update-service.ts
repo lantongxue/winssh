@@ -38,9 +38,11 @@ export type UpdateServiceOptions = {
   currentVersion: string
   devConfigPath?: string | null
   feedUrl: string | null
+  githubOwner: string
+  githubRepo: string
   isPackaged: boolean
   platform: string
-  updaterFactory?: (feedUrl: string) => UpdaterAdapter
+  updaterFactory?: (options: UpdateServiceOptions) => UpdaterAdapter
 }
 
 function coerceReleaseNotes(input: unknown): string | null {
@@ -65,8 +67,14 @@ function resolveUnsupportedReason(options: UpdateServiceOptions): UpdateUnsuppor
     return 'app_not_packaged'
   }
 
-  if (!options.feedUrl?.trim()) {
-    return 'feed_url_missing'
+  if (options.isPackaged) {
+    if (!options.githubOwner?.trim() || !options.githubRepo?.trim()) {
+      return 'feed_url_missing'
+    }
+  } else {
+    if (!options.feedUrl?.trim()) {
+      return 'feed_url_missing'
+    }
   }
 
   return null
@@ -77,15 +85,23 @@ function prepareDevUpdateConfig(filePath: string, feedUrl: string) {
   writeFileSync(filePath, ['provider: generic', `url: ${feedUrl}`].join('\n') + '\n', 'utf8')
 }
 
-function createUpdater(feedUrl: string): UpdaterAdapter {
+function createUpdater(options: UpdateServiceOptions): UpdaterAdapter {
   const { NsisUpdater } = require('electron-updater') as {
-    NsisUpdater: new (options: { provider: 'generic'; url: string }) => UpdaterAdapter
+    NsisUpdater: new (config: any) => UpdaterAdapter
   }
 
-  return new NsisUpdater({
-    provider: 'generic',
-    url: feedUrl
-  })
+  if (options.isPackaged) {
+    return new NsisUpdater({
+      provider: 'github',
+      owner: options.githubOwner,
+      repo: options.githubRepo
+    })
+  } else {
+    return new NsisUpdater({
+      provider: 'generic',
+      url: options.feedUrl as string
+    })
+  }
 }
 
 export class UpdateService extends EventEmitter {
@@ -98,7 +114,7 @@ export class UpdateService extends EventEmitter {
     const unsupportedReason = resolveUnsupportedReason(options)
     this.updater = unsupportedReason
       ? null
-      : (options.updaterFactory ?? createUpdater)(options.feedUrl as string)
+      : (options.updaterFactory ?? createUpdater)(options)
 
     this.state = {
       autoCheckEnabled: options.autoCheckEnabled,

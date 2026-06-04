@@ -4,6 +4,7 @@ export const queryKeys = {
   appInfo: ['app-info'] as const,
   capabilities: ['capabilities'] as const,
   credentials: ['credentials'] as const,
+  shellIntegrationScript: ['shell-integration-script'] as const,
   groups: ['groups'] as const,
   knownHosts: ['known-hosts'] as const,
   logEntries: ['logs', 'entries'] as const,
@@ -21,6 +22,7 @@ export const queryKeys = {
   serverSecrets: (serverId: string) => ['server-secrets', serverId] as const,
   sftpFile: (sessionId: string, remotePath: string) =>
     ['sftp', sessionId, 'file', remotePath] as const,
+  sftpBookmarks: (serverId: string) => ['sftp-bookmarks', serverId] as const,
   commandHistory: (scope: CommandHistoryScope) =>
     scope.kind === 'ssh'
       ? (['command-history', 'ssh', scope.serverId] as const)

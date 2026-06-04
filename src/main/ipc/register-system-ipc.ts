@@ -16,6 +16,7 @@ import { createLogger } from '../observability'
 import { ThemeRegistry, ThemeRegistryError } from '../theme-registry'
 import type { UpdateService } from '../update-service'
 import type { WebDAVBackupService } from '../webdav-backup-service'
+import { SHELL_INTEGRATION_MULTILINE } from '../shell-integration'
 
 function parseInput<T>(parser: { parse: (value: unknown) => T }, value: unknown): T {
   return parser.parse(value)
@@ -295,6 +296,7 @@ export function registerSystemIpc(options: {
   ipcMain.handle('system:getCapabilities', async () => ({
     credentialStorage: await credentialStorageAvailable()
   }))
+  ipcMain.handle('system:getShellIntegrationScript', () => SHELL_INTEGRATION_MULTILINE)
   ipcMain.handle('system:relaunch', () => {
     app.relaunch()
     app.exit(0)

@@ -66,6 +66,7 @@ import {
   TableRow
 } from '@/components/ui/table'
 import { CredentialVault } from '@/components/credential-vault'
+import { ShellCodeHighlight } from './shell-code-highlight'
 import WinsshFullLogo from '@/assets/logo-full.svg?react'
 
 const settingsSections = [
@@ -199,6 +200,12 @@ export function WorkbenchSettingsEditor() {
     defaultValues: settingsQuery.data ?? DEFAULT_SETTINGS_FORM_VALUES
   })
   const { saveField, savedSettingsRef } = useSettingsAutoSave(settingsQuery.data)
+
+  const shellScriptQuery = useQuery({
+    queryKey: queryKeys.shellIntegrationScript,
+    queryFn: () => systemClient.getShellIntegrationScript(),
+    enabled: form.watch('commandHistoryEnabled') !== false
+  })
 
   useEffect(() => {
     if (settingsQuery.data) {
@@ -938,25 +945,41 @@ export function WorkbenchSettingsEditor() {
                     control={form.control}
                     name="commandHistoryEnabled"
                     render={({ field }) => (
-                      <FormItem className="flex items-center justify-between rounded-sm border border-[var(--workbench-border)] px-4 py-3">
-                        <div>
-                          <div className="font-medium">
-                            {t('workbench.commandHistory.enableGlobal')}
+                      <FormItem className="rounded-sm border border-[var(--workbench-border)] p-4 space-y-4 col-span-1 lg:col-span-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium">
+                              {t('workbench.commandHistory.enableGlobal')}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {t('workbench.commandHistory.captureHint')}
+                            </div>
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            {t('workbench.commandHistory.captureHint')}
-                          </div>
+                          <FormControl>
+                            <Switch
+                              aria-label={t('workbench.commandHistory.enableGlobal')}
+                              checked={field.value !== false}
+                              onCheckedChange={(checked) => {
+                                field.onChange(checked)
+                                void handleSettingSave('commandHistoryEnabled', checked)
+                              }}
+                            />
+                          </FormControl>
                         </div>
-                        <FormControl>
-                          <Switch
-                            aria-label={t('workbench.commandHistory.enableGlobal')}
-                            checked={field.value !== false}
-                            onCheckedChange={(checked) => {
-                              field.onChange(checked)
-                              void handleSettingSave('commandHistoryEnabled', checked)
-                            }}
-                          />
-                        </FormControl>
+                        {field.value !== false && (
+                          <div className="space-y-2 pt-3 border-t border-[var(--workbench-border)]">
+                            <div className="text-sm text-amber-600 dark:text-amber-500 font-medium">
+                              {t('workbench.commandHistory.injectionWarning')}
+                            </div>
+                            {shellScriptQuery.data ? (
+                              <ShellCodeHighlight code={shellScriptQuery.data} />
+                            ) : (
+                              <div className="text-xs text-muted-foreground animate-pulse">
+                                Loading...
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </FormItem>
                     )}
                   />
@@ -1205,14 +1228,14 @@ export function WorkbenchSettingsEditor() {
                             }}
                             onBlur={() => {
                               field.onBlur()
-                              const parsed =
-                                settingsSchema.shape.awayReminderTimeoutMs.safeParse(
-                                  form.getValues('awayReminderTimeoutMs')
-                                )
+                              const parsed = settingsSchema.shape.awayReminderTimeoutMs.safeParse(
+                                form.getValues('awayReminderTimeoutMs')
+                              )
                               if (!parsed.success) {
                                 resetSavedField(
                                   'awayReminderTimeoutMs',
-                                  savedSettingsRef.current?.awayReminderTimeoutMs ?? DEFAULT_SETTINGS_FORM_VALUES.awayReminderTimeoutMs
+                                  savedSettingsRef.current?.awayReminderTimeoutMs ??
+                                    DEFAULT_SETTINGS_FORM_VALUES.awayReminderTimeoutMs
                                 )
                                 toast.error(t('workbench.settings.validation.failed'))
                                 return

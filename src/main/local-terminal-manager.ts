@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { accessSync, chmodSync, constants as fsConstants, existsSync } from 'node:fs'
+import { accessSync, chmodSync, constants as fsConstants, existsSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { homedir } from 'node:os'
 import path from 'node:path'
@@ -20,7 +20,7 @@ import type {
 } from '@shared/types'
 import type { DatabaseService } from './database'
 import { createOscScannerState, scanOscChunk, type OscScannerState } from './osc-scanner'
-import { isShellIntegrationInternal, SHELL_INTEGRATION_SCRIPT } from './shell-integration'
+import { isShellIntegrationInternal, SHELL_INTEGRATION_FILE_CONTENT } from './shell-integration'
 
 const require = createRequire(import.meta.url)
 
@@ -51,6 +51,10 @@ interface LocalTerminalRecord {
   historyCaptureEnabled: boolean
   historyCaptureStatus: 'pending' | 'active' | 'unavailable'
   historyProbeTimer: ReturnType<typeof setTimeout> | null
+  integrationBuffer?: string
+  integrationTimeoutTimer?: ReturnType<typeof setTimeout> | null
+  integrationState?: 'none' | 'waiting' | 'delayed' | 'active' | 'failed'
+  integrationDelayTimer?: ReturnType<typeof setTimeout> | null
 }
 
 function now() {
@@ -145,24 +149,11 @@ export class LocalTerminalManager {
       pendingCommand: { text: null, startedAt: null },
       historyCaptureEnabled: captureEnabled,
       historyCaptureStatus: captureEnabled ? 'pending' : 'unavailable',
-      historyProbeTimer: null
+      historyProbeTimer: null,
+      integrationState: captureEnabled ? 'waiting' : 'none'
     }
 
     this.terminals.set(terminalId, record)
-
-    if (captureEnabled) {
-      try {
-        pty.write(SHELL_INTEGRATION_SCRIPT)
-        record.historyProbeTimer = setTimeout(() => {
-          if (record.historyCaptureStatus === 'pending') {
-            record.historyCaptureStatus = 'unavailable'
-          }
-          record.historyProbeTimer = null
-        }, HISTORY_PROBE_TIMEOUT_MS)
-      } catch {
-        record.historyCaptureStatus = 'unavailable'
-      }
-    }
 
     const dataDisposable = pty.onData((data) => {
       this.handlePtyData(terminalId, data)
@@ -233,6 +224,14 @@ export class LocalTerminalManager {
       clearTimeout(record.historyProbeTimer)
       record.historyProbeTimer = null
     }
+    if (record.integrationTimeoutTimer) {
+      clearTimeout(record.integrationTimeoutTimer)
+      record.integrationTimeoutTimer = null
+    }
+    if (record.integrationDelayTimer) {
+      clearTimeout(record.integrationDelayTimer)
+      record.integrationDelayTimer = null
+    }
     this.clearPendingTerminalData(record)
     record.disposeListeners()
     record.pty?.kill()
@@ -286,6 +285,87 @@ export class LocalTerminalManager {
       return
     }
 
+    if (record.integrationState === 'waiting') {
+      record.integrationState = 'delayed'
+      this.handlePtyDataFiltered(terminalId, record, data)
+      record.integrationDelayTimer = setTimeout(() => {
+        record.integrationDelayTimer = null
+        this.installLocalShellIntegration(terminalId, record)
+      }, 200)
+      return
+    }
+
+    if (record.integrationState === 'delayed') {
+      this.handlePtyDataFiltered(terminalId, record, data)
+      return
+    }
+
+    if (record.integrationBuffer !== undefined) {
+      record.integrationBuffer += data
+      const command = ` . ~/.winssh_init_${terminalId} && rm -f ~/.winssh_init_${terminalId}`
+
+      if (record.integrationBuffer.includes(command)) {
+        if (record.integrationTimeoutTimer) {
+          clearTimeout(record.integrationTimeoutTimer)
+          record.integrationTimeoutTimer = null
+        }
+
+        let cleaned = record.integrationBuffer
+        const idx = cleaned.indexOf(command)
+        if (idx !== -1) {
+          let prefix = cleaned.slice(0, idx)
+          prefix = prefix.replace(/[ \b]+$/, '')
+          let suffix = cleaned.slice(idx + command.length)
+          suffix = suffix.replace(/^\r?\n?/, '')
+          cleaned = prefix + suffix
+        }
+
+        record.integrationBuffer = undefined
+        if (cleaned) {
+          this.handlePtyDataFiltered(terminalId, record, cleaned)
+        }
+      }
+      return
+    }
+
+    this.handlePtyDataFiltered(terminalId, record, data)
+  }
+
+  private installLocalShellIntegration(terminalId: string, record: LocalTerminalRecord) {
+    try {
+      const tempFilePath = path.join(homedir(), `.winssh_init_${terminalId}`)
+      writeFileSync(tempFilePath, SHELL_INTEGRATION_FILE_CONTENT, 'utf8')
+
+      const command = ` . ~/.winssh_init_${terminalId} && rm -f ~/.winssh_init_${terminalId}`
+      record.integrationBuffer = ''
+      record.pty?.write(`${command}\r`)
+
+      record.integrationTimeoutTimer = setTimeout(() => {
+        if (record.integrationBuffer !== undefined) {
+          const data = record.integrationBuffer
+          record.integrationBuffer = undefined
+          if (data) {
+            this.handlePtyDataFiltered(terminalId, record, data)
+          }
+        }
+        record.integrationTimeoutTimer = null
+      }, 1000)
+      record.integrationState = 'active'
+    } catch {
+      record.historyCaptureStatus = 'unavailable'
+      record.integrationState = 'failed'
+      return
+    }
+
+    record.historyProbeTimer = setTimeout(() => {
+      if (record.historyCaptureStatus === 'pending') {
+        record.historyCaptureStatus = 'unavailable'
+      }
+      record.historyProbeTimer = null
+    }, HISTORY_PROBE_TIMEOUT_MS)
+  }
+
+  private handlePtyDataFiltered(terminalId: string, record: LocalTerminalRecord, data: string) {
     const cleaned = scanOscChunk(record.oscState, data, {
       onPromptStart: () => {
         if (record.historyCaptureStatus === 'pending') {
@@ -312,6 +392,9 @@ export class LocalTerminalManager {
       },
       onCommandDone: (exitCode) => {
         this.handleLocalCommandDone(record, exitCode)
+      },
+      onCwd: (cwd) => {
+        record.summary.cwd = cwd
       }
     })
 
@@ -338,7 +421,7 @@ export class LocalTerminalManager {
         scope: { kind: 'local' },
         command: pending.text,
         executedAt,
-        cwd: null,
+        cwd: record.summary.cwd || null,
         exitCode,
         durationMs
       })
