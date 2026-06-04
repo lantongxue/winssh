@@ -15,6 +15,20 @@ body {
   font-family: var(--font-sans);
 }
 
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 ::selection {
   background-color: rgba(255, 255, 255, 0.2);
   color: #fff;

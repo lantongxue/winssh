@@ -18,13 +18,13 @@ export function Hero() {
       {/* Background Glow & Grid */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none flex items-center justify-center">
         {/* Animated Grid */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
-          animate={{ 
+          animate={{
             opacity: 1,
             backgroundPosition: ["0px 0px", "40px 40px"]
           }}
-          transition={{ 
+          transition={{
             opacity: { duration: 2 },
             backgroundPosition: { repeat: Infinity, duration: 4, ease: "linear" }
           }}
@@ -32,36 +32,36 @@ export function Hero() {
         />
 
         {/* Animated Orbs */}
-        <motion.div 
-          animate={{ 
+        <motion.div
+          animate={{
             x: ['-50%', '-20%', '-70%', '-50%'],
             y: ['-50%', '-70%', '-30%', '-50%'],
             scale: [1, 1.2, 0.9, 1]
           }}
           transition={{ repeat: Infinity, duration: 12, ease: "easeInOut" }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-blue-600/40 rounded-full blur-[100px] mix-blend-screen" 
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-blue-600/40 rounded-full blur-[100px] mix-blend-screen"
         />
-        <motion.div 
-          animate={{ 
+        <motion.div
+          animate={{
             x: ['0%', '40%', '-20%', '0%'],
             y: ['0%', '-40%', '20%', '0%'],
             scale: [1, 1.1, 0.8, 1]
           }}
           transition={{ repeat: Infinity, duration: 15, ease: "easeInOut", delay: 1 }}
-          className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-purple-600/30 rounded-full blur-[100px] mix-blend-screen" 
+          className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-purple-600/30 rounded-full blur-[100px] mix-blend-screen"
         />
-        <motion.div 
-          animate={{ 
+        <motion.div
+          animate={{
             x: ['0%', '-40%', '20%', '0%'],
             y: ['0%', '40%', '-20%', '0%'],
             scale: [1, 1.3, 0.9, 1]
           }}
           transition={{ repeat: Infinity, duration: 18, ease: "easeInOut", delay: 2 }}
-          className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-cyan-600/20 rounded-full blur-[120px] mix-blend-screen" 
+          className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-cyan-600/20 rounded-full blur-[120px] mix-blend-screen"
         />
       </div>
 
-      <motion.div 
+      <motion.div
         style={{ y, opacity }}
         className="relative z-10 w-full pt-12 flex flex-col items-center"
       >
@@ -76,13 +76,16 @@ export function Hero() {
             <span className="text-xs font-medium text-neutral-300 tracking-wide uppercase">{t.hero.tagline}</span>
           </motion.div>
 
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="font-display text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter leading-[1.1] md:leading-[1.1] text-transparent bg-clip-text bg-gradient-to-b from-white to-white/40"
+            className="font-display text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter leading-[1.1] md:leading-[1.1]"
           >
-            {t.hero.title[0]} <br/> {t.hero.title[1]}
+            <span className="text-transparent bg-clip-text bg-gradient-to-br from-white via-blue-100 to-white/30 animate-[gradient_8s_ease_infinite] bg-[length:200%_200%]">
+              {t.hero.title[0]} <br /> {t.hero.title[1]}
+            </span>
+            <span className="inline-block ml-[8px] md:ml-[12px] w-[14px] md:w-[20px] lg:w-[24px] h-[0.8em] bg-blue-400 shadow-[0_0_20px_rgba(96,165,250,0.8)] animate-[pulse_1s_cubic-bezier(0.4,0,0.6,1)_infinite] rounded-[1px]" />
           </motion.h1>
 
           <motion.p
@@ -94,20 +97,26 @@ export function Hero() {
             {t.hero.desc}
           </motion.p>
         </div>
-        
+
         <motion.div
-           initial={{ opacity: 0, y: 60 }}
-           animate={{ opacity: 1, y: 0 }}
-           transition={{ duration: 1.2, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-           className="mt-20 w-full max-w-[1600px] px-4 sm:px-6 md:px-12"
+          initial={{ opacity: 0, y: 60 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1.2, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="mt-20 w-full max-w-[1600px] px-4 sm:px-6 md:px-12 group cursor-default"
         >
-          <div className="w-full rounded-t-3xl overflow-hidden border border-white/10 border-b-0 shadow-[0_-20px_80px_-20px_rgba(37,99,235,0.2)] bg-[#050505] backdrop-blur-sm">
-            <img 
-              src={lang === 'zh' ? '/winssh-shell-zh.png' : '/winssh-shell-en.png'}
-              alt="WinSSH Main Interface" 
-              className="w-full h-auto block object-cover"
-              style={{ imageRendering: "high-quality" }}
-            />
+          <div className="relative w-full rounded-[24px] overflow-hidden shadow-[0_0_80px_-20px_rgba(37,99,235,0.2)] p-[3px] transition-all duration-700 ease-out group-hover:-translate-y-6 group-hover:shadow-[0_40px_100px_-20px_rgba(59,130,246,0.4)]">
+            {/* Fluid glowing border animation */}
+            <div className="absolute top-1/2 left-1/2 w-[150%] h-[300%] -translate-x-1/2 -translate-y-1/2 bg-[conic-gradient(from_0deg_at_50%_50%,transparent_0%,transparent_25%,rgba(96,165,250,0.9)_50%,transparent_50%,transparent_75%,rgba(96,165,250,0.9)_100%)] animate-[spin_4s_linear_infinite] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+
+            {/* Inner Content Block */}
+            <div className="relative w-full h-full rounded-[21px] overflow-hidden border border-white/10 group-hover:border-transparent transition-colors duration-500">
+              <img
+                src={lang === 'zh' ? '/winssh-shell-zh.png' : '/winssh-shell-en.png'}
+                alt="WinSSH Main Interface"
+                className="w-full h-auto block object-cover"
+                style={{ imageRendering: "high-quality" }}
+              />
+            </div>
           </div>
         </motion.div>
       </motion.div>
