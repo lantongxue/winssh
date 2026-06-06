@@ -1,6 +1,5 @@
 import { EventEmitter } from 'node:events'
-import { mkdirSync, writeFileSync } from 'node:fs'
-import { dirname } from 'node:path'
+
 import type { UpdateState, UpdateUnsupportedReason, UpdateVersionInfo } from '@shared/types'
 
 type UpdateEventMap = {
@@ -33,11 +32,8 @@ export interface UpdaterAdapter {
 }
 
 export type UpdateServiceOptions = {
-  allowDevUpdates?: boolean
   autoCheckEnabled: boolean
   currentVersion: string
-  devConfigPath?: string | null
-  feedUrl: string | null
   githubOwner: string
   githubRepo: string
   isPackaged: boolean
@@ -59,49 +55,41 @@ function toVersionInfo(info: ProviderUpdateInfo): UpdateVersionInfo {
 }
 
 function resolveUnsupportedReason(options: UpdateServiceOptions): UpdateUnsupportedReason | null {
-  if (options.platform !== 'win32') {
+  if (
+    options.platform !== 'win32' &&
+    options.platform !== 'darwin' &&
+    options.platform !== 'linux'
+  ) {
     return 'platform_not_supported'
   }
 
-  if (!options.isPackaged && !options.allowDevUpdates) {
+  if (!options.isPackaged) {
     return 'app_not_packaged'
   }
 
-  if (options.isPackaged) {
-    if (!options.githubOwner?.trim() || !options.githubRepo?.trim()) {
-      return 'feed_url_missing'
-    }
-  } else {
-    if (!options.feedUrl?.trim()) {
-      return 'feed_url_missing'
-    }
+  if (!options.githubOwner?.trim() || !options.githubRepo?.trim()) {
+    return 'feed_url_missing'
   }
 
   return null
 }
 
-function prepareDevUpdateConfig(filePath: string, feedUrl: string) {
-  mkdirSync(dirname(filePath), { recursive: true })
-  writeFileSync(filePath, ['provider: generic', `url: ${feedUrl}`].join('\n') + '\n', 'utf8')
-}
-
 function createUpdater(options: UpdateServiceOptions): UpdaterAdapter {
-  const { NsisUpdater } = require('electron-updater') as {
-    NsisUpdater: new (config: any) => UpdaterAdapter
+  const electronUpdater = require('electron-updater')
+
+  const config = {
+    provider: 'github' as const,
+    owner: options.githubOwner,
+    repo: options.githubRepo
   }
 
-  if (options.isPackaged) {
-    return new NsisUpdater({
-      provider: 'github',
-      owner: options.githubOwner,
-      repo: options.githubRepo
-    })
-  } else {
-    return new NsisUpdater({
-      provider: 'generic',
-      url: options.feedUrl as string
-    })
+  if (options.platform === 'win32') {
+    return new electronUpdater.NsisUpdater(config)
   }
+  if (options.platform === 'darwin') {
+    return new electronUpdater.MacUpdater(config)
+  }
+  return new electronUpdater.AppImageUpdater(config)
 }
 
 export class UpdateService extends EventEmitter {
@@ -129,12 +117,6 @@ export class UpdateService extends EventEmitter {
 
     if (this.updater) {
       this.updater.autoDownload = false
-      if (options.allowDevUpdates && !options.isPackaged) {
-        this.updater.forceDevUpdateConfig = true
-        if (options.devConfigPath) {
-          prepareDevUpdateConfig(options.devConfigPath, options.feedUrl as string)
-        }
-      }
       this.attachUpdaterEvents(this.updater)
     }
   }

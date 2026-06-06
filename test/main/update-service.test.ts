@@ -1,7 +1,4 @@
 import { EventEmitter } from 'node:events'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { UpdateService, type UpdaterAdapter } from '@main/update-service'
 
@@ -18,7 +15,6 @@ function createService(overrides: Partial<ConstructorParameters<typeof UpdateSer
   const service = new UpdateService({
     autoCheckEnabled: true,
     currentVersion: '1.0.0',
-    feedUrl: 'https://updates.example.com/winssh',
     githubOwner: 'lantongxue',
     githubRepo: 'winssh',
     isPackaged: true,
@@ -31,9 +27,9 @@ function createService(overrides: Partial<ConstructorParameters<typeof UpdateSer
 }
 
 describe('UpdateService', () => {
-  it('marks non-Windows builds as unsupported', () => {
+  it('marks unsupported platforms as unsupported', () => {
     const { service } = createService({
-      platform: 'linux'
+      platform: 'freebsd'
     })
 
     expect(service.getState()).toMatchObject({
@@ -43,7 +39,22 @@ describe('UpdateService', () => {
     })
   })
 
-  it('marks unpackaged Windows builds as unsupported', () => {
+  it('supports win32, darwin, and linux platforms', () => {
+    for (const platform of ['win32', 'darwin', 'linux']) {
+      const { service } = createService({
+        platform,
+        isPackaged: true
+      })
+
+      expect(service.getState()).toMatchObject({
+        phase: 'idle',
+        supported: true,
+        unsupportedReason: null
+      })
+    }
+  })
+
+  it('marks unpackaged builds as unsupported', () => {
     const { service } = createService({
       isPackaged: false
     })
@@ -55,58 +66,19 @@ describe('UpdateService', () => {
     })
   })
 
-  it('allows dev updates when explicitly enabled and prepares the dev config file', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'winssh-dev-updates-'))
-    const devConfigPath = join(directory, 'dev-app-update.yml')
-
-    try {
-      const { service, updater } = createService({
-        allowDevUpdates: true,
-        devConfigPath,
-        isPackaged: false
-      })
-
-      expect(service.getState()).toMatchObject({
-        phase: 'idle',
-        supported: true,
-        unsupportedReason: null
-      })
-      expect(updater.forceDevUpdateConfig).toBe(true)
-      expect(existsSync(devConfigPath)).toBe(true)
-      expect(readFileSync(devConfigPath, 'utf8')).toContain('provider: generic')
-      expect(readFileSync(devConfigPath, 'utf8')).toContain(
-        'url: https://updates.example.com/winssh'
-      )
-    } finally {
-      rmSync(directory, { force: true, recursive: true })
-    }
-  })
-
-  it('marks Windows builds without an update feed as unsupported', () => {
-    const { service: servicePackaged } = createService({
+  it('marks builds without GitHub owner/repo as unsupported', () => {
+    const { service } = createService({
       githubOwner: ''
     })
 
-    expect(servicePackaged.getState()).toMatchObject({
-      phase: 'unsupported',
-      supported: false,
-      unsupportedReason: 'feed_url_missing'
-    })
-
-    const { service: serviceUnpackaged } = createService({
-      feedUrl: null,
-      isPackaged: false,
-      allowDevUpdates: true
-    })
-
-    expect(serviceUnpackaged.getState()).toMatchObject({
+    expect(service.getState()).toMatchObject({
       phase: 'unsupported',
       supported: false,
       unsupportedReason: 'feed_url_missing'
     })
   })
 
-  it('initializes a Windows updater with autoDownload disabled', () => {
+  it('initializes the updater with autoDownload disabled', () => {
     const { service, updater } = createService()
 
     expect(service.getState()).toMatchObject({
