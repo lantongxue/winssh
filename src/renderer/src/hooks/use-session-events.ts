@@ -17,6 +17,7 @@ export function useSessionEvents() {
   const queryClient = useQueryClient()
   const updateLocalTerminalState = useLocalTerminalsStore((state) => state.updateTerminalState)
   const updateSessionState = useSessionsStore((state) => state.updateSessionState)
+  const setTerminalCwd = useSessionsStore((state) => state.setTerminalCwd)
   const appendOutput = useWorkbenchStore((state) => state.appendOutput)
   const pushProblem = useWorkbenchStore((state) => state.pushProblem)
   const revealPanel = useWorkbenchStore((state) => state.revealPanel)
@@ -215,6 +216,10 @@ export function useSessionEvents() {
       })
     })
 
+    const unsubscribeCwd = sessionsClient.onCwdChanged((event) => {
+      setTerminalCwd(event.sessionId, event.cwd)
+    })
+
     return () => {
       unsubscribeState()
       unsubscribeError()
@@ -223,6 +228,7 @@ export function useSessionEvents() {
       unsubscribePortForward()
       unsubscribeLocalTerminalState()
       unsubscribeLocalTerminalExit()
+      unsubscribeCwd()
     }
   }, [
     appendOutput,
@@ -232,6 +238,7 @@ export function useSessionEvents() {
     t,
     updateLocalTerminalState,
     updateSessionState,
+    setTerminalCwd,
     upsertTransfer
   ])
 }

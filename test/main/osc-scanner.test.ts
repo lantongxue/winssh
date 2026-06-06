@@ -101,6 +101,39 @@ describe('scanOscChunk', () => {
     expect(events.cwd).toEqual(['/var/log'])
   })
 
+  it('extracts working directory from OSC 7 file:// hostname/path sequences and strips them', () => {
+    const state = createOscScannerState()
+    const { handlers, events } = makeHandlers()
+    const out = scanOscChunk(state, `prefix${osc('7;file://hostname/var/log')}suffix`, handlers)
+    expect(out).toBe('prefixsuffix')
+    expect(events.cwd).toEqual(['/var/log'])
+  })
+
+  it('extracts working directory from OSC 7 file:///path (empty hostname)', () => {
+    const state = createOscScannerState()
+    const { handlers, events } = makeHandlers()
+    const out = scanOscChunk(state, `prefix${osc('7;file:///var/log/nginx')}suffix`, handlers)
+    expect(out).toBe('prefixsuffix')
+    expect(events.cwd).toEqual(['/var/log/nginx'])
+  })
+
+  it('extracts working directory from OSC 7 Windows file:// paths and strips leading slash', () => {
+    const state = createOscScannerState()
+    const { handlers, events } = makeHandlers()
+    const out = scanOscChunk(state, `prefix${osc('7;file://localhost/C:/Users/foo')}suffix`, handlers)
+    expect(out).toBe('prefixsuffix')
+    expect(events.cwd).toEqual(['C:/Users/foo'])
+  })
+
+  it('forwards invalid OSC 7 URLs (not starting with file://) verbatim', () => {
+    const state = createOscScannerState()
+    const { handlers, events } = makeHandlers()
+    const invalidUrl = osc('7;http://hostname/var/log')
+    const out = scanOscChunk(state, `prefix${invalidUrl}suffix`, handlers)
+    expect(out).toBe(`prefix${invalidUrl}suffix`)
+    expect(events.cwd).toEqual([])
+  })
+
   it('forwards unknown OSC sequences verbatim', () => {
     const state = createOscScannerState()
     const { handlers, events } = makeHandlers()

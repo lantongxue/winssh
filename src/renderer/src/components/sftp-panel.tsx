@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
-import { Send, Undo2, X, Star, Trash2, ChevronRight, ChevronDown, Folder } from 'lucide-react'
+import { Send, Undo2, X, Star, Trash2, ChevronRight, ChevronDown, Folder, Link, Unlink } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { getParentRemotePath, normalizeRemotePath } from '@shared/sftp'
@@ -146,6 +146,16 @@ export function SftpPanel({
   const [isDragActive, setIsDragActive] = useState(false)
   const [removingEntryPaths, setRemovingEntryPaths] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<SftpViewMode>('flat')
+  const [followTerminalCwd, setFollowTerminalCwd] = useState(false)
+
+  useEffect(() => {
+    if (followTerminalCwd && session?.terminalCwd && session?.sessionId) {
+      const timeoutId = window.setTimeout(() => {
+        setCurrentPath(session.sessionId, session.terminalCwd!)
+      }, 300)
+      return () => window.clearTimeout(timeoutId)
+    }
+  }, [followTerminalCwd, session?.terminalCwd, session?.sessionId, setCurrentPath])
   const treeViewRef = useRef<SftpTreeViewHandle>(null)
   const ListIcon = actionIcons.listView
   const FolderTreeIcon = actionIcons.openRemoteFiles
@@ -794,6 +804,28 @@ export function SftpPanel({
                 }}
               >
                 <FolderTreeIcon className="size-3.5" />
+              </TooltipIconButton>
+              <TooltipIconButton
+                variant="ghost"
+                size="icon-xs"
+                className={cn(
+                  'size-7 transition-all',
+                  followTerminalCwd
+                    ? 'bg-[var(--workbench-active)] text-white shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-[var(--workbench-hover)]'
+                )}
+                label={
+                  followTerminalCwd
+                    ? t('workbench.sftp.actions.unfollowTerminal')
+                    : t('workbench.sftp.actions.followTerminal')
+                }
+                onClick={() => setFollowTerminalCwd(!followTerminalCwd)}
+              >
+                {followTerminalCwd ? (
+                  <Link className="size-3.5" />
+                ) : (
+                  <Unlink className="size-3.5" />
+                )}
               </TooltipIconButton>
             </div>
             <div className="h-4 w-px bg-[var(--workbench-border)] mx-1" />

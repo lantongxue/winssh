@@ -801,4 +801,50 @@ describe('SftpPanel', () => {
       }
     }
   })
+
+  it('follows the terminal CWD when the follow toggle is active', async () => {
+    const list = vi.fn().mockImplementation(async (_sessionId: string, path: string) => ({
+      entries: [
+        {
+          kind: 'file',
+          modifiedAt: null,
+          name: 'nginx.conf',
+          path: '/var/log/nginx/nginx.conf',
+          permissions: null,
+          size: 1024
+        }
+      ],
+      path
+    }))
+
+    useSessionsStore.getState().addSession(session)
+    window.winsshApi = createWinsshApiMock({
+      sftp: {
+        list
+      }
+    })
+
+    renderConnectedSftpPanel('session-1')
+
+    const followButton = await screen.findByRole('button', { name: 'Follow Terminal Directory' })
+    expect(followButton).toBeInTheDocument()
+
+    fireEvent.click(followButton)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Stop Following Terminal Directory' })).toBeInTheDocument()
+    })
+
+    act(() => {
+      useSessionsStore.getState().setTerminalCwd('session-1', '/var/log/nginx')
+    })
+
+    await waitFor(() => {
+      expect(useSessionsStore.getState().tabs[0]?.currentPath).toBe('/var/log/nginx')
+    })
+
+    await waitFor(() => {
+      expect(list).toHaveBeenLastCalledWith('session-1', '/var/log/nginx')
+    })
+  })
 })

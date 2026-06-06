@@ -312,6 +312,11 @@ export interface SessionErrorEvent extends ObservableEventMetadata {
   recoverable?: boolean
 }
 
+export interface SessionCwdEvent extends ObservableEventMetadata {
+  sessionId: string
+  cwd: string
+}
+
 export interface SessionResourceSnapshot {
   sessionId: string
   sampledAt: string

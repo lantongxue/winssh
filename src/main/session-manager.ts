@@ -40,7 +40,8 @@ import {
   SessionSummary,
   TransferProgressEvent,
   type HostTrustRequest,
-  type HostTrustResult
+  type HostTrustResult,
+  SessionCwdEvent
 } from '@shared/types'
 import type { DatabaseService } from './database'
 import type { MainTranslator } from './localization'
@@ -58,6 +59,7 @@ type EventMap = {
   'sftp:transfer': TransferProgressEvent
   'portForwards:state': PortForwardStateEvent
   'commandHistory:added': CommandRecordedEvent
+  'sessions:cwdChanged': SessionCwdEvent
 }
 
 interface BasePortForwardRuntime {
@@ -1260,7 +1262,17 @@ export class SessionManager {
         this.handleCommandDone(runtime, exitCode)
       },
       onCwd: (cwd) => {
-        runtime.summary.currentPath = cwd
+        const normalized = normalizeRemotePath(cwd)
+        if (runtime.summary.currentPath !== normalized) {
+          runtime.summary.currentPath = normalized
+          this.emitToRenderer(
+            'sessions:cwdChanged',
+            this.withObservableMetadata(runtime.sessionId, {
+              sessionId: runtime.sessionId,
+              cwd: normalized
+            })
+          )
+        }
       }
     })
 

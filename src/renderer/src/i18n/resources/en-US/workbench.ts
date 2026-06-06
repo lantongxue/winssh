@@ -718,7 +718,9 @@ const workbench = {
         flatView: 'Flat View',
         openDirectory: 'Open Directory',
         sendPathToTerminal: 'Send Path to Terminal',
-        treeView: 'Tree View'
+        treeView: 'Tree View',
+        followTerminal: 'Follow Terminal Directory',
+        unfollowTerminal: 'Stop Following Terminal Directory'
       },
       dropzone: {
         description: 'Upload them into {{path}}.',

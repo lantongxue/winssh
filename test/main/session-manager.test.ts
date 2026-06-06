@@ -1044,7 +1044,7 @@ describe('SessionManager session data forwarding', () => {
       .map((call) => (call[1] as { data: string }).data)
   }
 
-  it('passes through terminal data without extracting OSC 7 cwd sequences', () => {
+  it('extracts OSC 7 cwd sequences, updates currentPath, and emits sessions:cwdChanged', () => {
     const { manager, emitToRenderer } = createManagerWithEmitSpy()
     const runtime = createRuntime('session-1', new MockClient())
 
@@ -1053,9 +1053,18 @@ describe('SessionManager session data forwarding', () => {
 
     expect(getDataPayloads(emitToRenderer)).toEqual([
       'user@host:~$ ls\r\n',
-      `prefix\x1b]7;file://host/tmp/foo\x07suffix`
+      'prefixsuffix'
     ])
-    expect(runtime.summary.currentPath).toBe('/')
+    expect(runtime.summary.currentPath).toBe('/tmp/foo')
+
+    const cwdChangeCall = emitToRenderer.mock.calls.find(
+      (call) => call[0] === 'sessions:cwdChanged'
+    )
+    expect(cwdChangeCall).toBeDefined()
+    expect(cwdChangeCall?.[1]).toMatchObject({
+      sessionId: 'session-1',
+      cwd: '/tmp/foo'
+    })
   })
 
   it('extracts OSC 133;P;Cwd sequences and updates summary.currentPath', () => {

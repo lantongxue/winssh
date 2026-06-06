@@ -171,6 +171,35 @@ function handleOscPayload(payload: string, handlers: OscHandlers): boolean {
     return true
   }
 
+  // OSC 7 — working directory (OSC 7; file://hostname/path).
+  if (payload.startsWith('7;')) {
+    const urlStr = payload.slice(2)
+    if (urlStr.startsWith('file://')) {
+      try {
+        const url = new URL(urlStr)
+        let cwd = decodeURIComponent(url.pathname)
+        if (/^\/[a-zA-Z]:/.test(cwd)) {
+          cwd = cwd.slice(1)
+        }
+        handlers.onCwd?.(cwd)
+        return true
+      } catch {
+        const prefix = 'file://'
+        const withoutPrefix = urlStr.slice(prefix.length)
+        const slashIndex = withoutPrefix.indexOf('/')
+        if (slashIndex !== -1) {
+          let cwd = decodeURIComponent(withoutPrefix.slice(slashIndex))
+          if (/^\/[a-zA-Z]:/.test(cwd)) {
+            cwd = cwd.slice(1)
+          }
+          handlers.onCwd?.(cwd)
+          return true
+        }
+      }
+    }
+    return false
+  }
+
   return false
 }
 

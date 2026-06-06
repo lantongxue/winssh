@@ -698,7 +698,9 @@ const workbench = {
         flatView: '平铺视图',
         openDirectory: '打开目录',
         sendPathToTerminal: '发送路径到终端',
-        treeView: '树形视图'
+        treeView: '树形视图',
+        followTerminal: '跟随终端目录',
+        unfollowTerminal: '停止跟随终端目录'
       },
       dropzone: {
         description: '会上传到 {{path}}。',

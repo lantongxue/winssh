@@ -14,6 +14,8 @@ export type MainTranslationKey =
   | 'dialogs.importThemeArchive.filters.allFiles'
   | 'dialogs.uploadFiles.title'
   | 'dialogs.downloadFile.title'
+  | 'dialogs.hostFirstSeen.detail'
+  | 'dialogs.hostChanged.message'
   | 'errors.serverNotFound'
   | 'errors.passwordRequired'
   | 'errors.authFailed'
@@ -109,6 +111,12 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
       },
       downloadFile: {
         title: 'Save Remote File'
+      },
+      hostFirstSeen: {
+        detail: 'Address: {{host}}:{{port}}\nFingerprint: {{fingerprint}}'
+      },
+      hostChanged: {
+        message: 'The host fingerprint for {{serverName}} does not match the previous record.'
       }
     },
     errors: {
@@ -216,6 +224,12 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
       },
       downloadFile: {
         title: '保存远程文件'
+      },
+      hostFirstSeen: {
+        detail: '地址: {{host}}:{{port}}\n指纹: {{fingerprint}}'
+      },
+      hostChanged: {
+        message: '服务器 {{serverName}} 的主机指纹与历史记录不匹配。'
       }
     },
     errors: {

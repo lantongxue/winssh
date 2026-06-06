@@ -16,6 +16,7 @@ export interface SessionTab extends SessionSummary {
   lastMessage?: string
   provisional?: boolean
   focusNonce?: number
+  terminalCwd?: string
 }
 
 export interface PendingSessionInput {
@@ -46,6 +47,7 @@ interface SessionsState {
   ) => void
   updateSessionState: (event: SessionStateEvent) => void
   setCurrentPath: (sessionId: string, path: string) => void
+  setTerminalCwd: (sessionId: string, cwd: string) => void
   requestTerminalFocus: (sessionId: string) => void
   clear: () => void
 }
@@ -180,6 +182,10 @@ export const useSessionsStore = create<SessionsState>((set) => ({
         tabs: state.tabs.map((t) => (t.sessionId === sessionId ? { ...t, currentPath: path } : t))
       }
     }),
+  setTerminalCwd: (sessionId, cwd) =>
+    set((state) => ({
+      tabs: state.tabs.map((t) => (t.sessionId === sessionId ? { ...t, terminalCwd: cwd } : t))
+    })),
   requestTerminalFocus: (sessionId) =>
     set((state) => ({
       tabs: state.tabs.map((tab) =>
