@@ -54,5 +54,9 @@ linux:
     - AppImage
     - deb
   artifactName: ${productName}-Linux-${version}-${arch}.${ext}
+publish:
+  provider: github
+  owner: lantongxue
+  repo: winssh
 electronUpdaterCompatibility: '>=2.16'
 npmRebuild: false
