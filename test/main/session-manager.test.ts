@@ -153,11 +153,23 @@ function getHistoryMap(manager: SessionManager) {
 }
 
 function getCpuBaselinesMap(manager: SessionManager) {
-  return Reflect.get(manager as object, 'resourceCpuBaselines') as Map<string, unknown>
+  const service = Reflect.get(manager as object, 'resourceMonitorService') as {
+    hasCpuBaseline: (sessionId: string) => boolean
+    hasNetworkBaseline: (sessionId: string) => boolean
+  }
+  return {
+    has: (sessionId: string) => service.hasCpuBaseline(sessionId)
+  }
 }
 
 function getNetworkBaselinesMap(manager: SessionManager) {
-  return Reflect.get(manager as object, 'resourceNetworkBaselines') as Map<string, unknown>
+  const service = Reflect.get(manager as object, 'resourceMonitorService') as {
+    hasCpuBaseline: (sessionId: string) => boolean
+    hasNetworkBaseline: (sessionId: string) => boolean
+  }
+  return {
+    has: (sessionId: string) => service.hasNetworkBaseline(sessionId)
+  }
 }
 
 async function finalizeManagedSession(manager: SessionManager, sessionId: string) {
