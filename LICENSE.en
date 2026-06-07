@@ -1,0 +1,54 @@
+WinSSH Open Source License
+===========================
+
+Version 1.0 | Effective Date: June 2026
+
+1. License Scope
+This project (including source code, documentation, resource files, etc.) is licensed under this agreement, and any individual or organization may:
+  • Freely use this project
+  • Freely modify this project
+  • Freely publish modified or unmodified versions
+
+2. Required Conditions
+When using, modifying, or publishing this project, you must comply with the following conditions:
+
+2.1 Attribution Requirement
+You must clearly display the original author information in your project, including but not limited to:
+  • Original project name: WinSSH
+  • Original author: lantongxue (or the current maintainer as declared in the project)
+  • Original project URL: https://github.com/lantongxue/winssh
+  • Attribution can be provided through any of the following methods: README, LICENSE, about dialog, source code comments, or other prominent locations
+
+2.2 Non-Commercial Use
+You must not charge any fees, directly or indirectly, for this project or its derivatives, including but not limited to:
+  • Selling this project or its modified versions
+  • Charging for services or products that use this project
+  • Providing paid consulting, customization, or deployment services based on this project
+  • Integrating this project into paid products and charging for them
+
+Free support, documentation, and consulting services are not subject to this restriction.
+
+2.3 License Propagation
+Any modifications or derivative versions of this project must continue to be published under this agreement, and the above terms must not be altered or removed.
+
+3. Special Rights Reserved by Original Author
+The original author (lantongxue) reserves the following exclusive rights:
+  • Commercial use of this project (including but not limited to providing paid services, commercial distribution, etc.)
+  • Modification, upgrade, or amendment of this agreement
+  • Commercial licensing of this project (in ways that do not conflict with this open-source agreement)
+
+4. Disclaimer of Warranties
+This project is provided "AS IS" without any express or implied warranties, including but not limited to warranties of merchantability, fitness for a particular purpose, or non-infringement.
+
+In no event shall the original author be liable for any direct, indirect, special, incidental, or consequential damages arising out of or related to the use or inability to use this project.
+
+5. Governing Law
+This agreement is governed by the laws of the People's Republic of China. All disputes related to this agreement shall be resolved through friendly negotiation. If negotiation fails, the matter shall be submitted to the competent legal authorities.
+
+6. Contact Information
+If you have questions about this agreement or need special authorization, please contact the original author through one of the following channels:
+  • GitHub Issues: https://github.com/lantongxue/winssh/issues
+  • GitHub Discussions: https://github.com/lantongxue/winssh/discussions
+
+---
+© 2026 lantongxue. All rights reserved (except for open-source portions).

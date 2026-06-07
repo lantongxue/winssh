@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.2](https://github.com/lantongxue/winssh/compare/v1.2.1...v1.2.2) (2026-06-07)
+
+### Features
+
+* 增加 SFTP 目录跟随功能 ([b5c890c](https://github.com/lantongxue/winssh/commit/b5c890c021d024a1f6a6e4edb91141ee5ff6ef58))
+
 ## [1.2.1](https://cnb.cool/webqteam/winssh/compare/v1.2.0...v1.2.1) (2026-06-04)
 
 ### Bug Fixes
