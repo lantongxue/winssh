@@ -25,7 +25,7 @@
 **WinSSH** 是一款专为开发者与系统管理员打造的跨平台 SSH 和 SFTP 客户端。我们摒弃了传统终端工具杂乱繁琐的界面设计，致力于在单个窗口内将 **SSH 会话、本地终端、SFTP 文件传输、端口转发、命令面板、凭据保险箱、暂离保护** 和 **个性化主题系统** 深度融合。免去频繁切换工具的烦恼，为您提供极速、流畅的沉浸式运维体验。
 
 <div align="center">
-  <img src="official-website/public/assets/winssh-shell-zh.png" width="100%" alt="WinSSH Dark Preview" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);" />
+  <img src="official-website/public/winssh-shell-zh.png" width="100%" alt="WinSSH Dark Preview" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);" />
 </div>
 
 ---
