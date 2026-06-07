@@ -153,7 +153,7 @@ export function SftpPanel({
       const timeoutId = window.setTimeout(() => {
         setCurrentPath(session.sessionId, session.terminalCwd!)
       }, 300)
-      return () => window.clearTimeout(timeoutId)
+      window.clearTimeout(timeoutId)
     }
   }, [followTerminalCwd, session?.terminalCwd, session?.sessionId, setCurrentPath])
   const treeViewRef = useRef<SftpTreeViewHandle>(null)
