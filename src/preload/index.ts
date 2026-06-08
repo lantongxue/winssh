@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { WinsshApi } from '@shared/api'
 import type { IpcCallback, IpcChannel, IpcPayload } from '@shared/ipc-channels'
 import type { LocalTerminalDataEvent, SessionDataEvent } from '@shared/types'
+import { TerminalPortAllocator } from './terminal-port-allocator'
 
 // ============================================================
 // 1. 静态 ID 提取器注册表 —— 每个需要过滤的 channel 只定义一次
@@ -25,6 +26,11 @@ interface ChannelHub {
 }
 
 const hubs = new Map<IpcChannel, ChannelHub>()
+const terminalPortAllocator = new TerminalPortAllocator({
+  registerMainPort: async (sessionId, port) => {
+    ipcRenderer.postMessage('sessions:registerDataPort', { sessionId }, [port])
+  }
+})
 
 function getOrCreateHub(channel: IpcChannel): ChannelHub {
   const existing = hubs.get(channel)
@@ -212,6 +218,7 @@ const api: WinsshApi = {
     write: (sessionId, data) => ipcRenderer.send('sessions:write', sessionId, data),
     resize: (sessionId, columns, rows) =>
       ipcRenderer.invoke('sessions:resize', sessionId, columns, rows),
+    createDataChannel: (sessionId) => terminalPortAllocator.create(sessionId),
     onData: (sessionId, callback) => subscribeById('sessions:data', sessionId, callback),
     onExit: (callback) => subscribe('sessions:exit', callback),
     onStateChange: (callback) => subscribe('sessions:state', callback),

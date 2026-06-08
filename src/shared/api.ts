@@ -95,6 +95,7 @@ export interface WinsshApi {
     getResourceSnapshot: (sessionId: string) => Promise<SessionResourceSnapshot>
     write: (sessionId: string, data: string) => void
     resize: (sessionId: string, columns: number, rows: number) => Promise<void>
+    createDataChannel: (sessionId: string) => Promise<MessagePort>
     onData: (sessionId: string, callback: (event: SessionDataEvent) => void) => Unsubscribe
     onExit: (callback: (event: SessionExitEvent) => void) => Unsubscribe
     onStateChange: (callback: (event: SessionStateEvent) => void) => Unsubscribe

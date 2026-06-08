@@ -262,6 +262,10 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
         sessionId: 'session-1'
       }),
       onData: () => noopUnsubscribe,
+      createDataChannel: async () => {
+        const channel = new MessageChannel()
+        return channel.port1
+      },
       onError: () => noopUnsubscribe,
       onExit: () => noopUnsubscribe,
       onStateChange: () => noopUnsubscribe,
