@@ -18,6 +18,12 @@ import type {
   WindowState
 } from './types'
 
+export interface TerminalBackpressureEvent {
+  sessionId: string
+  droppedFrames: number
+  queuedBytes: number
+}
+
 export interface IpcChannelMap {
   'commandHistory:added': CommandRecordedEvent
   'localTerminals:data': LocalTerminalDataEvent
@@ -35,6 +41,7 @@ export interface IpcChannelMap {
   'system:appFocus': AppFocusEvent
   'system:appActivity': AppActivityEvent
   'system:windowState': WindowState
+  'terminal:backpressure': TerminalBackpressureEvent
   'updates:state': UpdateState
 }
 
