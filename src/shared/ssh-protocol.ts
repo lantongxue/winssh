@@ -67,6 +67,58 @@ export const sshCoreInboundSchema = z.discriminatedUnion('type', [
     ok: z.boolean(),
     trusted: z.boolean().optional(),
     message: z.string().optional()
+  }),
+  z.object({
+    type: z.literal('sftp:listDirectory'),
+    requestId: z.string().min(1),
+    sessionId: z.string().min(1),
+    correlationId: z.string().min(1),
+    remotePath: z.string().min(1)
+  }),
+  z.object({
+    type: z.literal('sftp:createFile'),
+    requestId: z.string().min(1),
+    sessionId: z.string().min(1),
+    correlationId: z.string().min(1),
+    remotePath: z.string().min(1)
+  }),
+  z.object({
+    type: z.literal('sftp:readFile'),
+    requestId: z.string().min(1),
+    sessionId: z.string().min(1),
+    correlationId: z.string().min(1),
+    remotePath: z.string().min(1)
+  }),
+  z.object({
+    type: z.literal('sftp:writeFile'),
+    requestId: z.string().min(1),
+    sessionId: z.string().min(1),
+    correlationId: z.string().min(1),
+    remotePath: z.string().min(1),
+    contents: z.string(),
+    encoding: z.string().optional()
+  }),
+  z.object({
+    type: z.literal('sftp:makeDirectory'),
+    requestId: z.string().min(1),
+    sessionId: z.string().min(1),
+    correlationId: z.string().min(1),
+    remotePath: z.string().min(1)
+  }),
+  z.object({
+    type: z.literal('sftp:rename'),
+    requestId: z.string().min(1),
+    sessionId: z.string().min(1),
+    correlationId: z.string().min(1),
+    sourcePath: z.string().min(1),
+    targetPath: z.string().min(1)
+  }),
+  z.object({
+    type: z.literal('sftp:remove'),
+    requestId: z.string().min(1),
+    sessionId: z.string().min(1),
+    correlationId: z.string().min(1),
+    remotePath: z.string().min(1)
   })
 ])
 
@@ -77,7 +129,14 @@ export const sshCoreOutboundSchema = z.discriminatedUnion('type', [
     type: z.literal('ack'),
     requestId: z.string().min(1),
     ok: z.boolean(),
-    message: z.string().optional()
+    message: z.string().optional(),
+    result: z.unknown().optional()
+  }),
+  z.object({
+    type: z.literal('cwd'),
+    sessionId: z.string().min(1),
+    correlationId: z.string().min(1),
+    cwd: z.string().min(1)
   }),
   z.object({
     type: z.literal('state'),
