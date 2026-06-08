@@ -30,6 +30,7 @@ import {
 } from './ssh-connection-errors'
 import { SshConnectionResolver } from './ssh-connection-resolver'
 import { SshControlPort } from './ssh-control-port'
+import { SftpDispatcher } from './sftp-dispatcher'
 import type { SessionRuntime } from './session-runtime'
 
 type WorkerPort = Pick<Worker, 'on' | 'postMessage' | 'terminate'>
@@ -81,12 +82,23 @@ export class WorkerSessionRuntime implements SessionRuntime {
   private readonly history = new Map<string, ConnectionRequest>()
   private readonly connectionResolver: SshConnectionResolver
   private readonly terminalDefaults: { cols: number; rows: number }
+  private readonly sftpDispatcher: SftpDispatcher
   private dataAggregator: Pick<SshDataAggregator, 'routeFrame'> | undefined
 
   constructor(private readonly options: WorkerSessionRuntimeOptions) {
     this.connectionResolver = new SshConnectionResolver(options.database, options.translate)
     this.terminalDefaults = options.terminalDefaults ?? DEFAULT_TERMINAL_SIZE
     this.dataAggregator = options.dataAggregator
+    this.sftpDispatcher = new SftpDispatcher({
+      legacyRuntime: {
+        listDirectory: (sessionId, remotePath) => this.listDirectoryViaCoreWorker(sessionId, remotePath),
+        readFile: (sessionId, remotePath) => this.readFileViaCoreWorker(sessionId, remotePath),
+        writeFile: (sessionId, remotePath, contents, encoding) =>
+          this.writeFileViaCoreWorker(sessionId, remotePath, contents, encoding),
+        cancelReadFile: () => {}
+      },
+      useWorker: false
+    })
   }
 
   setDataAggregator(dataAggregator: Pick<SshDataAggregator, 'routeFrame'> | undefined): void {
@@ -173,6 +185,13 @@ export class WorkerSessionRuntime implements SessionRuntime {
   }
 
   async listDirectory(sessionId: string, remotePath: string): Promise<SftpListResult> {
+    return this.sftpDispatcher.list(sessionId, remotePath)
+  }
+
+  private async listDirectoryViaCoreWorker(
+    sessionId: string,
+    remotePath: string
+  ): Promise<SftpListResult> {
     const response = await this.requireSession(sessionId).port.request({
       type: 'sftp:listDirectory',
       requestId: this.nextRequestId('sftp:listDirectory', sessionId),
@@ -197,6 +216,13 @@ export class WorkerSessionRuntime implements SessionRuntime {
     sessionId: string,
     remotePath: string
   ): Promise<{ content: string; encoding: string; cancelled?: boolean }> {
+    return this.sftpDispatcher.readFile(sessionId, remotePath)
+  }
+
+  private async readFileViaCoreWorker(
+    sessionId: string,
+    remotePath: string
+  ): Promise<{ content: string; encoding: string; cancelled?: boolean }> {
     const response = await this.requireSession(sessionId).port.request({
       type: 'sftp:readFile',
       requestId: this.nextRequestId('sftp:readFile', sessionId),
@@ -207,9 +233,20 @@ export class WorkerSessionRuntime implements SessionRuntime {
     return coerceReadFileResult(response.result)
   }
 
-  cancelReadFile(_sessionId: string, _remotePath: string): void {}
+  cancelReadFile(sessionId: string, remotePath: string): void {
+    this.sftpDispatcher.cancelReadFile(sessionId, remotePath)
+  }
 
   async writeFile(
+    sessionId: string,
+    remotePath: string,
+    contents: string,
+    encoding?: string
+  ): Promise<void> {
+    return this.sftpDispatcher.writeFile(sessionId, remotePath, contents, encoding)
+  }
+
+  private async writeFileViaCoreWorker(
     sessionId: string,
     remotePath: string,
     contents: string,
