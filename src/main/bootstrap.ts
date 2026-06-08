@@ -26,6 +26,7 @@ import { SecureStoreService } from './secure-store'
 import { SessionManager } from './session-manager'
 import { HostTrustService } from './services/host-trust-service'
 import { LegacySessionRuntime } from './services/legacy-session-runtime'
+import { SshDataAggregator } from './services/ssh-data-aggregator'
 import { WorkerSessionRuntime } from './services/worker-session-runtime'
 import { ThemeRegistry } from './theme-registry'
 import { UpdateService } from './update-service'
@@ -255,6 +256,14 @@ export async function bootstrap(): Promise<void> {
   )
   const legacySessionRuntime = new LegacySessionRuntime(sessionManager)
   const hostTrustService = new HostTrustService({ database, getWindow: () => mainWindow })
+  const sshDataAggregator = new SshDataAggregator({
+    sendLegacyData: (_sessionId, payload) => {
+      mainWindow?.webContents.send('sessions:data', payload)
+    },
+    onBackpressure: (payload) => {
+      mainWindow?.webContents.send('terminal:backpressure', payload)
+    }
+  })
   const useWorkerTerminal =
     process.env['WINSSH_WORKER_TERMINAL'] === '1' &&
     process.env['WINSSH_LEGACY_TERMINAL'] !== '1'
@@ -263,6 +272,7 @@ export async function bootstrap(): Promise<void> {
         database,
         hostTrustService,
         legacyRuntime: legacySessionRuntime,
+        dataAggregator: sshDataAggregator,
         sendToRenderer: (channel, payload) => {
           mainWindow?.webContents.send(channel, payload)
         },
@@ -321,7 +331,7 @@ export async function bootstrap(): Promise<void> {
     database,
     serversService
   })
-  registerSessionIpc(sessionsService)
+  registerSessionIpc(sessionsService, sshDataAggregator)
   registerCommandHistoryIpc(database)
   registerCustomCommandIpc(database)
   registerSftpBookmarkIpc(database)
@@ -373,6 +383,7 @@ export async function bootstrap(): Promise<void> {
     webdavBackupService.dispose()
     localTerminalManager.dispose()
     sessionRuntime.dispose()
+    sshDataAggregator.dispose()
     database.close()
   })
 }

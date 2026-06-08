@@ -23,6 +23,7 @@ import type { SshCoreOutbound } from '@shared/ssh-protocol'
 import type { DatabaseService } from '../database'
 import type { MainTranslator } from '../localization'
 import type { HostTrustService } from './host-trust-service'
+import type { SshDataAggregator } from './ssh-data-aggregator'
 import {
   ConnectionFailure,
   isAuthenticationFailure
@@ -66,6 +67,7 @@ export interface WorkerSessionRuntimeOptions {
   hostTrustService: Pick<HostTrustService, 'verifyHost' | 'resolveHostTrust'>
   legacyRuntime: SessionRuntime
   sendToRenderer: <T extends keyof EventMap>(channel: T, payload: EventMap[T]) => void
+  dataAggregator?: Pick<SshDataAggregator, 'routeFrame'>
   spawnWorker?: (sessionId: string) => WorkerPort
   terminalDefaults?: { cols: number; rows: number }
   translate: MainTranslator
@@ -79,10 +81,16 @@ export class WorkerSessionRuntime implements SessionRuntime {
   private readonly history = new Map<string, ConnectionRequest>()
   private readonly connectionResolver: SshConnectionResolver
   private readonly terminalDefaults: { cols: number; rows: number }
+  private dataAggregator: Pick<SshDataAggregator, 'routeFrame'> | undefined
 
   constructor(private readonly options: WorkerSessionRuntimeOptions) {
     this.connectionResolver = new SshConnectionResolver(options.database, options.translate)
     this.terminalDefaults = options.terminalDefaults ?? DEFAULT_TERMINAL_SIZE
+    this.dataAggregator = options.dataAggregator
+  }
+
+  setDataAggregator(dataAggregator: Pick<SshDataAggregator, 'routeFrame'> | undefined): void {
+    this.dataAggregator = dataAggregator
   }
 
   async connect(request: ConnectionRequest): Promise<SessionConnectResult> {
@@ -362,7 +370,7 @@ export class WorkerSessionRuntime implements SessionRuntime {
     const port = new SshControlPort(worker, {
       requestTimeoutMs: this.options.requestTimeoutMs,
       verifyHost: (input) => this.options.hostTrustService.verifyHost(input),
-      onEvent: (event) => this.handleWorkerEvent(event)
+      onEvent: (event) => this.handleWorkerMessage(event)
     })
     const runtime: ActiveWorkerSession = { sessionId, summary, worker, port, request }
 
@@ -407,21 +415,31 @@ export class WorkerSessionRuntime implements SessionRuntime {
     return new Worker(new URL('../workers/ssh-core/index.js', import.meta.url))
   }
 
-  private handleWorkerEvent(event: WorkerEvent): void {
+  handleWorkerMessage(event: WorkerEvent): void {
     if (event.type === 'state') {
       this.emitSessionState(event.sessionId, 'connecting', event.phase)
       return
     }
 
     if (event.type === 'data') {
-      const frame = decodeSshDataFrame(event.frame)
-      this.emitToRenderer(
-        'sessions:data',
-        this.withObservableMetadata(event.sessionId, {
+      if (this.dataAggregator) {
+        const decoded = decodeSshDataFrame(event.frame)
+        this.dataAggregator.routeFrame({
           sessionId: event.sessionId,
-          data: Buffer.from(frame.payload).toString('utf8')
+          frame: event.frame,
+          seq: event.seq,
+          sentAtMs: decoded.sentAtMs
         })
-      )
+      } else {
+        const frame = decodeSshDataFrame(event.frame)
+        this.emitToRenderer(
+          'sessions:data',
+          this.withObservableMetadata(event.sessionId, {
+            sessionId: event.sessionId,
+            data: Buffer.from(frame.payload).toString('utf8')
+          })
+        )
+      }
       return
     }
 

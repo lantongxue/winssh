@@ -116,4 +116,27 @@ describe('WorkerSessionRuntime', () => {
       expect.objectContaining({ sessionId: 'session-1', data: 'hello' })
     )
   })
+
+  it('forwards worker data frames to the data aggregator when available', () => {
+    const routeFrame = vi.fn()
+    const { runtime } = createRuntime()
+
+    runtime.setDataAggregator({ routeFrame } as never)
+    const frame = encodeSshDataFrame({
+      seq: 1,
+      sentAtMs: Date.now(),
+      payload: Buffer.from('hello')
+    })
+    runtime.handleWorkerMessage({
+      type: 'data',
+      sessionId: 'session-1',
+      correlationId: 'session-1',
+      frame,
+      seq: 1
+    })
+
+    expect(routeFrame).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: 'session-1', seq: 1 })
+    )
+  })
 })
