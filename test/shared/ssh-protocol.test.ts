@@ -8,17 +8,21 @@ describe('ssh protocol schemas', () => {
       correlationId: 'session-1',
       config: {
         sessionId: 'session-1',
-        serverId: 'server-1',
-        host: 'example.com',
-        port: 22,
-        username: 'alice',
-        authType: 'password',
+        target: {
+          id: 'server-1',
+          name: 'Example',
+          host: 'example.com',
+          port: 22,
+          username: 'alice',
+          authType: 'password',
+          auth: { password: 'secret' }
+        },
         terminal: { cols: 120, rows: 34 }
       }
     })
 
     expect(result.type).toBe('connect')
-    expect(result.config.host).toBe('example.com')
+    expect(result.config.target.host).toBe('example.com')
   })
 
   it('rejects a write control message without binary data', () => {
@@ -40,5 +44,21 @@ describe('ssh protocol schemas', () => {
     })
 
     expect(result.phase).toBe('attach')
+  })
+
+  it('accepts a worker host trust request', () => {
+    const result = sshCoreOutboundSchema.parse({
+      type: 'hostTrust',
+      requestId: 'host-1',
+      sessionId: 'session-1',
+      correlationId: 'session-1',
+      serverName: 'Example',
+      host: 'example.com',
+      port: 22,
+      key: new ArrayBuffer(8)
+    })
+
+    expect(result.type).toBe('hostTrust')
+    expect(result.host).toBe('example.com')
   })
 })

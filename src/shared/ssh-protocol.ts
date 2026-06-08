@@ -6,16 +6,31 @@ const terminalSizeSchema = z.object({
   rows: z.number().int().positive()
 })
 
-export const sshConnectConfigSchema = z.object({
-  sessionId: z.string().min(1),
-  serverId: z.string().min(1),
+const sshResolvedAuthSchema = z.object({
+  password: z.string().optional(),
+  passphrase: z.string().optional(),
+  privateKey: z.string().optional()
+})
+
+const sshResolvedServerSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
   host: z.string().min(1),
   port: z.number().int().min(1).max(65535),
   username: z.string().min(1),
   authType: z.enum(['password', 'privateKey']),
+  auth: sshResolvedAuthSchema
+})
+
+export const sshConnectConfigSchema = z.object({
+  sessionId: z.string().min(1),
+  target: sshResolvedServerSchema,
+  jump: sshResolvedServerSchema.optional(),
   terminal: terminalSizeSchema
 })
 
+export type SshResolvedAuth = z.infer<typeof sshResolvedAuthSchema>
+export type SshResolvedServer = z.infer<typeof sshResolvedServerSchema>
 export type SshConnectConfig = z.infer<typeof sshConnectConfigSchema>
 
 export const sshCoreInboundSchema = z.discriminatedUnion('type', [
@@ -74,6 +89,16 @@ export const sshCoreOutboundSchema = z.discriminatedUnion('type', [
     correlationId: z.string().min(1),
     message: z.string().min(1),
     code: z.string().optional()
+  }),
+  z.object({
+    type: z.literal('hostTrust'),
+    requestId: z.string().min(1),
+    sessionId: z.string().min(1),
+    correlationId: z.string().min(1),
+    serverName: z.string().min(1),
+    host: z.string().min(1),
+    port: z.number().int().min(1).max(65535),
+    key: z.instanceof(ArrayBuffer)
   })
 ])
 
