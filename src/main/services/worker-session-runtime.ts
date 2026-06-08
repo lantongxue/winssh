@@ -33,6 +33,7 @@ import { SshControlPort } from './ssh-control-port'
 import { SftpDispatcher } from './sftp-dispatcher'
 import { PortForwardDispatcher } from './port-forward-dispatcher'
 import type { SessionRuntime } from './session-runtime'
+import { createResourceMonitorSnapshot } from '../workers/resource-monitor'
 
 type WorkerPort = Pick<Worker, 'on' | 'postMessage' | 'terminate'>
 
@@ -74,6 +75,8 @@ export interface WorkerSessionRuntimeOptions {
   terminalDefaults?: { cols: number; rows: number }
   translate: MainTranslator
   requestTimeoutMs?: number
+  useResourceMonitorWorker?: boolean
+  createResourceSnapshot?: typeof createResourceMonitorSnapshot
 }
 
 const DEFAULT_TERMINAL_SIZE = { cols: 120, rows: 30 }
@@ -171,8 +174,13 @@ export class WorkerSessionRuntime implements SessionRuntime {
     return result.summary
   }
 
-  getResourceSnapshot(_sessionId: string): Promise<SessionResourceSnapshot> {
-    return this.options.legacyRuntime.getResourceSnapshot(_sessionId)
+  getResourceSnapshot(sessionId: string): Promise<SessionResourceSnapshot> {
+    if (this.options.useResourceMonitorWorker) {
+      const createSnapshot = this.options.createResourceSnapshot ?? createResourceMonitorSnapshot
+      return createSnapshot({ sessionId })
+    }
+
+    return this.options.legacyRuntime.getResourceSnapshot(sessionId)
   }
 
   write(sessionId: string, data: string): void {
