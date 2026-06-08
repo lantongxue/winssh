@@ -42,11 +42,13 @@ export const sshCoreInboundSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('disconnect'),
+    requestId: z.string().min(1),
     sessionId: z.string().min(1),
     correlationId: z.string().min(1)
   }),
   z.object({
     type: z.literal('resize'),
+    requestId: z.string().min(1),
     sessionId: z.string().min(1),
     correlationId: z.string().min(1),
     cols: z.number().int().positive(),
@@ -54,15 +56,29 @@ export const sshCoreInboundSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('write'),
+    requestId: z.string().min(1),
     sessionId: z.string().min(1),
     correlationId: z.string().min(1),
     data: z.instanceof(ArrayBuffer)
+  }),
+  z.object({
+    type: z.literal('hostTrustResult'),
+    requestId: z.string().min(1),
+    ok: z.boolean(),
+    trusted: z.boolean().optional(),
+    message: z.string().optional()
   })
 ])
 
 export type SshCoreInbound = z.infer<typeof sshCoreInboundSchema>
 
 export const sshCoreOutboundSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('ack'),
+    requestId: z.string().min(1),
+    ok: z.boolean(),
+    message: z.string().optional()
+  }),
   z.object({
     type: z.literal('state'),
     sessionId: z.string().min(1),
