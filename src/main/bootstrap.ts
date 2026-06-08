@@ -24,7 +24,9 @@ import { registerCustomCommandIpc } from './ipc/register-custom-command-ipc'
 import { registerSftpBookmarkIpc } from './ipc/register-sftp-bookmark-ipc'
 import { SecureStoreService } from './secure-store'
 import { SessionManager } from './session-manager'
+import { HostTrustService } from './services/host-trust-service'
 import { LegacySessionRuntime } from './services/legacy-session-runtime'
+import { WorkerSessionRuntime } from './services/worker-session-runtime'
 import { ThemeRegistry } from './theme-registry'
 import { UpdateService } from './update-service'
 import { WebDAVBackupService } from './webdav-backup-service'
@@ -251,7 +253,22 @@ export async function bootstrap(): Promise<void> {
     },
     translate
   )
-  const sessionRuntime = new LegacySessionRuntime(sessionManager)
+  const legacySessionRuntime = new LegacySessionRuntime(sessionManager)
+  const hostTrustService = new HostTrustService({ database, getWindow: () => mainWindow })
+  const useWorkerTerminal =
+    process.env['WINSSH_WORKER_TERMINAL'] === '1' &&
+    process.env['WINSSH_LEGACY_TERMINAL'] !== '1'
+  const sessionRuntime = useWorkerTerminal
+    ? new WorkerSessionRuntime({
+        database,
+        hostTrustService,
+        legacyRuntime: legacySessionRuntime,
+        sendToRenderer: (channel, payload) => {
+          mainWindow?.webContents.send(channel, payload)
+        },
+        translate
+      })
+    : legacySessionRuntime
   const localTerminalManager = new LocalTerminalManager(
     (channel, payload) => {
       mainWindow?.webContents.send(channel, payload)

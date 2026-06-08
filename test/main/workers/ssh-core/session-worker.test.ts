@@ -59,7 +59,7 @@ describe('SshCoreSessionWorker', () => {
     expect(postMessage).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'state', phase: 'handshake' })
     )
-    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'state', phase: 'ready' }))
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'state', phase: 'attach' }))
   })
 
   it('forwards shell data and terminal control operations', async () => {

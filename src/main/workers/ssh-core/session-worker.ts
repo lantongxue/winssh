@@ -100,7 +100,7 @@ export class SshCoreSessionWorker {
         correlationId: config.sessionId,
         cwd: currentPath
       })
-      this.emitState(config.sessionId, 'ready')
+      this.emitState(config.sessionId, 'attach')
     } catch (error) {
       client?.end()
       for (const upstreamClient of upstreamClients) {
@@ -402,7 +402,7 @@ export class SshCoreSessionWorker {
     )
   }
 
-  private emitState(sessionId: string, phase: 'handshake' | 'prepare' | 'ready'): void {
+  private emitState(sessionId: string, phase: 'handshake' | 'prepare' | 'attach'): void {
     this.postMessage({
       type: 'state',
       sessionId,
