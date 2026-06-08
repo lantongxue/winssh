@@ -24,6 +24,11 @@ export interface TerminalBackpressureEvent {
   queuedBytes: number
 }
 
+export interface TerminalDegradedEvent {
+  sessionId: string
+  reason: string
+}
+
 export interface IpcChannelMap {
   'commandHistory:added': CommandRecordedEvent
   'localTerminals:data': LocalTerminalDataEvent
@@ -42,6 +47,7 @@ export interface IpcChannelMap {
   'system:appActivity': AppActivityEvent
   'system:windowState': WindowState
   'terminal:backpressure': TerminalBackpressureEvent
+  'terminal:degraded': TerminalDegradedEvent
   'updates:state': UpdateState
 }
 

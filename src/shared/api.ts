@@ -52,6 +52,7 @@ import type {
   SftpBookmark
 } from './types'
 import type { AppLogEvent } from './observability'
+import type { TerminalBackpressureEvent, TerminalDegradedEvent } from './ipc-channels'
 import type { ServerIconMimeType } from './server-brands'
 import type { ThemeDefinition, ThemeDeleteResult, ThemeImportResult } from './themes'
 
@@ -101,6 +102,8 @@ export interface WinsshApi {
     onStateChange: (callback: (event: SessionStateEvent) => void) => Unsubscribe
     onError: (callback: (event: SessionErrorEvent) => void) => Unsubscribe
     onCwdChanged: (callback: (event: SessionCwdEvent) => void) => Unsubscribe
+    onTerminalBackpressure: (callback: (event: TerminalBackpressureEvent) => void) => Unsubscribe
+    onTerminalDegraded: (callback: (event: TerminalDegradedEvent) => void) => Unsubscribe
   }
   localTerminals: {
     create: () => Promise<LocalTerminalSummary>

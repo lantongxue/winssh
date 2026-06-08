@@ -223,7 +223,9 @@ const api: WinsshApi = {
     onExit: (callback) => subscribe('sessions:exit', callback),
     onStateChange: (callback) => subscribe('sessions:state', callback),
     onError: (callback) => subscribe('sessions:error', callback),
-    onCwdChanged: (callback) => subscribe('sessions:cwdChanged', callback)
+    onCwdChanged: (callback) => subscribe('sessions:cwdChanged', callback),
+    onTerminalBackpressure: (callback) => subscribe('terminal:backpressure', callback),
+    onTerminalDegraded: (callback) => subscribe('terminal:degraded', callback)
   },
   localTerminals: {
     create: () => ipcRenderer.invoke('localTerminals:create'),

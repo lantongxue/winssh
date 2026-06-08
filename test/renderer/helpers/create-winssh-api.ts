@@ -270,6 +270,8 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       onExit: () => noopUnsubscribe,
       onStateChange: () => noopUnsubscribe,
       onCwdChanged: () => noopUnsubscribe,
+      onTerminalBackpressure: () => noopUnsubscribe,
+      onTerminalDegraded: () => noopUnsubscribe,
       reconnect: async () => {
         throw new Error('not implemented')
       },

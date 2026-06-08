@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useMemo, useRef } from 'react'
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { FitAddon } from '@xterm/addon-fit'
 import { ImageAddon } from '@xterm/addon-image'
 import { ProgressAddon } from '@xterm/addon-progress'
@@ -17,6 +17,7 @@ import {
   loadTerminalFontStack
 } from '@/lib/integrated-font-loader'
 import { resolveTerminalAppearance } from '@/lib/theme'
+import type { TerminalWorkerHostLike } from '@/workers/terminal-worker-types'
 
 type TerminalDisposable = { dispose: () => void }
 type Unsubscribe = () => void
@@ -44,6 +45,13 @@ export interface TerminalTransport {
   onData: (callback: (data: string) => void) => Unsubscribe
   resize: (columns: number, rows: number) => Promise<void>
   write: (data: string) => void
+}
+
+export interface TerminalWorkerOptions {
+  enabled: boolean
+  sessionId: string
+  terminalWorkerHost: TerminalWorkerHostLike
+  onDegraded?: (sessionId: string, reason: string) => void
 }
 
 function enableExperimentalWebglRenderer(terminal: Terminal) {
@@ -240,7 +248,8 @@ export function useTerminal(
   onLinkTooltipChange?: (state: TerminalLinkTooltipState | null) => void,
   onSearchResultsChange?: (state: TerminalSearchResultsState | null) => void,
   active = true,
-  focusKey: string | null = null
+  focusKey: string | null = null,
+  terminalWorkerOptions?: TerminalWorkerOptions
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const terminalRef = useRef<Terminal | null>(null)
@@ -250,6 +259,13 @@ export function useTerminal(
   const selectionDisposableRef = useRef<TerminalDisposable | null>(null)
   const lastSentGeometryRef = useRef<{ cols: number; rows: number } | null>(null)
   const lastActiveRef = useRef(active)
+  const [workerDegraded, setWorkerDegraded] = useState(false)
+  const workerActive =
+    Boolean(
+      terminalWorkerOptions?.enabled &&
+        terminalWorkerOptions.terminalWorkerHost &&
+        terminalWorkerOptions.sessionId
+    ) && !workerDegraded
   const searchController = useMemo<TerminalSearchController>(
     () => ({
       clear: () => {
@@ -369,12 +385,43 @@ export function useTerminal(
   )
 
   useEffect(() => {
+    if (!enabled || !workerActive || !containerRef.current || !terminalWorkerOptions) {
+      return
+    }
+
+    let disposed = false
+    const host = terminalWorkerOptions.terminalWorkerHost
+    const sessionId = terminalWorkerOptions.sessionId
+
+    void host
+      .attach({ sessionId, container: containerRef.current })
+      .catch(() => {
+        if (disposed) {
+          return
+        }
+        setWorkerDegraded(true)
+        terminalWorkerOptions.onDegraded?.(sessionId, 'worker_init_failed')
+      })
+
+    return () => {
+      disposed = true
+      host.detach()
+    }
+  }, [enabled, terminalWorkerOptions, workerActive])
+
+  useEffect(() => {
     const initialTerminalOptions = readTerminalOptions()
     const initialTerminalFontId = readTerminalFontId()
     let disposed = false
     let cleanup: (() => void) | null = null
 
-    if (!enabled || !transport || !containerRef.current || !initialTerminalOptions) {
+    if (
+      !enabled ||
+      workerActive ||
+      !transport ||
+      !containerRef.current ||
+      !initialTerminalOptions
+    ) {
       return
     }
 
@@ -550,20 +597,29 @@ export function useTerminal(
 
   useEffect(() => {
     if (active && !lastActiveRef.current) {
-      syncGeometry()
-      focusTerminal()
+      if (workerActive) {
+        terminalWorkerOptions?.terminalWorkerHost.focus()
+      } else {
+        syncGeometry()
+        focusTerminal()
+      }
     }
 
     lastActiveRef.current = active
-  }, [active])
+  }, [active, workerActive, terminalWorkerOptions])
 
   useEffect(() => {
     if (focusKey === null) {
       return
     }
 
+    if (workerActive) {
+      terminalWorkerOptions?.terminalWorkerHost.focus()
+      return
+    }
+
     focusTerminal()
-  }, [focusKey])
+  }, [focusKey, workerActive, terminalWorkerOptions])
 
   useEffect(() => {
     const terminal = terminalRef.current
