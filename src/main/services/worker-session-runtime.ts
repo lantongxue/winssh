@@ -31,6 +31,7 @@ import {
 import { SshConnectionResolver } from './ssh-connection-resolver'
 import { SshControlPort } from './ssh-control-port'
 import { SftpDispatcher } from './sftp-dispatcher'
+import { PortForwardDispatcher } from './port-forward-dispatcher'
 import type { SessionRuntime } from './session-runtime'
 
 type WorkerPort = Pick<Worker, 'on' | 'postMessage' | 'terminate'>
@@ -83,6 +84,7 @@ export class WorkerSessionRuntime implements SessionRuntime {
   private readonly connectionResolver: SshConnectionResolver
   private readonly terminalDefaults: { cols: number; rows: number }
   private readonly sftpDispatcher: SftpDispatcher
+  private readonly portForwardDispatcher: PortForwardDispatcher
   private dataAggregator: Pick<SshDataAggregator, 'routeFrame'> | undefined
 
   constructor(private readonly options: WorkerSessionRuntimeOptions) {
@@ -96,6 +98,20 @@ export class WorkerSessionRuntime implements SessionRuntime {
         writeFile: (sessionId, remotePath, contents, encoding) =>
           this.writeFileViaCoreWorker(sessionId, remotePath, contents, encoding),
         cancelReadFile: () => {}
+      },
+      useWorker: false
+    })
+    this.portForwardDispatcher = new PortForwardDispatcher({
+      legacyRuntime: {
+        listPortForwards: () => [],
+        createPortForward: () =>
+          Promise.reject(new Error('Worker runtime port forwarding is not available yet')),
+        startPortForward: () =>
+          Promise.reject(new Error('Worker runtime port forwarding is not available yet')),
+        stopPortForward: () =>
+          Promise.reject(new Error('Worker runtime port forwarding is not available yet')),
+        removePortForward: () =>
+          Promise.reject(new Error('Worker runtime port forwarding is not available yet'))
       },
       useWorker: false
     })
@@ -323,24 +339,28 @@ export class WorkerSessionRuntime implements SessionRuntime {
 
   cancelAllTransfers(): void {}
 
-  listPortForwards(_sessionId: string): PortForwardRule[] {
-    return []
+  listPortForwards(sessionId: string): PortForwardRule[] {
+    const rules = this.portForwardDispatcher.list(sessionId)
+    if (rules instanceof Promise) {
+      throw new Error('Worker port forwarding list returned asynchronously')
+    }
+    return rules
   }
 
-  createPortForward(_sessionId: string, _input: PortForwardInput): Promise<PortForwardRule> {
-    return Promise.reject(new Error('Worker runtime port forwarding is not available yet'))
+  createPortForward(sessionId: string, input: PortForwardInput): Promise<PortForwardRule> {
+    return this.portForwardDispatcher.create(sessionId, input)
   }
 
-  startPortForward(_sessionId: string, _ruleId: string): Promise<PortForwardRule> {
-    return Promise.reject(new Error('Worker runtime port forwarding is not available yet'))
+  startPortForward(sessionId: string, ruleId: string): Promise<PortForwardRule> {
+    return this.portForwardDispatcher.start(sessionId, ruleId)
   }
 
-  stopPortForward(_sessionId: string, _ruleId: string): Promise<PortForwardRule> {
-    return Promise.reject(new Error('Worker runtime port forwarding is not available yet'))
+  stopPortForward(sessionId: string, ruleId: string): Promise<PortForwardRule> {
+    return this.portForwardDispatcher.stop(sessionId, ruleId)
   }
 
-  removePortForward(_sessionId: string, _ruleId: string): Promise<void> {
-    return Promise.reject(new Error('Worker runtime port forwarding is not available yet'))
+  removePortForward(sessionId: string, ruleId: string): Promise<void> {
+    return this.portForwardDispatcher.remove(sessionId, ruleId)
   }
 
   resolveHostTrust(result: HostTrustResult): void {
