@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import { promises as fs, type Stats as FsStats } from 'node:fs'
 import net, { type Server as NetServer, type Socket } from 'node:net'
 import path, { basename, posix } from 'node:path'
@@ -37,7 +37,6 @@ import {
   SessionStateEvent,
   SessionSummary,
   TransferProgressEvent,
-  type HostTrustRequest,
   type HostTrustResult,
   SessionCwdEvent
 } from '@shared/types'
@@ -53,6 +52,7 @@ import {
   SshConnectionResolver,
   type ResolvedConnectionAuth
 } from './services/ssh-connection-resolver'
+import { HostTrustService } from './services/host-trust-service'
 import { isShellIntegrationInternal, SHELL_INTEGRATION_FILE_CONTENT } from './shell-integration'
 type WindowProvider = () => BrowserWindow | null
 type AcceptTcpConnection = () => ClientChannel
@@ -159,10 +159,6 @@ df -P -B1 /
 
 function now() {
   return new Date().toISOString()
-}
-
-function toFingerprint(key: Buffer): string {
-  return `SHA256:${createHash('sha256').update(key).digest('base64')}`
 }
 
 function getPermissionTypePrefix(kind: RemoteEntryKind): string {
@@ -814,8 +810,8 @@ export class SessionManager {
   private readonly resourceNetworkBaselines = new Map<string, NetworkBytesSample>()
   private readonly editorReadControllers = new Map<string, AbortController>()
   private readonly transferControllers = new Map<string, AbortController>()
-  private readonly hostTrustResolvers = new Map<string, (result: boolean) => void>()
   private readonly connectionResolver: SshConnectionResolver
+  private readonly hostTrustService: HostTrustService
 
   constructor(
     private readonly database: DatabaseService,
@@ -827,6 +823,7 @@ export class SessionManager {
     private readonly t: MainTranslator
   ) {
     this.connectionResolver = new SshConnectionResolver(database, t)
+    this.hostTrustService = new HostTrustService({ database, getWindow })
   }
 
   async connect(request: ConnectionRequest): Promise<SessionConnectResult> {
@@ -2023,7 +2020,8 @@ export class SessionManager {
       passphrase: auth.passphrase,
       ...(sock ? { sock } : {}),
       hostVerifier: (key, verify) => {
-        this.verifyHost(server.name, server.host, server.port, key)
+        this.hostTrustService
+          .verifyHost({ serverName: server.name, host: server.host, port: server.port, key })
           .then(verify)
           .catch(() => verify(false))
       }
@@ -2840,64 +2838,8 @@ export class SessionManager {
     )
   }
 
-  private async verifyHost(
-    serverName: string,
-    host: string,
-    port: number,
-    key: Buffer
-  ): Promise<boolean> {
-    const fingerprint = toFingerprint(key)
-    const known = this.database.getKnownHost(host, port)
-
-    if (known?.fingerprint === fingerprint) {
-      return true
-    }
-
-    const window = this.getWindow()
-
-    if (!window) {
-      return false
-    }
-
-    const requestId = randomUUID()
-    const kind = known ? 'hostChanged' : 'hostFirstSeen'
-
-    const request: HostTrustRequest = {
-      requestId,
-      kind,
-      serverName,
-      host,
-      port,
-      fingerprint,
-      knownFingerprint: known?.fingerprint
-    }
-
-    const trusted = await new Promise<boolean>((resolve) => {
-      this.hostTrustResolvers.set(requestId, resolve)
-      window.webContents.send('system:hostTrustRequest', request)
-    })
-
-    if (!trusted) {
-      return false
-    }
-
-    this.database.upsertKnownHost({
-      host,
-      port,
-      algorithm: 'sha256',
-      fingerprint,
-      verifiedAt: now()
-    })
-
-    return true
-  }
-
   resolveHostTrust(result: HostTrustResult): void {
-    const resolver = this.hostTrustResolvers.get(result.requestId)
-    if (resolver) {
-      this.hostTrustResolvers.delete(result.requestId)
-      resolver(result.trusted)
-    }
+    this.hostTrustService.resolveHostTrust(result)
   }
 
   private emitConnectionPhase(sessionId: string, phase: SessionConnectionPhase): void {
