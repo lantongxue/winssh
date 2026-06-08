@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import type { BrowserWindow } from 'electron'
 import type { HostTrustRequest, HostTrustResult } from '@shared/types'
 import type { DatabaseService } from '../database'
+import { createHostTrustRequest } from '../workers/host-trust'
 
 type WindowProvider = () => BrowserWindow | null
 
@@ -40,15 +41,14 @@ export class HostTrustService {
     }
 
     const requestId = randomUUID()
-    const request: HostTrustRequest = {
+    const request: HostTrustRequest = createHostTrustRequest({
       requestId,
-      kind: known ? 'hostChanged' : 'hostFirstSeen',
       serverName: input.serverName,
       host: input.host,
       port: input.port,
       fingerprint,
       knownFingerprint: known?.fingerprint
-    }
+    })
 
     const trusted = await new Promise<boolean>((resolve) => {
       this.resolvers.set(requestId, resolve)
