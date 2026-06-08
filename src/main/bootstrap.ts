@@ -1,5 +1,12 @@
 import { join } from 'node:path'
-import { app, BrowserWindow, nativeTheme, shell, type TitleBarOverlayOptions } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  nativeTheme,
+  session as electronSession,
+  shell,
+  type TitleBarOverlayOptions
+} from 'electron'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { APP_ID, APP_NAME } from '@shared/constants'
@@ -8,6 +15,8 @@ import type { AppSettings } from '@shared/types'
 import { createAppInfo } from './app-info'
 import { setupAppFocusAndActivityListeners } from './app-focus-activity'
 import { syncApplicationMenu } from './app-menu'
+export { createCrossOriginIsolationHeaders } from './cross-origin-isolation'
+import { registerCrossOriginIsolationHeaders } from './cross-origin-isolation'
 import { DatabaseService } from './database'
 import { LocalTerminalManager } from './local-terminal-manager'
 import { LogFileService } from './log-file-service'
@@ -220,6 +229,7 @@ async function migrateKeychainSecretsToDatabase(
 export async function bootstrap(): Promise<void> {
   const logger = createLogger('main')
   electronApp.setAppUserModelId(APP_ID)
+  registerCrossOriginIsolationHeaders(electronSession.defaultSession)
 
   const database = new DatabaseService(join(app.getPath('userData'), 'winssh.db'))
   const themeRegistry = new ThemeRegistry(
