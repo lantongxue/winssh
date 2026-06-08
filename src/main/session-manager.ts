@@ -25,10 +25,8 @@ import {
   PortForwardStateEvent,
   RemoteEntry,
   type RemoteEntryKind,
-  type SecretKind,
   SESSION_RESOURCE_MONITOR_UNAVAILABLE,
   type Server,
-  SessionConnectFailureCode,
   SessionConnectResult,
   type SessionConnectionPhase,
   SessionDataEvent,
@@ -46,6 +44,15 @@ import {
 import type { DatabaseService } from './database'
 import type { MainTranslator } from './localization'
 import { createOscScannerState, scanOscChunk, type OscScannerState } from './osc-scanner'
+import {
+  ConnectionFailure,
+  getSecretKindForServer,
+  isAuthenticationFailure
+} from './services/ssh-connection-errors'
+import {
+  SshConnectionResolver,
+  type ResolvedConnectionAuth
+} from './services/ssh-connection-resolver'
 import { isShellIntegrationInternal, SHELL_INTEGRATION_FILE_CONTENT } from './shell-integration'
 type WindowProvider = () => BrowserWindow | null
 type AcceptTcpConnection = () => ClientChannel
@@ -799,35 +806,6 @@ function isWildcardBindHost(host: string): boolean {
   return host === '0.0.0.0' || host === '::'
 }
 
-class ConnectionFailure extends Error {
-  constructor(
-    readonly code: SessionConnectFailureCode,
-    message: string,
-    readonly serverId?: string,
-    readonly secretKind?: SecretKind
-  ) {
-    super(message)
-    this.name = 'ConnectionFailure'
-  }
-}
-
-function getSecretKindForServer(server: Server): SecretKind {
-  return server.authType === 'password' ? 'password' : 'passphrase'
-}
-
-function isAuthenticationFailure(error: unknown): boolean {
-  if (!(error instanceof Error)) {
-    return false
-  }
-
-  const level = (error as Error & { level?: string }).level
-  if (level === 'client-authentication') {
-    return true
-  }
-
-  return /all configured authentication methods failed|permission denied/i.test(error.message)
-}
-
 export class SessionManager {
   private readonly sessions = new Map<string, SessionRuntime>()
   private readonly history = new Map<string, ConnectionRequest>()
@@ -837,6 +815,7 @@ export class SessionManager {
   private readonly editorReadControllers = new Map<string, AbortController>()
   private readonly transferControllers = new Map<string, AbortController>()
   private readonly hostTrustResolvers = new Map<string, (result: boolean) => void>()
+  private readonly connectionResolver: SshConnectionResolver
 
   constructor(
     private readonly database: DatabaseService,
@@ -846,7 +825,9 @@ export class SessionManager {
       payload: EventMap[T]
     ) => void,
     private readonly t: MainTranslator
-  ) {}
+  ) {
+    this.connectionResolver = new SshConnectionResolver(database, t)
+  }
 
   async connect(request: ConnectionRequest): Promise<SessionConnectResult> {
     try {
@@ -1043,7 +1024,7 @@ export class SessionManager {
     }
 
     this.emitConnectionPhase(sessionId, 'validate')
-    const jumpServer = this.resolveJumpServer(server)
+    const jumpServer = this.connectionResolver.resolveJumpServer(server)
     const upstreamClients: Client[] = []
     let client: Client | null = null
 
@@ -1053,13 +1034,13 @@ export class SessionManager {
       let targetSocket: ClientChannel | undefined
 
       if (jumpServer) {
-        const jumpAuth = await this.resolveConnectionAuth(jumpServer, request)
+        const jumpAuth = await this.connectionResolver.resolveAuth(jumpServer, request)
         const jumpClient = await this.connectToServer(jumpServer, jumpAuth)
         upstreamClients.push(jumpClient)
         targetSocket = await connectForwardOut(jumpClient, '127.0.0.1', 0, server.host, server.port)
       }
 
-      const targetAuth = await this.resolveConnectionAuth(server, request)
+      const targetAuth = await this.connectionResolver.resolveAuth(server, request)
       client = await this.connectToServer(server, targetAuth, targetSocket)
 
       this.emitConnectionPhase(sessionId, 'prepare')
@@ -2025,74 +2006,9 @@ export class SessionManager {
     return new ConnectionFailure('connection_failed', message)
   }
 
-  private resolveJumpServer(server: Server): Server | null {
-    if (!server.jumpServerId) {
-      return null
-    }
-
-    const jumpServer = this.database.getServerById(server.jumpServerId)
-    if (!jumpServer) {
-      throw new ConnectionFailure('connection_failed', this.t('errors.jumpServerNotFound'))
-    }
-
-    if (jumpServer.id === server.id || jumpServer.jumpServerId) {
-      throw new ConnectionFailure('connection_failed', this.t('errors.jumpServerChainUnsupported'))
-    }
-
-    return jumpServer
-  }
-
-  private async resolveConnectionAuth(
-    server: Server,
-    request: ConnectionRequest
-  ): Promise<{
-    password?: string
-    passphrase?: string
-    privateKey?: string
-  }> {
-    const requestSecrets = request.secrets?.[server.id]
-    const password =
-      requestSecrets?.password ?? this.database.getServerPassword(server.id) ?? undefined
-    const passphrase =
-      requestSecrets?.passphrase ?? this.database.getServerPassphrase(server.id) ?? undefined
-
-    if (server.authType === 'password' && !password) {
-      throw new ConnectionFailure(
-        'secret_required',
-        this.t('errors.passwordRequired'),
-        server.id,
-        'password'
-      )
-    }
-
-    let privateKey: string | undefined
-    if (server.authType === 'privateKey') {
-      const storedPrivateKey = this.database.getServerPrivateKey(server.id)
-      if (storedPrivateKey?.trim()) {
-        privateKey = storedPrivateKey
-      } else if (server.privateKeyPath) {
-        privateKey = await fs.readFile(server.privateKeyPath, 'utf8')
-      }
-
-      if (!privateKey) {
-        throw new ConnectionFailure('connection_failed', this.t('errors.privateKeyMissing'))
-      }
-    }
-
-    return {
-      password,
-      passphrase,
-      privateKey
-    }
-  }
-
   private createConnectConfig(
     server: Server,
-    auth: {
-      password?: string
-      passphrase?: string
-      privateKey?: string
-    },
+    auth: ResolvedConnectionAuth,
     sock?: ClientChannel
   ): ConnectConfig {
     return {
@@ -2116,11 +2032,7 @@ export class SessionManager {
 
   private async connectToServer(
     server: Server,
-    auth: {
-      password?: string
-      passphrase?: string
-      privateKey?: string
-    },
+    auth: ResolvedConnectionAuth,
     sock?: ClientChannel
   ): Promise<Client> {
     const client = new Client()
