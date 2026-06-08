@@ -24,6 +24,7 @@ import { registerCustomCommandIpc } from './ipc/register-custom-command-ipc'
 import { registerSftpBookmarkIpc } from './ipc/register-sftp-bookmark-ipc'
 import { SecureStoreService } from './secure-store'
 import { SessionManager } from './session-manager'
+import { LegacySessionRuntime } from './services/legacy-session-runtime'
 import { ThemeRegistry } from './theme-registry'
 import { UpdateService } from './update-service'
 import { WebDAVBackupService } from './webdav-backup-service'
@@ -250,6 +251,7 @@ export async function bootstrap(): Promise<void> {
     },
     translate
   )
+  const sessionRuntime = new LegacySessionRuntime(sessionManager)
   const localTerminalManager = new LocalTerminalManager(
     (channel, payload) => {
       mainWindow?.webContents.send(channel, payload)
@@ -266,7 +268,7 @@ export async function bootstrap(): Promise<void> {
   })
 
   const serversService = new ServersApplicationService(database, secureStore)
-  const sessionsService = new SessionsApplicationService(sessionManager, localTerminalManager)
+  const sessionsService = new SessionsApplicationService(sessionRuntime, localTerminalManager)
   const settingsService = new SettingsApplicationService(
     database,
     themeRegistry,
@@ -353,7 +355,7 @@ export async function bootstrap(): Promise<void> {
     logger.info('Disposing application services')
     webdavBackupService.dispose()
     localTerminalManager.dispose()
-    sessionManager.dispose()
+    sessionRuntime.dispose()
     database.close()
   })
 }
