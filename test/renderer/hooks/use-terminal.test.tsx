@@ -478,7 +478,7 @@ describe('useTerminal', () => {
     expect(terminalInstances[0]?.initialOptions.allowTransparency).toBe(false)
     expect(terminalInstances[0]?.initialOptions.allowProposedApi).toBe(true)
     expect(terminalInstances[0]?.initialOptions.fontFamily).toBe(
-      '"WinSSH Cascadia Mono", monospace'
+      '"WinSSH Cascadia Mono", Consolas, "Courier New", monospace'
     )
     expect(terminalInstances[0]?.unicode.activeVersion).toBe('11')
     expect(terminalInstances[0]?.options.theme).toMatchObject({
@@ -551,7 +551,9 @@ describe('useTerminal', () => {
     )
 
     expect(terminalInstances).toHaveLength(1)
-    expect(terminalInstances[0]?.options.fontFamily).toBe('"WinSSH IBM Plex Mono", monospace')
+    expect(terminalInstances[0]?.options.fontFamily).toBe(
+      '"WinSSH IBM Plex Mono", Consolas, "Courier New", monospace'
+    )
     expect(terminalInstances[0]?.options.fontSize).toBe(16)
     await waitFor(() => {
       expect(webFontsAddonInstances[0]?.relayout).toHaveBeenCalled()

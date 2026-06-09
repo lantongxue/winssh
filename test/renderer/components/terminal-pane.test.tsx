@@ -231,7 +231,9 @@ describe('TerminalPane', () => {
       expect.any(Function),
       expect.any(Function),
       true,
-      null
+      null,
+      undefined,
+      undefined
     )
 
     const readySession: SessionTab = {
@@ -257,7 +259,9 @@ describe('TerminalPane', () => {
       expect.any(Function),
       expect.any(Function),
       true,
-      expect.stringMatching(/^ready:session-1:/)
+      expect.stringMatching(/^ready:session-1:/),
+      undefined,
+      undefined
     )
   })
 
@@ -323,6 +327,46 @@ describe('TerminalPane', () => {
     })
 
     expect(searchControllerMock.clear).toHaveBeenCalled()
+  })
+
+  it('temporarily zooms only the active terminal surface with ctrl wheel', () => {
+    const updateSettings = vi.fn()
+    window.winsshApi = createWinsshApiMock({
+      settings: {
+        update: updateSettings
+      }
+    })
+    const readySession: SessionTab = {
+      ...session,
+      connectionPhase: 'attach',
+      status: 'ready'
+    }
+
+    const { container } = render(
+      <TerminalPane
+        session={readySession}
+        settings={settings}
+        theme={theme}
+        onReconnect={async () => undefined}
+      />
+    )
+
+    const surface = container.querySelector('.terminal-surface') as HTMLElement
+    fireEvent.wheel(surface, { ctrlKey: true, deltaY: -120 })
+
+    expect(useTerminalMock).toHaveBeenLastCalledWith(
+      expect.anything(),
+      settings,
+      theme,
+      true,
+      expect.any(Function),
+      expect.any(Function),
+      true,
+      expect.stringMatching(/^ready:session-1:/),
+      undefined,
+      15
+    )
+    expect(updateSettings).not.toHaveBeenCalled()
   })
 
   it('writes a dragged SFTP path into the terminal transport', async () => {

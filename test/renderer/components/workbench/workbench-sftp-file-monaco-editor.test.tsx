@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import { createThemeDefinition } from '@shared/themes'
@@ -197,5 +197,33 @@ describe('WorkbenchSftpFileMonacoEditor', () => {
         })
       )
     })
+  })
+
+  it('temporarily zooms only the current Monaco editor with ctrl wheel', async () => {
+    const updateSettings = vi.fn()
+    window.winsshApi = createWinsshApiMock({
+      settings: {
+        update: updateSettings
+      },
+      sftp: {
+        readFile: vi.fn().mockResolvedValue({ content: 'user nginx;', encoding: 'utf8' })
+      }
+    })
+
+    const { container } = renderEditor()
+
+    await waitFor(() => {
+      expect(monaco.editor.create).toHaveBeenCalled()
+    })
+
+    fireEvent.wheel(container.querySelector('[data-sftp-editor-surface]') as HTMLElement, {
+      ctrlKey: true,
+      deltaY: -120
+    })
+
+    expect(monacoEditor.updateOptions).toHaveBeenLastCalledWith(
+      expect.objectContaining({ fontSize: 15 })
+    )
+    expect(updateSettings).not.toHaveBeenCalled()
   })
 })

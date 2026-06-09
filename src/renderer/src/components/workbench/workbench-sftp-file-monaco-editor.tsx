@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type WheelEvent as ReactWheelEvent
+} from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
 import 'monaco-editor/esm/vs/editor/editor.all.js'
@@ -39,6 +46,7 @@ import { settingsClient } from '@/features/settings/api/settings-client'
 import { sftpClient } from '@/features/sftp/api/sftp-client'
 import { themesClient } from '@/features/themes/api/themes-client'
 import { usePrefersDark } from '@/hooks/use-prefers-dark'
+import { getWheelFontZoomDelta, resolveTemporaryFontSize } from '@/lib/font-zoom'
 import { getTerminalFontStack, loadTerminalFontStack } from '@/lib/integrated-font-loader'
 import { resolveTerminalAppearance, resolveThemeDefinition } from '@/lib/theme'
 import type { SftpFileEditorDocument } from '@/lib/workbench'
@@ -220,6 +228,7 @@ export function WorkbenchSftpFileMonacoEditor({
   const [editorContent, setEditorContent] = useState('')
   const [savedContent, setSavedContent] = useState('')
   const [fileEncoding, setFileEncoding] = useState('utf8')
+  const [fontZoomOffset, setFontZoomOffset] = useState(0)
   const settingsQuery = useQuery({
     queryKey: queryKeys.settings,
     queryFn: () => settingsClient.get(),
@@ -251,6 +260,7 @@ export function WorkbenchSftpFileMonacoEditor({
         fontId: settingsQuery.data.terminalFontId,
         fontSize: settingsQuery.data.terminalFontSize
       }
+  const temporaryFontSize = resolveTemporaryFontSize(terminalAppearance.fontSize, fontZoomOffset)
   const editorFontId = settingsQuery.data.editorFontId ?? terminalAppearance.fontId
   const language = useMemo(() => getRemoteFileLanguage(document.remotePath), [document.remotePath])
   const session = useSessionsStore(
@@ -310,7 +320,7 @@ export function WorkbenchSftpFileMonacoEditor({
       autoIndent: 'advanced',
       automaticLayout: false,
       fontFamily: getTerminalFontStack(editorFontId),
-      fontSize: terminalAppearance.fontSize,
+      fontSize: temporaryFontSize,
       language,
       minimap: { enabled: false },
       model,
@@ -411,14 +421,14 @@ export function WorkbenchSftpFileMonacoEditor({
       monaco.editor.remeasureFonts?.()
       editor.updateOptions({
         fontFamily: getTerminalFontStack(editorFontId),
-        fontSize: terminalAppearance.fontSize
+        fontSize: temporaryFontSize
       })
     })
 
     return () => {
       cancelled = true
     }
-  }, [editorFontId, terminalAppearance.fontSize])
+  }, [editorFontId, temporaryFontSize])
 
   useEffect(() => {
     if (!active) {
@@ -449,6 +459,30 @@ export function WorkbenchSftpFileMonacoEditor({
     } catch {
       toast.error(t('workbench.sftpFileEditor.toasts.saveFailed'))
     }
+  }
+
+  const handleEditorWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+    if (!(event.ctrlKey || event.metaKey)) {
+      return
+    }
+
+    const delta = getWheelFontZoomDelta(event)
+
+    if (delta === 0) {
+      return
+    }
+
+    event.preventDefault()
+    event.stopPropagation()
+
+    setFontZoomOffset((currentOffset) => {
+      const currentSize = resolveTemporaryFontSize(terminalAppearance.fontSize, currentOffset)
+      const nextSize = resolveTemporaryFontSize(currentSize, delta)
+
+      editorRef.current?.updateOptions({ fontSize: nextSize })
+
+      return nextSize - terminalAppearance.fontSize
+    })
   }
 
   return (
@@ -538,7 +572,11 @@ export function WorkbenchSftpFileMonacoEditor({
       ) : null}
 
       <div className="min-h-0 flex-1">
-        <div className="relative h-full overflow-hidden bg-[var(--workbench-editor)]">
+        <div
+          className="relative h-full overflow-hidden bg-[var(--workbench-editor)]"
+          data-sftp-editor-surface
+          onWheel={handleEditorWheel}
+        >
           {fileQuery.isLoading ? (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-[var(--workbench-editor)]">
               {downloadProgress && downloadProgress.total > 0 ? (

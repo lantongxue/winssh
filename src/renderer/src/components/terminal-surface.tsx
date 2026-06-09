@@ -5,7 +5,8 @@ import {
   useState,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
-  type ReactNode
+  type ReactNode,
+  type WheelEvent as ReactWheelEvent
 } from 'react'
 import { ChevronDown, ChevronUp, Search, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -18,6 +19,7 @@ import {
   type TerminalTransport
 } from '@/hooks/use-terminal'
 import { getTerminalFontStack } from '@/lib/integrated-font-loader'
+import { getWheelFontZoomDelta, resolveTemporaryFontSize } from '@/lib/font-zoom'
 import { hasTerminalPathDragData, readTerminalPathDragData } from '@/lib/terminal-path-dnd'
 import { resolveTerminalAppearance } from '@/lib/theme'
 import { Button } from '@/components/ui/button'
@@ -51,11 +53,12 @@ export function TerminalSurface({
   const [searchResults, setSearchResults] = useState<TerminalSearchResultsState | null>(null)
   const [draggedPath, setDraggedPath] = useState<string | null>(null)
   const [isPathDropActive, setIsPathDropActive] = useState(false)
-  const {
-    containerRef: terminalRef,
-    search,
-    focus: focusTerminal = () => undefined
-  } = useTerminal(
+  const terminalAppearance = theme ? resolveTerminalAppearance(settings, theme) : null
+  const baseFontSize = terminalAppearance?.fontSize ?? settings.terminalFontSize
+  const [fontZoomOffset, setFontZoomOffset] = useState(0)
+  const temporaryFontSize =
+    fontZoomOffset === 0 ? undefined : resolveTemporaryFontSize(baseFontSize, fontZoomOffset)
+  const terminalState = useTerminal(
     transport,
     settings,
     theme,
@@ -63,8 +66,11 @@ export function TerminalSurface({
     setLinkTooltip,
     setSearchResults,
     active,
-    focusKey
+    focusKey,
+    undefined,
+    temporaryFontSize
   )
+  const { containerRef: terminalRef, search, focus: focusTerminal = () => undefined } = terminalState
   const searchResultSummary =
     searchQuery.length === 0
       ? t('workbench.terminal.search.shortcut')
@@ -79,7 +85,7 @@ export function TerminalSurface({
       return undefined
     }
 
-    const terminalAppearance = resolveTerminalAppearance(settings, theme)
+    const resolvedTerminalAppearance = resolveTerminalAppearance(settings, theme)
     const highContrast = isHighContrastTheme(theme)
 
     if (highContrast) {
@@ -89,7 +95,7 @@ export function TerminalSurface({
         '--terminal-drop-muted': theme.colors['workbench-muted'],
         '--terminal-drop-panel': theme.terminal.background,
         '--terminal-drop-surface': theme.terminal.background,
-        '--terminal-font-family': getTerminalFontStack(terminalAppearance.fontId),
+        '--terminal-font-family': getTerminalFontStack(resolvedTerminalAppearance.fontId),
         '--terminal-drop-text': theme.terminal.foreground,
         backgroundColor: theme.terminal.background
       } as CSSProperties
@@ -101,7 +107,7 @@ export function TerminalSurface({
       '--terminal-drop-muted': `color-mix(in srgb, ${theme.terminal.foreground} 72%, ${theme.colors['workbench-muted']} 28%)`,
       '--terminal-drop-panel': `color-mix(in srgb, ${theme.terminal.background} 86%, ${theme.colors['workbench-editor']} 14%)`,
       '--terminal-drop-surface': `color-mix(in srgb, ${theme.terminal.background} 76%, transparent)`,
-      '--terminal-font-family': getTerminalFontStack(terminalAppearance.fontId),
+      '--terminal-font-family': getTerminalFontStack(resolvedTerminalAppearance.fontId),
       '--terminal-drop-text': theme.terminal.foreground,
       backgroundColor: theme.terminal.background
     } as CSSProperties
@@ -250,6 +256,28 @@ export function TerminalSurface({
     focusTerminal()
   }
 
+  const handleFontZoomWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+    if (!(event.ctrlKey || event.metaKey)) {
+      return
+    }
+
+    const delta = getWheelFontZoomDelta(event)
+
+    if (delta === 0) {
+      return
+    }
+
+    event.preventDefault()
+    event.stopPropagation()
+
+    setFontZoomOffset((currentOffset) => {
+      const currentSize = resolveTemporaryFontSize(baseFontSize, currentOffset)
+      const nextSize = resolveTemporaryFontSize(currentSize, delta)
+
+      return nextSize - baseFontSize
+    })
+  }
+
   return (
     <div
       className="relative h-full p-2 terminal-surface"
@@ -258,6 +286,7 @@ export function TerminalSurface({
       onDragOver={handleTerminalPathDragOver}
       onDrop={handleTerminalPathDrop}
       onKeyDownCapture={handlePaneKeyDownCapture}
+      onWheel={handleFontZoomWheel}
     >
       <div ref={terminalRef} className="h-full w-full overflow-hidden" />
       {isPathDropActive ? (

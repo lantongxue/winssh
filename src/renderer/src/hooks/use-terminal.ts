@@ -249,7 +249,8 @@ export function useTerminal(
   onSearchResultsChange?: (state: TerminalSearchResultsState | null) => void,
   active = true,
   focusKey: string | null = null,
-  terminalWorkerOptions?: TerminalWorkerOptions
+  terminalWorkerOptions?: TerminalWorkerOptions,
+  fontSizeOverride?: number
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const terminalRef = useRef<Terminal | null>(null)
@@ -306,12 +307,12 @@ export function useTerminal(
       cursorBlink: settings.cursorBlink,
       cursorStyle: settings.cursorStyle,
       fontFamily: getTerminalFontStack(terminalAppearance.fontId),
-      fontSize: terminalAppearance.fontSize,
+      fontSize: fontSizeOverride ?? terminalAppearance.fontSize,
       lineHeight: terminalAppearance.lineHeight,
       minimumContrastRatio: isHighContrastTheme(theme) ? 4.5 : 1,
       theme: { ...terminalAppearance.theme }
     }
-  }, [settings, theme])
+  }, [fontSizeOverride, settings, theme])
   const terminalFontId = useMemo(() => {
     if (!theme) {
       return settings.terminalFontId
