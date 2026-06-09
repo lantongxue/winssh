@@ -1,6 +1,6 @@
 import iconv from 'iconv-lite'
 import { describe, expect, it } from 'vitest'
-import { smartDecodeBuffer } from '@main/encoding'
+import { createIncrementalTextDecoder, smartDecodeBuffer } from '@main/encoding'
 
 describe('smartDecodeBuffer', () => {
   it('returns empty string for empty buffer', () => {
@@ -60,5 +60,41 @@ describe('smartDecodeBuffer', () => {
   it('decodes Windows-1252 text', () => {
     const buffer = iconv.encode('café résumé', 'windows-1252')
     expect(smartDecodeBuffer(buffer)).toBe('café résumé')
+  })
+})
+
+describe('createIncrementalTextDecoder', () => {
+  it('preserves UTF-8 characters split across chunks', () => {
+    const buffer = Buffer.from('Hello 你好世界', 'utf8')
+    const decoder = createIncrementalTextDecoder(buffer.subarray(0, 8))
+
+    const parts = [
+      decoder.write(buffer.subarray(0, 8)),
+      decoder.write(buffer.subarray(8, 10)),
+      decoder.write(buffer.subarray(10)),
+      decoder.end()
+    ].filter(Boolean)
+
+    expect(decoder.encoding).toBe('utf8')
+    expect(parts.join('')).toBe('Hello 你好世界')
+  })
+
+  it('detects UTF-16 LE from the initial BOM sample', () => {
+    const buffer = Buffer.concat([Buffer.from([0xff, 0xfe]), iconv.encode('test', 'utf16-le')])
+    const decoder = createIncrementalTextDecoder(buffer.subarray(0, 4))
+    const decoded = decoder.write(buffer) + decoder.end()
+
+    expect(decoder.encoding).toBe('utf16-le')
+    expect(decoded).toBe('test')
+  })
+
+  it('uses the existing charset fallback for non-UTF initial samples', () => {
+    const text = 'Hello 你好'
+    const buffer = iconv.encode(text, 'gbk')
+    const decoder = createIncrementalTextDecoder(buffer)
+    const decoded = decoder.write(buffer.subarray(0, 5)) + decoder.write(buffer.subarray(5)) + decoder.end()
+
+    expect(decoded).toBe(text)
+    expect(decoder.encoding).toBe('gbk')
   })
 })
