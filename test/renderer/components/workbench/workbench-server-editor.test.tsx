@@ -130,18 +130,45 @@ describe('WorkbenchServerEditor credentials field', () => {
     expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password')
   })
 
-  it('keeps authentication and credential policy in the same section', async () => {
+  it('keeps credential policy in basic information', async () => {
     renderServerEditor()
 
-    const credentialsSection = (await screen.findByText('Credentials')).closest('section')
+    const basicSection = (await screen.findByText('Basic')).closest('section')
 
-    expect(credentialsSection).not.toBeNull()
+    expect(basicSection).not.toBeNull()
     expect(
-      within(credentialsSection as HTMLElement).getByRole('combobox', { name: 'Authentication' })
+      within(basicSection as HTMLElement).getByRole('combobox', { name: 'Authentication' })
     ).toBeInTheDocument()
     expect(
-      within(credentialsSection as HTMLElement).getByRole('combobox', { name: 'Use Credential' })
+      within(basicSection as HTMLElement).getByRole('combobox', { name: 'Use Credential' })
     ).toBeInTheDocument()
+    expect((await screen.findByText('Credentials')).closest('section')).toBe(basicSection)
+  })
+
+  it('does not show favorite controls in the server editor', async () => {
+    renderServerEditor()
+
+    await screen.findByText('Basic')
+
+    expect(screen.queryByText('Favorite this server')).not.toBeInTheDocument()
+  })
+
+  it('places command history outside basic information as a top-level section', async () => {
+    renderServerEditor()
+
+    const basicSection = (await screen.findByText('Basic')).closest('section')
+    const commandHistoryToggle = await screen.findByText('Record command history for this server')
+    const commandHistorySection = commandHistoryToggle.closest('section')
+    const jumpServerSection = (
+      await screen.findByRole('combobox', { name: 'Jump Server' })
+    ).closest('section')
+
+    expect(basicSection).not.toBeNull()
+    expect(commandHistorySection).not.toBeNull()
+    expect(jumpServerSection).not.toBeNull()
+    expect(basicSection?.contains(commandHistoryToggle)).toBe(false)
+    expect(commandHistorySection).not.toBe(basicSection)
+    expect(commandHistorySection?.parentElement).toBe(jumpServerSection?.parentElement)
   })
 
   it('prefills the stored password when editing an existing server', async () => {
