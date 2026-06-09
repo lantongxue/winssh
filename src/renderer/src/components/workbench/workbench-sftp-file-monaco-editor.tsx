@@ -417,10 +417,24 @@ export function WorkbenchSftpFileMonacoEditor({
       }
 
       if (event.status === 'running') {
+        setDownloadProgress({
+          fileName: getRemoteFileName(event.remotePath),
+          localPath: '__editor__',
+          remotePath: event.remotePath,
+          sessionId: event.sessionId,
+          direction: 'download',
+          status: 'running',
+          total: event.total,
+          transferred: event.transferred,
+          correlationId: event.correlationId,
+          source: event.source,
+          timestamp: event.timestamp
+        })
         return
       }
 
       activeReadStreamIdRef.current = null
+      setDownloadProgress(null)
 
       if (event.status === 'completed') {
         const loadedContent = loadedContentRef.current

@@ -571,6 +571,39 @@ describe('WorkbenchSftpFileMonacoEditor', () => {
     expect(sftpStream.api.cancelFileStream).toHaveBeenCalledWith('read-1')
   })
 
+  it('shows progress from streamed read state events', async () => {
+    const sftpStream = createSftpStreamMock()
+    window.winsshApi = createWinsshApiMock({ sftp: sftpStream.api })
+
+    renderEditor()
+
+    await waitFor(() => {
+      expect(sftpStream.api.openFileReadStream).toHaveBeenCalled()
+    })
+
+    act(() => {
+      sftpStream.emitState({
+        status: 'running',
+        streamId: 'read-1',
+        transferred: 5,
+        total: 10
+      })
+    })
+
+    expect(screen.getByText('5 B / 10 B')).toBeInTheDocument()
+    expect(screen.getByText('50%')).toBeInTheDocument()
+
+    act(() => {
+      sftpStream.emitChunk({ chunk: 'done', streamId: 'read-1' })
+      sftpStream.emitState({ status: 'completed', streamId: 'read-1', transferred: 10, total: 10 })
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText('5 B / 10 B')).not.toBeInTheDocument()
+      expect(screen.getByText('Saved')).toBeInTheDocument()
+    })
+  })
+
   it('saves editor content in bounded chunks and marks clean after close succeeds', async () => {
     const sftpStream = createSftpStreamMock()
     window.winsshApi = createWinsshApiMock({ sftp: sftpStream.api })
