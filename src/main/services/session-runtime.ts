@@ -6,6 +6,8 @@ import type {
   SessionConnectResult,
   SessionResourceSnapshot,
   SessionSummary,
+  SftpFileReadStreamStart,
+  SftpFileWriteStreamStart,
   SftpListResult
 } from '@shared/types'
 
@@ -18,12 +20,15 @@ export interface SessionRuntime {
   resize(sessionId: string, columns: number, rows: number): Promise<void>
   listDirectory(sessionId: string, remotePath: string): Promise<SftpListResult>
   createFile(sessionId: string, remotePath: string, name: string): Promise<void>
-  readFile(
+  openFileReadStream(sessionId: string, remotePath: string): Promise<SftpFileReadStreamStart>
+  openFileWriteStream(
     sessionId: string,
-    remotePath: string
-  ): Promise<{ content: string; encoding: string; cancelled?: boolean }>
-  cancelReadFile(sessionId: string, remotePath: string): void
-  writeFile(sessionId: string, remotePath: string, contents: string, encoding?: string): Promise<void>
+    remotePath: string,
+    encoding: string
+  ): Promise<SftpFileWriteStreamStart>
+  writeFileChunk(streamId: string, chunk: string): Promise<void>
+  closeFileWriteStream(streamId: string): Promise<void>
+  cancelFileStream(streamId: string): void
   makeDirectory(sessionId: string, remotePath: string, name: string): Promise<void>
   rename(sessionId: string, remotePath: string, newName: string): Promise<void>
   move(sessionId: string, sourcePath: string, destinationDirPath: string): Promise<void>

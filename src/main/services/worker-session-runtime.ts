@@ -30,7 +30,6 @@ import type { SshDataAggregator } from './ssh-data-aggregator'
 import { ConnectionFailure, isAuthenticationFailure } from './ssh-connection-errors'
 import { SshConnectionResolver } from './ssh-connection-resolver'
 import { SshControlPort } from './ssh-control-port'
-import { SftpDispatcher } from './sftp-dispatcher'
 import { PortForwardDispatcher } from './port-forward-dispatcher'
 import type { SessionRuntime } from './session-runtime'
 import { isShellIntegrationInternal, stripShellIntegrationInstallEcho } from '../shell-integration'
@@ -105,7 +104,6 @@ export class WorkerSessionRuntime implements SessionRuntime {
   private readonly history = new Map<string, ConnectionRequest>()
   private readonly connectionResolver: SshConnectionResolver
   private readonly terminalDefaults: { cols: number; rows: number }
-  private readonly sftpDispatcher: SftpDispatcher
   private readonly portForwardDispatcher: PortForwardDispatcher
   private dataAggregator: Pick<SshDataAggregator, 'routeFrame'> | undefined
 
@@ -113,17 +111,6 @@ export class WorkerSessionRuntime implements SessionRuntime {
     this.connectionResolver = new SshConnectionResolver(options.database, options.translate)
     this.terminalDefaults = options.terminalDefaults ?? DEFAULT_TERMINAL_SIZE
     this.dataAggregator = options.dataAggregator
-    this.sftpDispatcher = new SftpDispatcher({
-      legacyRuntime: {
-        listDirectory: (sessionId, remotePath) =>
-          this.listDirectoryViaCoreWorker(sessionId, remotePath),
-        readFile: (sessionId, remotePath) => this.readFileViaCoreWorker(sessionId, remotePath),
-        writeFile: (sessionId, remotePath, contents, encoding) =>
-          this.writeFileViaCoreWorker(sessionId, remotePath, contents, encoding),
-        cancelReadFile: () => {}
-      },
-      useWorker: false
-    })
     this.portForwardDispatcher = new PortForwardDispatcher({
       legacyRuntime: {
         listPortForwards: () => [],
@@ -235,7 +222,7 @@ export class WorkerSessionRuntime implements SessionRuntime {
   }
 
   async listDirectory(sessionId: string, remotePath: string): Promise<SftpListResult> {
-    return this.sftpDispatcher.list(sessionId, remotePath)
+    return this.listDirectoryViaCoreWorker(sessionId, remotePath)
   }
 
   private async listDirectoryViaCoreWorker(
@@ -262,55 +249,24 @@ export class WorkerSessionRuntime implements SessionRuntime {
     })
   }
 
-  async readFile(
-    sessionId: string,
-    remotePath: string
-  ): Promise<{ content: string; encoding: string; cancelled?: boolean }> {
-    return this.sftpDispatcher.readFile(sessionId, remotePath)
+  openFileReadStream(sessionId: string, remotePath: string) {
+    return this.options.legacyRuntime.openFileReadStream(sessionId, remotePath)
   }
 
-  private async readFileViaCoreWorker(
-    sessionId: string,
-    remotePath: string
-  ): Promise<{ content: string; encoding: string; cancelled?: boolean }> {
-    const response = await this.requireSession(sessionId).port.request({
-      type: 'sftp:readFile',
-      requestId: this.nextRequestId('sftp:readFile', sessionId),
-      sessionId,
-      correlationId: sessionId,
-      remotePath
-    })
-    return coerceReadFileResult(response.result)
+  openFileWriteStream(sessionId: string, remotePath: string, encoding: string) {
+    return this.options.legacyRuntime.openFileWriteStream(sessionId, remotePath, encoding)
   }
 
-  cancelReadFile(sessionId: string, remotePath: string): void {
-    this.sftpDispatcher.cancelReadFile(sessionId, remotePath)
+  writeFileChunk(streamId: string, chunk: string) {
+    return this.options.legacyRuntime.writeFileChunk(streamId, chunk)
   }
 
-  async writeFile(
-    sessionId: string,
-    remotePath: string,
-    contents: string,
-    encoding?: string
-  ): Promise<void> {
-    return this.sftpDispatcher.writeFile(sessionId, remotePath, contents, encoding)
+  closeFileWriteStream(streamId: string) {
+    return this.options.legacyRuntime.closeFileWriteStream(streamId)
   }
 
-  private async writeFileViaCoreWorker(
-    sessionId: string,
-    remotePath: string,
-    contents: string,
-    encoding?: string
-  ): Promise<void> {
-    await this.requireSession(sessionId).port.request({
-      type: 'sftp:writeFile',
-      requestId: this.nextRequestId('sftp:writeFile', sessionId),
-      sessionId,
-      correlationId: sessionId,
-      remotePath,
-      contents,
-      encoding
-    })
+  cancelFileStream(streamId: string): void {
+    this.options.legacyRuntime.cancelFileStream(streamId)
   }
 
   async makeDirectory(sessionId: string, remotePath: string, name: string): Promise<void> {
@@ -882,24 +838,6 @@ function coerceSftpListResult(result: unknown): SftpListResult {
   return {
     path: result.path,
     entries: result.entries as RemoteEntry[]
-  }
-}
-
-function coerceReadFileResult(result: unknown): { content: string; encoding: string } {
-  if (
-    typeof result !== 'object' ||
-    result === null ||
-    !('content' in result) ||
-    !('encoding' in result) ||
-    typeof result.content !== 'string' ||
-    typeof result.encoding !== 'string'
-  ) {
-    throw new Error('Invalid SFTP read result from worker')
-  }
-
-  return {
-    content: result.content,
-    encoding: result.encoding
   }
 }
 

@@ -79,16 +79,22 @@ export function registerSessionIpc(
   ipcMain.handle('sftp:createFile', (_event, sessionId: string, remotePath: string, name: string) =>
     service.createFile(sessionId, remotePath, name)
   )
-  ipcMain.handle('sftp:readFile', (_event, sessionId: string, remotePath: string) =>
-    service.readFile(sessionId, remotePath)
-  )
-  ipcMain.on('sftp:cancelReadFile', (_event, sessionId: string, remotePath: string) =>
-    service.cancelReadFile(sessionId, remotePath)
+  ipcMain.handle('sftp:openFileReadStream', (_event, sessionId: string, remotePath: string) =>
+    service.openFileReadStream(sessionId, remotePath)
   )
   ipcMain.handle(
-    'sftp:writeFile',
-    (_event, sessionId: string, remotePath: string, contents: string, encoding?: string) =>
-      service.writeFile(sessionId, remotePath, contents, encoding)
+    'sftp:openFileWriteStream',
+    (_event, sessionId: string, remotePath: string, encoding: string) =>
+      service.openFileWriteStream(sessionId, remotePath, encoding)
+  )
+  ipcMain.handle('sftp:writeFileChunk', (_event, streamId: string, chunk: string) =>
+    service.writeFileChunk(streamId, chunk)
+  )
+  ipcMain.handle('sftp:closeFileWriteStream', (_event, streamId: string) =>
+    service.closeFileWriteStream(streamId)
+  )
+  ipcMain.on('sftp:cancelFileStream', (_event, streamId: string) =>
+    service.cancelFileStream(streamId)
   )
   ipcMain.handle('sftp:mkdir', (_event, sessionId: string, remotePath: string, name: string) =>
     service.makeDirectory(sessionId, remotePath, name)

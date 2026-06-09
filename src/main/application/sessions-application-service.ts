@@ -59,16 +59,24 @@ export class SessionsApplicationService {
     return this.sessionRuntime.createFile(sessionId, remotePath, name)
   }
 
-  readFile(sessionId: string, remotePath: string) {
-    return this.sessionRuntime.readFile(sessionId, remotePath)
+  openFileReadStream(sessionId: string, remotePath: string) {
+    return this.sessionRuntime.openFileReadStream(sessionId, remotePath)
   }
 
-  cancelReadFile(sessionId: string, remotePath: string): void {
-    this.sessionRuntime.cancelReadFile(sessionId, remotePath)
+  openFileWriteStream(sessionId: string, remotePath: string, encoding: string) {
+    return this.sessionRuntime.openFileWriteStream(sessionId, remotePath, encoding)
   }
 
-  writeFile(sessionId: string, remotePath: string, contents: string, encoding?: string) {
-    return this.sessionRuntime.writeFile(sessionId, remotePath, contents, encoding)
+  writeFileChunk(streamId: string, chunk: string) {
+    return this.sessionRuntime.writeFileChunk(streamId, chunk)
+  }
+
+  closeFileWriteStream(streamId: string) {
+    return this.sessionRuntime.closeFileWriteStream(streamId)
+  }
+
+  cancelFileStream(streamId: string): void {
+    this.sessionRuntime.cancelFileStream(streamId)
   }
 
   makeDirectory(sessionId: string, remotePath: string, name: string) {

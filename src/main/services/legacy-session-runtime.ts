@@ -37,16 +37,24 @@ export class LegacySessionRuntime implements SessionRuntime {
     return this.sessionManager.createFile(sessionId, remotePath, name)
   }
 
-  readFile(sessionId: string, remotePath: string) {
-    return this.sessionManager.readFile(sessionId, remotePath)
+  openFileReadStream(sessionId: string, remotePath: string) {
+    return this.sessionManager.openFileReadStream(sessionId, remotePath)
   }
 
-  cancelReadFile(sessionId: string, remotePath: string): void {
-    this.sessionManager.cancelReadFile(sessionId, remotePath)
+  openFileWriteStream(sessionId: string, remotePath: string, encoding: string) {
+    return this.sessionManager.openFileWriteStream(sessionId, remotePath, encoding)
   }
 
-  writeFile(sessionId: string, remotePath: string, contents: string, encoding?: string) {
-    return this.sessionManager.writeFile(sessionId, remotePath, contents, encoding)
+  writeFileChunk(streamId: string, chunk: string) {
+    return this.sessionManager.writeFileChunk(streamId, chunk)
+  }
+
+  closeFileWriteStream(streamId: string) {
+    return this.sessionManager.closeFileWriteStream(streamId)
+  }
+
+  cancelFileStream(streamId: string): void {
+    this.sessionManager.cancelFileStream(streamId)
   }
 
   makeDirectory(sessionId: string, remotePath: string, name: string) {

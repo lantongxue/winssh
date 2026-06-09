@@ -7,6 +7,7 @@ import { PassThrough } from 'node:stream'
 import { dialog } from 'electron'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SESSION_RESOURCE_MONITOR_UNAVAILABLE } from '@shared/types'
+import type { SftpFileChunkEvent, SftpFileStreamStateEvent } from '@shared/types'
 
 vi.mock('electron', () => ({
   dialog: {
@@ -160,6 +161,22 @@ function getNetworkBaselinesMap(manager: SessionManager) {
   return Reflect.get(manager as object, 'resourceNetworkBaselines') as Map<string, unknown>
 }
 
+async function waitForFileStreamCompletion(
+  emitToRenderer: ReturnType<typeof vi.fn>,
+  streamId: string
+) {
+  await vi.waitFor(() => {
+    expect(
+      emitToRenderer.mock.calls.some(
+        ([channel, payload]) =>
+          channel === 'sftp:fileStreamState' &&
+          (payload as SftpFileStreamStateEvent).streamId === streamId &&
+          (payload as SftpFileStreamStateEvent).status === 'completed'
+      )
+    ).toBe(true)
+  })
+}
+
 async function finalizeManagedSession(manager: SessionManager, sessionId: string) {
   const finalizeSession = Reflect.get(manager as object, 'finalizeSession') as (
     targetSessionId: string
@@ -247,6 +264,155 @@ afterEach(async () => {
         fs.rm(targetPath, { recursive: true, force: true }).catch(() => undefined)
       )
   )
+})
+
+describe('SessionManager SFTP file streams', () => {
+  function createManagerWithSftpEmitSpy() {
+    const emitToRenderer = vi.fn()
+    const manager = new SessionManager(
+      {
+        getKnownHost: vi.fn(),
+        getServerById: vi.fn(),
+        recordRecentSession: vi.fn(),
+        upsertKnownHost: vi.fn(),
+        getSettings: vi.fn(() => ({
+          sftpUploadConcurrency: 3,
+          sftpDownloadConcurrency: 3
+        }))
+      } as never,
+      () => null,
+      emitToRenderer as never,
+      ((key: string) => key) as never
+    )
+    return { manager, emitToRenderer }
+  }
+
+  function createFileSftp(contents: Buffer) {
+    const handle = Buffer.from('file-handle')
+    return {
+      close: vi.fn((_handle: Buffer, callback: (error?: Error) => void) => callback()),
+      open: vi.fn(
+        (
+          _remotePath: string,
+          _flags: string,
+          callback: (error: Error | undefined, nextHandle: Buffer) => void
+        ) => callback(undefined, handle)
+      ),
+      read: vi.fn(
+        (
+          _handle: Buffer,
+          buffer: Buffer,
+          offset: number,
+          length: number,
+          position: number,
+          callback: (error: Error | undefined, bytesRead: number) => void
+        ) => {
+          const slice = contents.subarray(position, position + length)
+          slice.copy(buffer, offset)
+          callback(undefined, slice.byteLength)
+        }
+      ),
+      stat: vi.fn(
+        (_remotePath: string, callback: (error: Error | undefined, stats: unknown) => void) =>
+          callback(undefined, {
+            isDirectory: () => false,
+            size: contents.byteLength
+          })
+      ),
+      write: vi.fn(
+        (
+          _handle: Buffer,
+          _buffer: Buffer,
+          _offset: number,
+          _length: number,
+          _position: number,
+          callback: (error?: Error) => void
+        ) => callback()
+      )
+    }
+  }
+
+  it('streams remote file chunks before completion', async () => {
+    const { manager, emitToRenderer } = createManagerWithSftpEmitSpy()
+    const runtime = createRuntime('session-1', new MockClient())
+    runtime.sftp = createFileSftp(Buffer.from('alpha\nbeta\n', 'utf8')) as never
+    getSessionsMap(manager).set('session-1', runtime)
+
+    const start = await manager.openFileReadStream('session-1', '/etc/app.conf')
+
+    expect(start).toMatchObject({
+      encoding: 'utf8',
+      fileName: 'app.conf',
+      remotePath: '/etc/app.conf',
+      sessionId: 'session-1',
+      total: 11
+    })
+    expect(start.streamId).toEqual(expect.any(String))
+
+    await waitForFileStreamCompletion(emitToRenderer, start.streamId)
+
+    const chunks = emitToRenderer.mock.calls
+      .filter(([channel]) => channel === 'sftp:fileChunk')
+      .map(([, payload]) => payload as SftpFileChunkEvent)
+      .filter((event) => event.streamId === start.streamId)
+
+    expect(chunks.map((event) => event.chunk).join('')).toBe('alpha\nbeta\n')
+    expect(emitToRenderer).toHaveBeenCalledWith(
+      'sftp:fileStreamState',
+      expect.objectContaining({
+        streamId: start.streamId,
+        status: 'completed',
+        transferred: 11,
+        total: 11
+      } satisfies Partial<SftpFileStreamStateEvent>)
+    )
+  })
+
+  it('writes acknowledged chunks incrementally and closes the remote handle', async () => {
+    const { manager } = createManagerWithSftpEmitSpy()
+    const runtime = createRuntime('session-1', new MockClient())
+    const written: string[] = []
+    const sftp = createFileSftp(Buffer.alloc(0))
+    sftp.write.mockImplementation(
+      (
+        _handle: Buffer,
+        buffer: Buffer,
+        offset: number,
+        length: number,
+        _position: number,
+        callback: (error?: Error) => void
+      ) => {
+        written.push(buffer.subarray(offset, offset + length).toString('utf8'))
+        callback()
+      }
+    )
+    runtime.sftp = sftp as never
+    getSessionsMap(manager).set('session-1', runtime)
+
+    const start = await manager.openFileWriteStream('session-1', '/etc/app.conf', 'utf8')
+    await manager.writeFileChunk(start.streamId, 'alpha')
+    await manager.writeFileChunk(start.streamId, '\nbeta')
+    await manager.closeFileWriteStream(start.streamId)
+
+    expect(written.join('')).toBe('alpha\nbeta')
+    expect(sftp.close).toHaveBeenCalledOnce()
+  })
+
+  it('cancels file streams by stream id and closes the remote handle', async () => {
+    const { manager } = createManagerWithSftpEmitSpy()
+    const runtime = createRuntime('session-1', new MockClient())
+    const sftp = createFileSftp(Buffer.alloc(0))
+    runtime.sftp = sftp as never
+    getSessionsMap(manager).set('session-1', runtime)
+
+    const start = await manager.openFileWriteStream('session-1', '/etc/app.conf', 'utf8')
+    manager.cancelFileStream(start.streamId)
+
+    await expect(manager.writeFileChunk(start.streamId, 'late')).rejects.toThrow(
+      /stream unavailable/i
+    )
+    expect(sftp.close).toHaveBeenCalledOnce()
+  })
 })
 
 describe('SessionManager port forwarding', () => {
