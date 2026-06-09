@@ -19,6 +19,12 @@ import type {
   SessionResourceSnapshot,
   SessionStateEvent,
   SessionSummary,
+  SftpFileChunkEvent,
+  SftpFileReadStreamStart,
+  SftpFileStreamDirection,
+  SftpFileStreamStateEvent,
+  SftpFileWriteStreamStart,
+  TransferProgressEvent,
   SftpListResult
 } from '@shared/types'
 import type { SshCoreOutbound } from '@shared/ssh-protocol'
@@ -34,6 +40,7 @@ import { PortForwardDispatcher } from './port-forward-dispatcher'
 import type { SessionRuntime } from './session-runtime'
 import { isShellIntegrationInternal, stripShellIntegrationInstallEcho } from '../shell-integration'
 import { createResourceMonitorSnapshot } from '../workers/resource-monitor'
+import { encodeContent } from '../encoding'
 
 type WorkerPort = Pick<Worker, 'on' | 'postMessage' | 'terminate'>
 
@@ -42,6 +49,9 @@ type EventMap = {
   'sessions:error': SessionErrorEvent
   'sessions:exit': SessionExitEvent
   'sessions:state': SessionStateEvent
+  'sftp:fileChunk': SftpFileChunkEvent
+  'sftp:fileStreamState': SftpFileStreamStateEvent
+  'sftp:transfer': TransferProgressEvent
   'sessions:cwdChanged': {
     sessionId: string
     cwd: string
@@ -72,6 +82,17 @@ interface ActiveWorkerSession {
   historyCaptureEnabled: boolean
   integrationBuffer?: string
   integrationTimeoutTimer?: ReturnType<typeof setTimeout>
+}
+
+interface WorkerEditorFileWriteTask {
+  streamId: string
+  sessionId: string
+  remotePath: string
+  fileName: string
+  encoding: string
+  contents: string
+  transferred: number
+  state: 'open' | 'closing' | 'closed' | 'cancelled'
 }
 
 export interface WorkerSessionRuntimeOptions {
@@ -105,6 +126,7 @@ export class WorkerSessionRuntime implements SessionRuntime {
   private readonly connectionResolver: SshConnectionResolver
   private readonly terminalDefaults: { cols: number; rows: number }
   private readonly portForwardDispatcher: PortForwardDispatcher
+  private readonly editorWriteStreams = new Map<string, WorkerEditorFileWriteTask>()
   private dataAggregator: Pick<SshDataAggregator, 'routeFrame'> | undefined
 
   constructor(private readonly options: WorkerSessionRuntimeOptions) {
@@ -154,6 +176,7 @@ export class WorkerSessionRuntime implements SessionRuntime {
     }
 
     this.clearShellIntegrationBuffer(runtime)
+    this.releaseEditorFileStreams(sessionId)
     await runtime.port.request({
       type: 'disconnect',
       requestId: this.nextRequestId('disconnect', sessionId),
@@ -249,24 +272,182 @@ export class WorkerSessionRuntime implements SessionRuntime {
     })
   }
 
-  openFileReadStream(sessionId: string, remotePath: string) {
-    return this.options.legacyRuntime.openFileReadStream(sessionId, remotePath)
+  async openFileReadStream(
+    sessionId: string,
+    remotePath: string
+  ): Promise<SftpFileReadStreamStart> {
+    const runtime = this.requireSession(sessionId)
+    const normalized = normalizeRemotePath(remotePath)
+    const streamId = `sftp-read:${sessionId}:${randomUUID()}`
+    const fileName = posix.basename(normalized)
+
+    try {
+      const response = await runtime.port.request({
+        type: 'sftp:readFile',
+        requestId: this.nextRequestId('sftp:readFile', sessionId),
+        sessionId,
+        correlationId: sessionId,
+        remotePath: normalized
+      })
+      const result = coerceReadFileResult(response.result)
+      const total = encodeContent(result.content, result.encoding).byteLength
+
+      if (result.content) {
+        this.emitFileChunk({
+          streamId,
+          sessionId,
+          remotePath: normalized,
+          chunk: result.content,
+          transferred: total,
+          total
+        })
+      }
+      this.emitFileStreamState(
+        {
+          kind: 'read',
+          streamId,
+          sessionId,
+          remotePath: normalized,
+          fileName,
+          transferred: total,
+          total
+        },
+        'completed'
+      )
+
+      return {
+        streamId,
+        sessionId,
+        remotePath: normalized,
+        fileName,
+        total,
+        encoding: result.encoding
+      }
+    } catch (error) {
+      this.emitFileStreamState(
+        {
+          kind: 'read',
+          streamId,
+          sessionId,
+          remotePath: normalized,
+          fileName,
+          transferred: 0,
+          total: 0
+        },
+        'error',
+        error instanceof Error ? error.message : String(error)
+      )
+      throw error
+    }
   }
 
-  openFileWriteStream(sessionId: string, remotePath: string, encoding: string) {
-    return this.options.legacyRuntime.openFileWriteStream(sessionId, remotePath, encoding)
+  openFileWriteStream(
+    sessionId: string,
+    remotePath: string,
+    encoding: string
+  ): Promise<SftpFileWriteStreamStart> {
+    this.requireSession(sessionId)
+    const normalized = normalizeRemotePath(remotePath)
+    const streamId = `sftp-write:${sessionId}:${randomUUID()}`
+    this.editorWriteStreams.set(streamId, {
+      streamId,
+      sessionId,
+      remotePath: normalized,
+      fileName: posix.basename(normalized),
+      encoding,
+      contents: '',
+      transferred: 0,
+      state: 'open'
+    })
+    return Promise.resolve({ streamId, sessionId, remotePath: normalized })
   }
 
-  writeFileChunk(streamId: string, chunk: string) {
-    return this.options.legacyRuntime.writeFileChunk(streamId, chunk)
+  writeFileChunk(streamId: string, chunk: string): Promise<void> {
+    const task = this.requireWriteFileStream(streamId)
+    task.contents += chunk
+    task.transferred += encodeContent(chunk, task.encoding).byteLength
+    this.emitFileStreamState(
+      {
+        kind: 'write',
+        streamId: task.streamId,
+        sessionId: task.sessionId,
+        remotePath: task.remotePath,
+        fileName: task.fileName,
+        transferred: task.transferred,
+        total: task.transferred
+      },
+      'running'
+    )
+    return Promise.resolve()
   }
 
-  closeFileWriteStream(streamId: string) {
-    return this.options.legacyRuntime.closeFileWriteStream(streamId)
+  async closeFileWriteStream(streamId: string): Promise<void> {
+    const task = this.requireWriteFileStream(streamId)
+    const runtime = this.requireSession(task.sessionId)
+    task.state = 'closing'
+    this.editorWriteStreams.delete(streamId)
+
+    try {
+      await runtime.port.request({
+        type: 'sftp:writeFile',
+        requestId: this.nextRequestId('sftp:writeFile', task.sessionId),
+        sessionId: task.sessionId,
+        correlationId: task.sessionId,
+        remotePath: task.remotePath,
+        contents: task.contents,
+        encoding: task.encoding
+      })
+      task.state = 'closed'
+      this.emitFileStreamState(
+        {
+          kind: 'write',
+          streamId: task.streamId,
+          sessionId: task.sessionId,
+          remotePath: task.remotePath,
+          fileName: task.fileName,
+          transferred: task.transferred,
+          total: task.transferred
+        },
+        'completed'
+      )
+    } catch (error) {
+      this.emitFileStreamState(
+        {
+          kind: 'write',
+          streamId: task.streamId,
+          sessionId: task.sessionId,
+          remotePath: task.remotePath,
+          fileName: task.fileName,
+          transferred: task.transferred,
+          total: task.transferred
+        },
+        'error',
+        error instanceof Error ? error.message : String(error)
+      )
+      throw error
+    }
   }
 
   cancelFileStream(streamId: string): void {
-    this.options.legacyRuntime.cancelFileStream(streamId)
+    const task = this.editorWriteStreams.get(streamId)
+    if (!task) {
+      return
+    }
+
+    task.state = 'cancelled'
+    this.editorWriteStreams.delete(streamId)
+    this.emitFileStreamState(
+      {
+        kind: 'write',
+        streamId: task.streamId,
+        sessionId: task.sessionId,
+        remotePath: task.remotePath,
+        fileName: task.fileName,
+        transferred: task.transferred,
+        total: task.transferred
+      },
+      'cancelled'
+    )
   }
 
   async makeDirectory(sessionId: string, remotePath: string, name: string): Promise<void> {
@@ -363,6 +544,7 @@ export class WorkerSessionRuntime implements SessionRuntime {
   dispose(): void {
     for (const runtime of this.sessions.values()) {
       this.clearShellIntegrationBuffer(runtime)
+      this.releaseEditorFileStreams(runtime.sessionId)
       runtime.port.dispose()
       void runtime.worker.terminate()
     }
@@ -750,6 +932,87 @@ export class WorkerSessionRuntime implements SessionRuntime {
     return runtime
   }
 
+  private requireWriteFileStream(streamId: string): WorkerEditorFileWriteTask {
+    const task = this.editorWriteStreams.get(streamId)
+    if (!task || task.state !== 'open') {
+      throw new Error(`SFTP file stream unavailable: ${streamId}`)
+    }
+
+    return task
+  }
+
+  private releaseEditorFileStreams(sessionId: string): void {
+    for (const task of this.editorWriteStreams.values()) {
+      if (task.sessionId !== sessionId) {
+        continue
+      }
+
+      task.state = 'cancelled'
+      this.editorWriteStreams.delete(task.streamId)
+      this.emitFileStreamState(
+        {
+          kind: 'write',
+          streamId: task.streamId,
+          sessionId: task.sessionId,
+          remotePath: task.remotePath,
+          fileName: task.fileName,
+          transferred: task.transferred,
+          total: task.transferred
+        },
+        'cancelled'
+      )
+    }
+  }
+
+  private emitFileChunk(event: Omit<SftpFileChunkEvent, 'correlationId' | 'source' | 'timestamp'>) {
+    this.emitToRenderer('sftp:fileChunk', this.withObservableMetadata(event.sessionId, event))
+  }
+
+  private emitFileStreamState(
+    task: {
+      kind: 'read' | 'write'
+      streamId: string
+      sessionId: string
+      remotePath: string
+      fileName: string
+      transferred: number
+      total: number
+    },
+    status: SftpFileStreamStateEvent['status'],
+    error?: string
+  ): void {
+    const direction: SftpFileStreamDirection = task.kind === 'read' ? 'download' : 'upload'
+    const payload = {
+      streamId: task.streamId,
+      sessionId: task.sessionId,
+      remotePath: task.remotePath,
+      direction,
+      status,
+      transferred: task.transferred,
+      total: task.total,
+      ...(error ? { error } : {})
+    }
+
+    this.emitToRenderer(
+      'sftp:fileStreamState',
+      this.withObservableMetadata(task.sessionId, payload)
+    )
+    this.emitToRenderer(
+      'sftp:transfer',
+      this.withObservableMetadata(task.sessionId, {
+        sessionId: task.sessionId,
+        direction,
+        fileName: task.fileName,
+        localPath: '__editor__',
+        remotePath: task.remotePath,
+        transferred: task.transferred,
+        total: task.total,
+        status,
+        ...(error ? { error } : {})
+      })
+    )
+  }
+
   private emitConnectionPhase(sessionId: string, phase: SessionStateEvent['phase']): void {
     this.emitSessionState(sessionId, 'connecting', phase)
   }
@@ -838,6 +1101,24 @@ function coerceSftpListResult(result: unknown): SftpListResult {
   return {
     path: result.path,
     entries: result.entries as RemoteEntry[]
+  }
+}
+
+function coerceReadFileResult(result: unknown): { content: string; encoding: string } {
+  if (
+    typeof result !== 'object' ||
+    result === null ||
+    !('content' in result) ||
+    !('encoding' in result) ||
+    typeof result.content !== 'string' ||
+    typeof result.encoding !== 'string'
+  ) {
+    throw new Error('Invalid SFTP read result from worker')
+  }
+
+  return {
+    content: result.content,
+    encoding: result.encoding
   }
 }
 

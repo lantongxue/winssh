@@ -134,6 +134,7 @@ interface EditorFileReadTask {
   total: number
   transferred: number
   controller: AbortController
+  sftp: SFTPWrapper
   handle?: Buffer
 }
 
@@ -145,7 +146,9 @@ interface EditorFileWriteTask {
   fileName: string
   encoding: string
   transferred: number
-  handle: Buffer
+  state: 'open' | 'closing' | 'closed' | 'cancelled'
+  queue: Promise<void>
+  handle?: Buffer
   sftp: SFTPWrapper
 }
 
@@ -1152,6 +1155,7 @@ export class SessionManager {
         clearTimeout(runtime.integrationDelayTimer)
         runtime.integrationDelayTimer = undefined
       }
+      await this.releaseSessionEditorFileStreams(sessionId)
       await this.releaseSessionPortForwards(sessionId)
       this.releaseRuntimeClients(runtime)
       this.sessions.delete(sessionId)
@@ -1423,7 +1427,8 @@ export class SessionManager {
       fileName,
       total,
       transferred: 0,
-      controller
+      controller,
+      sftp: runtime.sftp
     }
     const handle = await sftpOpen(runtime.sftp, normalized, 'r')
     task.handle = handle
@@ -1609,6 +1614,8 @@ export class SessionManager {
       fileName: path.posix.basename(normalized),
       encoding,
       transferred: 0,
+      state: 'open',
+      queue: Promise.resolve(),
       handle,
       sftp: runtime.sftp
     })
@@ -1618,15 +1625,36 @@ export class SessionManager {
   async writeFileChunk(streamId: string, chunk: string): Promise<void> {
     const task = this.requireWriteFileStream(streamId)
     const buffer = encodeContent(chunk, task.encoding)
-    await sftpWrite(task.sftp, task.handle, buffer, 0, buffer.byteLength, task.transferred)
-    task.transferred += buffer.byteLength
-    this.emitFileStreamState(task, 'running')
+    const writeOperation = task.queue.then(async () => {
+      if (this.isWriteFileTaskUnavailable(task)) {
+        throw new Error(`SFTP file stream unavailable: ${streamId}`)
+      }
+
+      const handle = task.handle
+      if (!handle) {
+        throw new Error(`SFTP file stream unavailable: ${streamId}`)
+      }
+
+      await sftpWrite(task.sftp, handle, buffer, 0, buffer.byteLength, task.transferred)
+
+      if (this.isWriteFileTaskUnavailable(task)) {
+        throw new Error(`SFTP file stream unavailable: ${streamId}`)
+      }
+
+      task.transferred += buffer.byteLength
+      this.emitFileStreamState(task, 'running')
+    })
+    task.queue = writeOperation.catch(() => undefined)
+    return writeOperation
   }
 
   async closeFileWriteStream(streamId: string): Promise<void> {
     const task = this.requireWriteFileStream(streamId)
+    task.state = 'closing'
     this.editorFileStreams.delete(streamId)
-    await sftpClose(task.sftp, task.handle).catch(() => undefined)
+    await task.queue
+    await this.closeWriteFileTaskHandle(task)
+    task.state = 'closed'
     this.emitFileStreamState(task, 'completed')
   }
 
@@ -1639,19 +1667,57 @@ export class SessionManager {
     this.editorFileStreams.delete(streamId)
     if (task.kind === 'read') {
       task.controller.abort()
+      void this.closeReadFileTaskHandle(task.sftp, task)
     } else {
-      void sftpClose(task.sftp, task.handle).catch(() => undefined)
+      task.state = 'cancelled'
+      void this.closeWriteFileTaskHandle(task)
       this.emitFileStreamState(task, 'cancelled')
     }
   }
 
+  private async releaseSessionEditorFileStreams(sessionId: string): Promise<void> {
+    const tasks = [...this.editorFileStreams.values()].filter((task) => task.sessionId === sessionId)
+
+    await Promise.all(
+      tasks.map(async (task) => {
+        this.editorFileStreams.delete(task.streamId)
+
+        if (task.kind === 'read') {
+          task.controller.abort()
+          await this.closeReadFileTaskHandle(task.sftp, task)
+          return
+        }
+
+        if (task.state !== 'cancelled' && task.state !== 'closed') {
+          task.state = 'cancelled'
+          this.emitFileStreamState(task, 'cancelled')
+        }
+        await this.closeWriteFileTaskHandle(task)
+      })
+    )
+  }
+
   private requireWriteFileStream(streamId: string): EditorFileWriteTask {
     const task = this.editorFileStreams.get(streamId)
-    if (!task || task.kind !== 'write') {
+    if (!task || task.kind !== 'write' || task.state !== 'open') {
       throw new Error(`SFTP file stream unavailable: ${streamId}`)
     }
 
     return task
+  }
+
+  private isWriteFileTaskUnavailable(task: EditorFileWriteTask): boolean {
+    return task.state === 'cancelled' || task.state === 'closed'
+  }
+
+  private async closeWriteFileTaskHandle(task: EditorFileWriteTask): Promise<void> {
+    const handle = task.handle
+    if (!handle) {
+      return
+    }
+
+    task.handle = undefined
+    await sftpClose(task.sftp, handle).catch(() => undefined)
   }
 
   async makeDirectory(sessionId: string, currentPath: string, name: string): Promise<void> {
@@ -2160,6 +2226,7 @@ export class SessionManager {
   dispose(): void {
     for (const runtime of this.sessions.values()) {
       runtime.finalizing = true
+      void this.releaseSessionEditorFileStreams(runtime.sessionId)
       for (const active of [...runtime.portForwards.values()]) {
         void this.releasePortForwardRuntime(runtime.sessionId, runtime, active)
       }
@@ -2990,6 +3057,7 @@ export class SessionManager {
     }
 
     runtime.finalizing = true
+    await this.releaseSessionEditorFileStreams(sessionId)
     await this.releaseSessionPortForwards(sessionId)
     this.releaseRuntimeClients(runtime)
     this.sessions.delete(sessionId)
