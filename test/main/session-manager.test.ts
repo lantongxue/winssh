@@ -178,6 +178,23 @@ async function waitForFileStreamCompletion(
   })
 }
 
+async function waitForFileStreamState(
+  emitToRenderer: ReturnType<typeof vi.fn>,
+  streamId: string,
+  status: SftpFileStreamStateEvent['status']
+) {
+  await vi.waitFor(() => {
+    expect(
+      emitToRenderer.mock.calls.some(
+        ([channel, payload]) =>
+          channel === 'sftp:fileStreamState' &&
+          (payload as SftpFileStreamStateEvent).streamId === streamId &&
+          (payload as SftpFileStreamStateEvent).status === status
+      )
+    ).toBe(true)
+  })
+}
+
 async function finalizeManagedSession(manager: SessionManager, sessionId: string) {
   const finalizeSession = Reflect.get(manager as object, 'finalizeSession') as (
     targetSessionId: string
@@ -350,6 +367,7 @@ describe('SessionManager SFTP file streams', () => {
     })
     expect(start.streamId).toEqual(expect.any(String))
 
+    manager.startFileReadStream(start.streamId)
     await waitForFileStreamCompletion(emitToRenderer, start.streamId)
 
     const chunks = emitToRenderer.mock.calls
@@ -379,6 +397,7 @@ describe('SessionManager SFTP file streams', () => {
     const start = await manager.openFileReadStream('session-1', '/etc/app.conf')
 
     expect(start.encoding).toBe('utf8')
+    manager.startFileReadStream(start.streamId)
     await waitForFileStreamCompletion(emitToRenderer, start.streamId)
 
     const chunks = emitToRenderer.mock.calls
@@ -409,20 +428,36 @@ describe('SessionManager SFTP file streams', () => {
     expect(sftp.read).toHaveBeenCalledTimes(1)
   })
 
-  it('does not emit read chunks before the read stream start resolves', async () => {
+  it('does not emit read chunks before the read stream is explicitly started', async () => {
     const { manager, emitToRenderer } = createManagerWithSftpEmitSpy()
     const runtime = createRuntime('session-1', new MockClient())
     runtime.sftp = createFileSftp(Buffer.from('alpha\nbeta\n', 'utf8')) as never
     getSessionsMap(manager).set('session-1', runtime)
 
     const start = await manager.openFileReadStream('session-1', '/etc/app.conf')
+    await new Promise<void>((resolve) => setImmediate(resolve))
 
     const earlyFileEvents = emitToRenderer.mock.calls.filter(
       ([channel]) => channel === 'sftp:fileChunk' || channel === 'sftp:fileStreamState'
     )
     expect(earlyFileEvents).toHaveLength(0)
 
+    manager.startFileReadStream(start.streamId)
     await waitForFileStreamCompletion(emitToRenderer, start.streamId)
+  })
+
+  it('emits cancelled when a pending read stream is cancelled before start', async () => {
+    const { manager, emitToRenderer } = createManagerWithSftpEmitSpy()
+    const runtime = createRuntime('session-1', new MockClient())
+    const sftp = createFileSftp(Buffer.from('alpha\nbeta\n', 'utf8'))
+    runtime.sftp = sftp as never
+    getSessionsMap(manager).set('session-1', runtime)
+
+    const start = await manager.openFileReadStream('session-1', '/etc/app.conf')
+    manager.cancelFileStream(start.streamId)
+
+    await waitForFileStreamState(emitToRenderer, start.streamId, 'cancelled')
+    expect(sftp.close).toHaveBeenCalledOnce()
   })
 
   it('writes acknowledged chunks incrementally and closes the remote handle', async () => {
@@ -657,6 +692,56 @@ describe('SessionManager SFTP file streams', () => {
     expect(states.slice(cancelledIndex + 1).some((event) => event.status === 'running')).toBe(false)
   })
 
+  it('emits one cancelled state immediately when an active read stream is cancelled', async () => {
+    const { manager, emitToRenderer } = createManagerWithSftpEmitSpy()
+    const runtime = createRuntime('session-1', new MockClient())
+    let releaseSecondRead: (() => void) | null = null
+    const sftp = createFileSftp(Buffer.from('alpha\nbeta\n', 'utf8'))
+    sftp.read.mockImplementation(
+      (
+        _handle: Buffer,
+        buffer: Buffer,
+        offset: number,
+        _length: number,
+        position: number,
+        callback: (error: Error | undefined, bytesRead: number) => void
+      ) => {
+        if (position === 0) {
+          const slice = Buffer.from('alpha', 'utf8')
+          slice.copy(buffer, offset)
+          callback(undefined, slice.byteLength)
+          return
+        }
+        releaseSecondRead = () => callback(undefined, 0)
+      }
+    )
+    runtime.sftp = sftp as never
+    getSessionsMap(manager).set('session-1', runtime)
+
+    const start = await manager.openFileReadStream('session-1', '/etc/app.conf')
+    manager.startFileReadStream(start.streamId)
+    await vi.waitFor(() => expect(releaseSecondRead).toBeTypeOf('function'))
+
+    manager.cancelFileStream(start.streamId)
+
+    await waitForFileStreamState(emitToRenderer, start.streamId, 'cancelled')
+    releaseSecondRead?.()
+    await new Promise<void>((resolve) => setImmediate(resolve))
+
+    const terminalStates = emitToRenderer.mock.calls
+      .filter(([channel]) => channel === 'sftp:fileStreamState')
+      .map(([, payload]) => payload as SftpFileStreamStateEvent)
+      .filter(
+        (event) =>
+          event.streamId === start.streamId &&
+          (event.status === 'cancelled' ||
+            event.status === 'completed' ||
+            event.status === 'error')
+      )
+
+    expect(terminalStates.map((event) => event.status)).toEqual(['cancelled'])
+  })
+
   it('closes active editor write streams on disconnect and rejects later writes', async () => {
     const { manager } = createManagerWithSftpEmitSpy()
     const runtime = createRuntime('session-1', new MockClient())
@@ -702,6 +787,7 @@ describe('SessionManager SFTP file streams', () => {
 
     const readStart = await manager.openFileReadStream('session-1', '/etc/app.conf')
     const writeStart = await manager.openFileWriteStream('session-1', '/etc/other.conf', 'utf8')
+    manager.startFileReadStream(readStart.streamId)
     await vi.waitFor(() => expect(releaseSecondRead).toBeTypeOf('function'))
 
     manager.dispose()
@@ -717,6 +803,20 @@ describe('SessionManager SFTP file streams', () => {
     >
     expect(editorStreams.has(readStart.streamId)).toBe(false)
     expect(editorStreams.has(writeStart.streamId)).toBe(false)
+  })
+
+  it('emits cancelled for pending read streams on disconnect', async () => {
+    const { manager, emitToRenderer } = createManagerWithSftpEmitSpy()
+    const runtime = createRuntime('session-1', new MockClient())
+    const sftp = createFileSftp(Buffer.from('alpha\nbeta\n', 'utf8'))
+    runtime.sftp = sftp as never
+    getSessionsMap(manager).set('session-1', runtime)
+
+    const start = await manager.openFileReadStream('session-1', '/etc/app.conf')
+    await manager.disconnect('session-1')
+
+    await waitForFileStreamState(emitToRenderer, start.streamId, 'cancelled')
+    expect(sftp.close).toHaveBeenCalledOnce()
   })
 })
 

@@ -63,6 +63,7 @@ interface EditorFileReadTask {
   controller: AbortController
   sftp: SFTPWrapper
   handle?: Buffer
+  terminalStatus?: SftpFileStreamStateEvent['status']
 }
 
 interface EditorFileWriteTask {
@@ -76,6 +77,7 @@ interface EditorFileWriteTask {
   state: 'open' | 'closing' | 'closed' | 'cancelled' | 'error'
   failure?: Error
   pendingHighSurrogate?: string
+  terminalStatus?: SftpFileStreamStateEvent['status']
   queue: Promise<void>
   sftp: SFTPWrapper
   handle?: Buffer
@@ -367,6 +369,7 @@ export class SshCoreSessionWorker {
     if (task.kind === 'read') {
       this.pendingReadStreamStarts.delete(streamId)
       task.controller.abort()
+      this.emitFileStreamState(task, 'cancelled')
       await this.closeReadFileTaskHandle(task)
       return
     }
@@ -624,6 +627,14 @@ export class SshCoreSessionWorker {
     error?: string,
     encoding?: string
   ): void {
+    if (task.terminalStatus) {
+      return
+    }
+
+    if (status === 'completed' || status === 'error' || status === 'cancelled') {
+      task.terminalStatus = status
+    }
+
     const direction: SftpFileStreamDirection = task.kind === 'read' ? 'download' : 'upload'
     const total = task.kind === 'read' ? task.total : task.transferred
 

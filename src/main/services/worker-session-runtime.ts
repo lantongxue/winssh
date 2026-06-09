@@ -91,6 +91,7 @@ interface WorkerEditorFileStream {
   direction: SftpFileStreamDirection
   transferred: number
   total: number
+  terminalStatus?: SftpFileStreamStateEvent['status']
 }
 
 export interface WorkerSessionRuntimeOptions {
@@ -125,6 +126,7 @@ export class WorkerSessionRuntime implements SessionRuntime {
   private readonly terminalDefaults: { cols: number; rows: number }
   private readonly portForwardDispatcher: PortForwardDispatcher
   private readonly editorFileStreams = new Map<string, WorkerEditorFileStream>()
+  private readonly locallyTerminatedEditorFileStreams = new Set<string>()
   private dataAggregator: Pick<SshDataAggregator, 'routeFrame'> | undefined
 
   constructor(private readonly options: WorkerSessionRuntimeOptions) {
@@ -297,6 +299,18 @@ export class WorkerSessionRuntime implements SessionRuntime {
     return start
   }
 
+  startFileReadStream(streamId: string): void {
+    const task = this.requireFileStream(streamId, 'download')
+    const runtime = this.requireSession(task.sessionId)
+    void runtime.port
+      .request({
+        type: 'sftp:startFileReadStream',
+        requestId: this.nextRequestId('sftp:startFileReadStream', task.sessionId),
+        streamId
+      })
+      .catch((error) => this.emitSessionError(task.sessionId, error))
+  }
+
   async openFileWriteStream(
     sessionId: string,
     remotePath: string,
@@ -353,6 +367,7 @@ export class WorkerSessionRuntime implements SessionRuntime {
     }
 
     this.editorFileStreams.delete(streamId)
+    this.emitLocalFileStreamTerminalState(task, 'cancelled')
     const runtime = this.sessions.get(task.sessionId)
     if (!runtime) {
       return
@@ -884,6 +899,7 @@ export class WorkerSessionRuntime implements SessionRuntime {
     await Promise.all(
       streams.map(async (task) => {
         this.editorFileStreams.delete(task.streamId)
+        this.emitLocalFileStreamTerminalState(task, 'cancelled')
         await runtime.port
           .request({
             type: 'sftp:cancelFileStream',
@@ -909,9 +925,24 @@ export class WorkerSessionRuntime implements SessionRuntime {
   private emitWorkerFileStreamState(
     event: Extract<WorkerEvent, { type: 'sftp:fileStreamState' }>
   ): void {
+    if (this.locallyTerminatedEditorFileStreams.has(event.streamId)) {
+      if (
+        event.status === 'completed' ||
+        event.status === 'error' ||
+        event.status === 'cancelled'
+      ) {
+        this.locallyTerminatedEditorFileStreams.delete(event.streamId)
+      }
+      return
+    }
+
     const { type: _type, ...eventPayload } = event
     const task = this.editorFileStreams.get(event.streamId)
     const fileName = task?.fileName ?? posix.basename(event.remotePath)
+    if (task?.terminalStatus) {
+      return
+    }
+
     if (task) {
       task.transferred = event.transferred
       task.total = event.total
@@ -942,8 +973,57 @@ export class WorkerSessionRuntime implements SessionRuntime {
     )
 
     if (event.status === 'completed' || event.status === 'error' || event.status === 'cancelled') {
+      if (task) {
+        task.terminalStatus = event.status
+      }
       this.editorFileStreams.delete(event.streamId)
     }
+  }
+
+  private emitLocalFileStreamTerminalState(
+    task: WorkerEditorFileStream,
+    status: SftpFileStreamStateEvent['status'],
+    error?: string,
+    options: { suppressWorkerFollowUp?: boolean } = { suppressWorkerFollowUp: true }
+  ): void {
+    if (task.terminalStatus) {
+      return
+    }
+
+    task.terminalStatus = status
+    if (options.suppressWorkerFollowUp !== false) {
+      this.locallyTerminatedEditorFileStreams.add(task.streamId)
+    }
+    const total = task.direction === 'upload' ? task.transferred : task.total
+    const statePayload = {
+      streamId: task.streamId,
+      sessionId: task.sessionId,
+      remotePath: task.remotePath,
+      direction: task.direction,
+      status,
+      transferred: task.transferred,
+      total,
+      ...(error ? { error } : {})
+    }
+
+    this.emitToRenderer(
+      'sftp:fileStreamState',
+      this.withObservableMetadata(task.sessionId, statePayload)
+    )
+    this.emitToRenderer(
+      'sftp:transfer',
+      this.withObservableMetadata(task.sessionId, {
+        sessionId: task.sessionId,
+        direction: task.direction,
+        fileName: task.fileName,
+        localPath: '__editor__',
+        remotePath: task.remotePath,
+        transferred: task.transferred,
+        total,
+        status,
+        ...(error ? { error } : {})
+      })
+    )
   }
 
   private failEditorFileStreams(sessionId: string, error: string): void {
@@ -953,36 +1033,9 @@ export class WorkerSessionRuntime implements SessionRuntime {
 
     for (const task of tasks) {
       this.editorFileStreams.delete(task.streamId)
-      const total = task.direction === 'upload' ? task.transferred : task.total
-      const statePayload = {
-        streamId: task.streamId,
-        sessionId: task.sessionId,
-        remotePath: task.remotePath,
-        direction: task.direction,
-        status: 'error' as const,
-        transferred: task.transferred,
-        total,
-        error
-      }
-
-      this.emitToRenderer(
-        'sftp:fileStreamState',
-        this.withObservableMetadata(task.sessionId, statePayload)
-      )
-      this.emitToRenderer(
-        'sftp:transfer',
-        this.withObservableMetadata(task.sessionId, {
-          sessionId: task.sessionId,
-          direction: task.direction,
-          fileName: task.fileName,
-          localPath: '__editor__',
-          remotePath: task.remotePath,
-          transferred: task.transferred,
-          total,
-          status: 'error',
-          error
-        })
-      )
+      this.emitLocalFileStreamTerminalState(task, 'error', error, {
+        suppressWorkerFollowUp: false
+      })
     }
   }
 

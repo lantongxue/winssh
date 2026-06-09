@@ -63,6 +63,10 @@ export class SessionsApplicationService {
     return this.sessionRuntime.openFileReadStream(sessionId, remotePath)
   }
 
+  startFileReadStream(streamId: string): void {
+    this.sessionRuntime.startFileReadStream(streamId)
+  }
+
   openFileWriteStream(sessionId: string, remotePath: string, encoding: string) {
     return this.sessionRuntime.openFileWriteStream(sessionId, remotePath, encoding)
   }

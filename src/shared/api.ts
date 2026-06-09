@@ -125,6 +125,7 @@ export interface WinsshApi {
       sessionId: string,
       remotePath: string
     ) => Promise<SftpFileReadStreamStart>
+    startFileReadStream: (streamId: string) => void
     openFileWriteStream: (
       sessionId: string,
       remotePath: string,

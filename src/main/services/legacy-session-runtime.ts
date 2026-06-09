@@ -41,6 +41,10 @@ export class LegacySessionRuntime implements SessionRuntime {
     return this.sessionManager.openFileReadStream(sessionId, remotePath)
   }
 
+  startFileReadStream(streamId: string): void {
+    this.sessionManager.startFileReadStream(streamId)
+  }
+
   openFileWriteStream(sessionId: string, remotePath: string, encoding: string) {
     return this.sessionManager.openFileWriteStream(sessionId, remotePath, encoding)
   }

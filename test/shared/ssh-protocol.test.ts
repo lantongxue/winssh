@@ -72,6 +72,14 @@ describe('ssh protocol schemas', () => {
 
     expect(
       sshCoreInboundSchema.parse({
+        type: 'sftp:startFileReadStream',
+        requestId: 'req-start-read',
+        streamId: 'worker-read-1'
+      }).type
+    ).toBe('sftp:startFileReadStream')
+
+    expect(
+      sshCoreInboundSchema.parse({
         type: 'sftp:openFileWriteStream',
         requestId: 'req-open-write',
         sessionId: 'session-1',

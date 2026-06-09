@@ -141,6 +141,7 @@ interface EditorFileReadTask {
   controller: AbortController
   sftp: SFTPWrapper
   handle?: Buffer
+  terminalStatus?: SftpFileStreamStateEvent['status']
 }
 
 interface EditorFileWriteTask {
@@ -154,9 +155,17 @@ interface EditorFileWriteTask {
   state: 'open' | 'closing' | 'closed' | 'cancelled' | 'error'
   failure?: Error
   pendingHighSurrogate?: string
+  terminalStatus?: SftpFileStreamStateEvent['status']
   queue: Promise<void>
   handle?: Buffer
   sftp: SFTPWrapper
+}
+
+interface PendingReadStreamStart {
+  task: EditorFileReadTask
+  decoder: ReturnType<typeof createIncrementalTextDecoder>
+  initialSample: Buffer
+  firstBytesRead: number
 }
 
 interface ExecResult {
@@ -858,6 +867,7 @@ export class SessionManager {
   private readonly resourceCpuBaselines = new Map<string, CpuTimesSample>()
   private readonly resourceNetworkBaselines = new Map<string, NetworkBytesSample>()
   private readonly editorFileStreams = new Map<string, EditorFileReadTask | EditorFileWriteTask>()
+  private readonly pendingReadStreamStarts = new Map<string, PendingReadStreamStart>()
   private readonly transferControllers = new Map<string, AbortController>()
   private readonly connectionResolver: SshConnectionResolver
   private readonly hostTrustService: HostTrustService
@@ -1480,11 +1490,11 @@ export class SessionManager {
 
     const decoder = createIncrementalTextDecoder(initialSample, { finalSample: reachedEof })
     this.editorFileStreams.set(streamId, task)
-
-    setImmediate(() => {
-      if (this.editorFileStreams.get(streamId) === task) {
-        void this.runFileReadStream(runtime.sftp, task, decoder, initialSample, firstBytesRead)
-      }
+    this.pendingReadStreamStarts.set(streamId, {
+      task,
+      decoder,
+      initialSample,
+      firstBytesRead
     })
 
     return {
@@ -1495,6 +1505,22 @@ export class SessionManager {
       total,
       encoding: decoder.encoding
     }
+  }
+
+  startFileReadStream(streamId: string): void {
+    const pending = this.pendingReadStreamStarts.get(streamId)
+    if (!pending || this.editorFileStreams.get(streamId) !== pending.task) {
+      return
+    }
+
+    this.pendingReadStreamStarts.delete(streamId)
+    void this.runFileReadStream(
+      pending.task.sftp,
+      pending.task,
+      pending.decoder,
+      pending.initialSample,
+      pending.firstBytesRead
+    )
   }
 
   private async runFileReadStream(
@@ -1601,6 +1627,14 @@ export class SessionManager {
     error?: string,
     encoding?: string
   ): void {
+    if (task.terminalStatus) {
+      return
+    }
+
+    if (status === 'completed' || status === 'error' || status === 'cancelled') {
+      task.terminalStatus = status
+    }
+
     const direction: SftpFileStreamDirection = task.kind === 'read' ? 'download' : 'upload'
     const total = task.kind === 'read' ? task.total : task.transferred
     const payload = {
@@ -1720,7 +1754,9 @@ export class SessionManager {
 
     this.editorFileStreams.delete(streamId)
     if (task.kind === 'read') {
+      this.pendingReadStreamStarts.delete(streamId)
       task.controller.abort()
+      this.emitFileStreamState(task, 'cancelled')
       void this.closeReadFileTaskHandle(task.sftp, task)
     } else {
       task.state = 'cancelled'
@@ -1739,7 +1775,9 @@ export class SessionManager {
         this.editorFileStreams.delete(task.streamId)
 
         if (task.kind === 'read') {
+          this.pendingReadStreamStarts.delete(task.streamId)
           task.controller.abort()
+          this.emitFileStreamState(task, 'cancelled')
           await this.closeReadFileTaskHandle(task.sftp, task)
           return
         }

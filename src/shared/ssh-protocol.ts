@@ -91,6 +91,11 @@ export const sshCoreInboundSchema = z.discriminatedUnion('type', [
     remotePath: z.string().min(1)
   }),
   z.object({
+    type: z.literal('sftp:startFileReadStream'),
+    requestId: z.string().min(1),
+    streamId: z.string().min(1)
+  }),
+  z.object({
     type: z.literal('sftp:openFileWriteStream'),
     requestId: z.string().min(1),
     sessionId: z.string().min(1),

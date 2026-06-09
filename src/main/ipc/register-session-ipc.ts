@@ -82,6 +82,9 @@ export function registerSessionIpc(
   ipcMain.handle('sftp:openFileReadStream', (_event, sessionId: string, remotePath: string) =>
     service.openFileReadStream(sessionId, remotePath)
   )
+  ipcMain.on('sftp:startFileReadStream', (_event, streamId: string) =>
+    service.startFileReadStream(streamId)
+  )
   ipcMain.handle(
     'sftp:openFileWriteStream',
     (_event, sessionId: string, remotePath: string, encoding: string) =>

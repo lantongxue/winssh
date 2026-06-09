@@ -423,6 +423,140 @@ describe('SshCoreSessionWorker', () => {
     expect(sftp.readFile).not.toHaveBeenCalled()
   })
 
+  it('emits completed for an empty read stream only after explicit start', async () => {
+    const client = new FakeClient()
+    const sftp = new FakeSftp(Buffer.alloc(0))
+    client.sftp = vi.fn((callback) => callback(undefined, sftp))
+    const postMessage = vi.fn()
+    const worker = new SshCoreSessionWorker({
+      createClient: () => client as never,
+      postMessage
+    })
+
+    await connectWorkerSession(worker, client)
+
+    const start = await worker.openFileReadStream('session-1', '/tmp/empty.txt')
+    await new Promise<void>((resolve) => setImmediate(resolve))
+
+    expect(
+      postMessage.mock.calls.some(([message]) => {
+        return (
+          typeof message === 'object' &&
+          message !== null &&
+          'type' in message &&
+          (message.type === 'sftp:fileChunk' || message.type === 'sftp:fileStreamState')
+        )
+      })
+    ).toBe(false)
+
+    worker.startFileReadStream(start.streamId)
+
+    await vi.waitFor(() =>
+      expect(postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'sftp:fileStreamState',
+          streamId: start.streamId,
+          status: 'completed',
+          transferred: 0,
+          total: 0
+        })
+      )
+    )
+  })
+
+  it('emits cancelled when a pending read stream is cancelled before start', async () => {
+    const client = new FakeClient()
+    const sftp = new FakeSftp(Buffer.from('alpha\nbeta\n'))
+    client.sftp = vi.fn((callback) => callback(undefined, sftp))
+    const postMessage = vi.fn()
+    const worker = new SshCoreSessionWorker({
+      createClient: () => client as never,
+      postMessage
+    })
+
+    await connectWorkerSession(worker, client)
+
+    const start = await worker.openFileReadStream('session-1', '/tmp/a.txt')
+    await worker.cancelFileStream(start.streamId)
+
+    await vi.waitFor(() =>
+      expect(postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'sftp:fileStreamState',
+          streamId: start.streamId,
+          status: 'cancelled'
+        })
+      )
+    )
+    expect(sftp.close).toHaveBeenCalledOnce()
+  })
+
+  it('emits one cancelled state immediately when an active read stream is cancelled', async () => {
+    const client = new FakeClient()
+    const sftp = new FakeSftp(Buffer.from('alpha\nbeta\n'))
+    let releaseSecondRead: (() => void) | null = null
+    sftp.read.mockImplementation(
+      (
+        _handle: Buffer,
+        buffer: Buffer,
+        offset: number,
+        _length: number,
+        position: number,
+        callback: (error: Error | undefined, bytesRead: number) => void
+      ) => {
+        if (position === 0) {
+          const slice = Buffer.from('alpha', 'utf8')
+          slice.copy(buffer, offset)
+          callback(undefined, slice.byteLength)
+          return
+        }
+        releaseSecondRead = () => callback(undefined, 0)
+      }
+    )
+    client.sftp = vi.fn((callback) => callback(undefined, sftp))
+    const postMessage = vi.fn()
+    const worker = new SshCoreSessionWorker({
+      createClient: () => client as never,
+      postMessage
+    })
+
+    await connectWorkerSession(worker, client)
+
+    const start = await worker.openFileReadStream('session-1', '/tmp/a.txt')
+    worker.startFileReadStream(start.streamId)
+    await vi.waitFor(() => expect(releaseSecondRead).toBeTypeOf('function'))
+
+    await worker.cancelFileStream(start.streamId)
+
+    await vi.waitFor(() =>
+      expect(postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'sftp:fileStreamState',
+          streamId: start.streamId,
+          status: 'cancelled'
+        })
+      )
+    )
+    releaseSecondRead?.()
+    await new Promise<void>((resolve) => setImmediate(resolve))
+
+    const terminalStates = postMessage.mock.calls
+      .map(([message]) => message)
+      .filter(
+        (message): message is { type: string; streamId: string; status: string } =>
+          typeof message === 'object' &&
+          message !== null &&
+          'type' in message &&
+          message.type === 'sftp:fileStreamState' &&
+          'streamId' in message &&
+          message.streamId === start.streamId &&
+          'status' in message &&
+          ['cancelled', 'completed', 'error'].includes(message.status)
+      )
+
+    expect(terminalStates.map((event) => event.status)).toEqual(['cancelled'])
+  })
+
   it('keeps probing past an ASCII-only initial sample before streaming GBK text', async () => {
     const client = new FakeClient()
     const text = `${'a'.repeat(32768)}这是一段比较长的中文文本用来测试编码检测功能是否正常工作`

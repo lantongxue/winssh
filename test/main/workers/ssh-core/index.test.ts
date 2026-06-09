@@ -73,7 +73,7 @@ describe('ssh-core worker entry', () => {
     })
   })
 
-  it('starts read streams only after acknowledging the open request', async () => {
+  it('does not start read streams while acknowledging the open request', async () => {
     const postMessage = vi.fn()
     const sessionWorker = {
       openFileReadStream: vi.fn(async () => ({
@@ -108,10 +108,31 @@ describe('ssh-core worker entry', () => {
     })
 
     expect(postMessage.mock.calls.map(([message]) => (message as { type: string }).type)).toEqual([
-      'ack',
-      'sftp:fileChunk'
+      'ack'
     ])
+    expect(sessionWorker.startFileReadStream).not.toHaveBeenCalled()
+  })
+
+  it('routes explicit read stream start commands', async () => {
+    const sessionWorker = {
+      startFileReadStream: vi.fn(),
+      resolveHostTrust: vi.fn()
+    }
+    const postMessage = vi.fn()
+    const handleMessage = createSshCoreMessageHandler(sessionWorker as never, postMessage)
+
+    await handleMessage({
+      type: 'sftp:startFileReadStream',
+      requestId: 'req-start',
+      streamId: 'worker-read-1'
+    })
+
     expect(sessionWorker.startFileReadStream).toHaveBeenCalledWith('worker-read-1')
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'ack',
+      requestId: 'req-start',
+      ok: true
+    })
   })
 
   it('routes file stream write commands', async () => {

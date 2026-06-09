@@ -310,6 +310,7 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
         streamId: `read:${sessionId}:${remotePath}`,
         total: 0
       }),
+      startFileReadStream: () => undefined,
       openFileWriteStream: async (sessionId, remotePath) => ({
         remotePath,
         sessionId,

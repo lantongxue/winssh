@@ -176,6 +176,7 @@ function createSftpStreamMock(options: { failClose?: boolean } = {}) {
         total: 24
       }
     }),
+    startFileReadStream: vi.fn(),
     openFileWriteStream: vi.fn(async (sessionId: string, remotePath: string, encoding: string) => {
       writeStreamIndex += 1
       return {
@@ -357,6 +358,40 @@ describe('WorkbenchSftpFileMonacoEditor', () => {
     await waitFor(() => {
       expect(monacoModel.getValue()).toBe('user nginx;')
     })
+  })
+
+  it('starts read streams only after the active stream id is set', async () => {
+    const sftpStream = createSftpStreamMock()
+    window.winsshApi = createWinsshApiMock({ sftp: sftpStream.api })
+
+    renderEditor()
+
+    await waitFor(() => {
+      expect(sftpStream.api.openFileReadStream).toHaveBeenCalledWith(
+        'session-1',
+        '/etc/nginx/nginx.conf'
+      )
+    })
+
+    await waitFor(() => {
+      expect(sftpStream.api.startFileReadStream).toHaveBeenCalledWith('read-1')
+    })
+
+    act(() => {
+      sftpStream.emitState({
+        status: 'completed',
+        streamId: 'read-1',
+        transferred: 0,
+        total: 0
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loading remote file...')).not.toBeInTheDocument()
+      expect(screen.getByText('Saved')).toBeInTheDocument()
+    })
+
+    expect(monacoModel.getValue()).toBe('')
   })
 
   it('defines Monaco themes on the native high contrast base', async () => {

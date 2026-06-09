@@ -21,6 +21,7 @@ export interface SessionRuntime {
   listDirectory(sessionId: string, remotePath: string): Promise<SftpListResult>
   createFile(sessionId: string, remotePath: string, name: string): Promise<void>
   openFileReadStream(sessionId: string, remotePath: string): Promise<SftpFileReadStreamStart>
+  startFileReadStream(streamId: string): void
   openFileWriteStream(
     sessionId: string,
     remotePath: string,

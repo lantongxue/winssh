@@ -212,6 +212,17 @@ describe('WorkerSessionRuntime', () => {
       total: 11
     })
     expect(start.streamId).toBe('worker-read-1')
+    expect(worker.posted).not.toContainEqual(
+      expect.objectContaining({ type: 'sftp:startFileReadStream' })
+    )
+
+    runtime.startFileReadStream(start.streamId)
+
+    await vi.waitFor(() => expect(worker.posted.length).toBeGreaterThan(2))
+    expect(worker.posted[2]).toMatchObject({
+      type: 'sftp:startFileReadStream',
+      streamId: start.streamId
+    })
 
     worker.emit('message', {
       type: 'sftp:fileChunk',

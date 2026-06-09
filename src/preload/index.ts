@@ -243,6 +243,7 @@ const api: WinsshApi = {
       ipcRenderer.invoke('sftp:createFile', sessionId, remotePath, name),
     openFileReadStream: (sessionId, remotePath) =>
       ipcRenderer.invoke('sftp:openFileReadStream', sessionId, remotePath),
+    startFileReadStream: (streamId) => ipcRenderer.send('sftp:startFileReadStream', streamId),
     openFileWriteStream: (sessionId, remotePath, encoding) =>
       ipcRenderer.invoke('sftp:openFileWriteStream', sessionId, remotePath, encoding),
     writeFileChunk: (streamId, chunk) => ipcRenderer.invoke('sftp:writeFileChunk', streamId, chunk),

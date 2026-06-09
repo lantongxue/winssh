@@ -127,6 +127,7 @@ describe('SFTP file stream API contract', () => {
       {} as SftpFileReadStreamStart
     const _writeStart: Awaited<ReturnType<SftpApi['openFileWriteStream']>> =
       {} as SftpFileWriteStreamStart
+    const _startRead: Parameters<SftpApi['startFileReadStream']>[0] = 'stream-1'
     const _chunk: Parameters<SftpApi['onFileChunk']>[0] = (_event: SftpFileChunkEvent) => {}
     const _state: Parameters<SftpApi['onFileStreamState']>[0] = (
       _event: SftpFileStreamStateEvent
@@ -143,6 +144,7 @@ describe('SFTP file stream API contract', () => {
       sessionId: 'session-1',
       streamId: expect.any(String)
     })
+    expect(api.sftp.startFileReadStream('read:session-1:/etc/hosts')).toBeUndefined()
     await expect(
       api.sftp.openFileWriteStream('session-1', '/etc/hosts', 'utf8')
     ).resolves.toMatchObject({
@@ -153,6 +155,7 @@ describe('SFTP file stream API contract', () => {
 
     void _readStart
     void _writeStart
+    void _startRead
     void _chunk
     void _state
   })

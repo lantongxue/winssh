@@ -371,6 +371,7 @@ export function WorkbenchSftpFileMonacoEditor({
 
       activeReadStreamIdRef.current = stream.streamId
       setFileEncoding(stream.encoding)
+      sftpClient.startFileReadStream(stream.streamId)
     } catch (error) {
       if (readRequestIdRef.current !== requestId) {
         return
