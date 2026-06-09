@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
 import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import { createThemeDefinition } from '@shared/themes'
@@ -219,6 +219,44 @@ describe('WorkbenchSftpFileMonacoEditor', () => {
     fireEvent.wheel(container.querySelector('[data-sftp-editor-surface]') as HTMLElement, {
       ctrlKey: true,
       deltaY: -120
+    })
+
+    expect(monacoEditor.updateOptions).toHaveBeenLastCalledWith(
+      expect.objectContaining({ fontSize: 15 })
+    )
+    expect(updateSettings).not.toHaveBeenCalled()
+  })
+
+  it('temporarily zooms the Monaco editor when the editor surface handles wheel propagation', async () => {
+    const updateSettings = vi.fn()
+    window.winsshApi = createWinsshApiMock({
+      settings: {
+        update: updateSettings
+      },
+      sftp: {
+        readFile: vi.fn().mockResolvedValue({ content: 'user nginx;', encoding: 'utf8' })
+      }
+    })
+
+    const { container } = renderEditor()
+
+    await waitFor(() => {
+      expect(monaco.editor.create).toHaveBeenCalled()
+    })
+
+    const surface = container.querySelector('[data-sftp-editor-surface]') as HTMLElement
+    const monacoMount = surface.lastElementChild as HTMLElement
+    monacoMount.addEventListener('wheel', (event) => event.stopPropagation())
+
+    const event = new WheelEvent('wheel', {
+      bubbles: true,
+      cancelable: true,
+      ctrlKey: true,
+      deltaY: -120
+    })
+
+    act(() => {
+      monacoMount.dispatchEvent(event)
     })
 
     expect(monacoEditor.updateOptions).toHaveBeenLastCalledWith(

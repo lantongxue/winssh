@@ -4,8 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type WheelEvent as ReactWheelEvent
+  type KeyboardEvent as ReactKeyboardEvent
 } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
@@ -228,6 +227,7 @@ export function WorkbenchSftpFileMonacoEditor({
   const { t } = useTranslation()
   const prefersDark = usePrefersDark()
   const queryClient = useQueryClient()
+  const editorSurfaceRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const modelRef = useRef<monaco.editor.ITextModel | null>(null)
@@ -467,7 +467,7 @@ export function WorkbenchSftpFileMonacoEditor({
     }
   }
 
-  const updateFontZoom = (action: FontZoomKeyboardAction) => {
+  const updateFontZoom = useCallback((action: FontZoomKeyboardAction) => {
     if (action === 'reset') {
       setFontZoomOffset(0)
       editorRef.current?.updateOptions({ fontSize: terminalAppearance.fontSize })
@@ -484,7 +484,7 @@ export function WorkbenchSftpFileMonacoEditor({
 
       return nextSize - terminalAppearance.fontSize
     })
-  }
+  }, [terminalAppearance.fontSize])
 
   const handleEditorKeyDownCapture = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     const fontZoomAction = getKeyboardFontZoomAction(event)
@@ -498,7 +498,7 @@ export function WorkbenchSftpFileMonacoEditor({
     updateFontZoom(fontZoomAction)
   }
 
-  const handleEditorWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+  const handleEditorWheelZoom = useCallback((event: WheelEvent) => {
     if (!(event.ctrlKey || event.metaKey)) {
       return
     }
@@ -513,7 +513,20 @@ export function WorkbenchSftpFileMonacoEditor({
     event.stopPropagation()
 
     updateFontZoom(delta > 0 ? 'increase' : 'decrease')
-  }
+  }, [updateFontZoom])
+
+  useEffect(() => {
+    const surface = editorSurfaceRef.current
+    if (!surface) {
+      return
+    }
+
+    surface.addEventListener('wheel', handleEditorWheelZoom, { capture: true, passive: false })
+
+    return () => {
+      surface.removeEventListener('wheel', handleEditorWheelZoom, { capture: true })
+    }
+  }, [handleEditorWheelZoom])
 
   return (
     <form
@@ -603,10 +616,10 @@ export function WorkbenchSftpFileMonacoEditor({
 
       <div className="min-h-0 flex-1">
         <div
+          ref={editorSurfaceRef}
           className="relative h-full overflow-hidden bg-[var(--workbench-editor)]"
           data-sftp-editor-surface
           onKeyDownCapture={handleEditorKeyDownCapture}
-          onWheel={handleEditorWheel}
           tabIndex={-1}
         >
           {fileQuery.isLoading ? (
