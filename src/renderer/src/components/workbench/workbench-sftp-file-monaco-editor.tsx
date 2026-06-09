@@ -315,16 +315,22 @@ export function WorkbenchSftpFileMonacoEditor({
   const isDirty = editorContent !== savedContent
   const [downloadProgress, setDownloadProgress] = useState<TransferProgressEvent | null>(null)
 
+  const cancelReadStream = useCallback(() => {
+    readRequestIdRef.current += 1
+    const streamId = activeReadStreamIdRef.current
+    if (streamId) {
+      sftpClient.cancelFileStream(streamId)
+      activeReadStreamIdRef.current = null
+    }
+  }, [])
+
   const startReadStream = useCallback(async () => {
     const model = modelRef.current
     if (!model) {
       return
     }
 
-    const previousStreamId = activeReadStreamIdRef.current
-    if (previousStreamId) {
-      sftpClient.cancelFileStream(previousStreamId)
-    }
+    cancelReadStream()
 
     const requestId = readRequestIdRef.current + 1
     readRequestIdRef.current = requestId
@@ -433,13 +439,9 @@ export function WorkbenchSftpFileMonacoEditor({
     return () => {
       unsubscribeChunk()
       unsubscribeState()
-      const streamId = activeReadStreamIdRef.current
-      if (streamId) {
-        sftpClient.cancelFileStream(streamId)
-        activeReadStreamIdRef.current = null
-      }
+      cancelReadStream()
     }
-  }, [document.remotePath, document.sessionId, t])
+  }, [cancelReadStream, document.remotePath, document.sessionId, t])
 
   useEffect(() => {
     const container = containerRef.current
@@ -793,11 +795,7 @@ export function WorkbenchSftpFileMonacoEditor({
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  const streamId = activeReadStreamIdRef.current
-                  if (streamId) {
-                    sftpClient.cancelFileStream(streamId)
-                    activeReadStreamIdRef.current = null
-                  }
+                  cancelReadStream()
                   closeDocument(document.id)
                 }}
               >

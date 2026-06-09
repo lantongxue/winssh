@@ -143,6 +143,15 @@ const sftpDocument: SftpFileEditorDocument = {
   sessionId: 'session-1'
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((promiseResolve) => {
+    resolve = promiseResolve
+  })
+
+  return { promise, resolve }
+}
+
 function createSftpStreamMock(options: { failClose?: boolean } = {}) {
   const chunkCallbacks = new Set<(event: SftpFileChunkEvent) => void>()
   const stateCallbacks = new Set<(event: SftpFileStreamStateEvent) => void>()
@@ -530,6 +539,36 @@ describe('WorkbenchSftpFileMonacoEditor', () => {
     })
 
     expect(monacoModel.getValue()).toBe('fresh')
+  })
+
+  it('cancels a read stream that opens after the editor unmounts', async () => {
+    const sftpStream = createSftpStreamMock()
+    const readStream =
+      createDeferred<Awaited<ReturnType<typeof sftpStream.api.openFileReadStream>>>()
+    sftpStream.api.openFileReadStream.mockReturnValueOnce(readStream.promise)
+    window.winsshApi = createWinsshApiMock({ sftp: sftpStream.api })
+
+    const view = renderEditor()
+
+    await waitFor(() => {
+      expect(sftpStream.api.openFileReadStream).toHaveBeenCalled()
+    })
+
+    view.unmount()
+
+    await act(async () => {
+      readStream.resolve({
+        encoding: 'utf8',
+        fileName: 'nginx.conf',
+        remotePath: sftpDocument.remotePath,
+        sessionId: sftpDocument.sessionId,
+        streamId: 'read-1',
+        total: 24
+      })
+      await readStream.promise
+    })
+
+    expect(sftpStream.api.cancelFileStream).toHaveBeenCalledWith('read-1')
   })
 
   it('saves editor content in bounded chunks and marks clean after close succeeds', async () => {
