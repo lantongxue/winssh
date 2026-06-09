@@ -265,7 +265,7 @@ export function WorkbenchSftpFileMonacoEditor({
   const modelRef = useRef<monaco.editor.ITextModel | null>(null)
   const activeReadStreamIdRef = useRef<string | null>(null)
   const isApplyingRemoteContentRef = useRef(false)
-  const loadedContentRef = useRef('')
+  const loadedChunksRef = useRef<string[]>([])
   const readRequestIdRef = useRef(0)
   const [editorContent, setEditorContent] = useState('')
   const [savedContent, setSavedContent] = useState('')
@@ -329,6 +329,7 @@ export function WorkbenchSftpFileMonacoEditor({
 
   const cancelReadStream = useCallback(() => {
     readRequestIdRef.current += 1
+    loadedChunksRef.current = []
     const streamId = activeReadStreamIdRef.current
     if (streamId) {
       sftpClient.cancelFileStream(streamId)
@@ -347,7 +348,7 @@ export function WorkbenchSftpFileMonacoEditor({
     const requestId = readRequestIdRef.current + 1
     readRequestIdRef.current = requestId
     activeReadStreamIdRef.current = null
-    loadedContentRef.current = ''
+    loadedChunksRef.current = []
     setLoadState('loading')
     setLoadError(null)
     setDownloadProgress(null)
@@ -376,6 +377,7 @@ export function WorkbenchSftpFileMonacoEditor({
       }
 
       activeReadStreamIdRef.current = null
+      loadedChunksRef.current = []
       setLoadState('error')
       setLoadError(
         error instanceof Error ? error.message : t('workbench.sftpFileEditor.empty.description')
@@ -417,7 +419,7 @@ export function WorkbenchSftpFileMonacoEditor({
         return
       }
 
-      loadedContentRef.current += event.chunk
+      loadedChunksRef.current.push(event.chunk)
       if (modelRef.current) {
         isApplyingRemoteContentRef.current = true
         try {
@@ -463,7 +465,8 @@ export function WorkbenchSftpFileMonacoEditor({
       setDownloadProgress(null)
 
       if (event.status === 'completed') {
-        const loadedContent = loadedContentRef.current
+        const loadedContent = loadedChunksRef.current.join('')
+        loadedChunksRef.current = []
         modelRef.current?.detectIndentation?.(true, 4)
         setEditorContent(loadedContent)
         setSavedContent(loadedContent)
@@ -472,6 +475,7 @@ export function WorkbenchSftpFileMonacoEditor({
         return
       }
 
+      loadedChunksRef.current = []
       setLoadState('error')
       setLoadError(event.error ?? t('workbench.sftpFileEditor.empty.description'))
     })

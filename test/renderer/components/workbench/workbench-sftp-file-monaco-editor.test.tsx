@@ -14,9 +14,15 @@ import { useSessionsStore } from '@/store/sessions-store'
 let modelValue = ''
 let modelContentCallback: (() => void) | null = null
 
+function appendModelValue(edits: { text: string }[]) {
+  for (const edit of edits) {
+    modelValue += edit.text
+  }
+}
+
 const monacoModel = {
   applyEdits: vi.fn((edits: { text: string }[]) => {
-    modelValue += edits.map((edit) => edit.text).join('')
+    appendModelValue(edits)
     modelContentCallback?.()
   }),
   detectIndentation: vi.fn(),
@@ -28,7 +34,7 @@ const monacoModel = {
   ),
   getValue: vi.fn(() => modelValue),
   pushEditOperations: vi.fn((_selections: unknown, edits: { text: string }[]) => {
-    modelValue += edits.map((edit) => edit.text).join('')
+    appendModelValue(edits)
     modelContentCallback?.()
     return null
   }),
@@ -537,6 +543,57 @@ describe('WorkbenchSftpFileMonacoEditor', () => {
     expect(monacoEditor.getValue).toHaveBeenCalledTimes(1)
   })
 
+  it('joins streamed chunks once when completing a multi-chunk load', async () => {
+    const sftpStream = createSftpStreamMock()
+    window.winsshApi = createWinsshApiMock({ sftp: sftpStream.api })
+
+    renderEditor()
+
+    await waitFor(() => {
+      expect(sftpStream.api.openFileReadStream).toHaveBeenCalled()
+    })
+    const joinSpy = vi.spyOn(Array.prototype, 'join')
+    const loadedChunkJoinCount = () =>
+      joinSpy.mock.contexts.filter(
+        (context): context is string[] =>
+          Array.isArray(context) &&
+          context.length === 3 &&
+          context[0] === 'alpha' &&
+          context[1] === '\nbeta' &&
+          context[2] === '\ngamma'
+      ).length
+
+    try {
+      act(() => {
+        sftpStream.emitChunk({ chunk: 'alpha', streamId: 'read-1', transferred: 5 })
+        sftpStream.emitChunk({ chunk: '\nbeta', streamId: 'read-1', transferred: 10 })
+        sftpStream.emitChunk({ chunk: '\ngamma', streamId: 'read-1', transferred: 16 })
+      })
+
+      expect(loadedChunkJoinCount()).toBe(0)
+
+      act(() => {
+        sftpStream.emitState({
+          status: 'completed',
+          streamId: 'read-1',
+          transferred: 16,
+          total: 16
+        })
+      })
+
+      expect(loadedChunkJoinCount()).toBe(1)
+      expect(monacoModel.getValue()).toBe('alpha\nbeta\ngamma')
+
+      act(() => {
+        monacoModel.setValue('alpha\nbeta\ngamma')
+      })
+
+      expect(screen.getByText('Saved')).toBeInTheDocument()
+    } finally {
+      joinSpy.mockRestore()
+    }
+  })
+
   it('ignores chunks from stale read streams', async () => {
     const sftpStream = createSftpStreamMock()
     window.winsshApi = createWinsshApiMock({ sftp: sftpStream.api })
@@ -577,6 +634,43 @@ describe('WorkbenchSftpFileMonacoEditor', () => {
     })
 
     expect(monacoModel.getValue()).toBe('fresh')
+  })
+
+  it('drops failed streamed chunks before a reload completes', async () => {
+    const sftpStream = createSftpStreamMock()
+    window.winsshApi = createWinsshApiMock({ sftp: sftpStream.api })
+
+    renderEditor()
+
+    await waitFor(() => {
+      expect(sftpStream.api.openFileReadStream).toHaveBeenCalledTimes(1)
+    })
+
+    act(() => {
+      sftpStream.emitChunk({ chunk: 'stale partial', streamId: 'read-1' })
+      sftpStream.emitState({
+        error: 'download failed',
+        status: 'error',
+        streamId: 'read-1'
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('download failed')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /refresh/i }))
+
+    await waitFor(() => {
+      expect(sftpStream.api.openFileReadStream).toHaveBeenCalledTimes(2)
+    })
+
+    act(() => {
+      sftpStream.emitChunk({ chunk: 'fresh content', streamId: 'read-2' })
+      sftpStream.emitState({ status: 'completed', streamId: 'read-2' })
+    })
+
+    expect(monacoModel.getValue()).toBe('fresh content')
   })
 
   it('cancels a read stream that opens after the editor unmounts', async () => {
