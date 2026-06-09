@@ -1,6 +1,6 @@
 import iconv from 'iconv-lite'
 import { describe, expect, it } from 'vitest'
-import { createIncrementalTextDecoder, smartDecodeBuffer } from '@main/encoding'
+import { createIncrementalTextDecoder, smartDecode, smartDecodeBuffer } from '@main/encoding'
 
 describe('smartDecodeBuffer', () => {
   it('returns empty string for empty buffer', () => {
@@ -60,6 +60,10 @@ describe('smartDecodeBuffer', () => {
   it('decodes Windows-1252 text', () => {
     const buffer = iconv.encode('café résumé', 'windows-1252')
     expect(smartDecodeBuffer(buffer)).toBe('café résumé')
+  })
+
+  it('does not classify incomplete UTF-8 full buffers as UTF-8', () => {
+    expect(smartDecode(Buffer.from([0xe4])).encoding).not.toBe('utf8')
   })
 })
 

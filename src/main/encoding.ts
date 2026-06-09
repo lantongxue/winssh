@@ -61,12 +61,48 @@ function detectEncoding(buffer: Buffer): string {
     return 'utf16-be'
   }
 
-  const utf8Str = utf8ValidationSample(buffer).toString('utf8')
+  const utf8Str = buffer.toString('utf8')
   if (!utf8Str.includes('\uFFFD')) {
     return 'utf8'
   }
 
   const detection = jschardet.detect(buffer)
+  const rawEncoding = detection.encoding
+  const confidence = detection.confidence
+
+  if (rawEncoding && confidence >= 0.5) {
+    return normalizeEncoding(rawEncoding) ?? 'gbk'
+  }
+
+  return 'gbk'
+}
+
+function detectIncrementalEncoding(initialSample: Buffer): string {
+  if (initialSample.length === 0) return 'utf8'
+
+  if (
+    initialSample.length >= 3 &&
+    initialSample[0] === 0xef &&
+    initialSample[1] === 0xbb &&
+    initialSample[2] === 0xbf
+  ) {
+    return 'utf8'
+  }
+
+  if (initialSample.length >= 2 && initialSample[0] === 0xff && initialSample[1] === 0xfe) {
+    return 'utf16-le'
+  }
+
+  if (initialSample.length >= 2 && initialSample[0] === 0xfe && initialSample[1] === 0xff) {
+    return 'utf16-be'
+  }
+
+  const utf8Str = utf8ValidationSample(initialSample).toString('utf8')
+  if (!utf8Str.includes('\uFFFD')) {
+    return 'utf8'
+  }
+
+  const detection = jschardet.detect(initialSample)
   const rawEncoding = detection.encoding
   const confidence = detection.confidence
 
@@ -102,7 +138,7 @@ export function smartDecode(buffer: Buffer): DecodedResult {
 }
 
 export function createIncrementalTextDecoder(initialSample: Buffer): IncrementalTextDecoder {
-  const encoding = detectEncoding(initialSample)
+  const encoding = detectIncrementalEncoding(initialSample)
   const decoder = iconv.getDecoder(encoding)
 
   return {
