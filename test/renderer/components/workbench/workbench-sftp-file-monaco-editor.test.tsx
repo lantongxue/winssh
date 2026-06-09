@@ -652,6 +652,45 @@ describe('WorkbenchSftpFileMonacoEditor', () => {
     expect(screen.getByText('Saved')).toBeInTheDocument()
   })
 
+  it('does not split an emoji surrogate pair at the save chunk boundary', async () => {
+    const sftpStream = createSftpStreamMock()
+    window.winsshApi = createWinsshApiMock({ sftp: sftpStream.api })
+
+    renderEditor()
+
+    await waitFor(() => {
+      expect(sftpStream.api.openFileReadStream).toHaveBeenCalled()
+    })
+
+    act(() => {
+      sftpStream.emitChunk({ chunk: 'saved-content', streamId: 'read-1' })
+      sftpStream.emitState({ status: 'completed', streamId: 'read-1' })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Saved')).toBeInTheDocument()
+    })
+
+    const prefix = 'a'.repeat(64 * 1024 - 1)
+    const nextContent = `${prefix}😀tail`
+    act(() => {
+      monacoModel.setValue(nextContent)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Unsaved')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /save/i }))
+
+    await waitFor(() => {
+      expect(sftpStream.api.closeFileWriteStream).toHaveBeenCalledWith('write-1')
+    })
+
+    expect(sftpStream.api.writeFileChunk).toHaveBeenNthCalledWith(1, 'write-1', prefix)
+    expect(sftpStream.api.writeFileChunk).toHaveBeenNthCalledWith(2, 'write-1', '😀tail')
+  })
+
   it('does not save partial content after a streamed load fails', async () => {
     const sftpStream = createSftpStreamMock()
     window.winsshApi = createWinsshApiMock({ sftp: sftpStream.api })

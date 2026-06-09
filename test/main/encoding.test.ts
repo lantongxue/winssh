@@ -96,8 +96,40 @@ describe('createIncrementalTextDecoder', () => {
     const text = 'Hello 你好'
     const buffer = iconv.encode(text, 'gbk')
     const decoder = createIncrementalTextDecoder(buffer)
-    const decoded = decoder.write(buffer.subarray(0, 5)) + decoder.write(buffer.subarray(5)) + decoder.end()
+    const decoded =
+      decoder.write(buffer.subarray(0, 5)) + decoder.write(buffer.subarray(5)) + decoder.end()
 
+    expect(decoded).toBe(text)
+    expect(decoder.encoding).toBe('gbk')
+  })
+
+  it('delays ASCII-only prefixes until a later GBK sample determines encoding', () => {
+    const text = `${'a'.repeat(32768)}这是一段比较长的中文文本用来测试编码检测功能是否正常工作`
+    const buffer = iconv.encode(text, 'gbk')
+    expect(smartDecode(buffer)).toMatchObject({ content: text, encoding: 'gbk' })
+
+    const decoder = createIncrementalTextDecoder(buffer.subarray(0, 32768))
+
+    const first = decoder.write(buffer.subarray(0, 32768))
+    const second = decoder.write(buffer.subarray(32768))
+    const decoded = first + second + decoder.end()
+
+    expect(first).toBe('')
+    expect(decoded).toBe(text)
+    expect(decoder.encoding).toBe('gbk')
+  })
+
+  it('waits for the rest of a split GBK multibyte sample before decoding', () => {
+    const text = 'Hello 你好'
+    const buffer = iconv.encode(text, 'gbk')
+    const splitAfterFirstGbkByte = 'Hello '.length + 1
+    const decoder = createIncrementalTextDecoder(buffer.subarray(0, splitAfterFirstGbkByte))
+
+    const first = decoder.write(buffer.subarray(0, splitAfterFirstGbkByte))
+    const second = decoder.write(buffer.subarray(splitAfterFirstGbkByte))
+    const decoded = first + second + decoder.end()
+
+    expect(first).toBe('')
     expect(decoded).toBe(text)
     expect(decoder.encoding).toBe('gbk')
   })

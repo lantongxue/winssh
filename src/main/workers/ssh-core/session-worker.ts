@@ -18,7 +18,11 @@ import type {
 import { encodeSshDataFrame } from '@shared/ssh-data-frame'
 import type { SshConnectConfig, SshResolvedServer } from '@shared/ssh-protocol'
 import { normalizeRemotePath, sortRemoteEntries } from '@shared/sftp'
-import { createIncrementalTextDecoder, encodeContent } from '../../encoding'
+import {
+  createIncrementalTextDecoder,
+  encodeContent,
+  shouldContinueIncrementalEncodingProbe
+} from '../../encoding'
 import { formatRemoteEntryPermissions } from '../../session-manager'
 import { createShellIntegrationScript } from '../../shell-integration'
 
@@ -227,24 +231,20 @@ export class SshCoreSessionWorker {
       handle
     }
 
+    let initialSample: Buffer = Buffer.alloc(0)
     let firstBytesRead = 0
-    const firstBuffer = Buffer.allocUnsafe(Math.min(32768, total || 32768))
+    let reachedEof = total === 0
     try {
-      firstBytesRead = await this.sftpRead(
-        session.sftp,
-        handle,
-        firstBuffer,
-        0,
-        firstBuffer.byteLength,
-        0
-      )
+      const sample = await this.readInitialFileStreamSample(session.sftp, handle, total)
+      initialSample = sample.initialSample
+      firstBytesRead = sample.firstBytesRead
+      reachedEof = sample.reachedEof
     } catch (error) {
       await this.closeReadFileTaskHandle(task)
       throw error
     }
 
-    const initialSample = firstBuffer.subarray(0, Math.max(0, firstBytesRead))
-    const decoder = createIncrementalTextDecoder(initialSample)
+    const decoder = createIncrementalTextDecoder(initialSample, { finalSample: reachedEof })
     this.editorFileStreams.set(streamId, task)
     this.pendingReadStreamStarts.set(streamId, {
       task,
@@ -342,7 +342,17 @@ export class SshCoreSessionWorker {
     if (task.failure) {
       throw this.createWriteFileStreamUnavailableError(task)
     }
-    await this.closeWriteFileTaskHandle(task)
+
+    try {
+      await this.commitWriteFileTaskHandle(task)
+    } catch (error) {
+      const failure = error instanceof Error ? error : new Error(String(error))
+      task.state = 'error'
+      task.failure = failure
+      this.emitFileStreamState(task, 'error', failure.message)
+      throw failure
+    }
+
     task.state = 'closed'
     this.emitFileStreamState(task, 'completed')
   }
@@ -545,6 +555,16 @@ export class SshCoreSessionWorker {
 
     task.handle = undefined
     await this.sftpClose(task.sftp, handle).catch(() => undefined)
+  }
+
+  private async commitWriteFileTaskHandle(task: EditorFileWriteTask): Promise<void> {
+    const handle = task.handle
+    if (!handle) {
+      return
+    }
+
+    task.handle = undefined
+    await this.sftpClose(task.sftp, handle)
   }
 
   private emitFileChunk(task: EditorFileReadTask, chunk: string): void {
@@ -816,6 +836,47 @@ export class SshCoreSessionWorker {
         resolve(bytesRead)
       })
     })
+  }
+
+  private async readInitialFileStreamSample(
+    sftp: SFTPWrapper,
+    handle: Buffer,
+    total: number
+  ): Promise<{ initialSample: Buffer; firstBytesRead: number; reachedEof: boolean }> {
+    const chunks: Buffer[] = []
+    let position = 0
+    let reachedEof = total === 0
+
+    while (!reachedEof) {
+      const remaining = total > 0 ? total - position : 32768
+      if (total > 0 && remaining <= 0) {
+        reachedEof = true
+        break
+      }
+
+      const buffer = Buffer.allocUnsafe(Math.min(32768, remaining > 0 ? remaining : 32768))
+      const bytesRead = await this.sftpRead(sftp, handle, buffer, 0, buffer.byteLength, position)
+
+      if (bytesRead <= 0) {
+        reachedEof = true
+        break
+      }
+
+      chunks.push(buffer.subarray(0, bytesRead))
+      position += bytesRead
+      reachedEof = bytesRead < buffer.byteLength || (total > 0 && position >= total)
+
+      const sample = Buffer.concat(chunks)
+      if (!shouldContinueIncrementalEncodingProbe(sample, reachedEof)) {
+        break
+      }
+    }
+
+    return {
+      initialSample: Buffer.concat(chunks),
+      firstBytesRead: position,
+      reachedEof
+    }
   }
 
   private sftpWrite(

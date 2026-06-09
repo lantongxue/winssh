@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events'
+import iconv from 'iconv-lite'
 import { SshCoreSessionWorker } from '@main/workers/ssh-core/session-worker'
 
 class FakeChannel extends EventEmitter {
@@ -422,6 +423,47 @@ describe('SshCoreSessionWorker', () => {
     expect(sftp.readFile).not.toHaveBeenCalled()
   })
 
+  it('keeps probing past an ASCII-only initial sample before streaming GBK text', async () => {
+    const client = new FakeClient()
+    const text = `${'a'.repeat(32768)}这是一段比较长的中文文本用来测试编码检测功能是否正常工作`
+    const sftp = new FakeSftp(iconv.encode(text, 'gbk'))
+    client.sftp = vi.fn((callback) => callback(undefined, sftp))
+    const postMessage = vi.fn()
+    const worker = new SshCoreSessionWorker({
+      createClient: () => client as never,
+      postMessage
+    })
+
+    await connectWorkerSession(worker, client)
+
+    const start = await worker.openFileReadStream('session-1', '/tmp/a.txt')
+    expect(start.encoding).toBe('gbk')
+    worker.startFileReadStream(start.streamId)
+
+    await vi.waitFor(() =>
+      expect(postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'sftp:fileStreamState',
+          streamId: start.streamId,
+          status: 'completed'
+        })
+      )
+    )
+    const chunks = postMessage.mock.calls
+      .map(([message]) => message)
+      .filter((message): message is { type: string; streamId: string; chunk: string } => {
+        return (
+          typeof message === 'object' &&
+          message !== null &&
+          'type' in message &&
+          message.type === 'sftp:fileChunk'
+        )
+      })
+      .filter((message) => message.streamId === start.streamId)
+
+    expect(chunks.map((message) => message.chunk).join('')).toBe(text)
+  })
+
   it('writes text file chunks sequentially through sftp write offsets', async () => {
     const client = new FakeClient()
     const sftp = new FakeSftp()
@@ -476,6 +518,45 @@ describe('SshCoreSessionWorker', () => {
         total: 10
       })
     )
+  })
+
+  it('rejects a committed write stream when the remote close fails', async () => {
+    const client = new FakeClient()
+    const sftp = new FakeSftp()
+    sftp.close.mockImplementation((_handle: Buffer, callback: (error?: Error) => void) => {
+      callback(new Error('remote close failed'))
+    })
+    client.sftp = vi.fn((callback) => callback(undefined, sftp))
+    const postMessage = vi.fn()
+    const worker = new SshCoreSessionWorker({
+      createClient: () => client as never,
+      postMessage
+    })
+
+    await connectWorkerSession(worker, client)
+
+    const start = await worker.openFileWriteStream('session-1', '/tmp/a.txt', 'utf8')
+    await worker.writeFileChunk(start.streamId, 'alpha')
+
+    await expect(worker.closeFileWriteStream(start.streamId)).rejects.toThrow('remote close failed')
+    await expect(worker.writeFileChunk(start.streamId, 'late')).rejects.toThrow(
+      /stream unavailable|remote close failed/i
+    )
+
+    const states = postMessage.mock.calls
+      .map(([message]) => message)
+      .filter(
+        (message): message is { type: string; streamId: string; status: string } =>
+          typeof message === 'object' &&
+          message !== null &&
+          'type' in message &&
+          message.type === 'sftp:fileStreamState' &&
+          'streamId' in message &&
+          message.streamId === start.streamId
+      )
+
+    expect(states.some((event) => event.status === 'error')).toBe(true)
+    expect(states.some((event) => event.status === 'completed')).toBe(false)
   })
 
   it('fails a write stream after a chunk write error and rejects queued chunks', async () => {

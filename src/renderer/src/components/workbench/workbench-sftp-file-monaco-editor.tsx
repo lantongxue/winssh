@@ -64,6 +64,18 @@ import { useWorkbenchStore } from '@/store/workbench-store'
 
 const SFTP_FILE_SAVE_CHUNK_SIZE = 64 * 1024
 
+function getSftpFileSaveChunkEnd(contents: string, offset: number): number {
+  let end = Math.min(offset + SFTP_FILE_SAVE_CHUNK_SIZE, contents.length)
+  if (end < contents.length && end > offset) {
+    const lastCodeUnit = contents.charCodeAt(end - 1)
+    if (lastCodeUnit >= 0xd800 && lastCodeUnit <= 0xdbff) {
+      end -= 1
+    }
+  }
+
+  return end
+}
+
 type MonacoEnvironmentTarget = typeof globalThis & {
   MonacoEnvironment?: {
     getWorker: (_moduleId?: string, label?: string) => Worker
@@ -278,11 +290,10 @@ export function WorkbenchSftpFileMonacoEditor({
       )
 
       try {
-        for (let offset = 0; offset < contents.length; offset += SFTP_FILE_SAVE_CHUNK_SIZE) {
-          await sftpClient.writeFileChunk(
-            stream.streamId,
-            contents.slice(offset, offset + SFTP_FILE_SAVE_CHUNK_SIZE)
-          )
+        for (let offset = 0; offset < contents.length; ) {
+          const end = getSftpFileSaveChunkEnd(contents, offset)
+          await sftpClient.writeFileChunk(stream.streamId, contents.slice(offset, end))
+          offset = end
         }
 
         await sftpClient.closeFileWriteStream(stream.streamId)

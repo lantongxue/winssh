@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
 import { dialog } from 'electron'
+import iconv from 'iconv-lite'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SESSION_RESOURCE_MONITOR_UNAVAILABLE } from '@shared/types'
 import type { SftpFileChunkEvent, SftpFileStreamStateEvent } from '@shared/types'
@@ -368,6 +369,26 @@ describe('SessionManager SFTP file streams', () => {
     )
   })
 
+  it('keeps probing past an ASCII-only initial sample before streaming GBK text', async () => {
+    const { manager, emitToRenderer } = createManagerWithSftpEmitSpy()
+    const runtime = createRuntime('session-1', new MockClient())
+    const text = `${'a'.repeat(32768)}这是一段比较长的中文文本用来测试编码检测功能是否正常工作`
+    runtime.sftp = createFileSftp(iconv.encode(text, 'gbk')) as never
+    getSessionsMap(manager).set('session-1', runtime)
+
+    const start = await manager.openFileReadStream('session-1', '/etc/app.conf')
+
+    expect(start.encoding).toBe('gbk')
+    await waitForFileStreamCompletion(emitToRenderer, start.streamId)
+
+    const chunks = emitToRenderer.mock.calls
+      .filter(([channel]) => channel === 'sftp:fileChunk')
+      .map(([, payload]) => payload as SftpFileChunkEvent)
+      .filter((event) => event.streamId === start.streamId)
+
+    expect(chunks.map((event) => event.chunk).join('')).toBe(text)
+  })
+
   it('does not emit read chunks before the read stream start resolves', async () => {
     const { manager, emitToRenderer } = createManagerWithSftpEmitSpy()
     const runtime = createRuntime('session-1', new MockClient())
@@ -412,6 +433,35 @@ describe('SessionManager SFTP file streams', () => {
 
     expect(written.join('')).toBe('alpha\nbeta')
     expect(sftp.close).toHaveBeenCalledOnce()
+  })
+
+  it('rejects a committed write stream when the remote close fails', async () => {
+    const { manager, emitToRenderer } = createManagerWithSftpEmitSpy()
+    const runtime = createRuntime('session-1', new MockClient())
+    const sftp = createFileSftp(Buffer.alloc(0))
+    sftp.close.mockImplementation((_handle: Buffer, callback: (error?: Error) => void) => {
+      callback(new Error('remote close failed'))
+    })
+    runtime.sftp = sftp as never
+    getSessionsMap(manager).set('session-1', runtime)
+
+    const start = await manager.openFileWriteStream('session-1', '/etc/app.conf', 'utf8')
+    await manager.writeFileChunk(start.streamId, 'alpha')
+
+    await expect(manager.closeFileWriteStream(start.streamId)).rejects.toThrow(
+      'remote close failed'
+    )
+    await expect(manager.writeFileChunk(start.streamId, 'late')).rejects.toThrow(
+      /stream unavailable|remote close failed/i
+    )
+
+    const states = emitToRenderer.mock.calls
+      .filter(([channel]) => channel === 'sftp:fileStreamState')
+      .map(([, payload]) => payload as SftpFileStreamStateEvent)
+      .filter((event) => event.streamId === start.streamId)
+
+    expect(states.some((event) => event.status === 'error')).toBe(true)
+    expect(states.some((event) => event.status === 'completed')).toBe(false)
   })
 
   it('cancels file streams by stream id and closes the remote handle', async () => {

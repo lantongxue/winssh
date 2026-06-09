@@ -46,6 +46,22 @@ function utf8ValidationSample(buffer: Buffer): Buffer {
   return buffer
 }
 
+function isAsciiOnly(buffer: Buffer): boolean {
+  for (const byte of buffer) {
+    if (byte > 0x7f) return false
+  }
+
+  return true
+}
+
+export function shouldContinueIncrementalEncodingProbe(
+  sample: Buffer,
+  reachedEof: boolean
+): boolean {
+  if (reachedEof || sample.length === 0) return false
+  return isAsciiOnly(sample) || utf8ValidationSample(sample).byteLength < sample.byteLength
+}
+
 function detectEncoding(buffer: Buffer): string {
   if (buffer.length === 0) return 'utf8'
 
@@ -77,7 +93,7 @@ function detectEncoding(buffer: Buffer): string {
   return 'gbk'
 }
 
-function detectIncrementalEncoding(initialSample: Buffer): string {
+function detectIncrementalEncoding(initialSample: Buffer, finalSample = false): string {
   if (initialSample.length === 0) return 'utf8'
 
   if (
@@ -97,7 +113,9 @@ function detectIncrementalEncoding(initialSample: Buffer): string {
     return 'utf16-be'
   }
 
-  const utf8Str = utf8ValidationSample(initialSample).toString('utf8')
+  const utf8Str = (finalSample ? initialSample : utf8ValidationSample(initialSample)).toString(
+    'utf8'
+  )
   if (!utf8Str.includes('\uFFFD')) {
     return 'utf8'
   }
@@ -137,16 +155,54 @@ export function smartDecode(buffer: Buffer): DecodedResult {
   return { content: buffer.toString('utf8'), encoding: 'utf8' }
 }
 
-export function createIncrementalTextDecoder(initialSample: Buffer): IncrementalTextDecoder {
-  const encoding = detectIncrementalEncoding(initialSample)
-  const decoder = iconv.getDecoder(encoding)
+export function createIncrementalTextDecoder(
+  initialSample: Buffer,
+  options: { finalSample?: boolean } = {}
+): IncrementalTextDecoder {
+  const finalInitialSample = options.finalSample ?? false
+  let encoding = 'utf8'
+  let decoder: ReturnType<typeof iconv.getDecoder> | null = null
+  let pendingChunks: Buffer[] = []
+
+  const resolveDecoder = (sample: Buffer, finalSample = false) => {
+    encoding = detectIncrementalEncoding(sample, finalSample)
+    decoder = iconv.getDecoder(encoding)
+  }
+
+  if (!shouldContinueIncrementalEncodingProbe(initialSample, finalInitialSample)) {
+    resolveDecoder(initialSample, finalInitialSample)
+  }
 
   return {
-    encoding,
+    get encoding() {
+      return encoding
+    },
     write(buffer) {
-      return decoder.write(buffer)
+      if (decoder) {
+        return decoder.write(buffer)
+      }
+
+      if (buffer.byteLength > 0) {
+        pendingChunks.push(buffer)
+      }
+
+      const sample = Buffer.concat(pendingChunks)
+      if (shouldContinueIncrementalEncodingProbe(sample, false)) {
+        return ''
+      }
+
+      pendingChunks = []
+      resolveDecoder(sample)
+      return decoder!.write(sample)
     },
     end() {
+      if (!decoder) {
+        const sample = Buffer.concat(pendingChunks)
+        pendingChunks = []
+        resolveDecoder(sample, true)
+        return `${decoder!.write(sample)}${decoder!.end() ?? ''}`
+      }
+
       return decoder.end() ?? ''
     }
   }

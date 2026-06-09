@@ -13,7 +13,12 @@ import {
 import { dialog, type BrowserWindow, type OpenDialogOptions } from 'electron'
 import { normalizeRemotePath, sortRemoteEntries } from '@shared/sftp'
 import { runWithConcurrency } from './concurrency-pool'
-import { createIncrementalTextDecoder, smartDecode, encodeContent } from './encoding'
+import {
+  createIncrementalTextDecoder,
+  smartDecode,
+  encodeContent,
+  shouldContinueIncrementalEncodingProbe
+} from './encoding'
 import { DEFAULT_SERVER_BRAND_ID, resolveServerBrandFromOsRelease } from '@shared/server-brands'
 import {
   type ConnectionSecretInput,
@@ -323,6 +328,47 @@ function sftpWrite(
       resolve()
     })
   })
+}
+
+async function sftpReadInitialFileStreamSample(
+  sftp: SFTPWrapper,
+  handle: Buffer,
+  total: number
+): Promise<{ initialSample: Buffer; firstBytesRead: number; reachedEof: boolean }> {
+  const chunks: Buffer[] = []
+  let position = 0
+  let reachedEof = total === 0
+
+  while (!reachedEof) {
+    const remaining = total > 0 ? total - position : 32768
+    if (total > 0 && remaining <= 0) {
+      reachedEof = true
+      break
+    }
+
+    const buffer = Buffer.allocUnsafe(Math.min(32768, remaining > 0 ? remaining : 32768))
+    const bytesRead = await sftpRead(sftp, handle, buffer, 0, buffer.byteLength, position)
+
+    if (bytesRead <= 0) {
+      reachedEof = true
+      break
+    }
+
+    chunks.push(buffer.subarray(0, bytesRead))
+    position += bytesRead
+    reachedEof = bytesRead < buffer.byteLength || (total > 0 && position >= total)
+
+    const sample = Buffer.concat(chunks)
+    if (!shouldContinueIncrementalEncodingProbe(sample, reachedEof)) {
+      break
+    }
+  }
+
+  return {
+    initialSample: Buffer.concat(chunks),
+    firstBytesRead: position,
+    reachedEof
+  }
 }
 
 type SftpReadFileProgressCallback = (transferred: number, total: number) => void
@@ -1433,25 +1479,21 @@ export class SessionManager {
     }
     const handle = await sftpOpen(runtime.sftp, normalized, 'r')
     task.handle = handle
-    const firstBuffer = Buffer.allocUnsafe(Math.min(32768, total || 32768))
+    let initialSample: Buffer = Buffer.alloc(0)
     let firstBytesRead = 0
+    let reachedEof = total === 0
 
     try {
-      firstBytesRead = await sftpRead(
-        runtime.sftp,
-        handle,
-        firstBuffer,
-        0,
-        firstBuffer.byteLength,
-        0
-      )
+      const sample = await sftpReadInitialFileStreamSample(runtime.sftp, handle, total)
+      initialSample = sample.initialSample
+      firstBytesRead = sample.firstBytesRead
+      reachedEof = sample.reachedEof
     } catch (error) {
       await sftpClose(runtime.sftp, handle).catch(() => undefined)
       throw error
     }
 
-    const initialSample = firstBuffer.subarray(0, Math.max(0, firstBytesRead))
-    const decoder = createIncrementalTextDecoder(initialSample)
+    const decoder = createIncrementalTextDecoder(initialSample, { finalSample: reachedEof })
     this.editorFileStreams.set(streamId, task)
 
     setImmediate(() => {
@@ -1669,7 +1711,17 @@ export class SessionManager {
     if (task.failure) {
       throw this.createWriteFileStreamUnavailableError(task)
     }
-    await this.closeWriteFileTaskHandle(task)
+
+    try {
+      await this.commitWriteFileTaskHandle(task)
+    } catch (error) {
+      const failure = error instanceof Error ? error : new Error(String(error))
+      task.state = 'error'
+      task.failure = failure
+      this.emitFileStreamState(task, 'error', failure.message)
+      throw failure
+    }
+
     task.state = 'closed'
     this.emitFileStreamState(task, 'completed')
   }
@@ -1754,6 +1806,16 @@ export class SessionManager {
 
     task.handle = undefined
     await sftpClose(task.sftp, handle).catch(() => undefined)
+  }
+
+  private async commitWriteFileTaskHandle(task: EditorFileWriteTask): Promise<void> {
+    const handle = task.handle
+    if (!handle) {
+      return
+    }
+
+    task.handle = undefined
+    await sftpClose(task.sftp, handle)
   }
 
   async makeDirectory(sessionId: string, currentPath: string, name: string): Promise<void> {
