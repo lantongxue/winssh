@@ -226,4 +226,35 @@ describe('WorkbenchSftpFileMonacoEditor', () => {
     )
     expect(updateSettings).not.toHaveBeenCalled()
   })
+
+  it('temporarily zooms and resets the current Monaco editor with keyboard shortcuts', async () => {
+    const updateSettings = vi.fn()
+    window.winsshApi = createWinsshApiMock({
+      settings: {
+        update: updateSettings
+      },
+      sftp: {
+        readFile: vi.fn().mockResolvedValue({ content: 'user nginx;', encoding: 'utf8' })
+      }
+    })
+
+    const { container } = renderEditor()
+
+    await waitFor(() => {
+      expect(monaco.editor.create).toHaveBeenCalled()
+    })
+
+    const surface = container.querySelector('[data-sftp-editor-surface]') as HTMLElement
+
+    fireEvent.keyDown(surface, { ctrlKey: true, key: '+' })
+    expect(monacoEditor.updateOptions).toHaveBeenLastCalledWith({ fontSize: 15 })
+
+    fireEvent.keyDown(surface, { ctrlKey: true, key: '-' })
+    expect(monacoEditor.updateOptions).toHaveBeenLastCalledWith({ fontSize: 14 })
+
+    fireEvent.keyDown(surface, { ctrlKey: true, key: '+' })
+    fireEvent.keyDown(surface, { ctrlKey: true, key: '0' })
+    expect(monacoEditor.updateOptions).toHaveBeenLastCalledWith({ fontSize: 14 })
+    expect(updateSettings).not.toHaveBeenCalled()
+  })
 })

@@ -19,7 +19,12 @@ import {
   type TerminalTransport
 } from '@/hooks/use-terminal'
 import { getTerminalFontStack } from '@/lib/integrated-font-loader'
-import { getWheelFontZoomDelta, resolveTemporaryFontSize } from '@/lib/font-zoom'
+import {
+  getKeyboardFontZoomAction,
+  getWheelFontZoomDelta,
+  resolveTemporaryFontSize,
+  type FontZoomKeyboardAction
+} from '@/lib/font-zoom'
 import { hasTerminalPathDragData, readTerminalPathDragData } from '@/lib/terminal-path-dnd'
 import { resolveTerminalAppearance } from '@/lib/theme'
 import { Button } from '@/components/ui/button'
@@ -129,6 +134,22 @@ export function TerminalSurface({
     setSearchOpen(true)
   }
 
+  const updateFontZoom = (action: FontZoomKeyboardAction) => {
+    if (action === 'reset') {
+      setFontZoomOffset(0)
+      return
+    }
+
+    const delta = action === 'increase' ? 1 : -1
+
+    setFontZoomOffset((currentOffset) => {
+      const currentSize = resolveTemporaryFontSize(baseFontSize, currentOffset)
+      const nextSize = resolveTemporaryFontSize(currentSize, delta)
+
+      return nextSize - baseFontSize
+    })
+  }
+
   useEffect(() => {
     if (!searchOpen) {
       return
@@ -173,6 +194,15 @@ export function TerminalSurface({
   }, [enabled, transport])
 
   const handlePaneKeyDownCapture = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const fontZoomAction = getKeyboardFontZoomAction(event)
+
+    if (fontZoomAction) {
+      event.preventDefault()
+      event.stopPropagation()
+      updateFontZoom(fontZoomAction)
+      return
+    }
+
     const isSearchShortcut =
       (event.metaKey || event.ctrlKey) &&
       !event.altKey &&
@@ -270,12 +300,7 @@ export function TerminalSurface({
     event.preventDefault()
     event.stopPropagation()
 
-    setFontZoomOffset((currentOffset) => {
-      const currentSize = resolveTemporaryFontSize(baseFontSize, currentOffset)
-      const nextSize = resolveTemporaryFontSize(currentSize, delta)
-
-      return nextSize - baseFontSize
-    })
+    updateFontZoom(delta > 0 ? 'increase' : 'decrease')
   }
 
   return (

@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
   type WheelEvent as ReactWheelEvent
 } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -46,7 +47,12 @@ import { settingsClient } from '@/features/settings/api/settings-client'
 import { sftpClient } from '@/features/sftp/api/sftp-client'
 import { themesClient } from '@/features/themes/api/themes-client'
 import { usePrefersDark } from '@/hooks/use-prefers-dark'
-import { getWheelFontZoomDelta, resolveTemporaryFontSize } from '@/lib/font-zoom'
+import {
+  getKeyboardFontZoomAction,
+  getWheelFontZoomDelta,
+  resolveTemporaryFontSize,
+  type FontZoomKeyboardAction
+} from '@/lib/font-zoom'
 import { getTerminalFontStack, loadTerminalFontStack } from '@/lib/integrated-font-loader'
 import { resolveTerminalAppearance, resolveThemeDefinition } from '@/lib/theme'
 import type { SftpFileEditorDocument } from '@/lib/workbench'
@@ -461,6 +467,37 @@ export function WorkbenchSftpFileMonacoEditor({
     }
   }
 
+  const updateFontZoom = (action: FontZoomKeyboardAction) => {
+    if (action === 'reset') {
+      setFontZoomOffset(0)
+      editorRef.current?.updateOptions({ fontSize: terminalAppearance.fontSize })
+      return
+    }
+
+    const delta = action === 'increase' ? 1 : -1
+
+    setFontZoomOffset((currentOffset) => {
+      const currentSize = resolveTemporaryFontSize(terminalAppearance.fontSize, currentOffset)
+      const nextSize = resolveTemporaryFontSize(currentSize, delta)
+
+      editorRef.current?.updateOptions({ fontSize: nextSize })
+
+      return nextSize - terminalAppearance.fontSize
+    })
+  }
+
+  const handleEditorKeyDownCapture = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const fontZoomAction = getKeyboardFontZoomAction(event)
+
+    if (!fontZoomAction) {
+      return
+    }
+
+    event.preventDefault()
+    event.stopPropagation()
+    updateFontZoom(fontZoomAction)
+  }
+
   const handleEditorWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
     if (!(event.ctrlKey || event.metaKey)) {
       return
@@ -475,14 +512,7 @@ export function WorkbenchSftpFileMonacoEditor({
     event.preventDefault()
     event.stopPropagation()
 
-    setFontZoomOffset((currentOffset) => {
-      const currentSize = resolveTemporaryFontSize(terminalAppearance.fontSize, currentOffset)
-      const nextSize = resolveTemporaryFontSize(currentSize, delta)
-
-      editorRef.current?.updateOptions({ fontSize: nextSize })
-
-      return nextSize - terminalAppearance.fontSize
-    })
+    updateFontZoom(delta > 0 ? 'increase' : 'decrease')
   }
 
   return (
@@ -575,7 +605,9 @@ export function WorkbenchSftpFileMonacoEditor({
         <div
           className="relative h-full overflow-hidden bg-[var(--workbench-editor)]"
           data-sftp-editor-surface
+          onKeyDownCapture={handleEditorKeyDownCapture}
           onWheel={handleEditorWheel}
+          tabIndex={-1}
         >
           {fileQuery.isLoading ? (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-[var(--workbench-editor)]">
