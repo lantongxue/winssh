@@ -40,6 +40,10 @@ import type {
   SessionStateEvent,
   SessionResourceSnapshot,
   SessionSummary,
+  SftpFileChunkEvent,
+  SftpFileReadStreamStart,
+  SftpFileStreamStateEvent,
+  SftpFileWriteStreamStart,
   SftpListResult,
   SystemMenuAction,
   Tag,
@@ -117,17 +121,20 @@ export interface WinsshApi {
   sftp: {
     list: (sessionId: string, path: string) => Promise<SftpListResult>
     createFile: (sessionId: string, path: string, name: string) => Promise<void>
-    readFile: (
+    openFileReadStream: (
       sessionId: string,
       remotePath: string
-    ) => Promise<{ content: string; encoding: string; cancelled?: boolean }>
-    cancelReadFile: (sessionId: string, remotePath: string) => void
-    writeFile: (
+    ) => Promise<SftpFileReadStreamStart>
+    openFileWriteStream: (
       sessionId: string,
       remotePath: string,
-      contents: string,
-      encoding?: string
-    ) => Promise<void>
+      encoding: string
+    ) => Promise<SftpFileWriteStreamStart>
+    writeFileChunk: (streamId: string, chunk: string) => Promise<void>
+    closeFileWriteStream: (streamId: string) => Promise<void>
+    cancelFileStream: (streamId: string) => void
+    onFileChunk: (callback: (event: SftpFileChunkEvent) => void) => Unsubscribe
+    onFileStreamState: (callback: (event: SftpFileStreamStateEvent) => void) => Unsubscribe
     mkdir: (sessionId: string, path: string, name: string) => Promise<void>
     rename: (sessionId: string, path: string, newName: string) => Promise<void>
     move: (sessionId: string, sourcePath: string, destinationDirPath: string) => Promise<void>

@@ -302,15 +302,30 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
       list: async () => ({ entries: [], path: '/' }),
       mkdir: async () => undefined,
       onTransferProgress: () => noopUnsubscribe,
-      readFile: async () => ({ content: '', encoding: 'utf8' }),
-      cancelReadFile: () => undefined,
+      openFileReadStream: async (sessionId, remotePath) => ({
+        encoding: 'utf8',
+        fileName: remotePath.split('/').at(-1) ?? remotePath,
+        remotePath,
+        sessionId,
+        streamId: `read:${sessionId}:${remotePath}`,
+        total: 0
+      }),
+      openFileWriteStream: async (sessionId, remotePath) => ({
+        remotePath,
+        sessionId,
+        streamId: `write:${sessionId}:${remotePath}`
+      }),
+      writeFileChunk: async () => undefined,
+      closeFileWriteStream: async () => undefined,
+      cancelFileStream: () => undefined,
+      onFileChunk: () => noopUnsubscribe,
+      onFileStreamState: () => noopUnsubscribe,
       refresh: async () => ({ entries: [], path: '/' }),
       move: async () => undefined,
       remove: async () => undefined,
       rename: async () => undefined,
       uploadFiles: async () => undefined,
       uploadPaths: async () => undefined,
-      writeFile: async () => undefined,
       ...overrides.sftp
     },
     portForwards: {

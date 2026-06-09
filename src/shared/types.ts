@@ -392,6 +392,44 @@ export interface SftpListResult {
   entries: RemoteEntry[]
 }
 
+export type SftpFileStreamDirection = 'upload' | 'download'
+export type SftpFileStreamStatus = 'running' | 'completed' | 'error' | 'cancelled'
+
+export interface SftpFileReadStreamStart {
+  streamId: string
+  sessionId: string
+  remotePath: string
+  fileName: string
+  total: number
+  encoding: string
+}
+
+export interface SftpFileWriteStreamStart {
+  streamId: string
+  sessionId: string
+  remotePath: string
+}
+
+export interface SftpFileChunkEvent extends ObservableEventMetadata {
+  streamId: string
+  sessionId: string
+  remotePath: string
+  chunk: string
+  transferred: number
+  total: number
+}
+
+export interface SftpFileStreamStateEvent extends ObservableEventMetadata {
+  streamId: string
+  sessionId: string
+  remotePath: string
+  direction: SftpFileStreamDirection
+  status: SftpFileStreamStatus
+  transferred: number
+  total: number
+  error?: string
+}
+
 export interface TransferProgressEvent extends ObservableEventMetadata {
   sessionId: string
   direction: 'upload' | 'download'

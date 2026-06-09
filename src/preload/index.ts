@@ -241,11 +241,15 @@ const api: WinsshApi = {
     list: (sessionId, remotePath) => ipcRenderer.invoke('sftp:list', sessionId, remotePath),
     createFile: (sessionId, remotePath, name) =>
       ipcRenderer.invoke('sftp:createFile', sessionId, remotePath, name),
-    readFile: (sessionId, remotePath) => ipcRenderer.invoke('sftp:readFile', sessionId, remotePath),
-    cancelReadFile: (sessionId, remotePath) =>
-      ipcRenderer.send('sftp:cancelReadFile', sessionId, remotePath),
-    writeFile: (sessionId, remotePath, contents, encoding) =>
-      ipcRenderer.invoke('sftp:writeFile', sessionId, remotePath, contents, encoding),
+    openFileReadStream: (sessionId, remotePath) =>
+      ipcRenderer.invoke('sftp:openFileReadStream', sessionId, remotePath),
+    openFileWriteStream: (sessionId, remotePath, encoding) =>
+      ipcRenderer.invoke('sftp:openFileWriteStream', sessionId, remotePath, encoding),
+    writeFileChunk: (streamId, chunk) => ipcRenderer.invoke('sftp:writeFileChunk', streamId, chunk),
+    closeFileWriteStream: (streamId) => ipcRenderer.invoke('sftp:closeFileWriteStream', streamId),
+    cancelFileStream: (streamId) => ipcRenderer.send('sftp:cancelFileStream', streamId),
+    onFileChunk: (callback) => subscribe('sftp:fileChunk', callback),
+    onFileStreamState: (callback) => subscribe('sftp:fileStreamState', callback),
     mkdir: (sessionId, remotePath, name) =>
       ipcRenderer.invoke('sftp:mkdir', sessionId, remotePath, name),
     rename: (sessionId, remotePath, newName) =>

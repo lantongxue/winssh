@@ -12,6 +12,8 @@ import type {
   SessionErrorEvent,
   SessionExitEvent,
   SessionStateEvent,
+  SftpFileChunkEvent,
+  SftpFileStreamStateEvent,
   SystemMenuAction,
   TransferProgressEvent,
   UpdateState,
@@ -40,6 +42,8 @@ export interface IpcChannelMap {
   'sessions:error': SessionErrorEvent
   'sessions:exit': SessionExitEvent
   'sessions:state': SessionStateEvent
+  'sftp:fileChunk': SftpFileChunkEvent
+  'sftp:fileStreamState': SftpFileStreamStateEvent
   'sftp:transfer': TransferProgressEvent
   'system:hostTrustRequest': HostTrustRequest
   'system:menuAction': SystemMenuAction
