@@ -41,6 +41,6 @@ React 19 + Tailwind 4 + Zustand workbench app. Single-page shell (no pages/ dir)
 - **NEVER** hardcode React Query keys — use `features/shared/query-keys.ts` (pre-existing violations are debt, not patterns)
 - **NEVER** change session-editor/local-terminal-editor to conditional render — keep-mounted is required for xterm stability
 - **NEVER** add `react-refresh` exports to `components/ui/` — ESLint intentionally disabled there
-- **NEVER** add binary/large-file SFTP support — `sftp:readFile`/`sftp:writeFile` API is string-only
+- **NEVER** add binary/large-file SFTP support — SFTP file streaming is text-only
 - **NEVER** assume app continues after backup restore — triggers `system:relaunch`
 - **NEVER** use BrowserRouter — HashRouter required for Electron `file://` compat
