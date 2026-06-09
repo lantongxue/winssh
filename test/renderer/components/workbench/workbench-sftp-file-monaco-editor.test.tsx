@@ -652,6 +652,38 @@ describe('WorkbenchSftpFileMonacoEditor', () => {
     expect(screen.getByText('Saved')).toBeInTheDocument()
   })
 
+  it('does not save partial content after a streamed load fails', async () => {
+    const sftpStream = createSftpStreamMock()
+    window.winsshApi = createWinsshApiMock({ sftp: sftpStream.api })
+
+    const { container } = renderEditor()
+
+    await waitFor(() => {
+      expect(sftpStream.api.openFileReadStream).toHaveBeenCalled()
+    })
+
+    act(() => {
+      sftpStream.emitChunk({ chunk: 'partial config', streamId: 'read-1' })
+      sftpStream.emitState({
+        error: 'download failed',
+        status: 'error',
+        streamId: 'read-1',
+        transferred: 14,
+        total: 40
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('download failed')).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('button', { name: /save/i })).toBeDisabled()
+
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+
+    expect(sftpStream.api.openFileWriteStream).not.toHaveBeenCalled()
+  })
+
   it('keeps the editor dirty when streamed save fails', async () => {
     const sftpStream = createSftpStreamMock({ failClose: true })
     window.winsshApi = createWinsshApiMock({ sftp: sftpStream.api })

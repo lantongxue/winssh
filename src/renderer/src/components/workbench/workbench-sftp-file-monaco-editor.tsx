@@ -594,7 +594,7 @@ export function WorkbenchSftpFileMonacoEditor({
   }, [active])
 
   const handleSave = async () => {
-    if (loadState === 'loading' || saveMutation.isPending) {
+    if (loadState !== 'ready' || saveMutation.isPending) {
       return
     }
 
@@ -739,7 +739,7 @@ export function WorkbenchSftpFileMonacoEditor({
           <Button
             type="submit"
             size="sm"
-            disabled={!isDirty || loadState === 'loading' || saveMutation.isPending}
+            disabled={!isDirty || loadState !== 'ready' || saveMutation.isPending}
           >
             {saveMutation.isPending ? (
               <LoaderCircle className="size-4 animate-spin" />
