@@ -174,6 +174,77 @@ describe('ssh-core worker entry', () => {
     })
   })
 
+  it('routes retained sftp directory and file operation commands', async () => {
+    const listResult = { path: '/tmp', entries: [] }
+    const sessionWorker = {
+      listDirectory: vi.fn(async () => listResult),
+      createFile: vi.fn(async () => undefined),
+      makeDirectory: vi.fn(async () => undefined),
+      rename: vi.fn(async () => undefined),
+      remove: vi.fn(async () => undefined),
+      resolveHostTrust: vi.fn()
+    }
+    const postMessage = vi.fn()
+    const handleMessage = createSshCoreMessageHandler(sessionWorker as never, postMessage)
+
+    await handleMessage({
+      type: 'sftp:listDirectory',
+      requestId: 'req-list',
+      sessionId: 'session-1',
+      correlationId: 'session-1',
+      remotePath: '/tmp'
+    })
+    await handleMessage({
+      type: 'sftp:createFile',
+      requestId: 'req-create',
+      sessionId: 'session-1',
+      correlationId: 'session-1',
+      remotePath: '/tmp/new.txt'
+    })
+    await handleMessage({
+      type: 'sftp:makeDirectory',
+      requestId: 'req-mkdir',
+      sessionId: 'session-1',
+      correlationId: 'session-1',
+      remotePath: '/tmp/new-dir'
+    })
+    await handleMessage({
+      type: 'sftp:rename',
+      requestId: 'req-rename',
+      sessionId: 'session-1',
+      correlationId: 'session-1',
+      sourcePath: '/tmp/new.txt',
+      targetPath: '/tmp/renamed.txt'
+    })
+    await handleMessage({
+      type: 'sftp:remove',
+      requestId: 'req-remove',
+      sessionId: 'session-1',
+      correlationId: 'session-1',
+      remotePath: '/tmp/renamed.txt'
+    })
+
+    expect(sessionWorker.listDirectory).toHaveBeenCalledWith('session-1', '/tmp')
+    expect(sessionWorker.createFile).toHaveBeenCalledWith('session-1', '/tmp/new.txt')
+    expect(sessionWorker.makeDirectory).toHaveBeenCalledWith('session-1', '/tmp/new-dir')
+    expect(sessionWorker.rename).toHaveBeenCalledWith(
+      'session-1',
+      '/tmp/new.txt',
+      '/tmp/renamed.txt'
+    )
+    expect(sessionWorker.remove).toHaveBeenCalledWith('session-1', '/tmp/renamed.txt')
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'ack',
+      requestId: 'req-list',
+      ok: true,
+      result: listResult
+    })
+    expect(postMessage).toHaveBeenCalledWith({ type: 'ack', requestId: 'req-create', ok: true })
+    expect(postMessage).toHaveBeenCalledWith({ type: 'ack', requestId: 'req-mkdir', ok: true })
+    expect(postMessage).toHaveBeenCalledWith({ type: 'ack', requestId: 'req-rename', ok: true })
+    expect(postMessage).toHaveBeenCalledWith({ type: 'ack', requestId: 'req-remove', ok: true })
+  })
+
   it('routes host trust results without sending an acknowledgement', async () => {
     const sessionWorker = {
       resolveHostTrust: vi.fn()

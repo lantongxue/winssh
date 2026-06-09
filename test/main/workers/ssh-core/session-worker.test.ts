@@ -24,6 +24,41 @@ class FakeSftp {
     ) => callback(undefined, Buffer.from('hello'))
   )
   writeFile = vi.fn((_path: string, _data: Buffer, callback: (error?: Error) => void) => callback())
+  readdir = vi.fn(
+    (
+      _path: string,
+      callback: (
+        error: Error | undefined,
+        entries: Array<{
+          filename: string
+          attrs: {
+            isDirectory(): boolean
+            isSymbolicLink(): boolean
+            size: number
+            mtime: number
+            mode: number
+          }
+        }>
+      ) => void
+    ) =>
+      callback(undefined, [
+        {
+          filename: 'notes.txt',
+          attrs: {
+            isDirectory: () => false,
+            isSymbolicLink: () => false,
+            size: 12,
+            mtime: 1_714_348_800,
+            mode: 0o100644
+          }
+        }
+      ])
+  )
+  mkdir = vi.fn((_path: string, callback: (error?: Error) => void) => callback())
+  rename = vi.fn((_fromPath: string, _toPath: string, callback: (error?: Error) => void) =>
+    callback()
+  )
+  unlink = vi.fn((_path: string, callback: (error?: Error) => void) => callback())
   stat = vi.fn((_path: string, callback: (error: Error | undefined, stats: unknown) => void) =>
     callback(undefined, {
       isDirectory: () => false,
@@ -273,6 +308,55 @@ describe('SshCoreSessionWorker', () => {
     await promise
 
     expect(verify).toHaveBeenCalledWith(true)
+  })
+
+  it('runs retained sftp directory and file operations through the worker wrapper', async () => {
+    const client = new FakeClient()
+    const sftp = new FakeSftp()
+    client.sftp = vi.fn((callback) => callback(undefined, sftp))
+    const worker = new SshCoreSessionWorker({
+      createClient: () => client as never,
+      postMessage: vi.fn()
+    })
+
+    await connectWorkerSession(worker, client)
+
+    const result = await worker.listDirectory('session-1', '/tmp/project')
+    await worker.createFile('session-1', '/tmp/project/new.txt')
+    await worker.makeDirectory('session-1', '/tmp/project/new-dir')
+    await worker.rename('session-1', '/tmp/project/new.txt', '/tmp/project/renamed.txt')
+    await worker.remove('session-1', '/tmp/project/renamed.txt')
+
+    expect(result).toMatchObject({
+      path: '/tmp/project',
+      entries: [
+        {
+          name: 'notes.txt',
+          path: '/tmp/project/notes.txt',
+          kind: 'file',
+          size: 12
+        }
+      ]
+    })
+    expect((sftp as unknown as { readdir: unknown }).readdir).toHaveBeenCalledWith(
+      '/tmp/project',
+      expect.any(Function)
+    )
+    expect(sftp.open).toHaveBeenCalledWith('/tmp/project/new.txt', 'w', expect.any(Function))
+    expect(sftp.close).toHaveBeenCalledOnce()
+    expect((sftp as unknown as { mkdir: unknown }).mkdir).toHaveBeenCalledWith(
+      '/tmp/project/new-dir',
+      expect.any(Function)
+    )
+    expect((sftp as unknown as { rename: unknown }).rename).toHaveBeenCalledWith(
+      '/tmp/project/new.txt',
+      '/tmp/project/renamed.txt',
+      expect.any(Function)
+    )
+    expect((sftp as unknown as { unlink: unknown }).unlink).toHaveBeenCalledWith(
+      '/tmp/project/renamed.txt',
+      expect.any(Function)
+    )
   })
 
   it('streams text file chunks through sftp open and read', async () => {

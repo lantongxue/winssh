@@ -107,6 +107,59 @@ describe('ssh protocol schemas', () => {
     ).toBe('sftp:cancelFileStream')
   })
 
+  it('accepts retained sftp directory and file operation messages', () => {
+    expect(
+      sshCoreInboundSchema.parse({
+        type: 'sftp:listDirectory',
+        requestId: 'req-list',
+        sessionId: 'session-1',
+        correlationId: 'session-1',
+        remotePath: '/etc'
+      }).type
+    ).toBe('sftp:listDirectory')
+
+    expect(
+      sshCoreInboundSchema.parse({
+        type: 'sftp:createFile',
+        requestId: 'req-create',
+        sessionId: 'session-1',
+        correlationId: 'session-1',
+        remotePath: '/etc/app.conf'
+      }).type
+    ).toBe('sftp:createFile')
+
+    expect(
+      sshCoreInboundSchema.parse({
+        type: 'sftp:makeDirectory',
+        requestId: 'req-mkdir',
+        sessionId: 'session-1',
+        correlationId: 'session-1',
+        remotePath: '/etc/app.d'
+      }).type
+    ).toBe('sftp:makeDirectory')
+
+    expect(
+      sshCoreInboundSchema.parse({
+        type: 'sftp:rename',
+        requestId: 'req-rename',
+        sessionId: 'session-1',
+        correlationId: 'session-1',
+        sourcePath: '/etc/app.conf',
+        targetPath: '/etc/app.conf.bak'
+      }).type
+    ).toBe('sftp:rename')
+
+    expect(
+      sshCoreInboundSchema.parse({
+        type: 'sftp:remove',
+        requestId: 'req-remove',
+        sessionId: 'session-1',
+        correlationId: 'session-1',
+        remotePath: '/etc/app.conf.bak'
+      }).type
+    ).toBe('sftp:remove')
+  })
+
   it('rejects legacy sftp whole-file editor messages', () => {
     expect(() =>
       sshCoreInboundSchema.parse({
