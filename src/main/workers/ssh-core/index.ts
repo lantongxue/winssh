@@ -49,15 +49,20 @@ async function dispatchMessage(sessionWorker: SshCoreSessionWorker, message: Ssh
       return sessionWorker.listDirectory(message.sessionId, message.remotePath)
     case 'sftp:createFile':
       return sessionWorker.createFile(message.sessionId, message.remotePath)
-    case 'sftp:readFile':
-      return sessionWorker.readFile(message.sessionId, message.remotePath)
-    case 'sftp:writeFile':
-      return sessionWorker.writeFile(
+    case 'sftp:openFileReadStream':
+      return sessionWorker.openFileReadStream(message.sessionId, message.remotePath)
+    case 'sftp:openFileWriteStream':
+      return sessionWorker.openFileWriteStream(
         message.sessionId,
         message.remotePath,
-        message.contents,
         message.encoding
       )
+    case 'sftp:writeFileChunk':
+      return sessionWorker.writeFileChunk(message.streamId, message.chunk)
+    case 'sftp:closeFileWriteStream':
+      return sessionWorker.closeFileWriteStream(message.streamId)
+    case 'sftp:cancelFileStream':
+      return sessionWorker.cancelFileStream(message.streamId)
     case 'sftp:makeDirectory':
       return sessionWorker.makeDirectory(message.sessionId, message.remotePath)
     case 'sftp:rename':

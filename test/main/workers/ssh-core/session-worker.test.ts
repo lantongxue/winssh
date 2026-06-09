@@ -9,6 +9,10 @@ class FakeChannel extends EventEmitter {
 }
 
 class FakeSftp {
+  private readonly handle = Buffer.from('file-handle')
+
+  constructor(private readonly contents = Buffer.from('hello')) {}
+
   realpath = vi.fn((_path: string, callback: (error: Error | undefined, path: string) => void) =>
     callback(undefined, '/home/alice')
   )
@@ -20,6 +24,41 @@ class FakeSftp {
     ) => callback(undefined, Buffer.from('hello'))
   )
   writeFile = vi.fn((_path: string, _data: Buffer, callback: (error?: Error) => void) => callback())
+  stat = vi.fn((_path: string, callback: (error: Error | undefined, stats: unknown) => void) =>
+    callback(undefined, {
+      isDirectory: () => false,
+      size: this.contents.byteLength
+    })
+  )
+  open = vi.fn(
+    (_path: string, _flags: string, callback: (error: Error | undefined, handle: Buffer) => void) =>
+      callback(undefined, this.handle)
+  )
+  read = vi.fn(
+    (
+      _handle: Buffer,
+      buffer: Buffer,
+      offset: number,
+      length: number,
+      position: number,
+      callback: (error: Error | undefined, bytesRead: number) => void
+    ) => {
+      const slice = this.contents.subarray(position, position + length)
+      slice.copy(buffer, offset)
+      callback(undefined, slice.byteLength)
+    }
+  )
+  write = vi.fn(
+    (
+      _handle: Buffer,
+      _buffer: Buffer,
+      _offset: number,
+      _length: number,
+      _position: number,
+      callback: (error?: Error) => void
+    ) => callback()
+  )
+  close = vi.fn((_handle: Buffer, callback: (error?: Error) => void) => callback())
 }
 
 class FakeClient extends EventEmitter {
@@ -38,6 +77,24 @@ class FakeClient extends EventEmitter {
   })
   shell = vi.fn((_options, callback) => callback(undefined, new FakeChannel()))
   sftp = vi.fn((callback) => callback(undefined, new FakeSftp()))
+}
+
+async function connectWorkerSession(worker: SshCoreSessionWorker, client: FakeClient) {
+  const promise = worker.connect({
+    sessionId: 'session-1',
+    target: {
+      id: 'server-1',
+      name: 'Production',
+      host: 'example.com',
+      port: 22,
+      username: 'alice',
+      authType: 'password',
+      auth: { password: 'secret' }
+    },
+    terminal: { cols: 80, rows: 24 }
+  })
+  client.emit('ready')
+  await promise
 }
 
 describe('SshCoreSessionWorker', () => {
@@ -218,42 +275,111 @@ describe('SshCoreSessionWorker', () => {
     expect(verify).toHaveBeenCalledWith(true)
   })
 
-  it('reads and writes text files through sftp', async () => {
+  it('streams text file chunks through sftp open and read', async () => {
+    const client = new FakeClient()
+    const sftp = new FakeSftp(Buffer.from('alpha\nbeta\n'))
+    client.sftp = vi.fn((callback) => callback(undefined, sftp))
+    const postMessage = vi.fn()
+    const worker = new SshCoreSessionWorker({
+      createClient: () => client as never,
+      postMessage
+    })
+
+    await connectWorkerSession(worker, client)
+
+    const start = await worker.openFileReadStream('session-1', '/tmp/a.txt')
+
+    expect(start).toMatchObject({
+      streamId: expect.any(String),
+      sessionId: 'session-1',
+      remotePath: '/tmp/a.txt',
+      fileName: 'a.txt',
+      total: 11,
+      encoding: 'utf8'
+    })
+    await vi.waitFor(() =>
+      expect(postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'sftp:fileStreamState',
+          streamId: start.streamId,
+          status: 'completed',
+          transferred: 11,
+          total: 11
+        })
+      )
+    )
+    const chunks = postMessage.mock.calls
+      .map(([message]) => message)
+      .filter((message): message is { type: string; streamId: string; chunk: string } => {
+        return (
+          typeof message === 'object' &&
+          message !== null &&
+          'type' in message &&
+          message.type === 'sftp:fileChunk'
+        )
+      })
+      .filter((message) => message.streamId === start.streamId)
+
+    expect(chunks.map((message) => message.chunk).join('')).toBe('alpha\nbeta\n')
+    expect(sftp.open).toHaveBeenCalledWith('/tmp/a.txt', 'r', expect.any(Function))
+    expect(sftp.read).toHaveBeenCalled()
+    expect(sftp.close).toHaveBeenCalledOnce()
+    expect(sftp.readFile).not.toHaveBeenCalled()
+  })
+
+  it('writes text file chunks sequentially through sftp write offsets', async () => {
     const client = new FakeClient()
     const sftp = new FakeSftp()
     client.sftp = vi.fn((callback) => callback(undefined, sftp))
+    const postMessage = vi.fn()
     const worker = new SshCoreSessionWorker({
       createClient: () => client as never,
-      postMessage: vi.fn()
+      postMessage
     })
+    const positions: number[] = []
+    let releaseFirstWrite: ((error?: Error) => void) | null = null
+    sftp.write.mockImplementation(
+      (
+        _handle: Buffer,
+        _buffer: Buffer,
+        _offset: number,
+        _length: number,
+        position: number,
+        callback: (error?: Error) => void
+      ) => {
+        positions.push(position)
+        if (positions.length === 1) {
+          releaseFirstWrite = callback
+          return
+        }
+        callback()
+      }
+    )
 
-    const promise = worker.connect({
-      sessionId: 'session-1',
-      target: {
-        id: 'server-1',
-        name: 'Production',
-        host: 'example.com',
-        port: 22,
-        username: 'alice',
-        authType: 'password',
-        auth: { password: 'secret' }
-      },
-      terminal: { cols: 80, rows: 24 }
-    })
-    client.emit('ready')
-    await promise
+    await connectWorkerSession(worker, client)
 
-    await expect(worker.readFile('session-1', '/tmp/a.txt')).resolves.toEqual({
-      content: 'hello',
-      encoding: 'utf8'
-    })
-    await worker.writeFile('session-1', '/tmp/a.txt', 'bye', 'utf8')
+    const start = await worker.openFileWriteStream('session-1', '/tmp/a.txt', 'utf8')
+    const firstWrite = worker.writeFileChunk(start.streamId, 'alpha')
+    const secondWrite = worker.writeFileChunk(start.streamId, '\nbeta')
 
-    expect(sftp.readFile).toHaveBeenCalledWith('/tmp/a.txt', {}, expect.any(Function))
-    expect(sftp.writeFile).toHaveBeenCalledWith(
-      '/tmp/a.txt',
-      Buffer.from('bye'),
-      expect.any(Function)
+    await vi.waitFor(() => expect(positions).toEqual([0]))
+    releaseFirstWrite?.()
+    await firstWrite
+    await secondWrite
+    await worker.closeFileWriteStream(start.streamId)
+
+    expect(positions).toEqual([0, 5])
+    expect(sftp.open).toHaveBeenCalledWith('/tmp/a.txt', 'w', expect.any(Function))
+    expect(sftp.writeFile).not.toHaveBeenCalled()
+    expect(sftp.close).toHaveBeenCalledOnce()
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'sftp:fileStreamState',
+        streamId: start.streamId,
+        status: 'completed',
+        transferred: 10,
+        total: 10
+      })
     )
   })
 })

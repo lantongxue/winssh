@@ -1,9 +1,24 @@
-import { Client, type ClientChannel, type ConnectConfig, type SFTPWrapper } from 'ssh2'
-import type { RemoteEntry } from '@shared/types'
+import { randomUUID } from 'node:crypto'
+import { posix } from 'node:path'
+import {
+  Client,
+  type ClientChannel,
+  type ConnectConfig,
+  type OpenMode,
+  type SFTPWrapper,
+  type Stats
+} from 'ssh2'
+import type {
+  RemoteEntry,
+  SftpFileReadStreamStart,
+  SftpFileStreamDirection,
+  SftpFileStreamStateEvent,
+  SftpFileWriteStreamStart
+} from '@shared/types'
 import { encodeSshDataFrame } from '@shared/ssh-data-frame'
 import type { SshConnectConfig, SshResolvedServer } from '@shared/ssh-protocol'
 import { normalizeRemotePath, sortRemoteEntries } from '@shared/sftp'
-import { encodeContent, smartDecode } from '../../encoding'
+import { createIncrementalTextDecoder, encodeContent } from '../../encoding'
 import { formatRemoteEntryPermissions } from '../../session-manager'
 import { createShellIntegrationScript } from '../../shell-integration'
 
@@ -33,12 +48,42 @@ interface PendingHostTrust {
   verify: (trusted: boolean) => void
 }
 
+interface EditorFileReadTask {
+  kind: 'read'
+  streamId: string
+  sessionId: string
+  remotePath: string
+  fileName: string
+  total: number
+  transferred: number
+  controller: AbortController
+  sftp: SFTPWrapper
+  handle?: Buffer
+}
+
+interface EditorFileWriteTask {
+  kind: 'write'
+  streamId: string
+  sessionId: string
+  remotePath: string
+  fileName: string
+  encoding: string
+  transferred: number
+  state: 'open' | 'closing' | 'closed' | 'cancelled'
+  queue: Promise<void>
+  sftp: SFTPWrapper
+  handle?: Buffer
+}
+
+class SftpReadCancelledError extends Error {}
+
 export class SshCoreSessionWorker {
   private readonly createClient: CreateClient
   private readonly postMessage: PostMessagePort['postMessage']
   private session: ActiveSession | null = null
   private hostTrustCounter = 0
   private readonly pendingHostTrust = new Map<string, PendingHostTrust>()
+  private readonly editorFileStreams = new Map<string, EditorFileReadTask | EditorFileWriteTask>()
 
   constructor(options: SshCoreSessionWorkerOptions) {
     this.createClient = options.createClient ?? (() => new Client())
@@ -124,6 +169,7 @@ export class SshCoreSessionWorker {
 
   disconnect(sessionId: string): void {
     const session = this.requireSession(sessionId)
+    void this.releaseSessionEditorFileStreams(sessionId)
     session.shell.close()
     session.client.end()
     for (const upstreamClient of session.upstreamClients) {
@@ -142,25 +188,148 @@ export class SshCoreSessionWorker {
     pending.verify(trusted)
   }
 
-  async readFile(
+  async openFileReadStream(
     sessionId: string,
     remotePath: string
-  ): Promise<{ content: string; encoding: string }> {
-    const buffer = await this.sftpReadFile(this.requireSession(sessionId).sftp, remotePath)
-    return smartDecode(buffer)
+  ): Promise<SftpFileReadStreamStart> {
+    const session = this.requireSession(sessionId)
+    const normalized = normalizeRemotePath(remotePath)
+    const stats = await this.sftpStat(session.sftp, normalized)
+
+    if (stats.isDirectory()) {
+      throw new Error(`Remote path is a directory: ${normalized}`)
+    }
+
+    const total = stats.size ?? 0
+    const streamId = `sftp-read:${sessionId}:${randomUUID()}`
+    const fileName = posix.basename(normalized)
+    const controller = new AbortController()
+    const handle = await this.sftpOpen(session.sftp, normalized, 'r')
+    const task: EditorFileReadTask = {
+      kind: 'read',
+      streamId,
+      sessionId,
+      remotePath: normalized,
+      fileName,
+      total,
+      transferred: 0,
+      controller,
+      sftp: session.sftp,
+      handle
+    }
+
+    let firstBytesRead = 0
+    const firstBuffer = Buffer.allocUnsafe(Math.min(32768, total || 32768))
+    try {
+      firstBytesRead = await this.sftpRead(
+        session.sftp,
+        handle,
+        firstBuffer,
+        0,
+        firstBuffer.byteLength,
+        0
+      )
+    } catch (error) {
+      await this.closeReadFileTaskHandle(task)
+      throw error
+    }
+
+    const initialSample = firstBuffer.subarray(0, Math.max(0, firstBytesRead))
+    const decoder = createIncrementalTextDecoder(initialSample)
+    this.editorFileStreams.set(streamId, task)
+
+    void this.runFileReadStream(task, decoder, initialSample, firstBytesRead)
+
+    return {
+      streamId,
+      sessionId,
+      remotePath: normalized,
+      fileName,
+      total,
+      encoding: decoder.encoding
+    }
   }
 
-  async writeFile(
+  async openFileWriteStream(
     sessionId: string,
     remotePath: string,
-    contents: string,
-    encoding?: string
-  ): Promise<void> {
-    await this.sftpWriteFile(
-      this.requireSession(sessionId).sftp,
-      remotePath,
-      encodeContent(contents, encoding)
-    )
+    encoding: string
+  ): Promise<SftpFileWriteStreamStart> {
+    const session = this.requireSession(sessionId)
+    const normalized = normalizeRemotePath(remotePath)
+    const handle = await this.sftpOpen(session.sftp, normalized, 'w')
+    const streamId = `sftp-write:${sessionId}:${randomUUID()}`
+    this.editorFileStreams.set(streamId, {
+      kind: 'write',
+      streamId,
+      sessionId,
+      remotePath: normalized,
+      fileName: posix.basename(normalized),
+      encoding,
+      transferred: 0,
+      state: 'open',
+      queue: Promise.resolve(),
+      sftp: session.sftp,
+      handle
+    })
+
+    return { streamId, sessionId, remotePath: normalized }
+  }
+
+  async writeFileChunk(streamId: string, chunk: string): Promise<void> {
+    const task = this.requireWriteFileStream(streamId)
+    const buffer = encodeContent(chunk, task.encoding)
+    const writeOperation = task.queue.then(async () => {
+      if (this.isWriteFileTaskUnavailable(task)) {
+        throw new Error(`SFTP file stream unavailable: ${streamId}`)
+      }
+
+      const handle = task.handle
+      if (!handle) {
+        throw new Error(`SFTP file stream unavailable: ${streamId}`)
+      }
+
+      await this.sftpWrite(task.sftp, handle, buffer, 0, buffer.byteLength, task.transferred)
+
+      if (this.isWriteFileTaskUnavailable(task)) {
+        throw new Error(`SFTP file stream unavailable: ${streamId}`)
+      }
+
+      task.transferred += buffer.byteLength
+      this.emitFileStreamState(task, 'running')
+    })
+    task.queue = writeOperation.catch(() => undefined)
+    return writeOperation
+  }
+
+  async closeFileWriteStream(streamId: string): Promise<void> {
+    const task = this.requireWriteFileStream(streamId)
+    task.state = 'closing'
+    this.editorFileStreams.delete(streamId)
+    await task.queue
+    await this.closeWriteFileTaskHandle(task)
+    task.state = 'closed'
+    this.emitFileStreamState(task, 'completed')
+  }
+
+  async cancelFileStream(streamId: string): Promise<void> {
+    const task = this.editorFileStreams.get(streamId)
+    if (!task) {
+      return
+    }
+
+    this.editorFileStreams.delete(streamId)
+    if (task.kind === 'read') {
+      task.controller.abort()
+      await this.closeReadFileTaskHandle(task)
+      return
+    }
+
+    if (task.state !== 'cancelled' && task.state !== 'closed') {
+      task.state = 'cancelled'
+      await this.closeWriteFileTaskHandle(task)
+      this.emitFileStreamState(task, 'cancelled')
+    }
   }
 
   async listDirectory(
@@ -208,6 +377,158 @@ export class SshCoreSessionWorker {
     const sftp = this.requireSession(sessionId).sftp
     await new Promise<void>((resolve, reject) => {
       sftp.unlink(remotePath, (error) => (error ? reject(error) : resolve()))
+    })
+  }
+
+  private async runFileReadStream(
+    task: EditorFileReadTask,
+    decoder: ReturnType<typeof createIncrementalTextDecoder>,
+    initialSample: Buffer,
+    firstBytesRead: number
+  ): Promise<void> {
+    try {
+      if (task.controller.signal.aborted) {
+        throw new SftpReadCancelledError()
+      }
+
+      if (firstBytesRead > 0) {
+        task.transferred = firstBytesRead
+        this.emitFileChunk(task, decoder.write(initialSample))
+        this.emitFileStreamState(task, 'running')
+      }
+
+      let position = firstBytesRead
+
+      while (true) {
+        if (task.controller.signal.aborted) {
+          throw new SftpReadCancelledError()
+        }
+
+        const buffer = Buffer.allocUnsafe(32768)
+        const bytesRead = await this.sftpRead(
+          task.sftp,
+          task.handle!,
+          buffer,
+          0,
+          buffer.byteLength,
+          position
+        )
+
+        if (task.controller.signal.aborted) {
+          throw new SftpReadCancelledError()
+        }
+
+        if (bytesRead <= 0) {
+          break
+        }
+
+        position += bytesRead
+        task.transferred = position
+        this.emitFileChunk(task, decoder.write(buffer.subarray(0, bytesRead)))
+        this.emitFileStreamState(task, 'running')
+
+        if (bytesRead < buffer.byteLength) {
+          break
+        }
+      }
+
+      this.emitFileChunk(task, decoder.end())
+      await this.closeReadFileTaskHandle(task)
+      this.editorFileStreams.delete(task.streamId)
+      this.emitFileStreamState(task, 'completed')
+    } catch (error) {
+      await this.closeReadFileTaskHandle(task)
+      this.editorFileStreams.delete(task.streamId)
+
+      if (error instanceof SftpReadCancelledError || task.controller.signal.aborted) {
+        this.emitFileStreamState(task, 'cancelled')
+        return
+      }
+
+      this.emitFileStreamState(
+        task,
+        'error',
+        error instanceof Error ? error.message : String(error)
+      )
+    }
+  }
+
+  private async releaseSessionEditorFileStreams(sessionId: string): Promise<void> {
+    const tasks = [...this.editorFileStreams.values()].filter(
+      (task) => task.sessionId === sessionId
+    )
+    await Promise.all(tasks.map((task) => this.cancelFileStream(task.streamId)))
+  }
+
+  private requireWriteFileStream(streamId: string): EditorFileWriteTask {
+    const task = this.editorFileStreams.get(streamId)
+    if (!task || task.kind !== 'write' || task.state !== 'open') {
+      throw new Error(`SFTP file stream unavailable: ${streamId}`)
+    }
+
+    return task
+  }
+
+  private isWriteFileTaskUnavailable(task: EditorFileWriteTask): boolean {
+    return task.state === 'cancelled' || task.state === 'closed'
+  }
+
+  private async closeReadFileTaskHandle(task: EditorFileReadTask): Promise<void> {
+    const handle = task.handle
+    if (!handle) {
+      return
+    }
+
+    task.handle = undefined
+    await this.sftpClose(task.sftp, handle).catch(() => undefined)
+  }
+
+  private async closeWriteFileTaskHandle(task: EditorFileWriteTask): Promise<void> {
+    const handle = task.handle
+    if (!handle) {
+      return
+    }
+
+    task.handle = undefined
+    await this.sftpClose(task.sftp, handle).catch(() => undefined)
+  }
+
+  private emitFileChunk(task: EditorFileReadTask, chunk: string): void {
+    if (!chunk) {
+      return
+    }
+
+    this.postMessage({
+      type: 'sftp:fileChunk',
+      streamId: task.streamId,
+      sessionId: task.sessionId,
+      correlationId: task.sessionId,
+      remotePath: task.remotePath,
+      chunk,
+      transferred: task.transferred,
+      total: task.total
+    })
+  }
+
+  private emitFileStreamState(
+    task: EditorFileReadTask | EditorFileWriteTask,
+    status: SftpFileStreamStateEvent['status'],
+    error?: string
+  ): void {
+    const direction: SftpFileStreamDirection = task.kind === 'read' ? 'download' : 'upload'
+    const total = task.kind === 'read' ? task.total : task.transferred
+
+    this.postMessage({
+      type: 'sftp:fileStreamState',
+      streamId: task.streamId,
+      sessionId: task.sessionId,
+      correlationId: task.sessionId,
+      remotePath: task.remotePath,
+      direction,
+      status,
+      transferred: task.transferred,
+      total,
+      ...(error ? { error } : {})
     })
   }
 
@@ -400,26 +721,76 @@ export class SshCoreSessionWorker {
     })
   }
 
-  private sftpReadFile(sftp: SFTPWrapper, remotePath: string): Promise<Buffer> {
+  private sftpOpen(sftp: SFTPWrapper, remotePath: string, flags: OpenMode): Promise<Buffer> {
     return new Promise((resolve, reject) => {
-      sftp.readFile(remotePath, {}, (error, data) => {
+      sftp.open(remotePath, flags, (error, handle) => {
         if (error) {
           reject(error)
           return
         }
-        resolve(Buffer.isBuffer(data) ? data : Buffer.from(data))
+        resolve(handle)
       })
     })
   }
 
-  private sftpWriteFile(sftp: SFTPWrapper, remotePath: string, data: Buffer): Promise<void> {
+  private sftpClose(sftp: SFTPWrapper, handle: Buffer): Promise<void> {
     return new Promise((resolve, reject) => {
-      sftp.writeFile(remotePath, data, (error) => {
+      sftp.close(handle, (error) => {
         if (error) {
           reject(error)
           return
         }
         resolve()
+      })
+    })
+  }
+
+  private sftpRead(
+    sftp: SFTPWrapper,
+    handle: Buffer,
+    buffer: Buffer,
+    offset: number,
+    length: number,
+    position: number
+  ): Promise<number> {
+    return new Promise((resolve, reject) => {
+      sftp.read(handle, buffer, offset, length, position, (error, bytesRead) => {
+        if (error) {
+          reject(error)
+          return
+        }
+        resolve(bytesRead)
+      })
+    })
+  }
+
+  private sftpWrite(
+    sftp: SFTPWrapper,
+    handle: Buffer,
+    buffer: Buffer,
+    offset: number,
+    length: number,
+    position: number
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      sftp.write(handle, buffer, offset, length, position, (error) => {
+        if (error) {
+          reject(error)
+          return
+        }
+        resolve()
+      })
+    })
+  }
+
+  private sftpStat(sftp: SFTPWrapper, remotePath: string): Promise<Stats> {
+    return new Promise((resolve, reject) => {
+      sftp.stat(remotePath, (error, stats) => {
+        if (error) {
+          reject(error)
+          return
+        }
+        resolve(stats)
       })
     })
   }

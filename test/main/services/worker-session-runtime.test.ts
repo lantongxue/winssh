@@ -183,15 +183,23 @@ describe('WorkerSessionRuntime', () => {
     const readMessage = worker.posted[1] as { requestId: string; type: string }
 
     expect(readMessage).toMatchObject({
-      type: 'sftp:readFile',
+      type: 'sftp:openFileReadStream',
       sessionId: 'session-1',
       remotePath: '/etc/app.conf'
     })
+    expect(readMessage.type).not.toBe('sftp:readFile')
     worker.emit('message', {
       type: 'ack',
       requestId: readMessage.requestId,
       ok: true,
-      result: { content: 'alpha\nbeta\n', encoding: 'utf8' }
+      result: {
+        streamId: 'worker-read-1',
+        sessionId: 'session-1',
+        remotePath: '/etc/app.conf',
+        fileName: 'app.conf',
+        total: 11,
+        encoding: 'utf8'
+      }
     })
 
     const start = await startPromise
@@ -203,7 +211,28 @@ describe('WorkerSessionRuntime', () => {
       sessionId: 'session-1',
       total: 11
     })
-    expect(start.streamId).toEqual(expect.any(String))
+    expect(start.streamId).toBe('worker-read-1')
+
+    worker.emit('message', {
+      type: 'sftp:fileChunk',
+      streamId: start.streamId,
+      sessionId: 'session-1',
+      remotePath: '/etc/app.conf',
+      chunk: 'alpha\nbeta\n',
+      transferred: 11,
+      total: 11
+    })
+    worker.emit('message', {
+      type: 'sftp:fileStreamState',
+      streamId: start.streamId,
+      sessionId: 'session-1',
+      remotePath: '/etc/app.conf',
+      direction: 'download',
+      status: 'completed',
+      transferred: 11,
+      total: 11
+    })
+
     expect(sendToRenderer).toHaveBeenCalledWith(
       'sftp:fileChunk',
       expect.objectContaining({
@@ -222,28 +251,91 @@ describe('WorkerSessionRuntime', () => {
         total: 11
       } satisfies Partial<SftpFileStreamStateEvent>)
     )
+    expect(sendToRenderer).toHaveBeenCalledWith(
+      'sftp:transfer',
+      expect.objectContaining({
+        sessionId: 'session-1',
+        direction: 'download',
+        fileName: 'app.conf',
+        localPath: '__editor__',
+        remotePath: '/etc/app.conf',
+        transferred: 11,
+        total: 11,
+        status: 'completed'
+      })
+    )
   })
 
-  it('bridges file write streams through the connected ssh-core worker session on close', async () => {
+  it('bridges file write stream chunks through the connected ssh-core worker session', async () => {
     const { runtime, sendToRenderer, worker } = createRuntime()
     await connectRuntime(runtime, worker)
 
-    const start = await runtime.openFileWriteStream('session-1', '/etc/app.conf', 'utf8')
-    await runtime.writeFileChunk(start.streamId, 'alpha')
-    await runtime.writeFileChunk(start.streamId, '\nbeta')
-
-    const closePromise = runtime.closeFileWriteStream(start.streamId)
+    const startPromise = runtime.openFileWriteStream('session-1', '/etc/app.conf', 'utf8')
     await vi.waitFor(() => expect(worker.posted.length).toBeGreaterThan(1))
-    const writeMessage = worker.posted[1] as { requestId: string; type: string }
+    const openMessage = worker.posted[1] as { requestId: string; type: string }
 
-    expect(writeMessage).toMatchObject({
-      type: 'sftp:writeFile',
+    expect(openMessage).toMatchObject({
+      type: 'sftp:openFileWriteStream',
       sessionId: 'session-1',
       remotePath: '/etc/app.conf',
-      contents: 'alpha\nbeta',
       encoding: 'utf8'
     })
-    worker.emit('message', { type: 'ack', requestId: writeMessage.requestId, ok: true })
+    worker.emit('message', {
+      type: 'ack',
+      requestId: openMessage.requestId,
+      ok: true,
+      result: {
+        streamId: 'worker-write-1',
+        sessionId: 'session-1',
+        remotePath: '/etc/app.conf'
+      }
+    })
+    const start = await startPromise
+
+    const firstWrite = runtime.writeFileChunk(start.streamId, 'alpha')
+    await vi.waitFor(() => expect(worker.posted.length).toBeGreaterThan(2))
+    const firstWriteMessage = worker.posted[2] as { requestId: string; type: string }
+
+    expect(firstWriteMessage).toMatchObject({
+      type: 'sftp:writeFileChunk',
+      streamId: 'worker-write-1',
+      chunk: 'alpha'
+    })
+    worker.emit('message', { type: 'ack', requestId: firstWriteMessage.requestId, ok: true })
+    await firstWrite
+
+    const secondWrite = runtime.writeFileChunk(start.streamId, '\nbeta')
+    await vi.waitFor(() => expect(worker.posted.length).toBeGreaterThan(3))
+    const secondWriteMessage = worker.posted[3] as { requestId: string; type: string }
+
+    expect(secondWriteMessage).toMatchObject({
+      type: 'sftp:writeFileChunk',
+      streamId: 'worker-write-1',
+      chunk: '\nbeta'
+    })
+    worker.emit('message', { type: 'ack', requestId: secondWriteMessage.requestId, ok: true })
+    await secondWrite
+
+    const closePromise = runtime.closeFileWriteStream(start.streamId)
+    await vi.waitFor(() => expect(worker.posted.length).toBeGreaterThan(4))
+    const closeMessage = worker.posted[4] as { requestId: string; type: string }
+
+    expect(closeMessage).toMatchObject({
+      type: 'sftp:closeFileWriteStream',
+      streamId: 'worker-write-1'
+    })
+    expect(worker.posted).not.toContainEqual(expect.objectContaining({ type: 'sftp:writeFile' }))
+    worker.emit('message', { type: 'ack', requestId: closeMessage.requestId, ok: true })
+    worker.emit('message', {
+      type: 'sftp:fileStreamState',
+      streamId: start.streamId,
+      sessionId: 'session-1',
+      remotePath: '/etc/app.conf',
+      direction: 'upload',
+      status: 'completed',
+      transferred: 10,
+      total: 10
+    })
     await closePromise
 
     expect(sendToRenderer).toHaveBeenCalledWith(
@@ -255,6 +347,34 @@ describe('WorkerSessionRuntime', () => {
         total: 10
       } satisfies Partial<SftpFileStreamStateEvent>)
     )
+  })
+
+  it('cancels worker file streams using the stream protocol', async () => {
+    const { runtime, worker } = createRuntime()
+    await connectRuntime(runtime, worker)
+
+    const startPromise = runtime.openFileWriteStream('session-1', '/etc/app.conf', 'utf8')
+    await vi.waitFor(() => expect(worker.posted.length).toBeGreaterThan(1))
+    const openMessage = worker.posted[1] as { requestId: string }
+    worker.emit('message', {
+      type: 'ack',
+      requestId: openMessage.requestId,
+      ok: true,
+      result: {
+        streamId: 'worker-write-1',
+        sessionId: 'session-1',
+        remotePath: '/etc/app.conf'
+      }
+    })
+    const start = await startPromise
+
+    runtime.cancelFileStream(start.streamId)
+
+    await vi.waitFor(() => expect(worker.posted.length).toBeGreaterThan(2))
+    expect(worker.posted[2]).toMatchObject({
+      type: 'sftp:cancelFileStream',
+      streamId: 'worker-write-1'
+    })
   })
 
   it('forwards worker data frames to the data aggregator when available', () => {

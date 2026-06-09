@@ -84,20 +84,35 @@ export const sshCoreInboundSchema = z.discriminatedUnion('type', [
     remotePath: z.string().min(1)
   }),
   z.object({
-    type: z.literal('sftp:readFile'),
+    type: z.literal('sftp:openFileReadStream'),
     requestId: z.string().min(1),
     sessionId: z.string().min(1),
     correlationId: z.string().min(1),
     remotePath: z.string().min(1)
   }),
   z.object({
-    type: z.literal('sftp:writeFile'),
+    type: z.literal('sftp:openFileWriteStream'),
     requestId: z.string().min(1),
     sessionId: z.string().min(1),
     correlationId: z.string().min(1),
     remotePath: z.string().min(1),
-    contents: z.string(),
-    encoding: z.string().optional()
+    encoding: z.string().min(1)
+  }),
+  z.object({
+    type: z.literal('sftp:writeFileChunk'),
+    requestId: z.string().min(1),
+    streamId: z.string().min(1),
+    chunk: z.string()
+  }),
+  z.object({
+    type: z.literal('sftp:closeFileWriteStream'),
+    requestId: z.string().min(1),
+    streamId: z.string().min(1)
+  }),
+  z.object({
+    type: z.literal('sftp:cancelFileStream'),
+    requestId: z.string().min(1),
+    streamId: z.string().min(1)
   }),
   z.object({
     type: z.literal('sftp:makeDirectory'),
@@ -180,6 +195,28 @@ export const sshCoreOutboundSchema = z.discriminatedUnion('type', [
     host: z.string().min(1),
     port: z.number().int().min(1).max(65535),
     key: z.instanceof(ArrayBuffer)
+  }),
+  z.object({
+    type: z.literal('sftp:fileChunk'),
+    streamId: z.string().min(1),
+    sessionId: z.string().min(1),
+    correlationId: z.string().min(1),
+    remotePath: z.string().min(1),
+    chunk: z.string(),
+    transferred: z.number().int().nonnegative(),
+    total: z.number().int().nonnegative()
+  }),
+  z.object({
+    type: z.literal('sftp:fileStreamState'),
+    streamId: z.string().min(1),
+    sessionId: z.string().min(1),
+    correlationId: z.string().min(1),
+    remotePath: z.string().min(1),
+    direction: z.enum(['upload', 'download']),
+    status: z.enum(['running', 'completed', 'error', 'cancelled']),
+    transferred: z.number().int().nonnegative(),
+    total: z.number().int().nonnegative(),
+    error: z.string().optional()
   })
 ])
 

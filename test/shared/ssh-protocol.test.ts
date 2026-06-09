@@ -59,6 +59,78 @@ describe('ssh protocol schemas', () => {
     ).toThrow()
   })
 
+  it('accepts sftp file stream control messages', () => {
+    expect(
+      sshCoreInboundSchema.parse({
+        type: 'sftp:openFileReadStream',
+        requestId: 'req-read',
+        sessionId: 'session-1',
+        correlationId: 'session-1',
+        remotePath: '/etc/app.conf'
+      }).type
+    ).toBe('sftp:openFileReadStream')
+
+    expect(
+      sshCoreInboundSchema.parse({
+        type: 'sftp:openFileWriteStream',
+        requestId: 'req-open-write',
+        sessionId: 'session-1',
+        correlationId: 'session-1',
+        remotePath: '/etc/app.conf',
+        encoding: 'utf8'
+      }).type
+    ).toBe('sftp:openFileWriteStream')
+
+    expect(
+      sshCoreInboundSchema.parse({
+        type: 'sftp:writeFileChunk',
+        requestId: 'req-chunk',
+        streamId: 'worker-write-1',
+        chunk: 'alpha'
+      }).type
+    ).toBe('sftp:writeFileChunk')
+
+    expect(
+      sshCoreInboundSchema.parse({
+        type: 'sftp:closeFileWriteStream',
+        requestId: 'req-close',
+        streamId: 'worker-write-1'
+      }).type
+    ).toBe('sftp:closeFileWriteStream')
+
+    expect(
+      sshCoreInboundSchema.parse({
+        type: 'sftp:cancelFileStream',
+        requestId: 'req-cancel',
+        streamId: 'worker-write-1'
+      }).type
+    ).toBe('sftp:cancelFileStream')
+  })
+
+  it('rejects legacy sftp whole-file editor messages', () => {
+    expect(() =>
+      sshCoreInboundSchema.parse({
+        type: 'sftp:readFile',
+        requestId: 'req-read',
+        sessionId: 'session-1',
+        correlationId: 'session-1',
+        remotePath: '/etc/app.conf'
+      })
+    ).toThrow()
+
+    expect(() =>
+      sshCoreInboundSchema.parse({
+        type: 'sftp:writeFile',
+        requestId: 'req-write',
+        sessionId: 'session-1',
+        correlationId: 'session-1',
+        remotePath: '/etc/app.conf',
+        contents: 'alpha',
+        encoding: 'utf8'
+      })
+    ).toThrow()
+  })
+
   it('accepts a state outbound message', () => {
     const result = sshCoreOutboundSchema.parse({
       type: 'state',
@@ -78,6 +150,35 @@ describe('ssh protocol schemas', () => {
     })
 
     expect(result.type).toBe('shellIntegrationInstall')
+  })
+
+  it('accepts sftp file stream outbound messages', () => {
+    expect(
+      sshCoreOutboundSchema.parse({
+        type: 'sftp:fileChunk',
+        streamId: 'worker-read-1',
+        sessionId: 'session-1',
+        correlationId: 'session-1',
+        remotePath: '/etc/app.conf',
+        chunk: 'alpha',
+        transferred: 5,
+        total: 11
+      }).type
+    ).toBe('sftp:fileChunk')
+
+    expect(
+      sshCoreOutboundSchema.parse({
+        type: 'sftp:fileStreamState',
+        streamId: 'worker-read-1',
+        sessionId: 'session-1',
+        correlationId: 'session-1',
+        remotePath: '/etc/app.conf',
+        direction: 'download',
+        status: 'completed',
+        transferred: 11,
+        total: 11
+      }).type
+    ).toBe('sftp:fileStreamState')
   })
 
   it('accepts a worker host trust request', () => {

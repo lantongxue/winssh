@@ -35,25 +35,100 @@ describe('ssh-core worker entry', () => {
 
   it('returns command results in acknowledgements', async () => {
     const sessionWorker = {
-      readFile: vi.fn(async () => ({ content: 'hello', encoding: 'utf8' })),
+      openFileReadStream: vi.fn(async () => ({
+        streamId: 'worker-read-1',
+        sessionId: 'session-1',
+        remotePath: '/tmp/a.txt',
+        fileName: 'a.txt',
+        total: 5,
+        encoding: 'utf8'
+      })),
       resolveHostTrust: vi.fn()
     }
     const postMessage = vi.fn()
     const handleMessage = createSshCoreMessageHandler(sessionWorker as never, postMessage)
 
     await handleMessage({
-      type: 'sftp:readFile',
+      type: 'sftp:openFileReadStream',
       requestId: 'req-2',
       sessionId: 'session-1',
       correlationId: 'session-1',
       remotePath: '/tmp/a.txt'
     })
 
+    expect(sessionWorker.openFileReadStream).toHaveBeenCalledWith('session-1', '/tmp/a.txt')
     expect(postMessage).toHaveBeenCalledWith({
       type: 'ack',
       requestId: 'req-2',
       ok: true,
-      result: { content: 'hello', encoding: 'utf8' }
+      result: {
+        streamId: 'worker-read-1',
+        sessionId: 'session-1',
+        remotePath: '/tmp/a.txt',
+        fileName: 'a.txt',
+        total: 5,
+        encoding: 'utf8'
+      }
+    })
+  })
+
+  it('routes file stream write commands', async () => {
+    const sessionWorker = {
+      openFileWriteStream: vi.fn(async () => ({
+        streamId: 'worker-write-1',
+        sessionId: 'session-1',
+        remotePath: '/tmp/a.txt'
+      })),
+      writeFileChunk: vi.fn(async () => undefined),
+      closeFileWriteStream: vi.fn(async () => undefined),
+      cancelFileStream: vi.fn(async () => undefined),
+      resolveHostTrust: vi.fn()
+    }
+    const postMessage = vi.fn()
+    const handleMessage = createSshCoreMessageHandler(sessionWorker as never, postMessage)
+
+    await handleMessage({
+      type: 'sftp:openFileWriteStream',
+      requestId: 'req-open',
+      sessionId: 'session-1',
+      correlationId: 'session-1',
+      remotePath: '/tmp/a.txt',
+      encoding: 'utf8'
+    })
+    await handleMessage({
+      type: 'sftp:writeFileChunk',
+      requestId: 'req-chunk',
+      streamId: 'worker-write-1',
+      chunk: 'hello'
+    })
+    await handleMessage({
+      type: 'sftp:closeFileWriteStream',
+      requestId: 'req-close',
+      streamId: 'worker-write-1'
+    })
+    await handleMessage({
+      type: 'sftp:cancelFileStream',
+      requestId: 'req-cancel',
+      streamId: 'worker-write-1'
+    })
+
+    expect(sessionWorker.openFileWriteStream).toHaveBeenCalledWith(
+      'session-1',
+      '/tmp/a.txt',
+      'utf8'
+    )
+    expect(sessionWorker.writeFileChunk).toHaveBeenCalledWith('worker-write-1', 'hello')
+    expect(sessionWorker.closeFileWriteStream).toHaveBeenCalledWith('worker-write-1')
+    expect(sessionWorker.cancelFileStream).toHaveBeenCalledWith('worker-write-1')
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'ack',
+      requestId: 'req-open',
+      ok: true,
+      result: {
+        streamId: 'worker-write-1',
+        sessionId: 'session-1',
+        remotePath: '/tmp/a.txt'
+      }
     })
   })
 
