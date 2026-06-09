@@ -377,6 +377,38 @@ describe('WorkerSessionRuntime', () => {
     })
   })
 
+  it('clears active editor file streams when the ssh-core worker crashes', async () => {
+    const { runtime, worker } = createRuntime()
+    await connectRuntime(runtime, worker)
+
+    const startPromise = runtime.openFileWriteStream('session-1', '/etc/app.conf', 'utf8')
+    await vi.waitFor(() => expect(worker.posted.length).toBeGreaterThan(1))
+    const openMessage = worker.posted[1] as { requestId: string }
+    worker.emit('message', {
+      type: 'ack',
+      requestId: openMessage.requestId,
+      ok: true,
+      result: {
+        streamId: 'worker-write-1',
+        sessionId: 'session-1',
+        remotePath: '/etc/app.conf'
+      }
+    })
+    const start = await startPromise
+    const editorStreams = Reflect.get(runtime as object, 'editorFileStreams') as Map<
+      string,
+      unknown
+    >
+    expect(editorStreams.has(start.streamId)).toBe(true)
+
+    runtime.handleWorkerCrash('session-1', 1)
+
+    expect(editorStreams.has(start.streamId)).toBe(false)
+    await expect(runtime.writeFileChunk(start.streamId, 'late')).rejects.toThrow(
+      /stream unavailable/i
+    )
+  })
+
   it('forwards worker data frames to the data aggregator when available', () => {
     const routeFrame = vi.fn()
     const { runtime } = createRuntime()

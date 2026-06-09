@@ -479,6 +479,7 @@ export class WorkerSessionRuntime implements SessionRuntime {
     const runtime = this.sessions.get(sessionId)
     if (runtime) {
       this.clearShellIntegrationBuffer(runtime)
+      this.discardEditorFileStreams(sessionId)
       runtime.port.dispose()
     }
     this.sessions.delete(sessionId)
@@ -886,6 +887,14 @@ export class WorkerSessionRuntime implements SessionRuntime {
           .catch(() => undefined)
       })
     )
+  }
+
+  private discardEditorFileStreams(sessionId: string): void {
+    for (const task of this.editorFileStreams.values()) {
+      if (task.sessionId === sessionId) {
+        this.editorFileStreams.delete(task.streamId)
+      }
+    }
   }
 
   private emitWorkerFileChunk(event: Extract<WorkerEvent, { type: 'sftp:fileChunk' }>): void {

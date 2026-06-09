@@ -69,10 +69,18 @@ interface EditorFileWriteTask {
   fileName: string
   encoding: string
   transferred: number
-  state: 'open' | 'closing' | 'closed' | 'cancelled'
+  state: 'open' | 'closing' | 'closed' | 'cancelled' | 'error'
+  failure?: Error
   queue: Promise<void>
   sftp: SFTPWrapper
   handle?: Buffer
+}
+
+interface PendingReadStreamStart {
+  task: EditorFileReadTask
+  decoder: ReturnType<typeof createIncrementalTextDecoder>
+  initialSample: Buffer
+  firstBytesRead: number
 }
 
 class SftpReadCancelledError extends Error {}
@@ -84,6 +92,7 @@ export class SshCoreSessionWorker {
   private hostTrustCounter = 0
   private readonly pendingHostTrust = new Map<string, PendingHostTrust>()
   private readonly editorFileStreams = new Map<string, EditorFileReadTask | EditorFileWriteTask>()
+  private readonly pendingReadStreamStarts = new Map<string, PendingReadStreamStart>()
 
   constructor(options: SshCoreSessionWorkerOptions) {
     this.createClient = options.createClient ?? (() => new Client())
@@ -237,8 +246,12 @@ export class SshCoreSessionWorker {
     const initialSample = firstBuffer.subarray(0, Math.max(0, firstBytesRead))
     const decoder = createIncrementalTextDecoder(initialSample)
     this.editorFileStreams.set(streamId, task)
-
-    void this.runFileReadStream(task, decoder, initialSample, firstBytesRead)
+    this.pendingReadStreamStarts.set(streamId, {
+      task,
+      decoder,
+      initialSample,
+      firstBytesRead
+    })
 
     return {
       streamId,
@@ -248,6 +261,21 @@ export class SshCoreSessionWorker {
       total,
       encoding: decoder.encoding
     }
+  }
+
+  startFileReadStream(streamId: string): void {
+    const pending = this.pendingReadStreamStarts.get(streamId)
+    if (!pending || this.editorFileStreams.get(streamId) !== pending.task) {
+      return
+    }
+
+    this.pendingReadStreamStarts.delete(streamId)
+    void this.runFileReadStream(
+      pending.task,
+      pending.decoder,
+      pending.initialSample,
+      pending.firstBytesRead
+    )
   }
 
   async openFileWriteStream(
@@ -281,18 +309,22 @@ export class SshCoreSessionWorker {
     const buffer = encodeContent(chunk, task.encoding)
     const writeOperation = task.queue.then(async () => {
       if (this.isWriteFileTaskUnavailable(task)) {
-        throw new Error(`SFTP file stream unavailable: ${streamId}`)
+        throw this.createWriteFileStreamUnavailableError(task)
       }
 
       const handle = task.handle
       if (!handle) {
-        throw new Error(`SFTP file stream unavailable: ${streamId}`)
+        throw this.createWriteFileStreamUnavailableError(task)
       }
 
-      await this.sftpWrite(task.sftp, handle, buffer, 0, buffer.byteLength, task.transferred)
+      try {
+        await this.sftpWrite(task.sftp, handle, buffer, 0, buffer.byteLength, task.transferred)
+      } catch (error) {
+        throw await this.failWriteFileTask(task, error)
+      }
 
       if (this.isWriteFileTaskUnavailable(task)) {
-        throw new Error(`SFTP file stream unavailable: ${streamId}`)
+        throw this.createWriteFileStreamUnavailableError(task)
       }
 
       task.transferred += buffer.byteLength
@@ -307,6 +339,9 @@ export class SshCoreSessionWorker {
     task.state = 'closing'
     this.editorFileStreams.delete(streamId)
     await task.queue
+    if (task.failure) {
+      throw this.createWriteFileStreamUnavailableError(task)
+    }
     await this.closeWriteFileTaskHandle(task)
     task.state = 'closed'
     this.emitFileStreamState(task, 'completed')
@@ -320,6 +355,7 @@ export class SshCoreSessionWorker {
 
     this.editorFileStreams.delete(streamId)
     if (task.kind === 'read') {
+      this.pendingReadStreamStarts.delete(streamId)
       task.controller.abort()
       await this.closeReadFileTaskHandle(task)
       return
@@ -470,7 +506,25 @@ export class SshCoreSessionWorker {
   }
 
   private isWriteFileTaskUnavailable(task: EditorFileWriteTask): boolean {
-    return task.state === 'cancelled' || task.state === 'closed'
+    return task.state === 'cancelled' || task.state === 'closed' || task.state === 'error'
+  }
+
+  private createWriteFileStreamUnavailableError(task: EditorFileWriteTask): Error {
+    return task.failure ?? new Error(`SFTP file stream unavailable: ${task.streamId}`)
+  }
+
+  private async failWriteFileTask(task: EditorFileWriteTask, error: unknown): Promise<Error> {
+    const failure = error instanceof Error ? error : new Error(String(error))
+    if (task.state === 'error') {
+      return task.failure ?? failure
+    }
+
+    task.state = 'error'
+    task.failure = failure
+    this.editorFileStreams.delete(task.streamId)
+    await this.closeWriteFileTaskHandle(task)
+    this.emitFileStreamState(task, 'error', failure.message)
+    return failure
   }
 
   private async closeReadFileTaskHandle(task: EditorFileReadTask): Promise<void> {

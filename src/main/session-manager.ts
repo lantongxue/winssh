@@ -146,7 +146,8 @@ interface EditorFileWriteTask {
   fileName: string
   encoding: string
   transferred: number
-  state: 'open' | 'closing' | 'closed' | 'cancelled'
+  state: 'open' | 'closing' | 'closed' | 'cancelled' | 'error'
+  failure?: Error
   queue: Promise<void>
   handle?: Buffer
   sftp: SFTPWrapper
@@ -1453,7 +1454,11 @@ export class SessionManager {
     const decoder = createIncrementalTextDecoder(initialSample)
     this.editorFileStreams.set(streamId, task)
 
-    void this.runFileReadStream(runtime.sftp, task, decoder, initialSample, firstBytesRead)
+    setImmediate(() => {
+      if (this.editorFileStreams.get(streamId) === task) {
+        void this.runFileReadStream(runtime.sftp, task, decoder, initialSample, firstBytesRead)
+      }
+    })
 
     return {
       streamId,
@@ -1524,7 +1529,11 @@ export class SessionManager {
         return
       }
 
-      this.emitFileStreamState(task, 'error', error instanceof Error ? error.message : String(error))
+      this.emitFileStreamState(
+        task,
+        'error',
+        error instanceof Error ? error.message : String(error)
+      )
     }
   }
 
@@ -1627,18 +1636,22 @@ export class SessionManager {
     const buffer = encodeContent(chunk, task.encoding)
     const writeOperation = task.queue.then(async () => {
       if (this.isWriteFileTaskUnavailable(task)) {
-        throw new Error(`SFTP file stream unavailable: ${streamId}`)
+        throw this.createWriteFileStreamUnavailableError(task)
       }
 
       const handle = task.handle
       if (!handle) {
-        throw new Error(`SFTP file stream unavailable: ${streamId}`)
+        throw this.createWriteFileStreamUnavailableError(task)
       }
 
-      await sftpWrite(task.sftp, handle, buffer, 0, buffer.byteLength, task.transferred)
+      try {
+        await sftpWrite(task.sftp, handle, buffer, 0, buffer.byteLength, task.transferred)
+      } catch (error) {
+        throw await this.failWriteFileTask(task, error)
+      }
 
       if (this.isWriteFileTaskUnavailable(task)) {
-        throw new Error(`SFTP file stream unavailable: ${streamId}`)
+        throw this.createWriteFileStreamUnavailableError(task)
       }
 
       task.transferred += buffer.byteLength
@@ -1653,6 +1666,9 @@ export class SessionManager {
     task.state = 'closing'
     this.editorFileStreams.delete(streamId)
     await task.queue
+    if (task.failure) {
+      throw this.createWriteFileStreamUnavailableError(task)
+    }
     await this.closeWriteFileTaskHandle(task)
     task.state = 'closed'
     this.emitFileStreamState(task, 'completed')
@@ -1676,7 +1692,9 @@ export class SessionManager {
   }
 
   private async releaseSessionEditorFileStreams(sessionId: string): Promise<void> {
-    const tasks = [...this.editorFileStreams.values()].filter((task) => task.sessionId === sessionId)
+    const tasks = [...this.editorFileStreams.values()].filter(
+      (task) => task.sessionId === sessionId
+    )
 
     await Promise.all(
       tasks.map(async (task) => {
@@ -1707,7 +1725,25 @@ export class SessionManager {
   }
 
   private isWriteFileTaskUnavailable(task: EditorFileWriteTask): boolean {
-    return task.state === 'cancelled' || task.state === 'closed'
+    return task.state === 'cancelled' || task.state === 'closed' || task.state === 'error'
+  }
+
+  private createWriteFileStreamUnavailableError(task: EditorFileWriteTask): Error {
+    return task.failure ?? new Error(`SFTP file stream unavailable: ${task.streamId}`)
+  }
+
+  private async failWriteFileTask(task: EditorFileWriteTask, error: unknown): Promise<Error> {
+    const failure = error instanceof Error ? error : new Error(String(error))
+    if (task.state === 'error') {
+      return task.failure ?? failure
+    }
+
+    task.state = 'error'
+    task.failure = failure
+    this.editorFileStreams.delete(task.streamId)
+    await this.closeWriteFileTaskHandle(task)
+    this.emitFileStreamState(task, 'error', failure.message)
+    return failure
   }
 
   private async closeWriteFileTaskHandle(task: EditorFileWriteTask): Promise<void> {

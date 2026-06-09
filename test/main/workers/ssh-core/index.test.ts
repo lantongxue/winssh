@@ -43,6 +43,7 @@ describe('ssh-core worker entry', () => {
         total: 5,
         encoding: 'utf8'
       })),
+      startFileReadStream: vi.fn(),
       resolveHostTrust: vi.fn()
     }
     const postMessage = vi.fn()
@@ -70,6 +71,47 @@ describe('ssh-core worker entry', () => {
         encoding: 'utf8'
       }
     })
+  })
+
+  it('starts read streams only after acknowledging the open request', async () => {
+    const postMessage = vi.fn()
+    const sessionWorker = {
+      openFileReadStream: vi.fn(async () => ({
+        streamId: 'worker-read-1',
+        sessionId: 'session-1',
+        remotePath: '/tmp/a.txt',
+        fileName: 'a.txt',
+        total: 5,
+        encoding: 'utf8'
+      })),
+      startFileReadStream: vi.fn((streamId: string) => {
+        postMessage({
+          type: 'sftp:fileChunk',
+          streamId,
+          sessionId: 'session-1',
+          remotePath: '/tmp/a.txt',
+          chunk: 'hello',
+          transferred: 5,
+          total: 5
+        })
+      }),
+      resolveHostTrust: vi.fn()
+    }
+    const handleMessage = createSshCoreMessageHandler(sessionWorker as never, postMessage)
+
+    await handleMessage({
+      type: 'sftp:openFileReadStream',
+      requestId: 'req-read',
+      sessionId: 'session-1',
+      correlationId: 'session-1',
+      remotePath: '/tmp/a.txt'
+    })
+
+    expect(postMessage.mock.calls.map(([message]) => (message as { type: string }).type)).toEqual([
+      'ack',
+      'sftp:fileChunk'
+    ])
+    expect(sessionWorker.startFileReadStream).toHaveBeenCalledWith('worker-read-1')
   })
 
   it('routes file stream write commands', async () => {

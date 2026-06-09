@@ -4,6 +4,11 @@ import { SshCoreSessionWorker } from './session-worker'
 
 type PostMessage = (message: unknown) => void
 
+interface DispatchResult {
+  ackResult?: unknown
+  afterAck?: () => void
+}
+
 export function createSshCoreMessageHandler(
   sessionWorker: SshCoreSessionWorker,
   postMessage: PostMessage
@@ -16,13 +21,16 @@ export function createSshCoreMessageHandler(
       return
     }
 
+    let afterAck: (() => void) | undefined
     try {
       const result = await dispatchMessage(sessionWorker, message)
+      const ackResult = isDispatchResult(result) ? result.ackResult : result
+      afterAck = isDispatchResult(result) ? result.afterAck : undefined
       postMessage({
         type: 'ack',
         requestId: message.requestId,
         ok: true,
-        ...(result === undefined ? {} : { result })
+        ...(ackResult === undefined ? {} : { result: ackResult })
       })
     } catch (error) {
       postMessage({
@@ -31,8 +39,15 @@ export function createSshCoreMessageHandler(
         ok: false,
         message: error instanceof Error ? error.message : 'SSH worker command failed'
       })
+      return
     }
+
+    afterAck?.()
   }
+}
+
+function isDispatchResult(result: unknown): result is DispatchResult {
+  return typeof result === 'object' && result !== null && 'ackResult' in result
 }
 
 async function dispatchMessage(sessionWorker: SshCoreSessionWorker, message: SshCoreInbound) {
@@ -49,8 +64,13 @@ async function dispatchMessage(sessionWorker: SshCoreSessionWorker, message: Ssh
       return sessionWorker.listDirectory(message.sessionId, message.remotePath)
     case 'sftp:createFile':
       return sessionWorker.createFile(message.sessionId, message.remotePath)
-    case 'sftp:openFileReadStream':
-      return sessionWorker.openFileReadStream(message.sessionId, message.remotePath)
+    case 'sftp:openFileReadStream': {
+      const start = await sessionWorker.openFileReadStream(message.sessionId, message.remotePath)
+      return {
+        ackResult: start,
+        afterAck: () => sessionWorker.startFileReadStream(start.streamId)
+      }
+    }
     case 'sftp:openFileWriteStream':
       return sessionWorker.openFileWriteStream(
         message.sessionId,

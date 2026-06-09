@@ -288,6 +288,17 @@ describe('SshCoreSessionWorker', () => {
     await connectWorkerSession(worker, client)
 
     const start = await worker.openFileReadStream('session-1', '/tmp/a.txt')
+    const earlyFileEvents = postMessage.mock.calls
+      .map(([message]) => message)
+      .filter(
+        (message) =>
+          typeof message === 'object' &&
+          message !== null &&
+          'type' in message &&
+          (message.type === 'sftp:fileChunk' || message.type === 'sftp:fileStreamState')
+      )
+    expect(earlyFileEvents).toHaveLength(0)
+    worker.startFileReadStream(start.streamId)
 
     expect(start).toMatchObject({
       streamId: expect.any(String),
@@ -381,5 +392,66 @@ describe('SshCoreSessionWorker', () => {
         total: 10
       })
     )
+  })
+
+  it('fails a write stream after a chunk write error and rejects queued chunks', async () => {
+    const client = new FakeClient()
+    const sftp = new FakeSftp()
+    client.sftp = vi.fn((callback) => callback(undefined, sftp))
+    const postMessage = vi.fn()
+    const worker = new SshCoreSessionWorker({
+      createClient: () => client as never,
+      postMessage
+    })
+    const positions: number[] = []
+    let releaseFirstWrite: ((error?: Error) => void) | null = null
+    sftp.write.mockImplementation(
+      (
+        _handle: Buffer,
+        _buffer: Buffer,
+        _offset: number,
+        _length: number,
+        position: number,
+        callback: (error?: Error) => void
+      ) => {
+        positions.push(position)
+        if (positions.length === 1) {
+          releaseFirstWrite = callback
+          return
+        }
+        callback()
+      }
+    )
+
+    await connectWorkerSession(worker, client)
+
+    const start = await worker.openFileWriteStream('session-1', '/tmp/a.txt', 'utf8')
+    const firstWrite = worker.writeFileChunk(start.streamId, 'alpha')
+    const secondWrite = worker.writeFileChunk(start.streamId, '\nbeta')
+
+    await vi.waitFor(() => expect(positions).toEqual([0]))
+    releaseFirstWrite?.(new Error('remote disk full'))
+
+    await expect(firstWrite).rejects.toThrow('remote disk full')
+    await expect(secondWrite).rejects.toThrow(/stream unavailable|remote disk full/i)
+    await expect(worker.closeFileWriteStream(start.streamId)).rejects.toThrow(
+      /stream unavailable|remote disk full/i
+    )
+
+    expect(positions).toEqual([0])
+    expect(sftp.close).toHaveBeenCalledOnce()
+    const states = postMessage.mock.calls
+      .map(([message]) => message)
+      .filter(
+        (message): message is { type: string; streamId: string; status: string } =>
+          typeof message === 'object' &&
+          message !== null &&
+          'type' in message &&
+          message.type === 'sftp:fileStreamState' &&
+          'streamId' in message &&
+          message.streamId === start.streamId
+      )
+    expect(states.some((event) => event.status === 'error')).toBe(true)
+    expect(states.some((event) => event.status === 'completed')).toBe(false)
   })
 })
