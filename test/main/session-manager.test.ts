@@ -250,6 +250,76 @@ afterEach(async () => {
 })
 
 describe('SessionManager port forwarding', () => {
+  it('installs shell integration inline without writing a remote temporary file', async () => {
+    vi.useFakeTimers()
+
+    const manager = createManager()
+    const client = new MockClient()
+    execBehaviors.push({ stdout: '/bin/bash\n' })
+    const sftp = {
+      close: vi.fn((_handle: Buffer, callback: (error?: Error) => void) => callback()),
+      open: vi.fn(
+        (
+          _remotePath: string,
+          _flags: string,
+          callback: (error: Error | undefined, handle: Buffer) => void
+        ) => callback(undefined, Buffer.from('handle'))
+      ),
+      write: vi.fn(
+        (
+          _handle: Buffer,
+          _buffer: Buffer,
+          _offset: number,
+          _length: number,
+          _position: number,
+          callback: (error?: Error) => void
+        ) => callback()
+      )
+    }
+    const runtime = {
+      ...createRuntime('session-1', client),
+      sftp: sftp as never,
+      summary: {
+        ...createRuntime('session-1', client).summary,
+        currentPath: '/home/alice'
+      }
+    }
+
+    const installShellIntegration = Reflect.get(manager as object, 'installShellIntegration') as (
+      targetRuntime: typeof runtime
+    ) => Promise<void>
+
+    await installShellIntegration.call(manager, runtime)
+
+    expect(sftp.open).not.toHaveBeenCalled()
+    expect(sftp.write).not.toHaveBeenCalled()
+    expect(sftp.close).not.toHaveBeenCalled()
+    expect(runtime.shell.write).toHaveBeenCalledTimes(1)
+    const written = runtime.shell.write.mock.calls[0]?.[0] as string
+    expect(written).not.toContain('.winssh_init_')
+    expect(written).not.toContain(' && rm -f ')
+    expect(written).toMatch(/\r$/)
+  })
+
+  it('installs cwd-only shell integration when command history is disabled', async () => {
+    const manager = createManager()
+    const client = new MockClient()
+    execBehaviors.push({ stdout: '/bin/bash\n' })
+    const runtime = createRuntime('session-1', client)
+    runtime.historyCaptureEnabled = false
+
+    const installShellIntegration = Reflect.get(manager as object, 'installShellIntegration') as (
+      targetRuntime: typeof runtime
+    ) => Promise<void>
+
+    await installShellIntegration.call(manager, runtime)
+
+    expect(runtime.shell.write).toHaveBeenCalledTimes(1)
+    const written = runtime.shell.write.mock.calls[0]?.[0] as string
+    expect(written).toContain('133;P;Cwd=')
+    expect(written).not.toContain('633;Eh;')
+  })
+
   it('formats SFTP permissions as octal and symbolic text', () => {
     expect(formatRemoteEntryPermissions(0o040755, 'directory')).toEqual({
       octal: '0755',
@@ -1051,10 +1121,7 @@ describe('SessionManager session data forwarding', () => {
     pushData(manager, runtime, 'user@host:~$ ls\r\n')
     pushData(manager, runtime, `prefix\x1b]7;file://host/tmp/foo\x07suffix`)
 
-    expect(getDataPayloads(emitToRenderer)).toEqual([
-      'user@host:~$ ls\r\n',
-      'prefixsuffix'
-    ])
+    expect(getDataPayloads(emitToRenderer)).toEqual(['user@host:~$ ls\r\n', 'prefixsuffix'])
     expect(runtime.summary.currentPath).toBe('/tmp/foo')
 
     const cwdChangeCall = emitToRenderer.mock.calls.find(

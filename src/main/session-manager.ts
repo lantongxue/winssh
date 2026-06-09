@@ -53,7 +53,11 @@ import {
   type ResolvedConnectionAuth
 } from './services/ssh-connection-resolver'
 import { HostTrustService } from './services/host-trust-service'
-import { isShellIntegrationInternal, SHELL_INTEGRATION_FILE_CONTENT } from './shell-integration'
+import {
+  isShellIntegrationInternal,
+  createShellIntegrationScript,
+  stripShellIntegrationInstallEcho
+} from './shell-integration'
 type WindowProvider = () => BrowserWindow | null
 type AcceptTcpConnection = () => ClientChannel
 type RejectConnection = () => void
@@ -1052,7 +1056,7 @@ export class SessionManager {
 
       this.emitConnectionPhase(sessionId, 'attach')
 
-      const captureEnabled =
+      const commandHistoryEnabled =
         Boolean(server.captureCommandHistory) && this.database.getSettings().commandHistoryEnabled
 
       const runtime: SessionRuntime = {
@@ -1065,9 +1069,9 @@ export class SessionManager {
         portForwards: new Map(),
         oscState: createOscScannerState(),
         pendingCommand: { text: null, startedAt: null, cwd: null },
-        historyCaptureEnabled: captureEnabled,
-        historyCaptureStatus: captureEnabled ? 'pending' : 'unavailable',
-        integrationState: captureEnabled ? 'waiting' : 'none'
+        historyCaptureEnabled: commandHistoryEnabled,
+        historyCaptureStatus: commandHistoryEnabled ? 'pending' : 'unavailable',
+        integrationState: 'waiting'
       }
 
       shell.on('data', (chunk: Buffer | string) => {
@@ -1178,27 +1182,17 @@ export class SessionManager {
 
     if (runtime.integrationBuffer !== undefined) {
       runtime.integrationBuffer += data
-      const command = ` . ~/.winssh_init_${runtime.sessionId} && rm -f ~/.winssh_init_${runtime.sessionId}`
+      const stripped = stripShellIntegrationInstallEcho(runtime.integrationBuffer)
 
-      if (runtime.integrationBuffer.includes(command)) {
+      if (stripped.matched) {
         if (runtime.integrationTimeoutTimer) {
           clearTimeout(runtime.integrationTimeoutTimer)
           runtime.integrationTimeoutTimer = undefined
         }
 
-        let cleaned = runtime.integrationBuffer
-        const idx = cleaned.indexOf(command)
-        if (idx !== -1) {
-          let prefix = cleaned.slice(0, idx)
-          prefix = prefix.replace(/[ \b]+$/, '')
-          let suffix = cleaned.slice(idx + command.length)
-          suffix = suffix.replace(/^\r?\n?/, '')
-          cleaned = prefix + suffix
-        }
-
         runtime.integrationBuffer = undefined
-        if (cleaned) {
-          this.emitSessionDataToRenderer(runtime, cleaned)
+        if (stripped.cleaned) {
+          this.emitSessionDataToRenderer(runtime, stripped.cleaned)
         }
       }
       return
@@ -1219,6 +1213,9 @@ export class SessionManager {
         }
       },
       onCommandText: (command) => {
+        if (!runtime.historyCaptureEnabled) {
+          return
+        }
         if (isShellIntegrationInternal(command)) {
           return
         }
@@ -1229,6 +1226,9 @@ export class SessionManager {
         }
       },
       onCommandPre: () => {
+        if (!runtime.historyCaptureEnabled) {
+          return
+        }
         if (runtime.pendingCommand.startedAt === null) {
           runtime.pendingCommand.startedAt = Date.now()
         }
@@ -1237,6 +1237,9 @@ export class SessionManager {
         }
       },
       onCommandDone: (exitCode) => {
+        if (!runtime.historyCaptureEnabled) {
+          return
+        }
         this.handleCommandDone(runtime, exitCode)
       },
       onCwd: (cwd) => {
@@ -1268,14 +1271,18 @@ export class SessionManager {
   }
 
   private async installShellIntegration(runtime: SessionRuntime): Promise<void> {
-    const homePath = runtime.summary.currentPath || '/'
-    const tempFilePath = `${homePath === '/' ? '' : homePath}/.winssh_init_${runtime.sessionId}`
-    const command = ` . ~/.winssh_init_${runtime.sessionId} && rm -f ~/.winssh_init_${runtime.sessionId}`
-
     try {
-      await sftpWriteFile(runtime.sftp, tempFilePath, SHELL_INTEGRATION_FILE_CONTENT)
+      const shell = await this.detectInteractiveShell(runtime.client)
+      if (shell !== 'bash' && shell !== 'zsh') {
+        runtime.historyCaptureStatus = 'unavailable'
+        runtime.integrationState = 'failed'
+        return
+      }
+
       runtime.integrationBuffer = ''
-      runtime.shell.write(`${command}\r`)
+      runtime.shell.write(
+        createShellIntegrationScript({ commandHistory: runtime.historyCaptureEnabled })
+      )
 
       runtime.integrationTimeoutTimer = setTimeout(() => {
         if (runtime.integrationBuffer !== undefined) {
@@ -1300,6 +1307,26 @@ export class SessionManager {
       }
       runtime.historyProbeTimer = undefined
     }, 3000)
+  }
+
+  private async detectInteractiveShell(client: Client): Promise<'bash' | 'zsh' | 'unknown'> {
+    const result = await execCommand(
+      client,
+      'printf "%s\\n" "${BASH_VERSION:+bash}" "${ZSH_VERSION:+zsh}" "$SHELL" 2>/dev/null'
+    ).catch(() => null)
+
+    if (!result || (result.code ?? 0) !== 0) {
+      return 'unknown'
+    }
+
+    const stdout = result.stdout.toLowerCase()
+    if (/\bbash\b/.test(stdout)) {
+      return 'bash'
+    }
+    if (/\bzsh\b/.test(stdout)) {
+      return 'zsh'
+    }
+    return 'unknown'
   }
 
   private handleCommandDone(runtime: SessionRuntime, exitCode: number | null): void {

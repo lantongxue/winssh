@@ -26,6 +26,7 @@ export const sshConnectConfigSchema = z.object({
   sessionId: z.string().min(1),
   target: sshResolvedServerSchema,
   jump: sshResolvedServerSchema.optional(),
+  commandHistory: z.boolean().optional(),
   terminal: terminalSizeSchema
 })
 
@@ -137,6 +138,11 @@ export const sshCoreOutboundSchema = z.discriminatedUnion('type', [
     sessionId: z.string().min(1),
     correlationId: z.string().min(1),
     cwd: z.string().min(1)
+  }),
+  z.object({
+    type: z.literal('shellIntegrationInstall'),
+    sessionId: z.string().min(1),
+    correlationId: z.string().min(1)
   }),
   z.object({
     type: z.literal('state'),

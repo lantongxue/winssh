@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import { posix } from 'node:path'
 import { Worker } from 'node:worker_threads'
-import { decodeSshDataFrame } from '@shared/ssh-data-frame'
+import { decodeSshDataFrame, encodeSshDataFrame } from '@shared/ssh-data-frame'
 import { normalizeRemotePath } from '@shared/sftp'
 import type {
+  CommandHistoryEntry,
+  CommandRecordedEvent,
   ConnectionRequest,
   HostTrustResult,
   PortForwardInput,
@@ -22,17 +24,16 @@ import type {
 import type { SshCoreOutbound } from '@shared/ssh-protocol'
 import type { DatabaseService } from '../database'
 import type { MainTranslator } from '../localization'
+import { createOscScannerState, scanOscChunk, type OscScannerState } from '../osc-scanner'
 import type { HostTrustService } from './host-trust-service'
 import type { SshDataAggregator } from './ssh-data-aggregator'
-import {
-  ConnectionFailure,
-  isAuthenticationFailure
-} from './ssh-connection-errors'
+import { ConnectionFailure, isAuthenticationFailure } from './ssh-connection-errors'
 import { SshConnectionResolver } from './ssh-connection-resolver'
 import { SshControlPort } from './ssh-control-port'
 import { SftpDispatcher } from './sftp-dispatcher'
 import { PortForwardDispatcher } from './port-forward-dispatcher'
 import type { SessionRuntime } from './session-runtime'
+import { isShellIntegrationInternal, stripShellIntegrationInstallEcho } from '../shell-integration'
 import { createResourceMonitorSnapshot } from '../workers/resource-monitor'
 
 type WorkerPort = Pick<Worker, 'on' | 'postMessage' | 'terminate'>
@@ -42,7 +43,14 @@ type EventMap = {
   'sessions:error': SessionErrorEvent
   'sessions:exit': SessionExitEvent
   'sessions:state': SessionStateEvent
-  'sessions:cwdChanged': { sessionId: string; cwd: string; correlationId?: string; source?: 'main'; timestamp?: string }
+  'sessions:cwdChanged': {
+    sessionId: string
+    cwd: string
+    correlationId?: string
+    source?: 'main'
+    timestamp?: string
+  }
+  'commandHistory:added': CommandRecordedEvent
 }
 
 type WorkerEvent = Exclude<
@@ -56,6 +64,15 @@ interface ActiveWorkerSession {
   worker: WorkerPort
   port: SshControlPort
   request: ConnectionRequest
+  oscState: OscScannerState
+  pendingCommand: {
+    text: string | null
+    startedAt: number | null
+    cwd: string | null
+  }
+  historyCaptureEnabled: boolean
+  integrationBuffer?: string
+  integrationTimeoutTimer?: ReturnType<typeof setTimeout>
 }
 
 export interface WorkerSessionRuntimeOptions {
@@ -65,6 +82,8 @@ export interface WorkerSessionRuntimeOptions {
     | 'getServerPassword'
     | 'getServerPassphrase'
     | 'getServerPrivateKey'
+    | 'getSettings'
+    | 'recordCommand'
     | 'recordRecentSession'
   >
   hostTrustService: Pick<HostTrustService, 'verifyHost' | 'resolveHostTrust'>
@@ -96,7 +115,8 @@ export class WorkerSessionRuntime implements SessionRuntime {
     this.dataAggregator = options.dataAggregator
     this.sftpDispatcher = new SftpDispatcher({
       legacyRuntime: {
-        listDirectory: (sessionId, remotePath) => this.listDirectoryViaCoreWorker(sessionId, remotePath),
+        listDirectory: (sessionId, remotePath) =>
+          this.listDirectoryViaCoreWorker(sessionId, remotePath),
         readFile: (sessionId, remotePath) => this.readFileViaCoreWorker(sessionId, remotePath),
         writeFile: (sessionId, remotePath, contents, encoding) =>
           this.writeFileViaCoreWorker(sessionId, remotePath, contents, encoding),
@@ -146,6 +166,7 @@ export class WorkerSessionRuntime implements SessionRuntime {
       return
     }
 
+    this.clearShellIntegrationBuffer(runtime)
     await runtime.port.request({
       type: 'disconnect',
       requestId: this.nextRequestId('disconnect', sessionId),
@@ -156,7 +177,12 @@ export class WorkerSessionRuntime implements SessionRuntime {
     runtime.port.dispose()
     this.sessions.delete(sessionId)
     this.history.delete(sessionId)
-    this.emitSessionState(sessionId, 'disconnected', undefined, this.options.translate('session.closed'))
+    this.emitSessionState(
+      sessionId,
+      'disconnected',
+      undefined,
+      this.options.translate('session.closed')
+    )
   }
 
   async reconnect(sessionId: string): Promise<SessionSummary> {
@@ -317,7 +343,10 @@ export class WorkerSessionRuntime implements SessionRuntime {
       sessionId,
       correlationId: sessionId,
       sourcePath: normalizedSource,
-      targetPath: posix.join(normalizeRemotePath(destinationDirPath), posix.basename(normalizedSource))
+      targetPath: posix.join(
+        normalizeRemotePath(destinationDirPath),
+        posix.basename(normalizedSource)
+      )
     })
   }
 
@@ -377,6 +406,7 @@ export class WorkerSessionRuntime implements SessionRuntime {
 
   dispose(): void {
     for (const runtime of this.sessions.values()) {
+      this.clearShellIntegrationBuffer(runtime)
       runtime.port.dispose()
       void runtime.worker.terminate()
     }
@@ -398,7 +428,10 @@ export class WorkerSessionRuntime implements SessionRuntime {
     )
     this.emitSessionState(sessionId, 'error', undefined, message, 'worker_crashed', true)
     const runtime = this.sessions.get(sessionId)
-    runtime?.port.dispose()
+    if (runtime) {
+      this.clearShellIntegrationBuffer(runtime)
+      runtime.port.dispose()
+    }
     this.sessions.delete(sessionId)
     this.history.delete(sessionId)
     void exitCode
@@ -407,7 +440,10 @@ export class WorkerSessionRuntime implements SessionRuntime {
   private async establishConnection(request: ConnectionRequest): Promise<SessionSummary> {
     const server = this.options.database.getServerById(request.serverId)
     if (!server) {
-      throw new ConnectionFailure('connection_failed', this.options.translate('errors.serverNotFound'))
+      throw new ConnectionFailure(
+        'connection_failed',
+        this.options.translate('errors.serverNotFound')
+      )
     }
 
     const sessionId = request.sessionId ?? randomUUID()
@@ -429,6 +465,9 @@ export class WorkerSessionRuntime implements SessionRuntime {
       this.connectionResolver.resolveAuth(server, request),
       jumpServer ? this.connectionResolver.resolveAuth(jumpServer, request) : Promise.resolve(null)
     ])
+    const commandHistoryEnabled =
+      Boolean(server.captureCommandHistory) &&
+      this.options.database.getSettings().commandHistoryEnabled
 
     this.emitConnectionPhase(sessionId, 'handshake')
     const worker = this.spawnWorker(sessionId)
@@ -437,7 +476,16 @@ export class WorkerSessionRuntime implements SessionRuntime {
       verifyHost: (input) => this.options.hostTrustService.verifyHost(input),
       onEvent: (event) => this.handleWorkerMessage(event)
     })
-    const runtime: ActiveWorkerSession = { sessionId, summary, worker, port, request }
+    const runtime: ActiveWorkerSession = {
+      sessionId,
+      summary,
+      worker,
+      port,
+      request,
+      oscState: createOscScannerState(),
+      pendingCommand: { text: null, startedAt: null, cwd: null },
+      historyCaptureEnabled: commandHistoryEnabled
+    }
 
     this.sessions.set(sessionId, runtime)
     worker.on('exit', (exitCode) => {
@@ -455,10 +503,12 @@ export class WorkerSessionRuntime implements SessionRuntime {
           sessionId,
           target: toResolvedServer(server, targetAuth),
           ...(jumpServer && jumpAuth ? { jump: toResolvedServer(jumpServer, jumpAuth) } : {}),
+          commandHistory: commandHistoryEnabled,
           terminal: this.terminalDefaults
         }
       })
     } catch (error) {
+      this.clearShellIntegrationBuffer(runtime)
       this.sessions.delete(sessionId)
       port.dispose()
       void worker.terminate()
@@ -468,7 +518,12 @@ export class WorkerSessionRuntime implements SessionRuntime {
     summary.status = 'ready'
     this.history.set(sessionId, { ...request, sessionId })
     this.options.database.recordRecentSession(server.id)
-    this.emitSessionState(sessionId, 'ready', undefined, this.options.translate('session.connected'))
+    this.emitSessionState(
+      sessionId,
+      'ready',
+      undefined,
+      this.options.translate('session.connected')
+    )
     return summary
   }
 
@@ -487,23 +542,30 @@ export class WorkerSessionRuntime implements SessionRuntime {
     }
 
     if (event.type === 'data') {
-      if (this.dataAggregator) {
-        const decoded = decodeSshDataFrame(event.frame)
-        this.dataAggregator.routeFrame({
-          sessionId: event.sessionId,
-          frame: event.frame,
-          seq: event.seq,
-          sentAtMs: decoded.sentAtMs
-        })
-      } else {
-        const frame = decodeSshDataFrame(event.frame)
-        this.emitToRenderer(
-          'sessions:data',
-          this.withObservableMetadata(event.sessionId, {
-            sessionId: event.sessionId,
-            data: Buffer.from(frame.payload).toString('utf8')
-          })
-        )
+      this.handleWorkerData(event)
+      return
+    }
+
+    if (event.type === 'shellIntegrationInstall') {
+      const runtime = this.sessions.get(event.sessionId)
+      if (runtime) {
+        runtime.integrationBuffer = ''
+        if (runtime.integrationTimeoutTimer) {
+          clearTimeout(runtime.integrationTimeoutTimer)
+        }
+        runtime.integrationTimeoutTimer = setTimeout(() => {
+          if (runtime.integrationBuffer !== undefined) {
+            const data = runtime.integrationBuffer
+            runtime.integrationBuffer = undefined
+            if (data) {
+              const cleanedData = this.scanWorkerData(runtime, data)
+              if (cleanedData) {
+                this.emitCleanWorkerData(runtime.sessionId, cleanedData)
+              }
+            }
+          }
+          runtime.integrationTimeoutTimer = undefined
+        }, 1000)
       }
       return
     }
@@ -526,6 +588,10 @@ export class WorkerSessionRuntime implements SessionRuntime {
     }
 
     if (event.type === 'exit') {
+      const runtime = this.sessions.get(event.sessionId)
+      if (runtime) {
+        this.clearShellIntegrationBuffer(runtime)
+      }
       this.emitToRenderer(
         'sessions:exit',
         this.withObservableMetadata(event.sessionId, {
@@ -534,8 +600,175 @@ export class WorkerSessionRuntime implements SessionRuntime {
           signal: event.signal
         })
       )
-      this.emitSessionState(event.sessionId, 'disconnected', undefined, this.options.translate('session.disconnected'))
+      this.emitSessionState(
+        event.sessionId,
+        'disconnected',
+        undefined,
+        this.options.translate('session.disconnected')
+      )
     }
+  }
+
+  private clearShellIntegrationBuffer(runtime: ActiveWorkerSession): void {
+    if (runtime.integrationTimeoutTimer) {
+      clearTimeout(runtime.integrationTimeoutTimer)
+      runtime.integrationTimeoutTimer = undefined
+    }
+    runtime.integrationBuffer = undefined
+  }
+
+  private handleWorkerData(event: Extract<WorkerEvent, { type: 'data' }>): void {
+    const runtime = this.sessions.get(event.sessionId)
+    const frame = decodeSshDataFrame(event.frame)
+    const rawData = Buffer.from(frame.payload).toString('utf8')
+    const cleanedData = runtime ? this.filterWorkerData(runtime, rawData) : rawData
+
+    if (!cleanedData) {
+      return
+    }
+
+    this.emitCleanWorkerData(event.sessionId, cleanedData, frame.sentAtMs, event.seq)
+  }
+
+  private emitCleanWorkerData(
+    sessionId: string,
+    cleanedData: string,
+    sentAtMs = Date.now(),
+    seq = 0
+  ): void {
+    const cleanPayload = Buffer.from(cleanedData, 'utf8')
+    const cleanFrame = encodeSshDataFrame({
+      seq,
+      sentAtMs,
+      payload: cleanPayload
+    })
+
+    if (this.dataAggregator) {
+      this.dataAggregator.routeFrame({
+        sessionId,
+        frame: cleanFrame,
+        seq,
+        sentAtMs
+      })
+      return
+    }
+
+    this.emitToRenderer(
+      'sessions:data',
+      this.withObservableMetadata(sessionId, {
+        sessionId,
+        data: cleanedData
+      })
+    )
+  }
+
+  private filterWorkerData(runtime: ActiveWorkerSession, data: string): string {
+    if (runtime.integrationBuffer !== undefined) {
+      runtime.integrationBuffer += data
+      const stripped = stripShellIntegrationInstallEcho(runtime.integrationBuffer)
+
+      if (stripped.matched) {
+        if (runtime.integrationTimeoutTimer) {
+          clearTimeout(runtime.integrationTimeoutTimer)
+          runtime.integrationTimeoutTimer = undefined
+        }
+        runtime.integrationBuffer = undefined
+        return this.scanWorkerData(runtime, stripped.cleaned)
+      }
+
+      return ''
+    }
+
+    return this.scanWorkerData(runtime, data)
+  }
+
+  private scanWorkerData(runtime: ActiveWorkerSession, data: string): string {
+    return scanOscChunk(runtime.oscState, data, {
+      onCommandText: (command) => {
+        if (!runtime.historyCaptureEnabled) {
+          return
+        }
+        if (isShellIntegrationInternal(command)) {
+          return
+        }
+        runtime.pendingCommand = {
+          text: command,
+          startedAt: runtime.pendingCommand.startedAt,
+          cwd: runtime.summary.currentPath || null
+        }
+      },
+      onCommandPre: () => {
+        if (!runtime.historyCaptureEnabled) {
+          return
+        }
+        if (runtime.pendingCommand.startedAt === null) {
+          runtime.pendingCommand.startedAt = Date.now()
+        }
+        if (!runtime.pendingCommand.cwd) {
+          runtime.pendingCommand.cwd = runtime.summary.currentPath || null
+        }
+      },
+      onCommandDone: (exitCode) => {
+        if (!runtime.historyCaptureEnabled) {
+          return
+        }
+        this.handleWorkerCommandDone(runtime, exitCode)
+      },
+      onCwd: (cwd) => {
+        const normalized = normalizeRemotePath(cwd)
+        if (runtime.summary.currentPath === normalized) {
+          return
+        }
+        runtime.summary.currentPath = normalized
+        this.emitToRenderer(
+          'sessions:cwdChanged',
+          this.withObservableMetadata(runtime.sessionId, {
+            sessionId: runtime.sessionId,
+            cwd: normalized
+          })
+        )
+      }
+    })
+  }
+
+  private handleWorkerCommandDone(runtime: ActiveWorkerSession, exitCode: number | null): void {
+    const pending = runtime.pendingCommand
+    runtime.pendingCommand = { text: null, startedAt: null, cwd: null }
+    if (!pending.text) {
+      return
+    }
+
+    const executedAt = pending.startedAt
+      ? new Date(pending.startedAt).toISOString()
+      : new Date().toISOString()
+    const durationMs =
+      pending.startedAt !== null ? Math.max(0, Date.now() - pending.startedAt) : null
+
+    let entry: CommandHistoryEntry | null = null
+    try {
+      entry = this.options.database.recordCommand({
+        scope: { kind: 'ssh', serverId: runtime.summary.serverId },
+        command: pending.text,
+        executedAt,
+        cwd: pending.cwd,
+        exitCode,
+        durationMs
+      })
+    } catch {
+      return
+    }
+
+    if (!entry) {
+      return
+    }
+
+    this.emitToRenderer(
+      'commandHistory:added',
+      this.withObservableMetadata(runtime.sessionId, {
+        scope: { kind: 'ssh', serverId: runtime.summary.serverId },
+        entry
+      })
+    )
   }
 
   private normalizeConnectionFailure(error: unknown): ConnectionFailure {

@@ -25,6 +25,30 @@ describe('ssh protocol schemas', () => {
     expect(result.config.target.host).toBe('example.com')
   })
 
+  it('accepts command history mode on connect control messages', () => {
+    const result = sshCoreInboundSchema.parse({
+      type: 'connect',
+      requestId: 'req-1',
+      correlationId: 'session-1',
+      config: {
+        sessionId: 'session-1',
+        target: {
+          id: 'server-1',
+          name: 'Example',
+          host: 'example.com',
+          port: 22,
+          username: 'alice',
+          authType: 'password',
+          auth: { password: 'secret' }
+        },
+        commandHistory: true,
+        terminal: { cols: 120, rows: 34 }
+      }
+    })
+
+    expect(result.config.commandHistory).toBe(true)
+  })
+
   it('rejects a write control message without binary data', () => {
     expect(() =>
       sshCoreInboundSchema.parse({
@@ -44,6 +68,16 @@ describe('ssh protocol schemas', () => {
     })
 
     expect(result.phase).toBe('attach')
+  })
+
+  it('accepts a shell integration install outbound message', () => {
+    const result = sshCoreOutboundSchema.parse({
+      type: 'shellIntegrationInstall',
+      sessionId: 'session-1',
+      correlationId: 'session-1'
+    })
+
+    expect(result.type).toBe('shellIntegrationInstall')
   })
 
   it('accepts a worker host trust request', () => {

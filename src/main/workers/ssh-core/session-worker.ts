@@ -5,6 +5,7 @@ import type { SshConnectConfig, SshResolvedServer } from '@shared/ssh-protocol'
 import { normalizeRemotePath, sortRemoteEntries } from '@shared/sftp'
 import { encodeContent, smartDecode } from '../../encoding'
 import { formatRemoteEntryPermissions } from '../../session-manager'
+import { createShellIntegrationScript } from '../../shell-integration'
 
 interface PostMessagePort {
   postMessage(message: unknown, transferList?: Array<ArrayBuffer>): void
@@ -100,6 +101,9 @@ export class SshCoreSessionWorker {
         correlationId: config.sessionId,
         cwd: currentPath
       })
+      await this.installShellIntegration(config.sessionId, client, shell, {
+        commandHistory: config.commandHistory === true
+      })
       this.emitState(config.sessionId, 'attach')
     } catch (error) {
       client?.end()
@@ -159,7 +163,10 @@ export class SshCoreSessionWorker {
     )
   }
 
-  async listDirectory(sessionId: string, remotePath: string): Promise<{ path: string; entries: RemoteEntry[] }> {
+  async listDirectory(
+    sessionId: string,
+    remotePath: string
+  ): Promise<{ path: string; entries: RemoteEntry[] }> {
     const normalized = normalizeRemotePath(remotePath)
     const entries = await this.sftpReadDir(this.requireSession(sessionId).sftp, normalized)
     return { path: normalized, entries }
@@ -328,6 +335,71 @@ export class SshCoreSessionWorker {
     })
   }
 
+  private async installShellIntegration(
+    sessionId: string,
+    client: Client,
+    shell: ClientChannel,
+    options: { commandHistory: boolean }
+  ): Promise<void> {
+    const detectedShell = await this.detectInteractiveShell(client)
+    if (detectedShell !== 'bash' && detectedShell !== 'zsh') {
+      return
+    }
+
+    this.postMessage({
+      type: 'shellIntegrationInstall',
+      sessionId,
+      correlationId: sessionId
+    })
+    shell.write(createShellIntegrationScript({ commandHistory: options.commandHistory }))
+  }
+
+  private async detectInteractiveShell(client: Client): Promise<'bash' | 'zsh' | 'unknown'> {
+    const result = await this.execCommand(
+      client,
+      'printf "%s\\n" "${BASH_VERSION:+bash}" "${ZSH_VERSION:+zsh}" "$SHELL" 2>/dev/null'
+    ).catch(() => null)
+
+    if (!result || result.code !== 0) {
+      return 'unknown'
+    }
+
+    const stdout = result.stdout.toLowerCase()
+    if (/\bbash\b/.test(stdout)) {
+      return 'bash'
+    }
+    if (/\bzsh\b/.test(stdout)) {
+      return 'zsh'
+    }
+    return 'unknown'
+  }
+
+  private execCommand(
+    client: Client,
+    command: string
+  ): Promise<{ stdout: string; stderr: string; code: number | null }> {
+    return new Promise((resolve, reject) => {
+      client.exec(command, (error, channel) => {
+        if (error) {
+          reject(error)
+          return
+        }
+
+        let stdout = ''
+        let stderr = ''
+        channel.on('data', (chunk: Buffer | string) => {
+          stdout += chunk.toString()
+        })
+        channel.stderr.on('data', (chunk: Buffer | string) => {
+          stderr += chunk.toString()
+        })
+        channel.on('close', (code: number | null) => {
+          resolve({ stdout, stderr, code })
+        })
+      })
+    })
+  }
+
   private sftpReadFile(sftp: SFTPWrapper, remotePath: string): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       sftp.readFile(remotePath, {}, (error, data) => {
@@ -363,7 +435,11 @@ export class SshCoreSessionWorker {
         const mapped = (entries ?? []).map((entry) => {
           const fullPath = normalizeRemotePath(`${remotePath.replace(/\/$/, '')}/${entry.filename}`)
           const attrs = entry.attrs
-          const kind = attrs.isDirectory() ? 'directory' : attrs.isSymbolicLink() ? 'symlink' : 'file'
+          const kind = attrs.isDirectory()
+            ? 'directory'
+            : attrs.isSymbolicLink()
+              ? 'symlink'
+              : 'file'
 
           return {
             name: entry.filename,
