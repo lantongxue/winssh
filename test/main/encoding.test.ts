@@ -111,7 +111,7 @@ describe('createIncrementalTextDecoder', () => {
     expect(decoder.encoding).toBe('gbk')
   })
 
-  it('delays ASCII-only prefixes until a later GBK sample determines encoding', () => {
+  it('emits ASCII-only prefixes while later GBK samples determine encoding', () => {
     const text = `${'a'.repeat(32768)}这是一段比较长的中文文本用来测试编码检测功能是否正常工作`
     const buffer = iconv.encode(text, 'gbk')
     expect(smartDecode(buffer)).toMatchObject({ content: text, encoding: 'gbk' })
@@ -122,12 +122,12 @@ describe('createIncrementalTextDecoder', () => {
     const second = decoder.write(buffer.subarray(32768))
     const decoded = first + second + decoder.end()
 
-    expect(first).toBe('')
+    expect(first).toBe('a'.repeat(32768))
     expect(decoded).toBe(text)
     expect(decoder.encoding).toBe('gbk')
   })
 
-  it('waits for the rest of a split GBK multibyte sample before decoding', () => {
+  it('keeps split GBK multibyte bytes pending while streaming safe ASCII prefixes', () => {
     const text = 'Hello 你好'
     const buffer = iconv.encode(text, 'gbk')
     const splitAfterFirstGbkByte = 'Hello '.length + 1
@@ -137,7 +137,7 @@ describe('createIncrementalTextDecoder', () => {
     const second = decoder.write(buffer.subarray(splitAfterFirstGbkByte))
     const decoded = first + second + decoder.end()
 
-    expect(first).toBe('')
+    expect(first).toBe('Hello ')
     expect(decoded).toBe(text)
     expect(decoder.encoding).toBe('gbk')
   })

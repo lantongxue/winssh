@@ -377,34 +377,92 @@ describe('WorkerSessionRuntime', () => {
     })
   })
 
-  it('clears active editor file streams when the ssh-core worker crashes', async () => {
-    const { runtime, worker } = createRuntime()
+  it('emits terminal file stream errors when the ssh-core worker crashes', async () => {
+    const { runtime, sendToRenderer, worker } = createRuntime()
     await connectRuntime(runtime, worker)
 
-    const startPromise = runtime.openFileWriteStream('session-1', '/etc/app.conf', 'utf8')
+    const readStartPromise = runtime.openFileReadStream('session-1', '/etc/app.conf')
     await vi.waitFor(() => expect(worker.posted.length).toBeGreaterThan(1))
-    const openMessage = worker.posted[1] as { requestId: string }
+    const readOpenMessage = worker.posted[1] as { requestId: string }
     worker.emit('message', {
       type: 'ack',
-      requestId: openMessage.requestId,
+      requestId: readOpenMessage.requestId,
+      ok: true,
+      result: {
+        streamId: 'worker-read-1',
+        sessionId: 'session-1',
+        remotePath: '/etc/app.conf',
+        fileName: 'app.conf',
+        total: 4096,
+        encoding: 'utf8'
+      }
+    })
+    const readStart = await readStartPromise
+
+    const writeStartPromise = runtime.openFileWriteStream('session-1', '/etc/other.conf', 'utf8')
+    await vi.waitFor(() => expect(worker.posted.length).toBeGreaterThan(2))
+    const writeOpenMessage = worker.posted[2] as { requestId: string }
+    worker.emit('message', {
+      type: 'ack',
+      requestId: writeOpenMessage.requestId,
       ok: true,
       result: {
         streamId: 'worker-write-1',
         sessionId: 'session-1',
-        remotePath: '/etc/app.conf'
+        remotePath: '/etc/other.conf'
       }
     })
-    const start = await startPromise
+    const writeStart = await writeStartPromise
     const editorStreams = Reflect.get(runtime as object, 'editorFileStreams') as Map<
       string,
       unknown
     >
-    expect(editorStreams.has(start.streamId)).toBe(true)
+    expect(editorStreams.has(readStart.streamId)).toBe(true)
+    expect(editorStreams.has(writeStart.streamId)).toBe(true)
 
     runtime.handleWorkerCrash('session-1', 1)
 
-    expect(editorStreams.has(start.streamId)).toBe(false)
-    await expect(runtime.writeFileChunk(start.streamId, 'late')).rejects.toThrow(
+    expect(sendToRenderer).toHaveBeenCalledWith(
+      'sftp:fileStreamState',
+      expect.objectContaining({
+        streamId: readStart.streamId,
+        direction: 'download',
+        status: 'error',
+        error: 'session.workerCrashed'
+      } satisfies Partial<SftpFileStreamStateEvent>)
+    )
+    expect(sendToRenderer).toHaveBeenCalledWith(
+      'sftp:fileStreamState',
+      expect.objectContaining({
+        streamId: writeStart.streamId,
+        direction: 'upload',
+        status: 'error',
+        error: 'session.workerCrashed'
+      } satisfies Partial<SftpFileStreamStateEvent>)
+    )
+    expect(sendToRenderer).toHaveBeenCalledWith(
+      'sftp:transfer',
+      expect.objectContaining({
+        sessionId: 'session-1',
+        direction: 'download',
+        fileName: 'app.conf',
+        status: 'error',
+        error: 'session.workerCrashed'
+      })
+    )
+    expect(sendToRenderer).toHaveBeenCalledWith(
+      'sftp:transfer',
+      expect.objectContaining({
+        sessionId: 'session-1',
+        direction: 'upload',
+        fileName: 'other.conf',
+        status: 'error',
+        error: 'session.workerCrashed'
+      })
+    )
+    expect(editorStreams.has(readStart.streamId)).toBe(false)
+    expect(editorStreams.has(writeStart.streamId)).toBe(false)
+    await expect(runtime.writeFileChunk(writeStart.streamId, 'late')).rejects.toThrow(
       /stream unavailable/i
     )
   })

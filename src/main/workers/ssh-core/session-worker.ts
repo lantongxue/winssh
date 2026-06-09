@@ -21,8 +21,7 @@ import { normalizeRemotePath, sortRemoteEntries } from '@shared/sftp'
 import {
   createIncrementalTextDecoder,
   encodeContent,
-  splitTrailingHighSurrogate,
-  shouldContinueIncrementalEncodingProbe
+  splitTrailingHighSurrogate
 } from '../../encoding'
 import { formatRemoteEntryPermissions } from '../../session-manager'
 import { createShellIntegrationScript } from '../../shell-integration'
@@ -441,7 +440,7 @@ export class SshCoreSessionWorker {
       if (firstBytesRead > 0) {
         task.transferred = firstBytesRead
         this.emitFileChunk(task, decoder.write(initialSample))
-        this.emitFileStreamState(task, 'running')
+        this.emitFileStreamState(task, 'running', undefined, decoder.encoding)
       }
 
       let position = firstBytesRead
@@ -472,7 +471,7 @@ export class SshCoreSessionWorker {
         position += bytesRead
         task.transferred = position
         this.emitFileChunk(task, decoder.write(buffer.subarray(0, bytesRead)))
-        this.emitFileStreamState(task, 'running')
+        this.emitFileStreamState(task, 'running', undefined, decoder.encoding)
 
         if (bytesRead < buffer.byteLength) {
           break
@@ -482,7 +481,7 @@ export class SshCoreSessionWorker {
       this.emitFileChunk(task, decoder.end())
       await this.closeReadFileTaskHandle(task)
       this.editorFileStreams.delete(task.streamId)
-      this.emitFileStreamState(task, 'completed')
+      this.emitFileStreamState(task, 'completed', undefined, decoder.encoding)
     } catch (error) {
       await this.closeReadFileTaskHandle(task)
       this.editorFileStreams.delete(task.streamId)
@@ -622,7 +621,8 @@ export class SshCoreSessionWorker {
   private emitFileStreamState(
     task: EditorFileReadTask | EditorFileWriteTask,
     status: SftpFileStreamStateEvent['status'],
-    error?: string
+    error?: string,
+    encoding?: string
   ): void {
     const direction: SftpFileStreamDirection = task.kind === 'read' ? 'download' : 'upload'
     const total = task.kind === 'read' ? task.total : task.transferred
@@ -637,6 +637,7 @@ export class SshCoreSessionWorker {
       status,
       transferred: task.transferred,
       total,
+      ...(encoding ? { encoding } : {}),
       ...(error ? { error } : {})
     })
   }
@@ -878,38 +879,22 @@ export class SshCoreSessionWorker {
     handle: Buffer,
     total: number
   ): Promise<{ initialSample: Buffer; firstBytesRead: number; reachedEof: boolean }> {
-    const chunks: Buffer[] = []
-    let position = 0
-    let reachedEof = total === 0
-
-    while (!reachedEof) {
-      const remaining = total > 0 ? total - position : 32768
-      if (total > 0 && remaining <= 0) {
-        reachedEof = true
-        break
-      }
-
-      const buffer = Buffer.allocUnsafe(Math.min(32768, remaining > 0 ? remaining : 32768))
-      const bytesRead = await this.sftpRead(sftp, handle, buffer, 0, buffer.byteLength, position)
-
-      if (bytesRead <= 0) {
-        reachedEof = true
-        break
-      }
-
-      chunks.push(buffer.subarray(0, bytesRead))
-      position += bytesRead
-      reachedEof = bytesRead < buffer.byteLength || (total > 0 && position >= total)
-
-      const sample = Buffer.concat(chunks)
-      if (!shouldContinueIncrementalEncodingProbe(sample, reachedEof)) {
-        break
+    if (total === 0) {
+      return {
+        initialSample: Buffer.alloc(0),
+        firstBytesRead: 0,
+        reachedEof: true
       }
     }
 
+    const readLength = Math.min(32768, total > 0 ? total : 32768)
+    const buffer = Buffer.allocUnsafe(readLength)
+    const bytesRead = await this.sftpRead(sftp, handle, buffer, 0, buffer.byteLength, 0)
+    const reachedEof = bytesRead <= 0 || bytesRead < buffer.byteLength || bytesRead >= total
+
     return {
-      initialSample: Buffer.concat(chunks),
-      firstBytesRead: position,
+      initialSample: buffer.subarray(0, Math.max(0, bytesRead)),
+      firstBytesRead: Math.max(0, bytesRead),
       reachedEof
     }
   }

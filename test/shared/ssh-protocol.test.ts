@@ -229,9 +229,10 @@ describe('ssh protocol schemas', () => {
         direction: 'download',
         status: 'completed',
         transferred: 11,
-        total: 11
-      }).type
-    ).toBe('sftp:fileStreamState')
+        total: 11,
+        encoding: 'gbk'
+      }).encoding
+    ).toBe('gbk')
   })
 
   it('accepts a worker host trust request', () => {

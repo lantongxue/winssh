@@ -437,7 +437,7 @@ describe('SshCoreSessionWorker', () => {
     await connectWorkerSession(worker, client)
 
     const start = await worker.openFileReadStream('session-1', '/tmp/a.txt')
-    expect(start.encoding).toBe('gbk')
+    expect(start.encoding).toBe('utf8')
     worker.startFileReadStream(start.streamId)
 
     await vi.waitFor(() =>
@@ -460,8 +460,41 @@ describe('SshCoreSessionWorker', () => {
         )
       })
       .filter((message) => message.streamId === start.streamId)
+    const states = postMessage.mock.calls
+      .map(([message]) => message)
+      .filter(
+        (
+          message
+        ): message is { type: string; streamId: string; status: string; encoding?: string } =>
+          typeof message === 'object' &&
+          message !== null &&
+          'type' in message &&
+          message.type === 'sftp:fileStreamState' &&
+          'streamId' in message &&
+          message.streamId === start.streamId
+      )
 
     expect(chunks.map((message) => message.chunk).join('')).toBe(text)
+    expect(states.some((event) => event.status === 'running' && event.encoding === 'gbk')).toBe(
+      true
+    )
+  })
+
+  it('does not read an entire long ASCII file before read stream start resolves', async () => {
+    const client = new FakeClient()
+    const sftp = new FakeSftp(Buffer.from('a'.repeat(32768 * 4), 'utf8'))
+    client.sftp = vi.fn((callback) => callback(undefined, sftp))
+    const worker = new SshCoreSessionWorker({
+      createClient: () => client as never,
+      postMessage: vi.fn()
+    })
+
+    await connectWorkerSession(worker, client)
+
+    const start = await worker.openFileReadStream('session-1', '/tmp/large.log')
+
+    expect(start.encoding).toBe('utf8')
+    expect(sftp.read).toHaveBeenCalledTimes(1)
   })
 
   it('writes text file chunks sequentially through sftp write offsets', async () => {

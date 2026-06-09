@@ -427,6 +427,7 @@ export interface SftpFileStreamStateEvent extends ObservableEventMetadata {
   status: SftpFileStreamStatus
   transferred: number
   total: number
+  encoding?: string
   error?: string
 }
 

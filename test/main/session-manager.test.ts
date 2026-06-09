@@ -378,15 +378,35 @@ describe('SessionManager SFTP file streams', () => {
 
     const start = await manager.openFileReadStream('session-1', '/etc/app.conf')
 
-    expect(start.encoding).toBe('gbk')
+    expect(start.encoding).toBe('utf8')
     await waitForFileStreamCompletion(emitToRenderer, start.streamId)
 
     const chunks = emitToRenderer.mock.calls
       .filter(([channel]) => channel === 'sftp:fileChunk')
       .map(([, payload]) => payload as SftpFileChunkEvent)
       .filter((event) => event.streamId === start.streamId)
+    const states = emitToRenderer.mock.calls
+      .filter(([channel]) => channel === 'sftp:fileStreamState')
+      .map(([, payload]) => payload as SftpFileStreamStateEvent & { encoding?: string })
+      .filter((event) => event.streamId === start.streamId)
 
     expect(chunks.map((event) => event.chunk).join('')).toBe(text)
+    expect(states.some((event) => event.status === 'running' && event.encoding === 'gbk')).toBe(
+      true
+    )
+  })
+
+  it('does not read an entire long ASCII file before read stream start resolves', async () => {
+    const { manager } = createManagerWithSftpEmitSpy()
+    const runtime = createRuntime('session-1', new MockClient())
+    const sftp = createFileSftp(Buffer.from('a'.repeat(32768 * 4), 'utf8'))
+    runtime.sftp = sftp as never
+    getSessionsMap(manager).set('session-1', runtime)
+
+    const start = await manager.openFileReadStream('session-1', '/etc/large.log')
+
+    expect(start.encoding).toBe('utf8')
+    expect(sftp.read).toHaveBeenCalledTimes(1)
   })
 
   it('does not emit read chunks before the read stream start resolves', async () => {

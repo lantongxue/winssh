@@ -216,10 +216,10 @@ function createSftpStreamMock(options: { failClose?: boolean } = {}) {
       }
     },
     emitState(
-      event: Partial<SftpFileStreamStateEvent> &
+      event: Partial<SftpFileStreamStateEvent & { encoding?: string }> &
         Pick<SftpFileStreamStateEvent, 'streamId' | 'status'>
     ) {
-      const resolvedEvent: SftpFileStreamStateEvent = {
+      const resolvedEvent: SftpFileStreamStateEvent & { encoding?: string } = {
         direction: 'download',
         remotePath: sftpDocument.remotePath,
         sessionId: sftpDocument.sessionId,
@@ -499,6 +499,44 @@ describe('WorkbenchSftpFileMonacoEditor', () => {
     expect(screen.getByText('Saved')).toBeInTheDocument()
   })
 
+  it('does not read the full editor value for every streamed load chunk', async () => {
+    const sftpStream = createSftpStreamMock()
+    window.winsshApi = createWinsshApiMock({ sftp: sftpStream.api })
+
+    renderEditor()
+
+    await waitFor(() => {
+      expect(sftpStream.api.openFileReadStream).toHaveBeenCalled()
+    })
+    monacoEditor.getValue.mockClear()
+
+    act(() => {
+      sftpStream.emitChunk({ chunk: 'alpha', streamId: 'read-1', transferred: 5 })
+      sftpStream.emitChunk({ chunk: '\nbeta', streamId: 'read-1', transferred: 10 })
+      sftpStream.emitChunk({ chunk: '\ngamma', streamId: 'read-1', transferred: 16 })
+    })
+
+    expect(monacoEditor.getValue).not.toHaveBeenCalled()
+
+    act(() => {
+      sftpStream.emitState({ status: 'completed', streamId: 'read-1', transferred: 16, total: 16 })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Saved')).toBeInTheDocument()
+    })
+    expect(monacoEditor.getValue).not.toHaveBeenCalled()
+
+    act(() => {
+      monacoModel.setValue('alpha\nbeta\ngamma\nuser edit')
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Unsaved')).toBeInTheDocument()
+    })
+    expect(monacoEditor.getValue).toHaveBeenCalledTimes(1)
+  })
+
   it('ignores chunks from stale read streams', async () => {
     const sftpStream = createSftpStreamMock()
     window.winsshApi = createWinsshApiMock({ sftp: sftpStream.api })
@@ -650,6 +688,57 @@ describe('WorkbenchSftpFileMonacoEditor', () => {
     )
     expect(sftpStream.api.writeFileChunk).toHaveBeenNthCalledWith(2, 'write-1', 'tail')
     expect(screen.getByText('Saved')).toBeInTheDocument()
+  })
+
+  it('uses the final streamed encoding when saving after load', async () => {
+    const sftpStream = createSftpStreamMock()
+    window.winsshApi = createWinsshApiMock({ sftp: sftpStream.api })
+
+    renderEditor()
+
+    await waitFor(() => {
+      expect(sftpStream.api.openFileReadStream).toHaveBeenCalled()
+    })
+
+    act(() => {
+      sftpStream.emitChunk({ chunk: '配置', streamId: 'read-1' })
+      sftpStream.emitState({
+        encoding: 'gbk',
+        status: 'running',
+        streamId: 'read-1',
+        transferred: 4,
+        total: 4
+      })
+      sftpStream.emitState({
+        encoding: 'gbk',
+        status: 'completed',
+        streamId: 'read-1',
+        transferred: 4,
+        total: 4
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Saved')).toBeInTheDocument()
+    })
+
+    act(() => {
+      monacoModel.setValue('配置更新')
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Unsaved')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /save/i }))
+
+    await waitFor(() => {
+      expect(sftpStream.api.openFileWriteStream).toHaveBeenCalledWith(
+        'session-1',
+        '/etc/nginx/nginx.conf',
+        'gbk'
+      )
+    })
   })
 
   it('does not split an emoji surrogate pair at the save chunk boundary', async () => {

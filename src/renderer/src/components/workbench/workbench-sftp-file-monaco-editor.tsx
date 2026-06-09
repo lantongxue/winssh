@@ -264,6 +264,7 @@ export function WorkbenchSftpFileMonacoEditor({
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const modelRef = useRef<monaco.editor.ITextModel | null>(null)
   const activeReadStreamIdRef = useRef<string | null>(null)
+  const isApplyingRemoteContentRef = useRef(false)
   const loadedContentRef = useRef('')
   const readRequestIdRef = useRef(0)
   const [editorContent, setEditorContent] = useState('')
@@ -352,7 +353,12 @@ export function WorkbenchSftpFileMonacoEditor({
     setDownloadProgress(null)
     setEditorContent('')
     setSavedContent('')
-    model.setValue('')
+    isApplyingRemoteContentRef.current = true
+    try {
+      model.setValue('')
+    } finally {
+      isApplyingRemoteContentRef.current = false
+    }
 
     try {
       const stream = await sftpClient.openFileReadStream(document.sessionId, document.remotePath)
@@ -413,7 +419,12 @@ export function WorkbenchSftpFileMonacoEditor({
 
       loadedContentRef.current += event.chunk
       if (modelRef.current) {
-        appendModelText(modelRef.current, event.chunk)
+        isApplyingRemoteContentRef.current = true
+        try {
+          appendModelText(modelRef.current, event.chunk)
+        } finally {
+          isApplyingRemoteContentRef.current = false
+        }
       }
     })
 
@@ -425,6 +436,10 @@ export function WorkbenchSftpFileMonacoEditor({
         event.direction !== 'download'
       ) {
         return
+      }
+
+      if (event.encoding) {
+        setFileEncoding(event.encoding)
       }
 
       if (event.status === 'running') {
@@ -515,6 +530,10 @@ export function WorkbenchSftpFileMonacoEditor({
       }
     })
     const contentDisposable = editor.onDidChangeModelContent(() => {
+      if (isApplyingRemoteContentRef.current) {
+        return
+      }
+
       setEditorContent(editor.getValue())
     })
     const resizeObserver =

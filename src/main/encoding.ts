@@ -54,6 +54,14 @@ function isAsciiOnly(buffer: Buffer): boolean {
   return true
 }
 
+function firstNonAsciiIndex(buffer: Buffer): number {
+  for (let index = 0; index < buffer.byteLength; index += 1) {
+    if (buffer[index] > 0x7f) return index
+  }
+
+  return -1
+}
+
 function isHighSurrogate(codeUnit: number): boolean {
   return codeUnit >= 0xd800 && codeUnit <= 0xdbff
 }
@@ -82,7 +90,10 @@ export function shouldContinueIncrementalEncodingProbe(
   reachedEof: boolean
 ): boolean {
   if (reachedEof || sample.length === 0) return false
-  return isAsciiOnly(sample) || utf8ValidationSample(sample).byteLength < sample.byteLength
+  if (isAsciiOnly(sample)) return true
+
+  const validationSample = utf8ValidationSample(sample)
+  return validationSample.byteLength < sample.byteLength && isAsciiOnly(validationSample)
 }
 
 function detectEncoding(buffer: Buffer): string {
@@ -185,7 +196,7 @@ export function createIncrementalTextDecoder(
   const finalInitialSample = options.finalSample ?? false
   let encoding = 'utf8'
   let decoder: ReturnType<typeof iconv.getDecoder> | null = null
-  let pendingChunks: Buffer[] = []
+  let pendingProbeBytes: Buffer | null = null
 
   const resolveDecoder = (sample: Buffer, finalSample = false) => {
     encoding = detectIncrementalEncoding(sample, finalSample)
@@ -205,23 +216,43 @@ export function createIncrementalTextDecoder(
         return decoder.write(buffer)
       }
 
-      if (buffer.byteLength > 0) {
-        pendingChunks.push(buffer)
-      }
-
-      const sample = Buffer.concat(pendingChunks)
-      if (shouldContinueIncrementalEncodingProbe(sample, false)) {
+      if (buffer.byteLength === 0) {
         return ''
       }
 
-      pendingChunks = []
+      if (!pendingProbeBytes && isAsciiOnly(buffer)) {
+        return buffer.toString('utf8')
+      }
+
+      const sample = pendingProbeBytes
+        ? Buffer.concat(
+            [pendingProbeBytes, buffer],
+            pendingProbeBytes.byteLength + buffer.byteLength
+          )
+        : buffer
+      pendingProbeBytes = null
+
+      if (shouldContinueIncrementalEncodingProbe(sample, false)) {
+        const nonAsciiIndex = firstNonAsciiIndex(sample)
+        if (nonAsciiIndex === -1) {
+          return sample.toString('utf8')
+        }
+
+        pendingProbeBytes = sample.subarray(nonAsciiIndex)
+        return sample.subarray(0, nonAsciiIndex).toString('utf8')
+      }
+
       resolveDecoder(sample)
       return decoder!.write(sample)
     },
     end() {
       if (!decoder) {
-        const sample = Buffer.concat(pendingChunks)
-        pendingChunks = []
+        const sample = pendingProbeBytes ?? Buffer.alloc(0)
+        pendingProbeBytes = null
+        if (sample.byteLength === 0) {
+          return ''
+        }
+
         resolveDecoder(sample, true)
         return `${decoder!.write(sample)}${decoder!.end() ?? ''}`
       }

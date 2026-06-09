@@ -216,6 +216,7 @@ export const sshCoreOutboundSchema = z.discriminatedUnion('type', [
     status: z.enum(['running', 'completed', 'error', 'cancelled']),
     transferred: z.number().int().nonnegative(),
     total: z.number().int().nonnegative(),
+    encoding: z.string().optional(),
     error: z.string().optional()
   })
 ])
