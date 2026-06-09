@@ -17,6 +17,7 @@ import {
   createIncrementalTextDecoder,
   smartDecode,
   encodeContent,
+  splitTrailingHighSurrogate,
   shouldContinueIncrementalEncodingProbe
 } from './encoding'
 import { DEFAULT_SERVER_BRAND_ID, resolveServerBrandFromOsRelease } from '@shared/server-brands'
@@ -153,6 +154,7 @@ interface EditorFileWriteTask {
   transferred: number
   state: 'open' | 'closing' | 'closed' | 'cancelled' | 'error'
   failure?: Error
+  pendingHighSurrogate?: string
   queue: Promise<void>
   handle?: Buffer
   sftp: SFTPWrapper
@@ -1675,29 +1677,23 @@ export class SessionManager {
 
   async writeFileChunk(streamId: string, chunk: string): Promise<void> {
     const task = this.requireWriteFileStream(streamId)
-    const buffer = encodeContent(chunk, task.encoding)
     const writeOperation = task.queue.then(async () => {
       if (this.isWriteFileTaskUnavailable(task)) {
         throw this.createWriteFileStreamUnavailableError(task)
       }
 
-      const handle = task.handle
-      if (!handle) {
-        throw this.createWriteFileStreamUnavailableError(task)
+      const pendingPrefix = task.pendingHighSurrogate ?? ''
+      task.pendingHighSurrogate = undefined
+      const { content, pendingHighSurrogate } = splitTrailingHighSurrogate(
+        `${pendingPrefix}${chunk}`
+      )
+      task.pendingHighSurrogate = pendingHighSurrogate
+
+      if (!content) {
+        return
       }
 
-      try {
-        await sftpWrite(task.sftp, handle, buffer, 0, buffer.byteLength, task.transferred)
-      } catch (error) {
-        throw await this.failWriteFileTask(task, error)
-      }
-
-      if (this.isWriteFileTaskUnavailable(task)) {
-        throw this.createWriteFileStreamUnavailableError(task)
-      }
-
-      task.transferred += buffer.byteLength
-      this.emitFileStreamState(task, 'running')
+      await this.writeFileTaskBuffer(task, encodeContent(content, task.encoding))
     })
     task.queue = writeOperation.catch(() => undefined)
     return writeOperation
@@ -1708,6 +1704,11 @@ export class SessionManager {
     task.state = 'closing'
     this.editorFileStreams.delete(streamId)
     await task.queue
+    if (task.failure) {
+      throw this.createWriteFileStreamUnavailableError(task)
+    }
+
+    await this.flushPendingWriteFileSurrogate(task)
     if (task.failure) {
       throw this.createWriteFileStreamUnavailableError(task)
     }
@@ -1782,6 +1783,40 @@ export class SessionManager {
 
   private createWriteFileStreamUnavailableError(task: EditorFileWriteTask): Error {
     return task.failure ?? new Error(`SFTP file stream unavailable: ${task.streamId}`)
+  }
+
+  private async writeFileTaskBuffer(task: EditorFileWriteTask, buffer: Buffer): Promise<void> {
+    if (this.isWriteFileTaskUnavailable(task)) {
+      throw this.createWriteFileStreamUnavailableError(task)
+    }
+
+    const handle = task.handle
+    if (!handle) {
+      throw this.createWriteFileStreamUnavailableError(task)
+    }
+
+    try {
+      await sftpWrite(task.sftp, handle, buffer, 0, buffer.byteLength, task.transferred)
+    } catch (error) {
+      throw await this.failWriteFileTask(task, error)
+    }
+
+    if (this.isWriteFileTaskUnavailable(task)) {
+      throw this.createWriteFileStreamUnavailableError(task)
+    }
+
+    task.transferred += buffer.byteLength
+    this.emitFileStreamState(task, 'running')
+  }
+
+  private async flushPendingWriteFileSurrogate(task: EditorFileWriteTask): Promise<void> {
+    const pendingHighSurrogate = task.pendingHighSurrogate
+    if (!pendingHighSurrogate) {
+      return
+    }
+
+    task.pendingHighSurrogate = undefined
+    await this.writeFileTaskBuffer(task, encodeContent(pendingHighSurrogate, task.encoding))
   }
 
   private async failWriteFileTask(task: EditorFileWriteTask, error: unknown): Promise<Error> {

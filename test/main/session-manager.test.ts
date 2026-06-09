@@ -435,6 +435,36 @@ describe('SessionManager SFTP file streams', () => {
     expect(sftp.close).toHaveBeenCalledOnce()
   })
 
+  it('preserves an emoji surrogate pair split across write chunks', async () => {
+    const { manager } = createManagerWithSftpEmitSpy()
+    const runtime = createRuntime('session-1', new MockClient())
+    const written: Buffer[] = []
+    const sftp = createFileSftp(Buffer.alloc(0))
+    sftp.write.mockImplementation(
+      (
+        _handle: Buffer,
+        buffer: Buffer,
+        offset: number,
+        length: number,
+        _position: number,
+        callback: (error?: Error) => void
+      ) => {
+        written.push(Buffer.from(buffer.subarray(offset, offset + length)))
+        callback()
+      }
+    )
+    runtime.sftp = sftp as never
+    getSessionsMap(manager).set('session-1', runtime)
+
+    const emoji = '😀'
+    const start = await manager.openFileWriteStream('session-1', '/etc/app.conf', 'utf8')
+    await manager.writeFileChunk(start.streamId, emoji.charAt(0))
+    await manager.writeFileChunk(start.streamId, `${emoji.charAt(1)}tail`)
+    await manager.closeFileWriteStream(start.streamId)
+
+    expect(Buffer.concat(written)).toEqual(Buffer.from(`${emoji}tail`, 'utf8'))
+  })
+
   it('rejects a committed write stream when the remote close fails', async () => {
     const { manager, emitToRenderer } = createManagerWithSftpEmitSpy()
     const runtime = createRuntime('session-1', new MockClient())

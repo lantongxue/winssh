@@ -54,6 +54,29 @@ function isAsciiOnly(buffer: Buffer): boolean {
   return true
 }
 
+function isHighSurrogate(codeUnit: number): boolean {
+  return codeUnit >= 0xd800 && codeUnit <= 0xdbff
+}
+
+export function splitTrailingHighSurrogate(contents: string): {
+  content: string
+  pendingHighSurrogate?: string
+} {
+  if (!contents) {
+    return { content: contents }
+  }
+
+  const lastIndex = contents.length - 1
+  if (!isHighSurrogate(contents.charCodeAt(lastIndex))) {
+    return { content: contents }
+  }
+
+  return {
+    content: contents.slice(0, lastIndex),
+    pendingHighSurrogate: contents.charAt(lastIndex)
+  }
+}
+
 export function shouldContinueIncrementalEncodingProbe(
   sample: Buffer,
   reachedEof: boolean

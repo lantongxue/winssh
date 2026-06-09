@@ -47,6 +47,14 @@ describe('smartDecodeBuffer', () => {
     expect(smartDecodeBuffer(buffer)).toBe('Hello 你好')
   })
 
+  it('preserves legacy smartDecode behavior for ASCII prefixes followed by GBK text', () => {
+    const text = `${'a'.repeat(32768)}这是一段比较长的中文文本用来测试编码检测功能是否正常工作`
+    const result = smartDecode(iconv.encode(text, 'gbk'))
+
+    expect(result.content).toBe(text)
+    expect(result.encoding).toBe('gbk')
+  })
+
   it('decodes UTF-16 LE with BOM', () => {
     const buffer = Buffer.concat([Buffer.from([0xff, 0xfe]), iconv.encode('test', 'utf16-le')])
     expect(smartDecodeBuffer(buffer)).toBe('test')

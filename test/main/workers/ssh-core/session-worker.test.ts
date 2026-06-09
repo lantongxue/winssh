@@ -520,6 +520,41 @@ describe('SshCoreSessionWorker', () => {
     )
   })
 
+  it('preserves an emoji surrogate pair split across write chunks', async () => {
+    const client = new FakeClient()
+    const sftp = new FakeSftp()
+    client.sftp = vi.fn((callback) => callback(undefined, sftp))
+    const postMessage = vi.fn()
+    const worker = new SshCoreSessionWorker({
+      createClient: () => client as never,
+      postMessage
+    })
+    const written: Buffer[] = []
+    sftp.write.mockImplementation(
+      (
+        _handle: Buffer,
+        buffer: Buffer,
+        offset: number,
+        length: number,
+        _position: number,
+        callback: (error?: Error) => void
+      ) => {
+        written.push(Buffer.from(buffer.subarray(offset, offset + length)))
+        callback()
+      }
+    )
+
+    await connectWorkerSession(worker, client)
+
+    const emoji = '😀'
+    const start = await worker.openFileWriteStream('session-1', '/tmp/a.txt', 'utf8')
+    await worker.writeFileChunk(start.streamId, emoji.charAt(0))
+    await worker.writeFileChunk(start.streamId, `${emoji.charAt(1)}tail`)
+    await worker.closeFileWriteStream(start.streamId)
+
+    expect(Buffer.concat(written)).toEqual(Buffer.from(`${emoji}tail`, 'utf8'))
+  })
+
   it('rejects a committed write stream when the remote close fails', async () => {
     const client = new FakeClient()
     const sftp = new FakeSftp()
