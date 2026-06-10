@@ -70,6 +70,30 @@ async function connectRuntime(runtime: WorkerSessionRuntime, worker: FakeWorker)
   return promise
 }
 
+async function openWorkerReadStream(
+  runtime: WorkerSessionRuntime,
+  worker: FakeWorker,
+  streamId = 'worker-read-1'
+) {
+  const startPromise = runtime.openFileReadStream('session-1', '/etc/app.conf')
+  await vi.waitFor(() => expect(worker.posted.length).toBeGreaterThan(1))
+  const readMessage = worker.posted[worker.posted.length - 1] as { requestId: string }
+  worker.emit('message', {
+    type: 'ack',
+    requestId: readMessage.requestId,
+    ok: true,
+    result: {
+      streamId,
+      sessionId: 'session-1',
+      remotePath: '/etc/app.conf',
+      fileName: 'app.conf',
+      total: 11,
+      encoding: 'utf8'
+    }
+  })
+  return startPromise
+}
+
 describe('WorkerSessionRuntime', () => {
   it('marks session error when ssh-core worker crashes', () => {
     const { runtime, sendToRenderer } = createRuntime()
@@ -275,6 +299,43 @@ describe('WorkerSessionRuntime', () => {
         status: 'completed'
       })
     )
+  })
+
+  it('ignores missing worker read stream starts', () => {
+    const { runtime, worker } = createRuntime()
+
+    expect(() => runtime.startFileReadStream('missing')).not.toThrow()
+    expect(worker.posted).toEqual([])
+  })
+
+  it('ignores stale worker read stream starts after cancellation', async () => {
+    const { runtime, worker } = createRuntime()
+    await connectRuntime(runtime, worker)
+    const start = await openWorkerReadStream(runtime, worker)
+
+    runtime.cancelFileStream(start.streamId)
+
+    await vi.waitFor(() => expect(worker.posted.length).toBeGreaterThan(2))
+    expect(worker.posted[2]).toMatchObject({
+      type: 'sftp:cancelFileStream',
+      streamId: start.streamId
+    })
+    const postedAfterCancel = worker.posted.length
+
+    expect(() => runtime.startFileReadStream(start.streamId)).not.toThrow()
+    expect(worker.posted).toHaveLength(postedAfterCancel)
+  })
+
+  it('ignores worker read stream starts when the owning session is unavailable', async () => {
+    const { runtime, worker } = createRuntime()
+    await connectRuntime(runtime, worker)
+    const start = await openWorkerReadStream(runtime, worker)
+    const sessions = Reflect.get(runtime as object, 'sessions') as Map<string, unknown>
+    sessions.delete(start.sessionId)
+    const postedAfterOpen = worker.posted.length
+
+    expect(() => runtime.startFileReadStream(start.streamId)).not.toThrow()
+    expect(worker.posted).toHaveLength(postedAfterOpen)
   })
 
   it('bridges file write stream chunks through the connected ssh-core worker session', async () => {

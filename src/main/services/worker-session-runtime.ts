@@ -300,8 +300,18 @@ export class WorkerSessionRuntime implements SessionRuntime {
   }
 
   startFileReadStream(streamId: string): void {
-    const task = this.requireFileStream(streamId, 'download')
-    const runtime = this.requireSession(task.sessionId)
+    const task = this.editorFileStreams.get(streamId)
+    if (!task || task.direction !== 'download') {
+      return
+    }
+
+    const runtime = this.sessions.get(task.sessionId)
+    if (!runtime) {
+      this.editorFileStreams.delete(streamId)
+      this.emitLocalFileStreamTerminalState(task, 'cancelled')
+      return
+    }
+
     void runtime.port
       .request({
         type: 'sftp:startFileReadStream',
