@@ -26,6 +26,20 @@ interface MetricPillProps {
   className?: string
 }
 
+function MetricPillShell({ className, children, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      className={cn(
+        'flex h-8 shrink-0 items-center rounded-md border border-[var(--workbench-border)] bg-[color-mix(in_srgb,var(--workbench-sidebar)_78%,transparent)] px-2.5',
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+}
+
 function formatPercent(value: number | null, maximumFractionDigits = 1): string {
   if (value === null || !Number.isFinite(value)) {
     return '--'
@@ -63,12 +77,7 @@ function formatLatency(rttMs: number | null): string {
 
 function MetricPill({ label, value, detail, className }: MetricPillProps) {
   return (
-    <div
-      className={cn(
-        'flex h-8 shrink-0 items-center rounded-md border border-[var(--workbench-border)] bg-[color-mix(in_srgb,var(--workbench-sidebar)_78%,transparent)] px-2.5',
-        className
-      )}
-    >
+    <MetricPillShell className={className}>
       <div className="flex min-w-0 items-baseline gap-1.5">
         <div className="shrink-0 text-[10px] leading-none font-medium uppercase tracking-[0.12em] text-muted-foreground">
           {label}
@@ -78,7 +87,28 @@ function MetricPill({ label, value, detail, className }: MetricPillProps) {
           <div className="truncate text-[11px] leading-none text-muted-foreground">{detail}</div>
         ) : null}
       </div>
-    </div>
+    </MetricPillShell>
+  )
+}
+
+function MetricPillSkeleton({
+  className,
+  detail = false
+}: {
+  className?: string
+  detail?: boolean
+}) {
+  return (
+    <MetricPillShell
+      className={className}
+      data-testid="session-resource-monitor-skeleton-pill"
+    >
+      <div className="flex min-w-0 items-baseline gap-1.5">
+        <Skeleton className="h-2.5 w-8 shrink-0 rounded-sm" />
+        <Skeleton className="h-3 w-6 shrink-0 rounded-sm" />
+        {detail ? <Skeleton className="h-2.5 w-24 shrink-0 rounded-sm" /> : null}
+      </div>
+    </MetricPillShell>
   )
 }
 
@@ -208,11 +238,11 @@ export function SessionResourceMonitor({
                 )
               ) : monitorQuery.isPending || !active ? (
                 <div className="inline-flex min-w-max items-center gap-1.5">
-                  <Skeleton className="h-8 w-[72px] rounded-md" />
-                  <Skeleton className="h-8 w-[92px] rounded-md" />
-                  <Skeleton className="h-8 w-[188px] rounded-md" />
-                  <Skeleton className="h-8 w-[188px] rounded-md" />
-                  <Skeleton className="h-8 w-[188px] rounded-md" />
+                  <MetricPillSkeleton className="min-w-[72px]" />
+                  <MetricPillSkeleton className="min-w-[92px]" />
+                  <MetricPillSkeleton className="min-w-[188px]" detail />
+                  <MetricPillSkeleton className="min-w-[188px]" />
+                  <MetricPillSkeleton className="min-w-[188px]" detail />
                 </div>
               ) : (
                 <div className="truncate rounded-md border border-dashed border-[var(--workbench-border)] px-2.5 py-1.5 text-xs text-muted-foreground">
