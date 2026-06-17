@@ -1,68 +1,37 @@
-import { motion, useScroll, useTransform } from "motion/react";
-import { useRef } from "react";
+import { motion } from "motion/react";
 import { useLanguage } from "../i18n/LanguageContext";
 
 export function Hero() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end start"],
-  });
-
   const { t, lang } = useLanguage();
-  const y = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
-  const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
 
   return (
-    <section ref={containerRef} className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden pt-20">
+    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden pt-20">
       {/* Background Glow & Grid */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none flex items-center justify-center">
-        {/* Animated Grid */}
+        {/* Grid Background */}
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{
-            opacity: 1,
-            backgroundPosition: ["0px 0px", "40px 40px"]
-          }}
-          transition={{
-            opacity: { duration: 2 },
-            backgroundPosition: { repeat: Infinity, duration: 4, ease: "linear" }
-          }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 2 }}
           className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff20_1px,transparent_1px),linear-gradient(to_bottom,#ffffff20_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_100%_100%_at_50%_30%,#000_60%,transparent_100%)] z-0"
         />
 
-        {/* Animated Orbs */}
-        <motion.div
-          animate={{
-            x: ['-50%', '-20%', '-70%', '-50%'],
-            y: ['-50%', '-70%', '-30%', '-50%'],
-            scale: [1, 1.2, 0.9, 1]
-          }}
-          transition={{ repeat: Infinity, duration: 12, ease: "easeInOut" }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-blue-600/40 rounded-full blur-[100px] mix-blend-screen"
+        {/* Static Orbs — radial-gradient instead of filter:blur for GPU performance */}
+        <div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full mix-blend-screen"
+          style={{ background: 'radial-gradient(circle, transparent 30%, rgba(37,99,235,0.4) 70%, transparent 100%)' }}
         />
-        <motion.div
-          animate={{
-            x: ['0%', '40%', '-20%', '0%'],
-            y: ['0%', '-40%', '20%', '0%'],
-            scale: [1, 1.1, 0.8, 1]
-          }}
-          transition={{ repeat: Infinity, duration: 15, ease: "easeInOut", delay: 1 }}
-          className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-purple-600/30 rounded-full blur-[100px] mix-blend-screen"
+        <div
+          className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full mix-blend-screen"
+          style={{ background: 'radial-gradient(circle, transparent 30%, rgba(147,51,234,0.3) 70%, transparent 100%)' }}
         />
-        <motion.div
-          animate={{
-            x: ['0%', '-40%', '20%', '0%'],
-            y: ['0%', '40%', '-20%', '0%'],
-            scale: [1, 1.3, 0.9, 1]
-          }}
-          transition={{ repeat: Infinity, duration: 18, ease: "easeInOut", delay: 2 }}
-          className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-cyan-600/20 rounded-full blur-[120px] mix-blend-screen"
+        <div
+          className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] rounded-full mix-blend-screen"
+          style={{ background: 'radial-gradient(circle, transparent 25%, rgba(8,145,178,0.2) 70%, transparent 100%)' }}
         />
       </div>
 
-      <motion.div
-        style={{ y, opacity }}
+      <div
         className="relative z-10 w-full pt-12 flex flex-col items-center"
       >
         <div className="max-w-7xl mx-auto px-6 flex flex-col items-center text-center">
@@ -98,18 +67,12 @@ export function Hero() {
           </motion.p>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 60 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.2, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="mt-20 w-full max-w-[1600px] px-4 sm:px-6 md:px-12 group cursor-default"
+        <div
+          className="mt-20 w-full max-w-[1600px] px-4 sm:px-6 md:px-12"
         >
-          <div className="relative w-full rounded-[24px] overflow-hidden shadow-[0_0_80px_-20px_rgba(37,99,235,0.2)] p-[3px] transition-all duration-700 ease-out group-hover:-translate-y-6 group-hover:shadow-[0_40px_100px_-20px_rgba(59,130,246,0.4)]">
-            {/* Fluid glowing border animation */}
-            <div className="absolute top-1/2 left-1/2 w-[150%] h-[300%] -translate-x-1/2 -translate-y-1/2 bg-[conic-gradient(from_0deg_at_50%_50%,transparent_0%,transparent_25%,rgba(96,165,250,0.9)_50%,transparent_50%,transparent_75%,rgba(96,165,250,0.9)_100%)] animate-[spin_4s_linear_infinite] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-
+          <div className="relative w-full rounded-[24px] overflow-hidden shadow-[0_0_80px_-20px_rgba(37,99,235,0.2)] p-[3px]">
             {/* Inner Content Block */}
-            <div className="relative w-full h-full rounded-[21px] overflow-hidden border border-white/10 group-hover:border-transparent transition-colors duration-500">
+            <div className="relative w-full h-full rounded-[21px] overflow-hidden border border-white/10">
               <img
                 src={lang === 'zh' ? '/winssh-shell-zh.png' : '/winssh-shell-en.png'}
                 alt="WinSSH Main Interface"
@@ -118,8 +81,8 @@ export function Hero() {
               />
             </div>
           </div>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
     </section>
   );
 }
