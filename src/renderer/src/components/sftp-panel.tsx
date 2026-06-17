@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
-import { Send, Undo2, X, Star, Trash2, ChevronRight, ChevronDown, Folder, Link, Unlink } from 'lucide-react'
+import {
+  Send,
+  Undo2,
+  X,
+  Star,
+  Trash2,
+  ChevronRight,
+  ChevronDown,
+  Folder,
+  Link,
+  Unlink
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { getParentRemotePath, normalizeRemotePath } from '@shared/sftp'
@@ -153,8 +164,9 @@ export function SftpPanel({
       const timeoutId = window.setTimeout(() => {
         setCurrentPath(session.sessionId, session.terminalCwd!)
       }, 300)
-      window.clearTimeout(timeoutId)
+      return () => window.clearTimeout(timeoutId)
     }
+    return undefined
   }, [followTerminalCwd, session?.terminalCwd, session?.sessionId, setCurrentPath])
   const treeViewRef = useRef<SftpTreeViewHandle>(null)
   const ListIcon = actionIcons.listView

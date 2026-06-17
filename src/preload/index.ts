@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { WinsshApi } from '@shared/api'
 import type { IpcCallback, IpcChannel, IpcPayload } from '@shared/ipc-channels'
 import type { LocalTerminalDataEvent, SessionDataEvent } from '@shared/types'
+import { TerminalPortAllocator } from './terminal-port-allocator'
 
 // ============================================================
 // 1. 静态 ID 提取器注册表 —— 每个需要过滤的 channel 只定义一次
@@ -25,6 +26,11 @@ interface ChannelHub {
 }
 
 const hubs = new Map<IpcChannel, ChannelHub>()
+const terminalPortAllocator = new TerminalPortAllocator({
+  registerMainPort: async (sessionId, port) => {
+    ipcRenderer.postMessage('sessions:registerDataPort', { sessionId }, [port])
+  }
+})
 
 function getOrCreateHub(channel: IpcChannel): ChannelHub {
   const existing = hubs.get(channel)
@@ -212,11 +218,14 @@ const api: WinsshApi = {
     write: (sessionId, data) => ipcRenderer.send('sessions:write', sessionId, data),
     resize: (sessionId, columns, rows) =>
       ipcRenderer.invoke('sessions:resize', sessionId, columns, rows),
+    createDataChannel: (sessionId) => terminalPortAllocator.create(sessionId),
     onData: (sessionId, callback) => subscribeById('sessions:data', sessionId, callback),
     onExit: (callback) => subscribe('sessions:exit', callback),
     onStateChange: (callback) => subscribe('sessions:state', callback),
     onError: (callback) => subscribe('sessions:error', callback),
-    onCwdChanged: (callback) => subscribe('sessions:cwdChanged', callback)
+    onCwdChanged: (callback) => subscribe('sessions:cwdChanged', callback),
+    onTerminalBackpressure: (callback) => subscribe('terminal:backpressure', callback),
+    onTerminalDegraded: (callback) => subscribe('terminal:degraded', callback)
   },
   localTerminals: {
     create: () => ipcRenderer.invoke('localTerminals:create'),
@@ -232,11 +241,16 @@ const api: WinsshApi = {
     list: (sessionId, remotePath) => ipcRenderer.invoke('sftp:list', sessionId, remotePath),
     createFile: (sessionId, remotePath, name) =>
       ipcRenderer.invoke('sftp:createFile', sessionId, remotePath, name),
-    readFile: (sessionId, remotePath) => ipcRenderer.invoke('sftp:readFile', sessionId, remotePath),
-    cancelReadFile: (sessionId, remotePath) =>
-      ipcRenderer.send('sftp:cancelReadFile', sessionId, remotePath),
-    writeFile: (sessionId, remotePath, contents, encoding) =>
-      ipcRenderer.invoke('sftp:writeFile', sessionId, remotePath, contents, encoding),
+    openFileReadStream: (sessionId, remotePath) =>
+      ipcRenderer.invoke('sftp:openFileReadStream', sessionId, remotePath),
+    startFileReadStream: (streamId) => ipcRenderer.send('sftp:startFileReadStream', streamId),
+    openFileWriteStream: (sessionId, remotePath, encoding) =>
+      ipcRenderer.invoke('sftp:openFileWriteStream', sessionId, remotePath, encoding),
+    writeFileChunk: (streamId, chunk) => ipcRenderer.invoke('sftp:writeFileChunk', streamId, chunk),
+    closeFileWriteStream: (streamId) => ipcRenderer.invoke('sftp:closeFileWriteStream', streamId),
+    cancelFileStream: (streamId) => ipcRenderer.send('sftp:cancelFileStream', streamId),
+    onFileChunk: (callback) => subscribe('sftp:fileChunk', callback),
+    onFileStreamState: (callback) => subscribe('sftp:fileStreamState', callback),
     mkdir: (sessionId, remotePath, name) =>
       ipcRenderer.invoke('sftp:mkdir', sessionId, remotePath, name),
     rename: (sessionId, remotePath, newName) =>

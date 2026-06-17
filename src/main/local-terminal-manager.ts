@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { accessSync, chmodSync, constants as fsConstants, existsSync, writeFileSync } from 'node:fs'
+import { accessSync, chmodSync, constants as fsConstants, existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { homedir } from 'node:os'
 import path from 'node:path'
@@ -20,7 +20,11 @@ import type {
 } from '@shared/types'
 import type { DatabaseService } from './database'
 import { createOscScannerState, scanOscChunk, type OscScannerState } from './osc-scanner'
-import { isShellIntegrationInternal, SHELL_INTEGRATION_FILE_CONTENT } from './shell-integration'
+import {
+  isShellIntegrationInternal,
+  SHELL_INTEGRATION_SCRIPT,
+  stripShellIntegrationInstallEcho
+} from './shell-integration'
 
 const require = createRequire(import.meta.url)
 
@@ -302,27 +306,17 @@ export class LocalTerminalManager {
 
     if (record.integrationBuffer !== undefined) {
       record.integrationBuffer += data
-      const command = ` . ~/.winssh_init_${terminalId} && rm -f ~/.winssh_init_${terminalId}`
+      const stripped = stripShellIntegrationInstallEcho(record.integrationBuffer)
 
-      if (record.integrationBuffer.includes(command)) {
+      if (stripped.matched) {
         if (record.integrationTimeoutTimer) {
           clearTimeout(record.integrationTimeoutTimer)
           record.integrationTimeoutTimer = null
         }
 
-        let cleaned = record.integrationBuffer
-        const idx = cleaned.indexOf(command)
-        if (idx !== -1) {
-          let prefix = cleaned.slice(0, idx)
-          prefix = prefix.replace(/[ \b]+$/, '')
-          let suffix = cleaned.slice(idx + command.length)
-          suffix = suffix.replace(/^\r?\n?/, '')
-          cleaned = prefix + suffix
-        }
-
         record.integrationBuffer = undefined
-        if (cleaned) {
-          this.handlePtyDataFiltered(terminalId, record, cleaned)
+        if (stripped.cleaned) {
+          this.handlePtyDataFiltered(terminalId, record, stripped.cleaned)
         }
       }
       return
@@ -333,12 +327,8 @@ export class LocalTerminalManager {
 
   private installLocalShellIntegration(terminalId: string, record: LocalTerminalRecord) {
     try {
-      const tempFilePath = path.join(homedir(), `.winssh_init_${terminalId}`)
-      writeFileSync(tempFilePath, SHELL_INTEGRATION_FILE_CONTENT, 'utf8')
-
-      const command = ` . ~/.winssh_init_${terminalId} && rm -f ~/.winssh_init_${terminalId}`
       record.integrationBuffer = ''
-      record.pty?.write(`${command}\r`)
+      record.pty?.write(SHELL_INTEGRATION_SCRIPT)
 
       record.integrationTimeoutTimer = setTimeout(() => {
         if (record.integrationBuffer !== undefined) {

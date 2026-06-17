@@ -199,4 +199,18 @@ describe('SessionResourceMonitor', () => {
     expect(viewport.className).toContain('justify-end')
     expect(await screen.findByText('CPU')).toBeInTheDocument()
   })
+
+  it('renders loading placeholders inside matching metric pill shells', async () => {
+    renderMonitor({ active: false })
+
+    const placeholders = screen.getAllByTestId('session-resource-monitor-skeleton-pill')
+    expect(placeholders).toHaveLength(5)
+
+    for (const placeholder of placeholders) {
+      expect(placeholder.className).toContain('h-8')
+      expect(placeholder.className).toContain('border')
+      expect(placeholder.className).toContain('items-center')
+      expect(placeholder.querySelector('[data-slot="skeleton"]')).toBeInTheDocument()
+    }
+  })
 })

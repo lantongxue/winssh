@@ -30,7 +30,7 @@ build/              # NSIS installer.nsh + platform icons + macOS entitlements
 | Modify session lifecycle | main/session-manager + renderer/store/sessions-store + workbench-context                          | SessionManager is 2897 lines — most complex file |
 | Change theme             | shared/themes → main/theme-registry → themes/builtin/_/themes/_.json → renderer/lib/theme         | Theme packs are JSON, not CSS                    |
 | Add server table column  | main/database + main/application/servers-app-service + shared/validation                          | Also update ServerUpsertInput/serverSchema       |
-| Add SFTP feature         | main/session-manager (readFile/writeFile) + renderer/features/sftp/api + workbench-sftp-\*-editor | SFTP is text-only                                |
+| Add SFTP feature         | main/session-manager editor file streaming API (`openFileReadStream`/`openFileWriteStream`/`writeFileChunk`/`closeFileWriteStream`/`cancelFileStream`) + renderer/features/sftp/api + workbench-sftp-\*-editor | SFTP editor streaming is text-only              |
 | Work on UI layout        | renderer/components/workbench/                                                                    | Keep-mounted for session/local-terminal editors  |
 | Write renderer tests     | test/renderer/ + test/renderer/helpers/create-winssh-api                                          | Never co-locate tests in src/                    |
 | Work on web/ site        | web/src/                                                                                          | Separate package.json, tsconfig, vite config     |
@@ -121,7 +121,7 @@ These are the facts an agent is most likely to get wrong:
 - **Resource monitoring is Linux-only** (`/proc/stat`, `/proc/meminfo`, etc.).
 - **Port forwarding is session-scoped memory only** — no DB persistence.
 - **`session-editor` and `local-terminal-editor` use keep-mounted strategy** (visible via visibility toggle, not conditional render) to avoid xterm re-initialization on tab switch. Do not change this.
-- **SFTP remote file editing is text-only** — `sftp:readFile`/`sftp:writeFile` return/write strings. No binary/large-file support.
+- **SFTP remote file editing is text-only** — editor file streaming uses `openFileReadStream`, `openFileWriteStream`, `writeFileChunk`, `closeFileWriteStream`, and `cancelFileStream`. No binary/large-file editor support.
 - **`private_key_path` column is legacy compat** — new writes store key content in `private_key`. Do not delete the compat path-reading logic.
 - **Restore (backup) triggers `system:relaunch`** — do not assume the app continues running after restore.
 - **`web/` is a separate subproject** — changes to root `package.json` version or `src/shared/themes.ts` (light/dark-plus themes) affect it. Coordinate.
@@ -134,7 +134,7 @@ Changing any domain typically requires touching these layers together:
 - **IPC change**: `src/shared/types.ts` → `src/shared/validation.ts` → `src/main/ipc/register-*` → `src/preload/index.ts` → `src/renderer/src/features/<domain>/api/*` → update `query-keys.ts`.
 - **Session identity / phase**: add `src/main/session-manager.ts` + `src/renderer/src/store/sessions-store.ts` + `src/renderer/src/components/workbench/workbench-context.tsx`.
 - **Theme change**: `src/shared/themes.ts` → `src/main/theme-registry.ts` → `themes/builtin/<pack>/themes/*.json` → `src/renderer/src/lib/theme.ts`.
-- **SFTP / remote editing**: add `src/main/session-manager.ts` (readFile/writeFile) + `src/renderer/src/features/sftp/api/*` + `src/renderer/src/components/workbench/workbench-sftp-file-*-editor.tsx`.
+- **SFTP / remote editing**: add `src/main/session-manager.ts` editor file streaming methods (`openFileReadStream`, `openFileWriteStream`, `writeFileChunk`, `closeFileWriteStream`, `cancelFileStream`) + `src/renderer/src/features/sftp/api/*` + `src/renderer/src/components/workbench/workbench-sftp-file-*-editor.tsx`.
 - **Any change to `servers` table schema**: also update `src/main/database.ts`, `src/main/application/servers-application-service.ts`, and `src/shared/validation.ts` (`ServerUpsertInput`/`serverSchema`).
 
 ## Test Mock for `window.winsshApi`

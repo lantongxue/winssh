@@ -149,6 +149,17 @@ function handleOscPayload(payload: string, handlers: OscHandlers): boolean {
     return true
   }
 
+  // OSC 633;Eh — command text payload (hex-encoded). This is preferred by
+  // WinSSH shell integration because it only needs POSIX tools on the remote.
+  if (payload.startsWith('633;Eh;')) {
+    const encoded = payload.slice(7)
+    const decoded = decodeHexSafe(encoded)
+    if (decoded !== null) {
+      handlers.onCommandText?.(decoded)
+    }
+    return true
+  }
+
   // OSC 633;E — command text payload (base64-encoded).
   if (payload.startsWith('633;E;')) {
     const encoded = payload.slice(6)
@@ -201,6 +212,18 @@ function handleOscPayload(payload: string, handlers: OscHandlers): boolean {
   }
 
   return false
+}
+
+function decodeHexSafe(encoded: string): string | null {
+  const trimmed = encoded.replace(/\s+/g, '')
+  if (trimmed.length % 2 !== 0 || !/^[0-9a-fA-F]*$/.test(trimmed)) {
+    return null
+  }
+  try {
+    return Buffer.from(trimmed, 'hex').toString('utf8')
+  } catch {
+    return null
+  }
 }
 
 function decodeBase64Safe(encoded: string): string | null {

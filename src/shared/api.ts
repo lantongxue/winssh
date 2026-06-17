@@ -40,6 +40,10 @@ import type {
   SessionStateEvent,
   SessionResourceSnapshot,
   SessionSummary,
+  SftpFileChunkEvent,
+  SftpFileReadStreamStart,
+  SftpFileStreamStateEvent,
+  SftpFileWriteStreamStart,
   SftpListResult,
   SystemMenuAction,
   Tag,
@@ -52,6 +56,7 @@ import type {
   SftpBookmark
 } from './types'
 import type { AppLogEvent } from './observability'
+import type { TerminalBackpressureEvent, TerminalDegradedEvent } from './ipc-channels'
 import type { ServerIconMimeType } from './server-brands'
 import type { ThemeDefinition, ThemeDeleteResult, ThemeImportResult } from './themes'
 
@@ -95,11 +100,14 @@ export interface WinsshApi {
     getResourceSnapshot: (sessionId: string) => Promise<SessionResourceSnapshot>
     write: (sessionId: string, data: string) => void
     resize: (sessionId: string, columns: number, rows: number) => Promise<void>
+    createDataChannel: (sessionId: string) => Promise<MessagePort>
     onData: (sessionId: string, callback: (event: SessionDataEvent) => void) => Unsubscribe
     onExit: (callback: (event: SessionExitEvent) => void) => Unsubscribe
     onStateChange: (callback: (event: SessionStateEvent) => void) => Unsubscribe
     onError: (callback: (event: SessionErrorEvent) => void) => Unsubscribe
     onCwdChanged: (callback: (event: SessionCwdEvent) => void) => Unsubscribe
+    onTerminalBackpressure: (callback: (event: TerminalBackpressureEvent) => void) => Unsubscribe
+    onTerminalDegraded: (callback: (event: TerminalDegradedEvent) => void) => Unsubscribe
   }
   localTerminals: {
     create: () => Promise<LocalTerminalSummary>
@@ -113,17 +121,21 @@ export interface WinsshApi {
   sftp: {
     list: (sessionId: string, path: string) => Promise<SftpListResult>
     createFile: (sessionId: string, path: string, name: string) => Promise<void>
-    readFile: (
+    openFileReadStream: (
       sessionId: string,
       remotePath: string
-    ) => Promise<{ content: string; encoding: string; cancelled?: boolean }>
-    cancelReadFile: (sessionId: string, remotePath: string) => void
-    writeFile: (
+    ) => Promise<SftpFileReadStreamStart>
+    startFileReadStream: (streamId: string) => void
+    openFileWriteStream: (
       sessionId: string,
       remotePath: string,
-      contents: string,
-      encoding?: string
-    ) => Promise<void>
+      encoding: string
+    ) => Promise<SftpFileWriteStreamStart>
+    writeFileChunk: (streamId: string, chunk: string) => Promise<void>
+    closeFileWriteStream: (streamId: string) => Promise<void>
+    cancelFileStream: (streamId: string) => void
+    onFileChunk: (callback: (event: SftpFileChunkEvent) => void) => Unsubscribe
+    onFileStreamState: (callback: (event: SftpFileStreamStateEvent) => void) => Unsubscribe
     mkdir: (sessionId: string, path: string, name: string) => Promise<void>
     rename: (sessionId: string, path: string, newName: string) => Promise<void>
     move: (sessionId: string, sourcePath: string, destinationDirPath: string) => Promise<void>

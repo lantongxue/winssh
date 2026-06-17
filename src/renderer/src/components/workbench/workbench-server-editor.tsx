@@ -360,7 +360,6 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   const ConnectIcon = actionIcons.connect
   const DiscardIcon = actionIcons.discard
   const BrowseIcon = actionIcons.browse
-  const FavoriteIcon = actionIcons.star
   const UploadIcon = actionIcons.upload
   const RemoveIcon = actionIcons.delete
 
@@ -1062,32 +1061,209 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                 )}
               />
             </div>
-            <FormField
-              control={form.control}
-              name="favorite"
-              render={({ field }) => (
-                <FormItem className="mt-5 flex items-center justify-between rounded-sm border border-[var(--workbench-border)] px-4 py-3">
-                  <div>
-                    <div className="flex items-center gap-2 font-medium">
-                      <FavoriteIcon className="size-4 text-amber-400" />
-                      {t('workbench.serverEditor.fields.favoriteTitle')}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {t('workbench.serverEditor.fields.favoriteDescription')}
-                    </div>
-                  </div>
-                  <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+            <div className="mt-6 border-t border-[var(--workbench-border)] pt-5">
+              <div className="mb-4 flex items-center gap-2 text-base font-semibold">
+                {isPrivateKeyAuth ? (
+                  <KeyRound className="size-4 text-primary" />
+                ) : (
+                  <LockKeyhole className="size-4 text-primary" />
+                )}
+                {t('workbench.serverEditor.sections.credentials')}
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="authType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('workbench.serverEditor.fields.authType')}</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="password">
+                            {t('workbench.serverEditor.auth.password')}
+                          </SelectItem>
+                          <SelectItem value="privateKey">
+                            {t('workbench.serverEditor.auth.privateKey')}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="credentialId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-1.5">
+                        <ShieldCheck className="size-3.5 text-muted-foreground" />
+                        {t('workbench.serverEditor.fields.credential')}
+                      </FormLabel>
+                      <Select
+                        value={field.value ?? '__none__'}
+                        onValueChange={(value) => {
+                          field.onChange(value === '__none__' ? null : value)
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder={t('workbench.serverEditor.placeholders.credential')}
+                            />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="__none__">
+                            {t('workbench.serverEditor.placeholders.credential')}
+                          </SelectItem>
+                          {credentials.map((credential: Credential) => (
+                            <SelectItem key={credential.id} value={credential.id}>
+                              <div className="flex items-center gap-2">
+                                {credential.kind === 'password' ? (
+                                  <LockKeyhole className="size-3.5 text-blue-500" />
+                                ) : (
+                                  <KeyRound className="size-3.5 text-amber-500" />
+                                )}
+                                <span>{credential.name}</span>
+                                {credential.username ? (
+                                  <span className="text-muted-foreground text-xs">
+                                    ({credential.username})
+                                  </span>
+                                ) : null}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="mt-4 space-y-4">
+                {isPrivateKeyAuth ? (
+                  <FormField
+                    control={form.control}
+                    name="privateKey"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <FormLabel className="leading-none">
+                            {t('workbench.serverEditor.fields.privateKeyFile')}
+                          </FormLabel>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full sm:w-auto"
+                            onClick={async () => {
+                              const privateKey = await systemClient.pickPrivateKey()
+                              if (privateKey) {
+                                form.setValue('privateKey', privateKey, {
+                                  shouldDirty: true,
+                                  shouldValidate: true
+                                })
+                              }
+                            }}
+                          >
+                            <BrowseIcon className="size-4" />
+                            {t('common.actions.browse')}
+                          </Button>
+                        </div>
+                        <FormControl>
+                          <Textarea
+                            {...field}
+                            value={field.value ?? ''}
+                            rows={6}
+                            className="field-sizing-fixed min-h-[8rem] resize-y font-mono text-xs leading-5"
+                            placeholder={t('workbench.serverEditor.placeholders.privateKeyFile')}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : null}
+                <FormField
+                  control={form.control}
+                  name={isPrivateKeyAuth ? 'passphrase' : 'password'}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{credentialLabel}</FormLabel>
+                      <div className="relative">
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type={secretVisible ? 'text' : 'password'}
+                            className="pr-11"
+                            placeholder={t(
+                              isPrivateKeyAuth
+                                ? 'workbench.serverEditor.placeholders.privateKeySecret'
+                                : 'workbench.serverEditor.placeholders.savedPassword'
+                            )}
+                          />
+                        </FormControl>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground"
+                          aria-label={toggleSecretLabel}
+                          aria-pressed={secretVisible}
+                          title={toggleSecretLabel}
+                          onClick={() => setSecretVisible((visible) => !visible)}
+                        >
+                          <SecretToggleIcon className="size-4" />
+                        </Button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name={isPrivateKeyAuth ? 'rememberPassphrase' : 'rememberPassword'}
+                  render={({ field }) => (
+                    <FormItem className="rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-panel)]/35 px-4 py-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="space-y-1">
+                          <div className="font-medium leading-none">{rememberLabel}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {credentialStorageAvailable
+                              ? t('workbench.serverEditor.systemKeychain.available')
+                              : t('workbench.serverEditor.systemKeychain.unavailable')}
+                          </div>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value && credentialStorageAvailable}
+                            disabled={!credentialStorageAvailable}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="border border-[var(--workbench-border)] px-6 py-5">
             <FormField
               control={form.control}
               name="captureCommandHistory"
               render={({ field }) => (
-                <FormItem className="mt-3 rounded-sm border border-[var(--workbench-border)] p-4 space-y-4">
-                  <div className="flex items-center justify-between">
+                <FormItem className="space-y-4">
+                  <div className="flex items-center justify-between gap-4">
                     <div>
                       <div className="font-medium">
                         {t('workbench.commandHistory.enableForServer')}
@@ -1101,14 +1277,14 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                     </FormControl>
                   </div>
                   {field.value !== false && (
-                    <div className="space-y-2 pt-3 border-t border-[var(--workbench-border)]">
-                      <div className="text-sm text-amber-600 dark:text-amber-500 font-medium">
+                    <div className="space-y-2 border-t border-[var(--workbench-border)] pt-3">
+                      <div className="text-sm font-medium text-amber-600 dark:text-amber-500">
                         {t('workbench.commandHistory.injectionWarning')}
                       </div>
                       {shellScriptQuery.data ? (
                         <ShellCodeHighlight code={shellScriptQuery.data} />
                       ) : (
-                        <div className="text-xs text-muted-foreground animate-pulse">
+                        <div className="animate-pulse text-xs text-muted-foreground">
                           Loading...
                         </div>
                       )}
@@ -1117,201 +1293,6 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                 </FormItem>
               )}
             />
-          </section>
-
-          <section className="border border-[var(--workbench-border)] px-6 py-5">
-            <div className="mb-4 flex items-center gap-2 text-base font-semibold">
-              {isPrivateKeyAuth ? (
-                <KeyRound className="size-4 text-primary" />
-              ) : (
-                <LockKeyhole className="size-4 text-primary" />
-              )}
-              {t('workbench.serverEditor.sections.credentials')}
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="authType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('workbench.serverEditor.fields.authType')}</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="password">
-                          {t('workbench.serverEditor.auth.password')}
-                        </SelectItem>
-                        <SelectItem value="privateKey">
-                          {t('workbench.serverEditor.auth.privateKey')}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="credentialId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-1.5">
-                      <ShieldCheck className="size-3.5 text-muted-foreground" />
-                      {t('workbench.serverEditor.fields.credential')}
-                    </FormLabel>
-                    <Select
-                      value={field.value ?? '__none__'}
-                      onValueChange={(value) => {
-                        field.onChange(value === '__none__' ? null : value)
-                      }}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue
-                            placeholder={t('workbench.serverEditor.placeholders.credential')}
-                          />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="__none__">
-                          {t('workbench.serverEditor.placeholders.credential')}
-                        </SelectItem>
-                        {credentials.map((credential: Credential) => (
-                          <SelectItem key={credential.id} value={credential.id}>
-                            <div className="flex items-center gap-2">
-                              {credential.kind === 'password' ? (
-                                <LockKeyhole className="size-3.5 text-blue-500" />
-                              ) : (
-                                <KeyRound className="size-3.5 text-amber-500" />
-                              )}
-                              <span>{credential.name}</span>
-                              {credential.username ? (
-                                <span className="text-muted-foreground text-xs">
-                                  ({credential.username})
-                                </span>
-                              ) : null}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="mt-4 space-y-4">
-              {isPrivateKeyAuth ? (
-                <FormField
-                  control={form.control}
-                  name="privateKey"
-                  render={({ field }) => (
-                    <FormItem>
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <FormLabel className="leading-none">
-                          {t('workbench.serverEditor.fields.privateKeyFile')}
-                        </FormLabel>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="w-full sm:w-auto"
-                          onClick={async () => {
-                            const privateKey = await systemClient.pickPrivateKey()
-                            if (privateKey) {
-                              form.setValue('privateKey', privateKey, {
-                                shouldDirty: true,
-                                shouldValidate: true
-                              })
-                            }
-                          }}
-                        >
-                          <BrowseIcon className="size-4" />
-                          {t('common.actions.browse')}
-                        </Button>
-                      </div>
-                      <FormControl>
-                        <Textarea
-                          {...field}
-                          value={field.value ?? ''}
-                          rows={6}
-                          className="field-sizing-fixed min-h-[8rem] resize-y font-mono text-xs leading-5"
-                          placeholder={t('workbench.serverEditor.placeholders.privateKeyFile')}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              ) : null}
-              <FormField
-                control={form.control}
-                name={isPrivateKeyAuth ? 'passphrase' : 'password'}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{credentialLabel}</FormLabel>
-                    <div className="relative">
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type={secretVisible ? 'text' : 'password'}
-                          className="pr-11"
-                          placeholder={t(
-                            isPrivateKeyAuth
-                              ? 'workbench.serverEditor.placeholders.privateKeySecret'
-                              : 'workbench.serverEditor.placeholders.savedPassword'
-                          )}
-                        />
-                      </FormControl>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-xs"
-                        className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground"
-                        aria-label={toggleSecretLabel}
-                        aria-pressed={secretVisible}
-                        title={toggleSecretLabel}
-                        onClick={() => setSecretVisible((visible) => !visible)}
-                      >
-                        <SecretToggleIcon className="size-4" />
-                      </Button>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name={isPrivateKeyAuth ? 'rememberPassphrase' : 'rememberPassword'}
-                render={({ field }) => (
-                  <FormItem className="rounded-md border border-[var(--workbench-border)] bg-[var(--workbench-panel)]/35 px-4 py-3">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="space-y-1">
-                        <div className="font-medium leading-none">{rememberLabel}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {credentialStorageAvailable
-                            ? t('workbench.serverEditor.systemKeychain.available')
-                            : t('workbench.serverEditor.systemKeychain.unavailable')}
-                        </div>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value && credentialStorageAvailable}
-                          disabled={!credentialStorageAvailable}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </div>
-                  </FormItem>
-                )}
-              />
-            </div>
           </section>
 
           <section className="border border-[var(--workbench-border)] px-6 py-5">

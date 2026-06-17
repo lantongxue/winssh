@@ -19,6 +19,11 @@ export interface SessionTab extends SessionSummary {
   terminalCwd?: string
 }
 
+export interface TerminalHealthState {
+  degradedReason?: string
+  backpressureCount: number
+}
+
 export interface PendingSessionInput {
   connectionPhase?: SessionConnectionPhase
   host: string
@@ -32,6 +37,7 @@ export interface PendingSessionInput {
 interface SessionsState {
   tabs: SessionTab[]
   activeSessionId: string | null
+  terminalHealth: Record<string, TerminalHealthState>
   addSession: (summary: SessionSummary) => void
   addPendingSession: (session: PendingSessionInput) => void
   replaceSession: (oldSessionId: string, summary: SessionSummary) => void
@@ -48,6 +54,8 @@ interface SessionsState {
   updateSessionState: (event: SessionStateEvent) => void
   setCurrentPath: (sessionId: string, path: string) => void
   setTerminalCwd: (sessionId: string, cwd: string) => void
+  markTerminalDegraded: (sessionId: string, reason: string) => void
+  markTerminalBackpressure: (sessionId: string) => void
   requestTerminalFocus: (sessionId: string) => void
   clear: () => void
 }
@@ -75,6 +83,7 @@ function setStatus(
 export const useSessionsStore = create<SessionsState>((set) => ({
   tabs: [],
   activeSessionId: null,
+  terminalHealth: {},
   addSession: (summary) =>
     set((state) => {
       const existing = state.tabs.some((tab) => tab.sessionId === summary.sessionId)
@@ -186,6 +195,26 @@ export const useSessionsStore = create<SessionsState>((set) => ({
     set((state) => ({
       tabs: state.tabs.map((t) => (t.sessionId === sessionId ? { ...t, terminalCwd: cwd } : t))
     })),
+  markTerminalDegraded: (sessionId, reason) =>
+    set((state) => ({
+      terminalHealth: {
+        ...state.terminalHealth,
+        [sessionId]: {
+          backpressureCount: state.terminalHealth[sessionId]?.backpressureCount ?? 0,
+          degradedReason: reason
+        }
+      }
+    })),
+  markTerminalBackpressure: (sessionId) =>
+    set((state) => ({
+      terminalHealth: {
+        ...state.terminalHealth,
+        [sessionId]: {
+          ...state.terminalHealth[sessionId],
+          backpressureCount: (state.terminalHealth[sessionId]?.backpressureCount ?? 0) + 1
+        }
+      }
+    })),
   requestTerminalFocus: (sessionId) =>
     set((state) => ({
       tabs: state.tabs.map((tab) =>
@@ -195,6 +224,7 @@ export const useSessionsStore = create<SessionsState>((set) => ({
   clear: () =>
     set({
       tabs: [],
-      activeSessionId: null
+      activeSessionId: null,
+      terminalHealth: {}
     })
 }))

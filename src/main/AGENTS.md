@@ -44,7 +44,7 @@ src/main/
 | Add IPC handler              | application service + matching ipc/register-\*                              | Handler delegates to app service, not manager directly |
 | Add server DB column         | database.ts + servers-application-service.ts + shared/validation.ts         | Cross-cutting: schema, row mapping, saveServer(), Zod  |
 | Modify SSH connection flow   | session-manager.ts establishConnection() + bindRuntimeClient()              | ssh2 callback-to-Promise wrapping pattern throughout   |
-| Add SFTP operation           | session-manager.ts + sessions-application-service.ts + ipc/register-session | SFTP text-only — readFile/writeFile are string APIs    |
+| Add SFTP operation           | session-manager.ts + sessions-application-service.ts + ipc/register-session | Text-only editor file streams: `openFileReadStream`/`openFileWriteStream`/`writeFileChunk`/`closeFileWriteStream`/`cancelFileStream` |
 | Add port forward type        | session-manager.ts + sessions-application-service.ts                        | Session-scoped memory only, no DB persistence          |
 | Add theme pack feature       | theme-registry.ts + themes/builtin/                                         | JSON theme packs, not CSS                              |
 | Modify backup/restore        | webdav-backup-service.ts                                                    | Restore triggers system:relaunch — app exits           |
@@ -68,4 +68,4 @@ src/main/
 - **DO NOT** assume app continues after backup restore — triggers `system:relaunch`
 - **DO NOT** modify `index.ts` for feature work — all wiring is in `bootstrap.ts`
 - **DO NOT** use `console.log` — use `createLogger()` from `observability.ts`
-- **DO NOT** add binary SFTP support — `readFile/writeFile` API contract is string-only
+- **DO NOT** add binary/large-file SFTP editor support — `openFileReadStream`/`openFileWriteStream`/`writeFileChunk`/`closeFileWriteStream`/`cancelFileStream` stay text-only

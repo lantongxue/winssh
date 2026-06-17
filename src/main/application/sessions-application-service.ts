@@ -8,13 +8,13 @@ import type {
 } from '@shared/types'
 import type { LocalTerminalManager } from '../local-terminal-manager'
 import { createLogger, createOperationContext } from '../observability'
-import type { SessionManager } from '../session-manager'
+import type { SessionRuntime } from '../services/session-runtime'
 
 export class SessionsApplicationService {
   private readonly logger = createLogger('main')
 
   constructor(
-    private readonly sessionManager: SessionManager,
+    private readonly sessionRuntime: SessionRuntime,
     private readonly localTerminalManager: LocalTerminalManager
   ) {}
 
@@ -24,107 +24,119 @@ export class SessionsApplicationService {
       sessionId: request.sessionId
     })
     this.logger.info('Connecting session', { context })
-    return this.sessionManager.connect(request)
+    return this.sessionRuntime.connect(request)
   }
 
   disconnect(sessionId: string) {
     const context = createOperationContext('main', 'sessions', 'disconnect', { sessionId })
     this.logger.info('Disconnecting session', { context })
-    return this.sessionManager.disconnect(sessionId)
+    return this.sessionRuntime.disconnect(sessionId)
   }
 
   reconnect(sessionId: string): Promise<SessionSummary> {
     const context = createOperationContext('main', 'sessions', 'reconnect', { sessionId })
     this.logger.info('Reconnecting session', { context })
-    return this.sessionManager.reconnect(sessionId)
+    return this.sessionRuntime.reconnect(sessionId)
   }
 
   getResourceSnapshot(sessionId: string): Promise<SessionResourceSnapshot> {
-    return this.sessionManager.getResourceSnapshot(sessionId)
+    return this.sessionRuntime.getResourceSnapshot(sessionId)
   }
 
   write(sessionId: string, data: string): void {
-    this.sessionManager.write(sessionId, data)
+    this.sessionRuntime.write(sessionId, data)
   }
 
   resize(sessionId: string, columns: number, rows: number) {
-    return this.sessionManager.resize(sessionId, columns, rows)
+    return this.sessionRuntime.resize(sessionId, columns, rows)
   }
 
   listDirectory(sessionId: string, remotePath: string) {
-    return this.sessionManager.listDirectory(sessionId, remotePath)
+    return this.sessionRuntime.listDirectory(sessionId, remotePath)
   }
 
   createFile(sessionId: string, remotePath: string, name: string) {
-    return this.sessionManager.createFile(sessionId, remotePath, name)
+    return this.sessionRuntime.createFile(sessionId, remotePath, name)
   }
 
-  readFile(sessionId: string, remotePath: string) {
-    return this.sessionManager.readFile(sessionId, remotePath)
+  openFileReadStream(sessionId: string, remotePath: string) {
+    return this.sessionRuntime.openFileReadStream(sessionId, remotePath)
   }
 
-  cancelReadFile(sessionId: string, remotePath: string): void {
-    this.sessionManager.cancelReadFile(sessionId, remotePath)
+  startFileReadStream(streamId: string): void {
+    this.sessionRuntime.startFileReadStream(streamId)
   }
 
-  writeFile(sessionId: string, remotePath: string, contents: string, encoding?: string) {
-    return this.sessionManager.writeFile(sessionId, remotePath, contents, encoding)
+  openFileWriteStream(sessionId: string, remotePath: string, encoding: string) {
+    return this.sessionRuntime.openFileWriteStream(sessionId, remotePath, encoding)
+  }
+
+  writeFileChunk(streamId: string, chunk: string) {
+    return this.sessionRuntime.writeFileChunk(streamId, chunk)
+  }
+
+  closeFileWriteStream(streamId: string) {
+    return this.sessionRuntime.closeFileWriteStream(streamId)
+  }
+
+  cancelFileStream(streamId: string): void {
+    this.sessionRuntime.cancelFileStream(streamId)
   }
 
   makeDirectory(sessionId: string, remotePath: string, name: string) {
-    return this.sessionManager.makeDirectory(sessionId, remotePath, name)
+    return this.sessionRuntime.makeDirectory(sessionId, remotePath, name)
   }
 
   rename(sessionId: string, remotePath: string, newName: string) {
-    return this.sessionManager.rename(sessionId, remotePath, newName)
+    return this.sessionRuntime.rename(sessionId, remotePath, newName)
   }
 
   move(sessionId: string, sourcePath: string, destinationDirPath: string) {
-    return this.sessionManager.move(sessionId, sourcePath, destinationDirPath)
+    return this.sessionRuntime.move(sessionId, sourcePath, destinationDirPath)
   }
 
   remove(sessionId: string, remotePath: string) {
-    return this.sessionManager.remove(sessionId, remotePath)
+    return this.sessionRuntime.remove(sessionId, remotePath)
   }
 
   uploadFiles(sessionId: string, targetPath: string) {
-    return this.sessionManager.uploadFiles(sessionId, targetPath)
+    return this.sessionRuntime.uploadFiles(sessionId, targetPath)
   }
 
   uploadPaths(sessionId: string, targetPath: string, localPaths: string[]) {
-    return this.sessionManager.uploadPaths(sessionId, targetPath, localPaths)
+    return this.sessionRuntime.uploadPaths(sessionId, targetPath, localPaths)
   }
 
   downloadFile(sessionId: string, remotePath: string) {
-    return this.sessionManager.downloadFile(sessionId, remotePath)
+    return this.sessionRuntime.downloadFile(sessionId, remotePath)
   }
 
   cancelTransfer(batchId: string) {
-    this.sessionManager.cancelTransfer(batchId)
+    this.sessionRuntime.cancelTransfer(batchId)
   }
 
   cancelAllTransfers() {
-    this.sessionManager.cancelAllTransfers()
+    this.sessionRuntime.cancelAllTransfers()
   }
 
   listPortForwards(sessionId: string) {
-    return this.sessionManager.listPortForwards(sessionId)
+    return this.sessionRuntime.listPortForwards(sessionId)
   }
 
   createPortForward(sessionId: string, input: PortForwardInput) {
-    return this.sessionManager.createPortForward(sessionId, input)
+    return this.sessionRuntime.createPortForward(sessionId, input)
   }
 
   startPortForward(sessionId: string, ruleId: string) {
-    return this.sessionManager.startPortForward(sessionId, ruleId)
+    return this.sessionRuntime.startPortForward(sessionId, ruleId)
   }
 
   stopPortForward(sessionId: string, ruleId: string) {
-    return this.sessionManager.stopPortForward(sessionId, ruleId)
+    return this.sessionRuntime.stopPortForward(sessionId, ruleId)
   }
 
   removePortForward(sessionId: string, ruleId: string) {
-    return this.sessionManager.removePortForward(sessionId, ruleId)
+    return this.sessionRuntime.removePortForward(sessionId, ruleId)
   }
 
   createLocalTerminal() {
@@ -144,6 +156,6 @@ export class SessionsApplicationService {
   }
 
   resolveHostTrust(result: HostTrustResult): void {
-    this.sessionManager.resolveHostTrust(result)
+    this.sessionRuntime.resolveHostTrust(result)
   }
 }

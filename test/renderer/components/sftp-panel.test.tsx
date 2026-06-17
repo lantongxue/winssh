@@ -832,7 +832,9 @@ describe('SftpPanel', () => {
     fireEvent.click(followButton)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Stop Following Terminal Directory' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'Stop Following Terminal Directory' })
+      ).toBeInTheDocument()
     })
 
     act(() => {

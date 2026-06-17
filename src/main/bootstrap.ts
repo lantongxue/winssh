@@ -1,5 +1,12 @@
 import { join } from 'node:path'
-import { app, BrowserWindow, nativeTheme, shell, type TitleBarOverlayOptions } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  nativeTheme,
+  session as electronSession,
+  shell,
+  type TitleBarOverlayOptions
+} from 'electron'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { APP_ID, APP_NAME } from '@shared/constants'
@@ -8,6 +15,8 @@ import type { AppSettings } from '@shared/types'
 import { createAppInfo } from './app-info'
 import { setupAppFocusAndActivityListeners } from './app-focus-activity'
 import { syncApplicationMenu } from './app-menu'
+export { createCrossOriginIsolationHeaders } from './cross-origin-isolation'
+import { registerCrossOriginIsolationHeaders } from './cross-origin-isolation'
 import { DatabaseService } from './database'
 import { LocalTerminalManager } from './local-terminal-manager'
 import { LogFileService } from './log-file-service'
@@ -24,6 +33,10 @@ import { registerCustomCommandIpc } from './ipc/register-custom-command-ipc'
 import { registerSftpBookmarkIpc } from './ipc/register-sftp-bookmark-ipc'
 import { SecureStoreService } from './secure-store'
 import { SessionManager } from './session-manager'
+import { HostTrustService } from './services/host-trust-service'
+import { LegacySessionRuntime } from './services/legacy-session-runtime'
+import { SshDataAggregator } from './services/ssh-data-aggregator'
+import { WorkerSessionRuntime } from './services/worker-session-runtime'
 import { ThemeRegistry } from './theme-registry'
 import { UpdateService } from './update-service'
 import { WebDAVBackupService } from './webdav-backup-service'
@@ -216,6 +229,7 @@ async function migrateKeychainSecretsToDatabase(
 export async function bootstrap(): Promise<void> {
   const logger = createLogger('main')
   electronApp.setAppUserModelId(APP_ID)
+  registerCrossOriginIsolationHeaders(electronSession.defaultSession)
 
   const database = new DatabaseService(join(app.getPath('userData'), 'winssh.db'))
   const themeRegistry = new ThemeRegistry(
@@ -250,6 +264,31 @@ export async function bootstrap(): Promise<void> {
     },
     translate
   )
+  const legacySessionRuntime = new LegacySessionRuntime(sessionManager)
+  const hostTrustService = new HostTrustService({ database, getWindow: () => mainWindow })
+  const sshDataAggregator = new SshDataAggregator({
+    sendLegacyData: (_sessionId, payload) => {
+      mainWindow?.webContents.send('sessions:data', payload)
+    },
+    onBackpressure: (payload) => {
+      mainWindow?.webContents.send('terminal:backpressure', payload)
+    }
+  })
+  const useWorkerTerminal =
+    process.env['WINSSH_WORKER_TERMINAL'] === '1' &&
+    process.env['WINSSH_LEGACY_TERMINAL'] !== '1'
+  const sessionRuntime = useWorkerTerminal
+    ? new WorkerSessionRuntime({
+        database,
+        hostTrustService,
+        legacyRuntime: legacySessionRuntime,
+        dataAggregator: sshDataAggregator,
+        sendToRenderer: (channel, payload) => {
+          mainWindow?.webContents.send(channel, payload)
+        },
+        translate
+      })
+    : legacySessionRuntime
   const localTerminalManager = new LocalTerminalManager(
     (channel, payload) => {
       mainWindow?.webContents.send(channel, payload)
@@ -266,7 +305,7 @@ export async function bootstrap(): Promise<void> {
   })
 
   const serversService = new ServersApplicationService(database, secureStore)
-  const sessionsService = new SessionsApplicationService(sessionManager, localTerminalManager)
+  const sessionsService = new SessionsApplicationService(sessionRuntime, localTerminalManager)
   const settingsService = new SettingsApplicationService(
     database,
     themeRegistry,
@@ -302,7 +341,7 @@ export async function bootstrap(): Promise<void> {
     database,
     serversService
   })
-  registerSessionIpc(sessionsService)
+  registerSessionIpc(sessionsService, sshDataAggregator)
   registerCommandHistoryIpc(database)
   registerCustomCommandIpc(database)
   registerSftpBookmarkIpc(database)
@@ -353,7 +392,8 @@ export async function bootstrap(): Promise<void> {
     logger.info('Disposing application services')
     webdavBackupService.dispose()
     localTerminalManager.dispose()
-    sessionManager.dispose()
+    sessionRuntime.dispose()
+    sshDataAggregator.dispose()
     database.close()
   })
 }

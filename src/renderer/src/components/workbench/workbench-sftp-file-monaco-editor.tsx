@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent
+} from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
 import 'monaco-editor/esm/vs/editor/editor.all.js'
@@ -39,6 +46,12 @@ import { settingsClient } from '@/features/settings/api/settings-client'
 import { sftpClient } from '@/features/sftp/api/sftp-client'
 import { themesClient } from '@/features/themes/api/themes-client'
 import { usePrefersDark } from '@/hooks/use-prefers-dark'
+import {
+  getKeyboardFontZoomAction,
+  getWheelFontZoomDelta,
+  resolveTemporaryFontSize,
+  type FontZoomKeyboardAction
+} from '@/lib/font-zoom'
 import { getTerminalFontStack, loadTerminalFontStack } from '@/lib/integrated-font-loader'
 import { resolveTerminalAppearance, resolveThemeDefinition } from '@/lib/theme'
 import type { SftpFileEditorDocument } from '@/lib/workbench'
@@ -48,6 +61,20 @@ import { getRemoteFileLanguage, getRemoteFileName } from '@/lib/remote-file-lang
 import { Button } from '@/components/ui/button'
 import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
+
+const SFTP_FILE_SAVE_CHUNK_SIZE = 64 * 1024
+
+function getSftpFileSaveChunkEnd(contents: string, offset: number): number {
+  let end = Math.min(offset + SFTP_FILE_SAVE_CHUNK_SIZE, contents.length)
+  if (end < contents.length && end > offset) {
+    const lastCodeUnit = contents.charCodeAt(end - 1)
+    if (lastCodeUnit >= 0xd800 && lastCodeUnit <= 0xdbff) {
+      end -= 1
+    }
+  }
+
+  return end
+}
 
 type MonacoEnvironmentTarget = typeof globalThis & {
   MonacoEnvironment?: {
@@ -207,6 +234,24 @@ interface WorkbenchSftpFileMonacoEditorProps {
   document: SftpFileEditorDocument
 }
 
+type FileLoadState = 'idle' | 'loading' | 'ready' | 'error'
+
+function appendModelText(model: monaco.editor.ITextModel, text: string) {
+  if (!text) {
+    return
+  }
+
+  const lineNumber = model.getLineCount()
+  const column = model.getLineMaxColumn(lineNumber)
+  model.applyEdits([
+    {
+      range: new monaco.Range(lineNumber, column, lineNumber, column),
+      text,
+      forceMoveMarkers: true
+    }
+  ])
+}
+
 export function WorkbenchSftpFileMonacoEditor({
   active = true,
   document
@@ -214,12 +259,20 @@ export function WorkbenchSftpFileMonacoEditor({
   const { t } = useTranslation()
   const prefersDark = usePrefersDark()
   const queryClient = useQueryClient()
+  const editorSurfaceRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const modelRef = useRef<monaco.editor.ITextModel | null>(null)
+  const activeReadStreamIdRef = useRef<string | null>(null)
+  const isApplyingRemoteContentRef = useRef(false)
+  const loadedChunksRef = useRef<string[]>([])
+  const readRequestIdRef = useRef(0)
   const [editorContent, setEditorContent] = useState('')
   const [savedContent, setSavedContent] = useState('')
   const [fileEncoding, setFileEncoding] = useState('utf8')
+  const [loadState, setLoadState] = useState<FileLoadState>('idle')
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [fontZoomOffset, setFontZoomOffset] = useState(0)
   const settingsQuery = useQuery({
     queryKey: queryKeys.settings,
     queryFn: () => settingsClient.get(),
@@ -229,15 +282,27 @@ export function WorkbenchSftpFileMonacoEditor({
     queryKey: queryKeys.themes,
     queryFn: () => themesClient.list()
   })
-  const fileQueryKey = queryKeys.sftpFile(document.sessionId, document.remotePath)
-  const fileQuery = useQuery({
-    queryKey: fileQueryKey,
-    queryFn: () => sftpClient.readFile(document.sessionId, document.remotePath),
-    refetchOnWindowFocus: false
-  })
   const saveMutation = useMutation({
-    mutationFn: ({ contents, encoding }: { contents: string; encoding: string }) =>
-      sftpClient.writeFile(document.sessionId, document.remotePath, contents, encoding)
+    mutationFn: async ({ contents, encoding }: { contents: string; encoding: string }) => {
+      const stream = await sftpClient.openFileWriteStream(
+        document.sessionId,
+        document.remotePath,
+        encoding
+      )
+
+      try {
+        for (let offset = 0; offset < contents.length; ) {
+          const end = getSftpFileSaveChunkEnd(contents, offset)
+          await sftpClient.writeFileChunk(stream.streamId, contents.slice(offset, end))
+          offset = end
+        }
+
+        await sftpClient.closeFileWriteStream(stream.streamId)
+      } catch (error) {
+        sftpClient.cancelFileStream(stream.streamId)
+        throw error
+      }
+    }
   })
   const closeDocument = useWorkbenchStore((state) => state.closeDocument)
   const resolvedTheme = resolveThemeDefinition(
@@ -251,6 +316,7 @@ export function WorkbenchSftpFileMonacoEditor({
         fontId: settingsQuery.data.terminalFontId,
         fontSize: settingsQuery.data.terminalFontSize
       }
+  const temporaryFontSize = resolveTemporaryFontSize(terminalAppearance.fontSize, fontZoomOffset)
   const editorFontId = settingsQuery.data.editorFontId ?? terminalAppearance.fontId
   const language = useMemo(() => getRemoteFileLanguage(document.remotePath), [document.remotePath])
   const session = useSessionsStore(
@@ -260,6 +326,65 @@ export function WorkbenchSftpFileMonacoEditor({
   const RefreshIcon = actionIcons.refresh
   const isDirty = editorContent !== savedContent
   const [downloadProgress, setDownloadProgress] = useState<TransferProgressEvent | null>(null)
+
+  const cancelReadStream = useCallback(() => {
+    readRequestIdRef.current += 1
+    loadedChunksRef.current = []
+    const streamId = activeReadStreamIdRef.current
+    if (streamId) {
+      sftpClient.cancelFileStream(streamId)
+      activeReadStreamIdRef.current = null
+    }
+  }, [])
+
+  const startReadStream = useCallback(async () => {
+    const model = modelRef.current
+    if (!model) {
+      return
+    }
+
+    cancelReadStream()
+
+    const requestId = readRequestIdRef.current + 1
+    readRequestIdRef.current = requestId
+    activeReadStreamIdRef.current = null
+    loadedChunksRef.current = []
+    setLoadState('loading')
+    setLoadError(null)
+    setDownloadProgress(null)
+    setEditorContent('')
+    setSavedContent('')
+    isApplyingRemoteContentRef.current = true
+    try {
+      model.setValue('')
+    } finally {
+      isApplyingRemoteContentRef.current = false
+    }
+
+    try {
+      const stream = await sftpClient.openFileReadStream(document.sessionId, document.remotePath)
+
+      if (readRequestIdRef.current !== requestId) {
+        sftpClient.cancelFileStream(stream.streamId)
+        return
+      }
+
+      activeReadStreamIdRef.current = stream.streamId
+      setFileEncoding(stream.encoding)
+      sftpClient.startFileReadStream(stream.streamId)
+    } catch (error) {
+      if (readRequestIdRef.current !== requestId) {
+        return
+      }
+
+      activeReadStreamIdRef.current = null
+      loadedChunksRef.current = []
+      setLoadState('error')
+      setLoadError(
+        error instanceof Error ? error.message : t('workbench.sftpFileEditor.empty.description')
+      )
+    }
+  }, [document.remotePath, document.sessionId, t])
 
   const isEditorTransfer = useCallback(
     (event: TransferProgressEvent) =>
@@ -286,10 +411,82 @@ export function WorkbenchSftpFileMonacoEditor({
   }, [isEditorTransfer])
 
   useEffect(() => {
+    const unsubscribeChunk = sftpClient.onFileChunk((event) => {
+      if (
+        event.streamId !== activeReadStreamIdRef.current ||
+        event.sessionId !== document.sessionId ||
+        event.remotePath !== document.remotePath
+      ) {
+        return
+      }
+
+      loadedChunksRef.current.push(event.chunk)
+      if (modelRef.current) {
+        isApplyingRemoteContentRef.current = true
+        try {
+          appendModelText(modelRef.current, event.chunk)
+        } finally {
+          isApplyingRemoteContentRef.current = false
+        }
+      }
+    })
+
+    const unsubscribeState = sftpClient.onFileStreamState((event) => {
+      if (
+        event.streamId !== activeReadStreamIdRef.current ||
+        event.sessionId !== document.sessionId ||
+        event.remotePath !== document.remotePath ||
+        event.direction !== 'download'
+      ) {
+        return
+      }
+
+      if (event.encoding) {
+        setFileEncoding(event.encoding)
+      }
+
+      if (event.status === 'running') {
+        setDownloadProgress({
+          fileName: getRemoteFileName(event.remotePath),
+          localPath: '__editor__',
+          remotePath: event.remotePath,
+          sessionId: event.sessionId,
+          direction: 'download',
+          status: 'running',
+          total: event.total,
+          transferred: event.transferred,
+          correlationId: event.correlationId,
+          source: event.source,
+          timestamp: event.timestamp
+        })
+        return
+      }
+
+      activeReadStreamIdRef.current = null
+      setDownloadProgress(null)
+
+      if (event.status === 'completed') {
+        const loadedContent = loadedChunksRef.current.join('')
+        loadedChunksRef.current = []
+        modelRef.current?.detectIndentation?.(true, 4)
+        setEditorContent(loadedContent)
+        setSavedContent(loadedContent)
+        setLoadState('ready')
+        setLoadError(null)
+        return
+      }
+
+      loadedChunksRef.current = []
+      setLoadState('error')
+      setLoadError(event.error ?? t('workbench.sftpFileEditor.empty.description'))
+    })
+
     return () => {
-      sftpClient.cancelReadFile(document.sessionId, document.remotePath)
+      unsubscribeChunk()
+      unsubscribeState()
+      cancelReadStream()
     }
-  }, [document.sessionId, document.remotePath])
+  }, [cancelReadStream, document.remotePath, document.sessionId, t])
 
   useEffect(() => {
     const container = containerRef.current
@@ -310,7 +507,7 @@ export function WorkbenchSftpFileMonacoEditor({
       autoIndent: 'advanced',
       automaticLayout: false,
       fontFamily: getTerminalFontStack(editorFontId),
-      fontSize: terminalAppearance.fontSize,
+      fontSize: temporaryFontSize,
       language,
       minimap: { enabled: false },
       model,
@@ -338,6 +535,10 @@ export function WorkbenchSftpFileMonacoEditor({
       }
     })
     const contentDisposable = editor.onDidChangeModelContent(() => {
+      if (isApplyingRemoteContentRef.current) {
+        return
+      }
+
       setEditorContent(editor.getValue())
     })
     const resizeObserver =
@@ -367,17 +568,12 @@ export function WorkbenchSftpFileMonacoEditor({
   }, [document.id])
 
   useEffect(() => {
-    if (fileQuery.data === undefined || fileQuery.data.cancelled || !modelRef.current) {
+    if (!modelRef.current) {
       return
     }
 
-    const { content, encoding } = fileQuery.data
-    modelRef.current.setValue(content)
-    modelRef.current.detectIndentation?.(true, 4)
-    setEditorContent(content)
-    setSavedContent(content)
-    setFileEncoding(encoding)
-  }, [document.id, fileQuery.data])
+    void startReadStream()
+  }, [document.id, startReadStream])
 
   useEffect(() => {
     if (!modelRef.current) {
@@ -411,14 +607,14 @@ export function WorkbenchSftpFileMonacoEditor({
       monaco.editor.remeasureFonts?.()
       editor.updateOptions({
         fontFamily: getTerminalFontStack(editorFontId),
-        fontSize: terminalAppearance.fontSize
+        fontSize: temporaryFontSize
       })
     })
 
     return () => {
       cancelled = true
     }
-  }, [editorFontId, terminalAppearance.fontSize])
+  }, [editorFontId, temporaryFontSize])
 
   useEffect(() => {
     if (!active) {
@@ -433,7 +629,7 @@ export function WorkbenchSftpFileMonacoEditor({
   }, [active])
 
   const handleSave = async () => {
-    if (fileQuery.isLoading || saveMutation.isPending) {
+    if (loadState !== 'ready' || saveMutation.isPending) {
       return
     }
 
@@ -443,13 +639,79 @@ export function WorkbenchSftpFileMonacoEditor({
       await saveMutation.mutateAsync({ contents: nextContent, encoding: fileEncoding })
       setSavedContent(nextContent)
       setEditorContent(nextContent)
-      queryClient.setQueryData(fileQueryKey, { content: nextContent, encoding: fileEncoding })
       await queryClient.invalidateQueries({ queryKey: ['sftp', document.sessionId] })
       toast.success(t('workbench.sftpFileEditor.toasts.saved'))
     } catch {
       toast.error(t('workbench.sftpFileEditor.toasts.saveFailed'))
     }
   }
+
+  const updateFontZoom = useCallback(
+    (action: FontZoomKeyboardAction) => {
+      if (action === 'reset') {
+        setFontZoomOffset(0)
+        editorRef.current?.updateOptions({ fontSize: terminalAppearance.fontSize })
+        return
+      }
+
+      const delta = action === 'increase' ? 1 : -1
+
+      setFontZoomOffset((currentOffset) => {
+        const currentSize = resolveTemporaryFontSize(terminalAppearance.fontSize, currentOffset)
+        const nextSize = resolveTemporaryFontSize(currentSize, delta)
+
+        editorRef.current?.updateOptions({ fontSize: nextSize })
+
+        return nextSize - terminalAppearance.fontSize
+      })
+    },
+    [terminalAppearance.fontSize]
+  )
+
+  const handleEditorKeyDownCapture = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const fontZoomAction = getKeyboardFontZoomAction(event)
+
+    if (!fontZoomAction) {
+      return
+    }
+
+    event.preventDefault()
+    event.stopPropagation()
+    updateFontZoom(fontZoomAction)
+  }
+
+  const handleEditorWheelZoom = useCallback(
+    (event: WheelEvent) => {
+      if (!(event.ctrlKey || event.metaKey)) {
+        return
+      }
+
+      const delta = getWheelFontZoomDelta(event)
+
+      if (delta === 0) {
+        return
+      }
+
+      event.preventDefault()
+      event.stopPropagation()
+
+      updateFontZoom(delta > 0 ? 'increase' : 'decrease')
+    },
+    [updateFontZoom]
+  )
+
+  useEffect(() => {
+    const surface = editorSurfaceRef.current
+    if (!surface) {
+      return
+    }
+
+    surface.addEventListener('wheel', handleEditorWheelZoom, { capture: true, passive: false })
+
+    return () => {
+      surface.removeEventListener('wheel', handleEditorWheelZoom, { capture: true })
+    }
+  }, [handleEditorWheelZoom])
 
   return (
     <form
@@ -503,8 +765,8 @@ export function WorkbenchSftpFileMonacoEditor({
             type="button"
             variant="ghost"
             size="sm"
-            disabled={fileQuery.isFetching}
-            onClick={() => void fileQuery.refetch()}
+            disabled={loadState === 'loading'}
+            onClick={() => void startReadStream()}
           >
             <RefreshIcon className="size-4" />
             {t('common.actions.refresh')}
@@ -512,7 +774,7 @@ export function WorkbenchSftpFileMonacoEditor({
           <Button
             type="submit"
             size="sm"
-            disabled={!isDirty || fileQuery.isLoading || saveMutation.isPending}
+            disabled={!isDirty || loadState !== 'ready' || saveMutation.isPending}
           >
             {saveMutation.isPending ? (
               <LoaderCircle className="size-4 animate-spin" />
@@ -524,22 +786,26 @@ export function WorkbenchSftpFileMonacoEditor({
         </div>
       </div>
 
-      {fileQuery.isError ? (
+      {loadState === 'error' ? (
         <div className="border-b border-[var(--workbench-border)] bg-[var(--workbench-input)] px-4 py-3">
           <div className="text-sm font-medium text-foreground">
             {t('workbench.sftpFileEditor.empty.title')}
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
-            {fileQuery.error instanceof Error
-              ? fileQuery.error.message
-              : t('workbench.sftpFileEditor.empty.description')}
+            {loadError ?? t('workbench.sftpFileEditor.empty.description')}
           </div>
         </div>
       ) : null}
 
       <div className="min-h-0 flex-1">
-        <div className="relative h-full overflow-hidden bg-[var(--workbench-editor)]">
-          {fileQuery.isLoading ? (
+        <div
+          ref={editorSurfaceRef}
+          className="relative h-full overflow-hidden bg-[var(--workbench-editor)]"
+          data-sftp-editor-surface
+          onKeyDownCapture={handleEditorKeyDownCapture}
+          tabIndex={-1}
+        >
+          {loadState === 'loading' ? (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-[var(--workbench-editor)]">
               {downloadProgress && downloadProgress.total > 0 ? (
                 <div className="flex w-full max-w-sm flex-col items-center gap-4 px-4">
@@ -578,7 +844,7 @@ export function WorkbenchSftpFileMonacoEditor({
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  sftpClient.cancelReadFile(document.sessionId, document.remotePath)
+                  cancelReadStream()
                   closeDocument(document.id)
                 }}
               >

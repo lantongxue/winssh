@@ -20,8 +20,6 @@ export const queryKeys = {
   backupState: ['backup', 'state'] as const,
   portForwards: (sessionId: string) => ['port-forwards', sessionId] as const,
   serverSecrets: (serverId: string) => ['server-secrets', serverId] as const,
-  sftpFile: (sessionId: string, remotePath: string) =>
-    ['sftp', sessionId, 'file', remotePath] as const,
   sftpBookmarks: (serverId: string) => ['sftp-bookmarks', serverId] as const,
   commandHistory: (scope: CommandHistoryScope) =>
     scope.kind === 'ssh'
