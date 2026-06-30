@@ -124,39 +124,4 @@ describe('ServersApplicationService', () => {
     expect(database.getServerPassphrase).toHaveBeenCalledWith('server-1')
   })
 
-  it('cleans up keychain secrets after creating a server', async () => {
-    const createdServer = createServer()
-    const database = {
-      createServer: vi.fn(() => createdServer),
-      listServers: vi.fn(() => [createdServer])
-    } satisfies ServersDatabaseDouble as unknown as ConstructorParameters<
-      typeof ServersApplicationService
-    >[0]
-    const secureStore = {
-      deleteSecret: vi.fn(async () => undefined)
-    } satisfies SecureStoreDouble as unknown as ConstructorParameters<
-      typeof ServersApplicationService
-    >[1]
-
-    const service = new ServersApplicationService(database, secureStore)
-
-    await service.create({
-      authType: 'password',
-      favorite: false,
-      groupId: null,
-      host: 'example.com',
-      jumpServerId: null,
-      name: 'Example',
-      note: '',
-      password: 'top-secret',
-      port: 22,
-      rememberPassphrase: false,
-      rememberPassword: true,
-      tagIds: [],
-      username: 'tester'
-    })
-
-    expect(secureStore.deleteSecret).toHaveBeenCalledWith('server-1', 'password')
-    expect(secureStore.deleteSecret).toHaveBeenCalledWith('server-1', 'passphrase')
-  })
 })

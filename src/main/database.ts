@@ -738,8 +738,8 @@ export class DatabaseService {
     const now = nowIso()
     const existing = this.getServerById(input.id)
     const existingAssets = this.db
-      .prepare('SELECT custom_icon_mime_type, custom_icon FROM servers WHERE id = ?')
-      .get(input.id) as Pick<ServerRow, 'custom_icon_mime_type' | 'custom_icon'> | undefined
+      .prepare('SELECT custom_icon_mime_type, custom_icon, credential_id FROM servers WHERE id = ?')
+      .get(input.id) as Pick<ServerRow, 'custom_icon_mime_type' | 'custom_icon' | 'credential_id'> | undefined
     const customIconMimeType =
       input.customIconMimeType === undefined
         ? (existingAssets?.custom_icon_mime_type ?? null)
@@ -753,6 +753,81 @@ export class DatabaseService {
 
     const transaction = this.db.transaction((payload: ServerUpsertInput & { id: string }) => {
       const captureFlag = payload.captureCommandHistory === false ? 0 : 1
+
+      // Handle "保存到凭据库" (Save to Credential Vault)
+      const shouldSaveToVault = payload.authType === 'password'
+        ? payload.rememberPassword
+        : payload.rememberPassphrase
+
+      let credentialId = payload.credentialId || null
+
+      if (shouldSaveToVault) {
+        // If not explicitly provided but exists on current server record, retrieve it
+        if (!credentialId && existingAssets?.credential_id) {
+          credentialId = existingAssets.credential_id
+        }
+
+        const credKind = payload.authType === 'password' ? 'password' : 'privateKey'
+        const credName = `${payload.name} (${payload.username})`
+
+        if (credentialId) {
+          // Update existing credential row
+          this.db
+            .prepare(
+              `
+                UPDATE credentials
+                SET
+                  name = ?,
+                  kind = ?,
+                  username = ?,
+                  password = ?,
+                  private_key = ?,
+                  passphrase = ?,
+                  updated_at = ?
+                WHERE id = ?
+              `
+            )
+            .run(
+              credName,
+              credKind,
+              payload.username.trim(),
+              payload.authType === 'password' ? (payload.password || null) : null,
+              payload.authType === 'privateKey' ? (payload.privateKey || null) : null,
+              payload.authType === 'privateKey' ? (payload.passphrase || null) : null,
+              now,
+              credentialId
+            )
+        } else {
+          // Create a new credential row
+          credentialId = randomUUID()
+          this.db
+            .prepare(
+              `
+                INSERT INTO credentials (
+                  id, name, kind, username, password, private_key, passphrase, note, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `
+            )
+            .run(
+              credentialId,
+              credName,
+              credKind,
+              payload.username.trim(),
+              payload.authType === 'password' ? (payload.password || null) : null,
+              payload.authType === 'privateKey' ? (payload.privateKey || null) : null,
+              payload.authType === 'privateKey' ? (payload.passphrase || null) : null,
+              null,
+              now,
+              now
+            )
+        }
+      } else {
+        // If "保存到凭据库" is false, and payload.credentialId is null, unlink it.
+        if (!payload.credentialId) {
+          credentialId = null
+        }
+      }
+
       if (existing) {
         this.db
           .prepare(
@@ -790,14 +865,14 @@ export class DatabaseService {
             customIcon,
             payload.privateKey?.trim() ? payload.privateKey : null,
             null,
-            payload.rememberPassword && payload.password ? payload.password : null,
-            payload.rememberPassphrase && payload.passphrase ? payload.passphrase : null,
+            payload.password || null,
+            payload.passphrase || null,
             payload.note?.trim() || null,
             payload.groupId || null,
             payload.jumpServerId || null,
             payload.favorite ? 1 : 0,
             captureFlag,
-            payload.credentialId || null,
+            credentialId,
             now,
             payload.id
           )
@@ -824,14 +899,14 @@ export class DatabaseService {
             customIcon,
             payload.privateKey?.trim() ? payload.privateKey : null,
             null,
-            payload.rememberPassword && payload.password ? payload.password : null,
-            payload.rememberPassphrase && payload.passphrase ? payload.passphrase : null,
+            payload.password || null,
+            payload.passphrase || null,
             payload.note?.trim() || null,
             payload.groupId || null,
             payload.jumpServerId || null,
             payload.favorite ? 1 : 0,
             captureFlag,
-            payload.credentialId || null,
+            credentialId,
             now,
             now,
             null

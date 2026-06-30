@@ -9,7 +9,7 @@ export class ServersApplicationService {
 
   constructor(
     private readonly database: DatabaseService,
-    private readonly secureStore: SecureStoreService
+    _secureStore: SecureStoreService
   ) {}
 
   async listServers() {
@@ -66,7 +66,6 @@ export class ServersApplicationService {
     const context = createOperationContext('main', 'servers', 'create')
     this.logger.info('Creating server', { context, data: { authType: payload.authType } })
     const server = this.database.createServer(payload)
-    await this.cleanupKeychainSecrets(server.id)
     return (await this.listServers()).find((item) => item.id === server.id) ?? server
   }
 
@@ -74,15 +73,12 @@ export class ServersApplicationService {
     const context = createOperationContext('main', 'servers', 'update', { serverId: id })
     this.logger.info('Updating server', { context, data: { authType: payload.authType } })
     this.database.updateServer(id, payload)
-    await this.cleanupKeychainSecrets(id)
     return (await this.listServers()).find((item) => item.id === id) ?? null
   }
 
   async delete(id: string) {
     const context = createOperationContext('main', 'servers', 'delete', { serverId: id })
     this.logger.info('Deleting server', { context })
-    await this.secureStore.deleteSecret(id, 'password')
-    await this.secureStore.deleteSecret(id, 'passphrase')
     this.database.deleteServer(id)
   }
 
@@ -101,15 +97,6 @@ export class ServersApplicationService {
 
   clearRecentSessions() {
     this.database.clearRecentSessions()
-  }
-
-  private async cleanupKeychainSecrets(serverId: string) {
-    try {
-      await this.secureStore.deleteSecret(serverId, 'password')
-      await this.secureStore.deleteSecret(serverId, 'passphrase')
-    } catch (error) {
-      void error
-    }
   }
 
   private async resolveStoredPrivateKey(id: string) {

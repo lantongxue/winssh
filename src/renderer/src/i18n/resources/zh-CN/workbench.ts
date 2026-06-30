@@ -298,8 +298,8 @@ const workbench = {
         passphrase: '私钥口令',
         port: '端口',
         privateKeyFile: '私钥内容',
-        rememberPassphrase: '记住口令',
-        rememberPassword: '记住密码',
+        rememberPassphrase: '保存到凭据库',
+        rememberPassword: '保存到凭据库',
         tagInput: '添加标签',
         tags: '标签',
         username: '用户名'
@@ -338,7 +338,7 @@ const workbench = {
         tags: '标签'
       },
       systemKeychain: {
-        available: '保存到系统钥匙串，后续连接可直接复用。',
+        available: '保存到本地凭据库，后续连接可直接复用。',
         unavailable: '当前环境没有可用的系统钥匙串。'
       },
       toasts: {
@@ -596,8 +596,8 @@ const workbench = {
         }
       },
       security: {
-        available: '当前环境支持系统钥匙串，密码和私钥口令会优先写入系统安全存储。',
-        unavailable: '当前环境未检测到系统钥匙串，应用不会持久化保存密码或私钥口令。'
+        available: '服务器账号与密码已直接保存至内置凭据库中。',
+        unavailable: '服务器账号与密码已直接保存至内置凭据库中。'
       },
       subtitle: '调整主题、语言、终端参数和安全相关设置。',
       title: '设置编辑器',
