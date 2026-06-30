@@ -2,14 +2,12 @@ import { readFile } from 'node:fs/promises'
 import type { ServerUpsertInput } from '@shared/types'
 import type { DatabaseService } from '../database'
 import { createLogger, createOperationContext } from '../observability'
-import type { SecureStoreService } from '../secure-store'
 
 export class ServersApplicationService {
   private readonly logger = createLogger('main')
 
   constructor(
-    private readonly database: DatabaseService,
-    _secureStore: SecureStoreService
+    private readonly database: DatabaseService
   ) {}
 
   async listServers() {

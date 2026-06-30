@@ -3,11 +3,10 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { request as httpRequest } from 'node:http'
 import { request as httpsRequest } from 'node:https'
-import type { SecretKind, WebDAVBackupEntry, WebDAVBackupState } from '@shared/types'
+import type { WebDAVBackupEntry, WebDAVBackupState } from '@shared/types'
 import { createLogger, createOperationContext } from './observability'
 import type { SettingsApplicationService } from './application/settings-application-service'
 import { DatabaseService } from './database'
-import type { SecureStoreService } from './secure-store'
 
 interface WebDAVConfig {
   backupPath: string
@@ -22,8 +21,6 @@ type WebDAVResponse = {
 }
 
 const MAX_WEBDAV_REDIRECTS = 5
-const BACKUP_PASSWORD_ACCOUNT = 'webdav-backup'
-const BACKUP_PASSWORD_KIND: SecretKind = 'password'
 const DIRECTORY_PROPFIND_BODY =
   '<?xml version="1.0" encoding="utf-8"?>' +
   '<D:propfind xmlns:D="DAV:"><D:prop><D:resourcetype/></D:prop></D:propfind>'
@@ -194,7 +191,6 @@ export class WebDAVBackupService {
 
   constructor(
     private readonly database: DatabaseService,
-    private readonly secureStore: SecureStoreService,
     private readonly settingsService: SettingsApplicationService
   ) {}
 
@@ -216,19 +212,7 @@ export class WebDAVBackupService {
     this.cachedPassword = normalizedPassword
     this.hasLoadedPassword = true
 
-    if (normalizedPassword) {
-      const stored = await this.secureStore.setSecret(
-        BACKUP_PASSWORD_ACCOUNT,
-        BACKUP_PASSWORD_KIND,
-        normalizedPassword
-      )
-      if (!stored) {
-        this.logger.warn('Unable to persist WebDAV password in secure storage')
-      }
-      return
-    }
-
-    await this.secureStore.deleteSecret(BACKUP_PASSWORD_ACCOUNT, BACKUP_PASSWORD_KIND)
+    this.database.setWebdavBackupPassword(normalizedPassword)
   }
 
   async testConnection(): Promise<{ message: string; ok: boolean }> {
@@ -509,10 +493,7 @@ export class WebDAVBackupService {
 
   private async getStoredPassword(): Promise<string | null> {
     if (!this.hasLoadedPassword) {
-      this.cachedPassword = await this.secureStore.getSecret(
-        BACKUP_PASSWORD_ACCOUNT,
-        BACKUP_PASSWORD_KIND
-      )
+      this.cachedPassword = this.database.getWebdavBackupPassword()
       this.hasLoadedPassword = true
     }
 

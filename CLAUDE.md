@@ -60,7 +60,6 @@ Components must NOT access `window.winsshApi` directly — an ESLint rule enforc
 - `session-manager.ts` — SSH sessions, SFTP, port forwarding
 - `local-terminal-manager.ts` — node-pty local terminals
 - `database.ts` — better-sqlite3 persistence
-- `secure-store.ts` — keytar for server passwords/passphrases
 - `theme-registry.ts` — theme loading and registration
 - `update-service.ts` — electron-updater (Windows-only for packaged builds)
 - `webdav-backup-service.ts` — WebDAV backup/restore
@@ -82,8 +81,8 @@ Zustand stores in `src/renderer/src/store/`: `workbench-store.ts` (persisted UI 
 
 ## Key Constraints
 
-- **Native modules must be asar-unpacked**: `better-sqlite3` and `keytar` contain native binaries and cannot run from inside an asar archive. The `electron-builder.yml` unpacks them. Any new native dependency must be added to `asarUnpack`.
-- **Secret model is hybrid**: keytar for server passwords/passphrases, SQLite `credentials` table for credential vault secrets and private keys. Private key content is stored directly in the database, not as file paths.
+- **Native modules must be asar-unpacked**: `better-sqlite3` contains native binaries and cannot run from inside an asar archive. The `electron-builder.yml` unpacks it. Any new native dependency must be added to `asarUnpack`.
+- **Secret model**: server password/passphrases, credential vault secrets, and private keys all live in the SQLite database. Private key content is stored directly in the database, not as file paths.
 - **Session identity**: `sessionId` flows from renderer provisional tab through to main process — do not break this chain.
 - **Jump server is single-hop only** — nested chains are explicitly unsupported.
 - **Port forwarding rules are in-memory only** (no DB persistence).
@@ -115,7 +114,7 @@ Both sub-projects are independent npm workspaces (own `package.json`, Vite confi
 ## Environment Requirements
 
 - Node.js 22 LTS and npm 10+ recommended.
-- Native deps (`better-sqlite3`, `node-pty`, `keytar`) require a working native toolchain when no prebuilt binary matches the platform. `postinstall` runs `electron-builder install-app-deps`.
+- Native deps (`better-sqlite3`, `node-pty`) require a working native toolchain when no prebuilt binary matches the platform. `postinstall` runs `electron-builder install-app-deps`.
 - Verification order when validating changes: `npm run typecheck` → `npm run test`. `npm run lint` is not a gate (see Key Constraints).
 
 ## Existing Documentation

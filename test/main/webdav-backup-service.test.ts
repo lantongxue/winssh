@@ -4,10 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { WebDAVBackupService } from '@main/webdav-backup-service'
 
 function createService(baseUrl: string) {
-  const database = {} as ConstructorParameters<typeof WebDAVBackupService>[0]
-  const secureStore = {
-    getSecret: vi.fn(async () => 'secret')
-  } as unknown as ConstructorParameters<typeof WebDAVBackupService>[1]
+  const database = {
+    getWebdavBackupPassword: vi.fn(() => 'secret'),
+    setWebdavBackupPassword: vi.fn()
+  } as unknown as ConstructorParameters<typeof WebDAVBackupService>[0]
   const settingsService = {
     getSettings: vi.fn(() => ({
       webdavBackupEnabled: false,
@@ -16,9 +16,9 @@ function createService(baseUrl: string) {
       webdavUrl: baseUrl,
       webdavUsername: 'alice'
     }))
-  } as unknown as ConstructorParameters<typeof WebDAVBackupService>[2]
+  } as unknown as ConstructorParameters<typeof WebDAVBackupService>[1]
 
-  return new WebDAVBackupService(database, secureStore, settingsService)
+  return new WebDAVBackupService(database, settingsService)
 }
 
 describe('WebDAVBackupService delete', () => {

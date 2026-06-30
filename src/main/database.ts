@@ -1088,6 +1088,28 @@ export class DatabaseService {
     return merged
   }
 
+  getWebdavBackupPassword(): string | null {
+    const row = this.db.prepare('SELECT * FROM app_settings WHERE key = ?').get('webdav_backup_password') as
+      | SettingsRow
+      | undefined
+    return row ? row.value : null
+  }
+
+  setWebdavBackupPassword(password: string | null): void {
+    if (password === null) {
+      this.db.prepare('DELETE FROM app_settings WHERE key = ?').run('webdav_backup_password')
+    } else {
+      this.db
+        .prepare(
+          `
+            INSERT INTO app_settings (key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+          `
+        )
+        .run('webdav_backup_password', password)
+    }
+  }
+
   close(): void {
     this.db.close()
   }
