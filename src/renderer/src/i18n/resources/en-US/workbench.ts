@@ -720,7 +720,9 @@ const workbench = {
         sendPathToTerminal: 'Send Path to Terminal',
         treeView: 'Tree View',
         followTerminal: 'Follow Terminal Directory',
-        unfollowTerminal: 'Stop Following Terminal Directory'
+        unfollowTerminal: 'Stop Following Terminal Directory',
+        search: 'Search',
+        clearSearch: 'Clear Search'
       },
       dropzone: {
         description: 'Upload them into {{path}}.',
@@ -737,6 +739,7 @@ const workbench = {
       },
       empty: {
         directory: 'This directory is empty.',
+        noSearchResults: 'No files matching the filter.',
         noSessionDescription:
           'Start an SSH session first and the SFTP panel will follow the active tab automatically.',
         noSessionTitle: 'No active session'
@@ -747,12 +750,14 @@ const workbench = {
         symlink: 'Symlink'
       },
       labels: {
-        currentPath: 'Current Path'
+        currentPath: 'Current Path',
+        searchCount: '{{matched}} / {{total}}'
       },
       placeholders: {
         fileName: 'Enter a file name',
         directoryName: 'Enter a directory name',
-        rename: 'New name'
+        rename: 'New name',
+        search: 'Filter by name (e.g. *.log)'
       },
       toasts: {
         deleteFailed: 'Failed to delete the selected items.',

@@ -28,6 +28,26 @@ import { SftpEntryContextMenu } from '@/components/sftp-entry-context-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { type SftpMoveCompleteEvent, useSftpEntryDrop } from '@/hooks/use-sftp-entry-drop'
 
+function matchesSearchQuery(name: string, query: string): boolean {
+  const trimmed = query.trim()
+  if (!trimmed) return true
+
+  if (trimmed.startsWith('*.')) {
+    const ext = trimmed.slice(1).toLowerCase()
+    return name.toLowerCase().endsWith(ext)
+  }
+
+  if (trimmed.includes('*')) {
+    const pattern = trimmed
+      .split('*')
+      .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('.*')
+    return new RegExp(`^${pattern}$`, 'i').test(name)
+  }
+
+  return name.toLowerCase().includes(trimmed.toLowerCase())
+}
+
 const ENTRY_ITEM_HEIGHT = 46
 
 export type SftpViewMode = 'flat' | 'tree'
@@ -355,6 +375,7 @@ interface SftpTreeViewProps {
   onEditFile?: (remotePath: string) => void
   isBookmarked?: (path: string) => boolean
   onToggleBookmarkDirectory?: (path: string) => void
+  searchQuery?: string
 }
 
 export const SftpTreeView = forwardRef<SftpTreeViewHandle, SftpTreeViewProps>(function SftpTreeView(
@@ -380,7 +401,8 @@ export const SftpTreeView = forwardRef<SftpTreeViewHandle, SftpTreeViewProps>(fu
     onDirectoryMoved,
     onEditFile,
     isBookmarked,
-    onToggleBookmarkDirectory
+    onToggleBookmarkDirectory,
+    searchQuery = ''
   },
   ref
 ) {
@@ -436,10 +458,32 @@ export const SftpTreeView = forwardRef<SftpTreeViewHandle, SftpTreeViewProps>(fu
   const flatTreeNodes = useMemo<FlatTreeNode[]>(() => {
     if (viewMode !== 'tree') return []
 
+    const hasSearchQuery = searchQuery.trim().length > 0
     const nodes: FlatTreeNode[] = []
 
     const walk = (items: RemoteEntry[], depth: number) => {
-      for (const entry of items) {
+      const filteredItems = hasSearchQuery
+        ? items.filter((entry) => {
+            if (matchesSearchQuery(entry.name, searchQuery)) return true
+            if (entry.kind === 'directory' && expandedPaths.has(entry.path)) {
+              const cached = queryClient.getQueryData<SftpListResult>([
+                'sftp',
+                session.sessionId,
+                entry.path
+              ])
+              if (cached?.entries) {
+                return cached.entries.some(
+                  (child) =>
+                    matchesSearchQuery(child.name, searchQuery) ||
+                    (child.kind === 'directory' && expandedPaths.has(child.path))
+                )
+              }
+            }
+            return false
+          })
+        : items
+
+      for (const entry of filteredItems) {
         const isDirectory = entry.kind === 'directory'
         const isExpanded = isDirectory && expandedPaths.has(entry.path)
 
@@ -463,7 +507,7 @@ export const SftpTreeView = forwardRef<SftpTreeViewHandle, SftpTreeViewProps>(fu
 
     walk(entries, 0)
     return nodes
-  }, [viewMode, entries, expandedPaths, recentlyLoadedPaths, queryClient, session.sessionId])
+  }, [viewMode, entries, expandedPaths, recentlyLoadedPaths, queryClient, session.sessionId, searchQuery])
 
   useEffect(() => {
     if (viewMode !== 'tree') return

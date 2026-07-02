@@ -700,7 +700,9 @@ const workbench = {
         sendPathToTerminal: '发送路径到终端',
         treeView: '树形视图',
         followTerminal: '跟随终端目录',
-        unfollowTerminal: '停止跟随终端目录'
+        unfollowTerminal: '停止跟随终端目录',
+        search: '搜索',
+        clearSearch: '清除搜索'
       },
       dropzone: {
         description: '会上传到 {{path}}。',
@@ -717,6 +719,7 @@ const workbench = {
       },
       empty: {
         directory: '当前目录为空。',
+        noSearchResults: '没有匹配的文件。',
         noSessionDescription: '先发起 SSH 连接，SFTP 面板会自动跟随当前标签加载。',
         noSessionTitle: '没有活动会话'
       },
@@ -726,12 +729,14 @@ const workbench = {
         symlink: '符号链接'
       },
       labels: {
-        currentPath: '当前路径'
+        currentPath: '当前路径',
+        searchCount: '{{matched}} / {{total}}'
       },
       placeholders: {
         fileName: '请输入文件名称',
         directoryName: '请输入目录名称',
-        rename: '新名称'
+        rename: '新名称',
+        search: '按名称过滤（例如 *.log）'
       },
       toasts: {
         deleteFailed: '删除所选项目失败。',

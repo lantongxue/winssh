@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import {
   Send,
@@ -10,7 +10,8 @@ import {
   ChevronDown,
   Folder,
   Link,
-  Unlink
+  Unlink,
+  Search
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -68,6 +69,26 @@ const REMOVE_EXIT_ANIMATION_MS = 180
 
 function hasLocalFileTransfer(dataTransfer: DataTransfer | null | undefined) {
   return Array.from(dataTransfer?.types ?? []).includes('Files')
+}
+
+function matchesSearchQuery(name: string, query: string): boolean {
+  const trimmed = query.trim()
+  if (!trimmed) return true
+
+  if (trimmed.startsWith('*.')) {
+    const ext = trimmed.slice(1).toLowerCase()
+    return name.toLowerCase().endsWith(ext)
+  }
+
+  if (trimmed.includes('*')) {
+    const pattern = trimmed
+      .split('*')
+      .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('.*')
+    return new RegExp(`^${pattern}$`, 'i').test(name)
+  }
+
+  return name.toLowerCase().includes(trimmed.toLowerCase())
 }
 
 function TooltipIconButton({
@@ -158,6 +179,9 @@ export function SftpPanel({
   const [removingEntryPaths, setRemovingEntryPaths] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<SftpViewMode>('flat')
   const [followTerminalCwd, setFollowTerminalCwd] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (followTerminalCwd && session?.terminalCwd && session?.sessionId) {
@@ -225,6 +249,25 @@ export function SftpPanel({
     () => entries.filter((entry) => selectedEntrySet.has(entry.path)),
     [entries, selectedEntrySet]
   )
+
+  const filteredEntries = useMemo(
+    () =>
+      searchQuery.trim()
+        ? entries.filter((entry) => matchesSearchQuery(entry.name, searchQuery))
+        : entries,
+    [entries, searchQuery]
+  )
+
+  const toggleSearch = useCallback(() => {
+    setSearchOpen((prev) => {
+      if (prev) {
+        setSearchQuery('')
+      } else {
+        requestAnimationFrame(() => searchInputRef.current?.focus())
+      }
+      return !prev
+    })
+  }, [])
 
   const [bookmarksCollapsed, setBookmarksCollapsed] = useState(true)
 
@@ -894,8 +937,63 @@ export function SftpPanel({
             >
               <RefreshIcon className="size-3.5" />
             </TooltipIconButton>
+            <div className="h-4 w-px bg-[var(--workbench-border)] mx-1" />
+            <TooltipIconButton
+              variant="ghost"
+              size="icon-xs"
+              className={cn(
+                'size-7 transition-all',
+                searchOpen
+                  ? 'bg-[var(--workbench-active)] text-white shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-[var(--workbench-hover)]'
+              )}
+              label={t('workbench.sftp.actions.search')}
+              onClick={toggleSearch}
+            >
+              <Search className="size-3.5" />
+            </TooltipIconButton>
           </div>
         </div>
+
+        {searchOpen && (
+          <div className="border-b border-[var(--workbench-border)] px-4 py-2 animate-in fade-in slide-in-from-top-1 duration-150">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  ref={searchInputRef}
+                  className="h-7 pl-7 pr-7 text-xs border-[var(--workbench-border)] bg-[var(--workbench-input)] shadow-none focus-visible:bg-[var(--workbench-input)]"
+                  placeholder={t('workbench.sftp.placeholders.search')}
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Escape') {
+                      event.preventDefault()
+                      toggleSearch()
+                    }
+                  }}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => setSearchQuery('')}
+                  >
+                    <X className="size-3" />
+                  </button>
+                )}
+              </div>
+              {searchQuery.trim() && (
+                <span className="shrink-0 text-[10px] font-medium text-muted-foreground tabular-nums">
+                  {t('workbench.sftp.labels.searchCount', {
+                    matched: filteredEntries.length,
+                    total: entries.length
+                  })}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         <ContextMenu>
           <ContextMenuTrigger asChild>
@@ -918,10 +1016,19 @@ export function SftpPanel({
                 </div>
               ) : null}
 
-              {!listingQuery.isLoading && entries.length > 0 && viewMode === 'flat' ? (
+              {!listingQuery.isLoading &&
+                entries.length > 0 &&
+                filteredEntries.length === 0 &&
+                searchQuery.trim() ? (
+                <div className="m-3 rounded-md border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+                  {t('workbench.sftp.empty.noSearchResults')}
+                </div>
+              ) : null}
+
+              {!listingQuery.isLoading && filteredEntries.length > 0 && viewMode === 'flat' ? (
                 <SftpFlatView
                   session={session}
-                  entries={entries}
+                  entries={filteredEntries}
                   scrollContainerRef={scrollContainerRef}
                   selectedEntrySet={selectedEntrySet}
                   removingEntrySet={removingEntrySet}
@@ -955,6 +1062,7 @@ export function SftpPanel({
                   scrollContainerRef={scrollContainerRef}
                   selectedEntrySet={selectedEntrySet}
                   removingEntrySet={removingEntrySet}
+                  searchQuery={searchQuery}
                   onSelectSingleEntry={selectSingleEntry}
                   onHandleEntrySelection={handleEntrySelection}
                   onClearSelection={clearSelection}
