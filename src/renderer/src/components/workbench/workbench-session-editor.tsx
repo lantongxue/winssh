@@ -1,4 +1,4 @@
-import { memo, useCallback, useState, type DragEvent } from 'react'
+import { memo, useCallback, useMemo, useState, type DragEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { TerminalSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -25,10 +25,11 @@ import { useSessionsStore } from '@/store/sessions-store'
 import { useWorkbenchStore } from '@/store/workbench-store'
 
 const TERMINAL_PANEL_MIN_SIZE = '320px'
-const AUX_PANEL_DEFAULT_SIZE = '360px'
+const AUX_PANEL_DRAG_MIME = 'application/x-winssh-aux-panel'
+
+const AUX_PANEL_DEFAULT_SIZE_PX = 360
 const AUX_PANEL_MIN_SIZE = '280px'
 const AUX_PANEL_MAX_SIZE = '55%'
-const AUX_PANEL_DRAG_MIME = 'application/x-winssh-aux-panel'
 
 interface WorkbenchSessionEditorProps {
   sessionId: string
@@ -66,7 +67,9 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
   const setAuxView = useSessionsStore((state) => state.setAuxView)
   const setAuxPanelSide = useSessionsStore((state) => state.setAuxPanelSide)
   const globalSftpPanelSide = useWorkbenchStore((state) => state.sftpPanelSide)
-  const setGlobalSftpPanelSide = useWorkbenchStore((state) => state.setSftpPanelSide)
+  const auxPanelSides = useWorkbenchStore((state) => state.auxPanelSides)
+  const setGlobalAuxPanelSide = useWorkbenchStore((state) => state.setAuxPanelSide)
+  const setGlobalAuxPanelSize = useWorkbenchStore((state) => state.setAuxPanelSize)
   const settingsQuery = useQuery({
     queryKey: queryKeys.settings,
     queryFn: () => settingsClient.get(),
@@ -98,7 +101,13 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
   }
 
   const auxView = session.auxView ?? null
-  const auxPanelSide = session.auxPanelSide ?? globalSftpPanelSide
+  const auxPanelSide =
+    session.auxPanelSide ?? (auxView ? auxPanelSides[auxView] : undefined) ?? globalSftpPanelSide
+  const auxPanelDefaultSize = useMemo(() => {
+    const sizes = useWorkbenchStore.getState().auxPanelSizes
+    const sizePx = (auxView ? sizes[auxView] : undefined) ?? AUX_PANEL_DEFAULT_SIZE_PX
+    return `${sizePx}px`
+  }, [auxView])
   const resolvedTheme = resolveThemeDefinition(
     settingsQuery.data.theme,
     themesQuery.data ?? [],
@@ -148,12 +157,14 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
 
       if (targetSide !== auxPanelSide) {
         setAuxPanelSide(session.sessionId, targetSide)
-        setGlobalSftpPanelSide(targetSide)
+        if (auxView) {
+          setGlobalAuxPanelSide(auxView, targetSide)
+        }
       }
 
       setDropTargetSide(null)
     },
-    [session.sessionId, auxPanelSide, setAuxPanelSide, setGlobalSftpPanelSide]
+    [session.sessionId, auxView, auxPanelSide, setAuxPanelSide, setGlobalAuxPanelSide]
   )
 
   const terminalView = (
@@ -318,9 +329,14 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
               <ResizablePanel
                 key={`sftp-panel-${session.sessionId}`}
                 id={`sftp-panel-${session.sessionId}`}
-                defaultSize={AUX_PANEL_DEFAULT_SIZE}
+                defaultSize={auxPanelDefaultSize}
                 maxSize={AUX_PANEL_MAX_SIZE}
                 minSize={AUX_PANEL_MIN_SIZE}
+                onResize={(size) => {
+                  if (auxView && size.inPixels > 0) {
+                    setGlobalAuxPanelSize(auxView, size.inPixels)
+                  }
+                }}
               >
                 <div className="h-full min-w-0 bg-[var(--workbench-sidebar)] p-3">
                   {auxPanelContent}
@@ -350,9 +366,14 @@ function WorkbenchSessionEditorImpl({ sessionId, active = true }: WorkbenchSessi
               <ResizablePanel
                 key={`sftp-panel-${session.sessionId}`}
                 id={`sftp-panel-${session.sessionId}`}
-                defaultSize={AUX_PANEL_DEFAULT_SIZE}
+                defaultSize={auxPanelDefaultSize}
                 maxSize={AUX_PANEL_MAX_SIZE}
                 minSize={AUX_PANEL_MIN_SIZE}
+                onResize={(size) => {
+                  if (auxView && size.inPixels > 0) {
+                    setGlobalAuxPanelSize(auxView, size.inPixels)
+                  }
+                }}
               >
                 <div className="h-full min-w-0 bg-[var(--workbench-sidebar)] p-3">
                   {auxPanelContent}

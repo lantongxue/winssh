@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import type { SessionAuxView } from '@/store/sessions-store'
 import type {
   WorkbenchActivityId,
   WorkbenchDocument,
@@ -33,6 +34,8 @@ interface WorkbenchStateData {
   quickOpenOpen: boolean
   selectedExplorerNode: WorkbenchExplorerNodeId
   sftpPanelSide: 'left' | 'right'
+  auxPanelSides: Partial<Record<SessionAuxView, 'left' | 'right'>>
+  auxPanelSizes: Partial<Record<SessionAuxView, number>>
   sidebarOpen: boolean
   transferEntries: WorkbenchTransferEntry[]
 }
@@ -65,6 +68,8 @@ interface WorkbenchState extends WorkbenchStateData {
   setPanelSizePx: (sizePx: number) => void
   setQuickOpenOpen: (open: boolean) => void
   setSelectedExplorerNode: (nodeId: WorkbenchExplorerNodeId) => void
+  setAuxPanelSide: (auxView: SessionAuxView, side: 'left' | 'right') => void
+  setAuxPanelSize: (auxView: SessionAuxView, sizePx: number) => void
   setSftpPanelSide: (side: 'left' | 'right') => void
   setSidebarOpen: (open: boolean) => void
   togglePanel: () => void
@@ -129,6 +134,8 @@ function createInitialState(): WorkbenchStateData {
     quickOpenOpen: false,
     selectedExplorerNode: 'home',
     sftpPanelSide: 'left',
+    auxPanelSides: {},
+    auxPanelSizes: {},
     sidebarOpen: true,
     transferEntries: []
   }
@@ -346,6 +353,17 @@ export const useWorkbenchStore = create<WorkbenchState>()(
         }),
       setQuickOpenOpen: (open) => set({ quickOpenOpen: open }),
       setSelectedExplorerNode: (nodeId) => set({ selectedExplorerNode: nodeId }),
+      setAuxPanelSide: (auxView, side) =>
+        set((state) => ({
+          auxPanelSides: { ...state.auxPanelSides, [auxView]: side },
+          sftpPanelSide: side
+        })),
+      setAuxPanelSize: (auxView, sizePx) =>
+        set((state) => {
+          const clamped = Math.max(280, Math.round(sizePx))
+          if (state.auxPanelSizes[auxView] === clamped) return state
+          return { auxPanelSizes: { ...state.auxPanelSizes, [auxView]: clamped } }
+        }),
       setSftpPanelSide: (side) => set({ sftpPanelSide: side }),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       togglePanel: () => set((state) => ({ panelOpen: !state.panelOpen })),
@@ -427,6 +445,8 @@ export const useWorkbenchStore = create<WorkbenchState>()(
       partialize: (state) => ({
         activeActivityId: state.activeActivityId,
         activePanelId: state.activePanelId,
+        auxPanelSides: state.auxPanelSides,
+        auxPanelSizes: state.auxPanelSizes,
         collapsedSections: state.collapsedSections,
         panelOpen: state.panelOpen,
         panelSizePx: state.panelSizePx,
