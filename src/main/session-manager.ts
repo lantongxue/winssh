@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import { promises as fs, type Stats as FsStats } from 'node:fs'
 import net, { type Server as NetServer, type Socket } from 'node:net'
 import path, { basename, posix } from 'node:path'
@@ -13,7 +13,12 @@ import {
 import { dialog, type BrowserWindow, type OpenDialogOptions } from 'electron'
 import { normalizeRemotePath, sortRemoteEntries } from '@shared/sftp'
 import { runWithConcurrency } from './concurrency-pool'
-import { smartDecode, encodeContent } from './encoding'
+import {
+  createIncrementalTextDecoder,
+  smartDecode,
+  encodeContent,
+  splitTrailingHighSurrogate
+} from './encoding'
 import { DEFAULT_SERVER_BRAND_ID, resolveServerBrandFromOsRelease } from '@shared/server-brands'
 import { execCommand } from './services/session-helpers'
 import { ResourceMonitorService } from './services/resource-monitor-service'
@@ -27,10 +32,8 @@ import {
   PortForwardStateEvent,
   RemoteEntry,
   type RemoteEntryKind,
-  type SecretKind,
   SESSION_RESOURCE_MONITOR_UNAVAILABLE,
   type Server,
-  SessionConnectFailureCode,
   SessionConnectResult,
   type SessionConnectionPhase,
   SessionDataEvent,
@@ -40,15 +43,33 @@ import {
   type SessionResourceSnapshot,
   SessionStateEvent,
   SessionSummary,
+  SftpFileChunkEvent,
+  SftpFileReadStreamStart,
+  SftpFileStreamDirection,
+  SftpFileStreamStateEvent,
+  SftpFileWriteStreamStart,
   TransferProgressEvent,
-  type HostTrustRequest,
   type HostTrustResult,
   SessionCwdEvent
 } from '@shared/types'
 import type { DatabaseService } from './database'
 import type { MainTranslator } from './localization'
 import { createOscScannerState, scanOscChunk, type OscScannerState } from './osc-scanner'
-import { isShellIntegrationInternal, SHELL_INTEGRATION_FILE_CONTENT } from './shell-integration'
+import {
+  ConnectionFailure,
+  getSecretKindForServer,
+  isAuthenticationFailure
+} from './services/ssh-connection-errors'
+import {
+  SshConnectionResolver,
+  type ResolvedConnectionAuth
+} from './services/ssh-connection-resolver'
+import { HostTrustService } from './services/host-trust-service'
+import {
+  isShellIntegrationInternal,
+  createShellIntegrationScript,
+  stripShellIntegrationInstallEcho
+} from './shell-integration'
 type WindowProvider = () => BrowserWindow | null
 type AcceptTcpConnection = () => ClientChannel
 type RejectConnection = () => void
@@ -58,6 +79,8 @@ type EventMap = {
   'sessions:error': SessionErrorEvent
   'sessions:exit': SessionExitEvent
   'sessions:state': SessionStateEvent
+  'sftp:fileChunk': SftpFileChunkEvent
+  'sftp:fileStreamState': SftpFileStreamStateEvent
   'sftp:transfer': TransferProgressEvent
   'portForwards:state': PortForwardStateEvent
   'commandHistory:added': CommandRecordedEvent
@@ -109,12 +132,89 @@ interface SessionRuntime {
   integrationDelayTimer?: NodeJS.Timeout
 }
 
-function now() {
-  return new Date().toISOString()
+interface EditorFileReadTask {
+  kind: 'read'
+  streamId: string
+  sessionId: string
+  remotePath: string
+  fileName: string
+  total: number
+  transferred: number
+  controller: AbortController
+  sftp: SFTPWrapper
+  handle?: Buffer
+  terminalStatus?: SftpFileStreamStateEvent['status']
 }
 
-function toFingerprint(key: Buffer): string {
-  return `SHA256:${createHash('sha256').update(key).digest('base64')}`
+interface EditorFileWriteTask {
+  kind: 'write'
+  streamId: string
+  sessionId: string
+  remotePath: string
+  fileName: string
+  encoding: string
+  transferred: number
+  state: 'open' | 'closing' | 'closed' | 'cancelled' | 'error'
+  failure?: Error
+  pendingHighSurrogate?: string
+  terminalStatus?: SftpFileStreamStateEvent['status']
+  queue: Promise<void>
+  handle?: Buffer
+  sftp: SFTPWrapper
+}
+
+interface PendingReadStreamStart {
+  task: EditorFileReadTask
+  decoder: ReturnType<typeof createIncrementalTextDecoder>
+  initialSample: Buffer
+  firstBytesRead: number
+}
+
+interface ExecResult {
+  stdout: string
+  stderr: string
+  code: number | null
+  signal?: string
+}
+
+interface CpuTimesSample {
+  idle: number
+  total: number
+}
+
+interface NetworkBytesSample {
+  rxBytes: number
+  sampledAt: number
+  txBytes: number
+}
+
+const RESOURCE_MONITOR_MARKERS = {
+  df: '__WINSSH_DF__',
+  platform: '__WINSSH_PLATFORM__',
+  procMeminfo: '__WINSSH_PROC_MEMINFO__',
+  procNetDev: '__WINSSH_PROC_NET_DEV__',
+  procStat: '__WINSSH_PROC_STAT__'
+} as const
+
+const LINUX_RESOURCE_SNAPSHOT_COMMAND = `LC_ALL=C sh -lc '
+set -eu
+platform="$(uname -s 2>/dev/null || echo unknown)"
+printf "%s\\n%s\\n" "${RESOURCE_MONITOR_MARKERS.platform}" "$platform"
+if [ "$platform" != "Linux" ]; then
+  exit 0
+fi
+printf "%s\\n" "${RESOURCE_MONITOR_MARKERS.procStat}"
+cat /proc/stat
+printf "%s\\n" "${RESOURCE_MONITOR_MARKERS.procMeminfo}"
+cat /proc/meminfo
+printf "%s\\n" "${RESOURCE_MONITOR_MARKERS.procNetDev}"
+cat /proc/net/dev
+printf "%s\\n" "${RESOURCE_MONITOR_MARKERS.df}"
+df -P -B1 /
+'`
+
+function now() {
+  return new Date().toISOString()
 }
 
 function getPermissionTypePrefix(kind: RemoteEntryKind): string {
@@ -242,6 +342,31 @@ function sftpWrite(
   })
 }
 
+async function sftpReadInitialFileStreamSample(
+  sftp: SFTPWrapper,
+  handle: Buffer,
+  total: number
+): Promise<{ initialSample: Buffer; firstBytesRead: number; reachedEof: boolean }> {
+  if (total === 0) {
+    return {
+      initialSample: Buffer.alloc(0),
+      firstBytesRead: 0,
+      reachedEof: true
+    }
+  }
+
+  const readLength = Math.min(32768, total > 0 ? total : 32768)
+  const buffer = Buffer.allocUnsafe(readLength)
+  const bytesRead = await sftpRead(sftp, handle, buffer, 0, buffer.byteLength, 0)
+  const reachedEof = bytesRead <= 0 || bytesRead < buffer.byteLength || bytesRead >= total
+
+  return {
+    initialSample: buffer.subarray(0, Math.max(0, bytesRead)),
+    firstBytesRead: Math.max(0, bytesRead),
+    reachedEof
+  }
+}
+
 type SftpReadFileProgressCallback = (transferred: number, total: number) => void
 
 class SftpReadCancelledError extends Error {
@@ -291,27 +416,6 @@ async function sftpReadFile(
     }
 
     return smartDecode(Buffer.concat(chunks))
-  } finally {
-    await sftpClose(sftp, handle).catch(() => undefined)
-  }
-}
-
-async function sftpWriteFile(
-  sftp: SFTPWrapper,
-  remotePath: string,
-  contents: string,
-  encoding?: string
-): Promise<void> {
-  const handle = await sftpOpen(sftp, remotePath, 'w')
-  const buffer = encodeContent(contents, encoding)
-  let position = 0
-
-  try {
-    while (position < buffer.byteLength) {
-      const length = Math.min(32768, buffer.byteLength - position)
-      await sftpWrite(sftp, handle, buffer, position, length, position)
-      position += length
-    }
   } finally {
     await sftpClose(sftp, handle).catch(() => undefined)
   }
@@ -551,42 +655,17 @@ function isWildcardBindHost(host: string): boolean {
   return host === '0.0.0.0' || host === '::'
 }
 
-class ConnectionFailure extends Error {
-  constructor(
-    readonly code: SessionConnectFailureCode,
-    message: string,
-    readonly serverId?: string,
-    readonly secretKind?: SecretKind
-  ) {
-    super(message)
-    this.name = 'ConnectionFailure'
-  }
-}
-
-function getSecretKindForServer(server: Server): SecretKind {
-  return server.authType === 'password' ? 'password' : 'passphrase'
-}
-
-function isAuthenticationFailure(error: unknown): boolean {
-  if (!(error instanceof Error)) {
-    return false
-  }
-
-  const level = (error as Error & { level?: string }).level
-  if (level === 'client-authentication') {
-    return true
-  }
-
-  return /all configured authentication methods failed|permission denied/i.test(error.message)
-}
-
 export class SessionManager {
   private readonly sessions = new Map<string, SessionRuntime>()
   private readonly history = new Map<string, ConnectionRequest>()
   private readonly portForwardSnapshots = new Map<string, PortForwardRule[]>()
-  private readonly editorReadControllers = new Map<string, AbortController>()
+  private readonly resourceCpuBaselines = new Map<string, CpuTimesSample>()
+  private readonly resourceNetworkBaselines = new Map<string, NetworkBytesSample>()
+  private readonly editorFileStreams = new Map<string, EditorFileReadTask | EditorFileWriteTask>()
+  private readonly pendingReadStreamStarts = new Map<string, PendingReadStreamStart>()
   private readonly transferControllers = new Map<string, AbortController>()
-  private readonly hostTrustResolvers = new Map<string, (result: boolean) => void>()
+  private readonly connectionResolver: SshConnectionResolver
+  private readonly hostTrustService: HostTrustService
 
   constructor(
     private readonly database: DatabaseService,
@@ -595,9 +674,11 @@ export class SessionManager {
       channel: T,
       payload: EventMap[T]
     ) => void,
-    private readonly t: MainTranslator,
-    private readonly resourceMonitorService: ResourceMonitorService = new ResourceMonitorService()
-  ) {}
+    private readonly t: MainTranslator
+  ) {
+    this.connectionResolver = new SshConnectionResolver(database, t)
+    this.hostTrustService = new HostTrustService({ database, getWindow })
+  }
 
   async connect(request: ConnectionRequest): Promise<SessionConnectResult> {
     try {
@@ -677,7 +758,7 @@ export class SessionManager {
     }
 
     this.emitConnectionPhase(sessionId, 'validate')
-    const jumpServer = this.resolveJumpServer(server)
+    const jumpServer = this.connectionResolver.resolveJumpServer(server)
     const upstreamClients: Client[] = []
     let client: Client | null = null
 
@@ -687,13 +768,13 @@ export class SessionManager {
       let targetSocket: ClientChannel | undefined
 
       if (jumpServer) {
-        const jumpAuth = await this.resolveConnectionAuth(jumpServer, request)
+        const jumpAuth = await this.connectionResolver.resolveAuth(jumpServer, request)
         const jumpClient = await this.connectToServer(jumpServer, jumpAuth)
         upstreamClients.push(jumpClient)
         targetSocket = await connectForwardOut(jumpClient, '127.0.0.1', 0, server.host, server.port)
       }
 
-      const targetAuth = await this.resolveConnectionAuth(server, request)
+      const targetAuth = await this.connectionResolver.resolveAuth(server, request)
       client = await this.connectToServer(server, targetAuth, targetSocket)
 
       this.emitConnectionPhase(sessionId, 'prepare')
@@ -708,7 +789,7 @@ export class SessionManager {
 
       this.emitConnectionPhase(sessionId, 'attach')
 
-      const captureEnabled =
+      const commandHistoryEnabled =
         Boolean(server.captureCommandHistory) && this.database.getSettings().commandHistoryEnabled
 
       const runtime: SessionRuntime = {
@@ -721,9 +802,9 @@ export class SessionManager {
         portForwards: new Map(),
         oscState: createOscScannerState(),
         pendingCommand: { text: null, startedAt: null, cwd: null },
-        historyCaptureEnabled: captureEnabled,
-        historyCaptureStatus: captureEnabled ? 'pending' : 'unavailable',
-        integrationState: captureEnabled ? 'waiting' : 'none'
+        historyCaptureEnabled: commandHistoryEnabled,
+        historyCaptureStatus: commandHistoryEnabled ? 'pending' : 'unavailable',
+        integrationState: 'waiting'
       }
 
       shell.on('data', (chunk: Buffer | string) => {
@@ -794,6 +875,7 @@ export class SessionManager {
         clearTimeout(runtime.integrationDelayTimer)
         runtime.integrationDelayTimer = undefined
       }
+      await this.releaseSessionEditorFileStreams(sessionId)
       await this.releaseSessionPortForwards(sessionId)
       this.releaseRuntimeClients(runtime)
       this.sessions.delete(sessionId)
@@ -833,27 +915,17 @@ export class SessionManager {
 
     if (runtime.integrationBuffer !== undefined) {
       runtime.integrationBuffer += data
-      const command = ` . ~/.winssh_init_${runtime.sessionId} && rm -f ~/.winssh_init_${runtime.sessionId}`
+      const stripped = stripShellIntegrationInstallEcho(runtime.integrationBuffer)
 
-      if (runtime.integrationBuffer.includes(command)) {
+      if (stripped.matched) {
         if (runtime.integrationTimeoutTimer) {
           clearTimeout(runtime.integrationTimeoutTimer)
           runtime.integrationTimeoutTimer = undefined
         }
 
-        let cleaned = runtime.integrationBuffer
-        const idx = cleaned.indexOf(command)
-        if (idx !== -1) {
-          let prefix = cleaned.slice(0, idx)
-          prefix = prefix.replace(/[ \b]+$/, '')
-          let suffix = cleaned.slice(idx + command.length)
-          suffix = suffix.replace(/^\r?\n?/, '')
-          cleaned = prefix + suffix
-        }
-
         runtime.integrationBuffer = undefined
-        if (cleaned) {
-          this.emitSessionDataToRenderer(runtime, cleaned)
+        if (stripped.cleaned) {
+          this.emitSessionDataToRenderer(runtime, stripped.cleaned)
         }
       }
       return
@@ -874,6 +946,9 @@ export class SessionManager {
         }
       },
       onCommandText: (command) => {
+        if (!runtime.historyCaptureEnabled) {
+          return
+        }
         if (isShellIntegrationInternal(command)) {
           return
         }
@@ -884,6 +959,9 @@ export class SessionManager {
         }
       },
       onCommandPre: () => {
+        if (!runtime.historyCaptureEnabled) {
+          return
+        }
         if (runtime.pendingCommand.startedAt === null) {
           runtime.pendingCommand.startedAt = Date.now()
         }
@@ -892,6 +970,9 @@ export class SessionManager {
         }
       },
       onCommandDone: (exitCode) => {
+        if (!runtime.historyCaptureEnabled) {
+          return
+        }
         this.handleCommandDone(runtime, exitCode)
       },
       onCwd: (cwd) => {
@@ -923,14 +1004,18 @@ export class SessionManager {
   }
 
   private async installShellIntegration(runtime: SessionRuntime): Promise<void> {
-    const homePath = runtime.summary.currentPath || '/'
-    const tempFilePath = `${homePath === '/' ? '' : homePath}/.winssh_init_${runtime.sessionId}`
-    const command = ` . ~/.winssh_init_${runtime.sessionId} && rm -f ~/.winssh_init_${runtime.sessionId}`
-
     try {
-      await sftpWriteFile(runtime.sftp, tempFilePath, SHELL_INTEGRATION_FILE_CONTENT)
+      const shell = await this.detectInteractiveShell(runtime.client)
+      if (shell !== 'bash' && shell !== 'zsh') {
+        runtime.historyCaptureStatus = 'unavailable'
+        runtime.integrationState = 'failed'
+        return
+      }
+
       runtime.integrationBuffer = ''
-      runtime.shell.write(`${command}\r`)
+      runtime.shell.write(
+        createShellIntegrationScript({ commandHistory: runtime.historyCaptureEnabled })
+      )
 
       runtime.integrationTimeoutTimer = setTimeout(() => {
         if (runtime.integrationBuffer !== undefined) {
@@ -955,6 +1040,26 @@ export class SessionManager {
       }
       runtime.historyProbeTimer = undefined
     }, 3000)
+  }
+
+  private async detectInteractiveShell(client: Client): Promise<'bash' | 'zsh' | 'unknown'> {
+    const result = await execCommand(
+      client,
+      'printf "%s\\n" "${BASH_VERSION:+bash}" "${ZSH_VERSION:+zsh}" "$SHELL" 2>/dev/null'
+    ).catch(() => null)
+
+    if (!result || (result.code ?? 0) !== 0) {
+      return 'unknown'
+    }
+
+    const stdout = result.stdout.toLowerCase()
+    if (/\bbash\b/.test(stdout)) {
+      return 'bash'
+    }
+    if (/\bzsh\b/.test(stdout)) {
+      return 'zsh'
+    }
+    return 'unknown'
   }
 
   private handleCommandDone(runtime: SessionRuntime, exitCode: number | null): void {
@@ -1017,10 +1122,10 @@ export class SessionManager {
     await sftpCreateFile(runtime.sftp, posix.join(normalizeRemotePath(currentPath), name.trim()))
   }
 
-  async readFile(
+  async openFileReadStream(
     sessionId: string,
     remotePath: string
-  ): Promise<{ content: string; encoding: string; cancelled?: boolean }> {
+  ): Promise<SftpFileReadStreamStart> {
     const runtime = this.requireSession(sessionId)
     const normalized = normalizeRemotePath(remotePath)
     const stats = await sftpStat(runtime.sftp, normalized)
@@ -1029,101 +1134,423 @@ export class SessionManager {
       throw new Error(`Remote path is a directory: ${normalized}`)
     }
 
-    const totalSize = stats.size ?? 0
+    const total = stats.size ?? 0
+    const streamId = `sftp-read:${sessionId}:${randomUUID()}`
     const fileName = path.posix.basename(normalized)
-    let lastEmittedTransferred = 0
-    const controllerKey = `${sessionId}:${normalized}`
     const controller = new AbortController()
-    this.editorReadControllers.set(controllerKey, controller)
+    const task: EditorFileReadTask = {
+      kind: 'read',
+      streamId,
+      sessionId,
+      remotePath: normalized,
+      fileName,
+      total,
+      transferred: 0,
+      controller,
+      sftp: runtime.sftp
+    }
+    const handle = await sftpOpen(runtime.sftp, normalized, 'r')
+    task.handle = handle
+    let initialSample: Buffer = Buffer.alloc(0)
+    let firstBytesRead = 0
+    let reachedEof = total === 0
 
     try {
-      const result = await sftpReadFile(
-        runtime.sftp,
-        normalized,
-        (transferred, total) => {
-          if (transferred === lastEmittedTransferred) {
-            return
-          }
-
-          lastEmittedTransferred = transferred
-          this.emitToRenderer(
-            'sftp:transfer',
-            this.withObservableMetadata(sessionId, {
-              sessionId,
-              direction: 'download',
-              fileName,
-              localPath: '__editor__',
-              remotePath: normalized,
-              transferred,
-              total,
-              status: 'running'
-            })
-          )
-        },
-        totalSize,
-        controller.signal
-      )
-
-      this.emitToRenderer(
-        'sftp:transfer',
-        this.withObservableMetadata(sessionId, {
-          sessionId,
-          direction: 'download',
-          fileName,
-          localPath: '__editor__',
-          remotePath: normalized,
-          transferred: totalSize,
-          total: totalSize,
-          status: 'completed'
-        })
-      )
-
-      return result
+      const sample = await sftpReadInitialFileStreamSample(runtime.sftp, handle, total)
+      initialSample = sample.initialSample
+      firstBytesRead = sample.firstBytesRead
+      reachedEof = sample.reachedEof
     } catch (error) {
-      if (error instanceof SftpReadCancelledError) {
-        return { content: '', encoding: 'utf8', cancelled: true }
-      }
-      this.emitToRenderer(
-        'sftp:transfer',
-        this.withObservableMetadata(sessionId, {
-          sessionId,
-          direction: 'download',
-          fileName,
-          localPath: '__editor__',
-          remotePath: normalized,
-          transferred: 0,
-          total: totalSize,
-          status: 'error',
-          error: error instanceof Error ? error.message : String(error)
-        })
-      )
+      await sftpClose(runtime.sftp, handle).catch(() => undefined)
       throw error
-    } finally {
-      if (this.editorReadControllers.get(controllerKey) === controller) {
-        this.editorReadControllers.delete(controllerKey)
+    }
+
+    const decoder = createIncrementalTextDecoder(initialSample, { finalSample: reachedEof })
+    this.editorFileStreams.set(streamId, task)
+    this.pendingReadStreamStarts.set(streamId, {
+      task,
+      decoder,
+      initialSample,
+      firstBytesRead
+    })
+
+    return {
+      streamId,
+      sessionId,
+      remotePath: normalized,
+      fileName,
+      total,
+      encoding: decoder.encoding
+    }
+  }
+
+  startFileReadStream(streamId: string): void {
+    const pending = this.pendingReadStreamStarts.get(streamId)
+    if (!pending || this.editorFileStreams.get(streamId) !== pending.task) {
+      return
+    }
+
+    this.pendingReadStreamStarts.delete(streamId)
+    void this.runFileReadStream(
+      pending.task.sftp,
+      pending.task,
+      pending.decoder,
+      pending.initialSample,
+      pending.firstBytesRead
+    )
+  }
+
+  private async runFileReadStream(
+    sftp: SFTPWrapper,
+    task: EditorFileReadTask,
+    decoder: ReturnType<typeof createIncrementalTextDecoder>,
+    initialSample: Buffer,
+    firstBytesRead: number
+  ): Promise<void> {
+    try {
+      if (task.controller.signal.aborted) {
+        throw new SftpReadCancelledError()
       }
+
+      if (firstBytesRead > 0) {
+        task.transferred = firstBytesRead
+        this.emitFileChunk(task, decoder.write(initialSample))
+        this.emitFileStreamState(task, 'running', undefined, decoder.encoding)
+      }
+
+      let position = firstBytesRead
+
+      while (true) {
+        if (task.controller.signal.aborted) {
+          throw new SftpReadCancelledError()
+        }
+
+        const buffer = Buffer.allocUnsafe(32768)
+        const bytesRead = await sftpRead(sftp, task.handle!, buffer, 0, buffer.byteLength, position)
+
+        if (task.controller.signal.aborted) {
+          throw new SftpReadCancelledError()
+        }
+
+        if (bytesRead <= 0) {
+          break
+        }
+
+        position += bytesRead
+        task.transferred = position
+        this.emitFileChunk(task, decoder.write(buffer.subarray(0, bytesRead)))
+        this.emitFileStreamState(task, 'running', undefined, decoder.encoding)
+
+        if (bytesRead < buffer.byteLength) {
+          break
+        }
+      }
+
+      this.emitFileChunk(task, decoder.end())
+      await this.closeReadFileTaskHandle(sftp, task)
+      this.editorFileStreams.delete(task.streamId)
+      this.emitFileStreamState(task, 'completed', undefined, decoder.encoding)
+    } catch (error) {
+      await this.closeReadFileTaskHandle(sftp, task)
+      this.editorFileStreams.delete(task.streamId)
+
+      if (error instanceof SftpReadCancelledError || task.controller.signal.aborted) {
+        this.emitFileStreamState(task, 'cancelled')
+        return
+      }
+
+      this.emitFileStreamState(
+        task,
+        'error',
+        error instanceof Error ? error.message : String(error)
+      )
     }
   }
 
-  cancelReadFile(sessionId: string, remotePath: string): void {
-    const normalized = normalizeRemotePath(remotePath)
-    const controllerKey = `${sessionId}:${normalized}`
-    const controller = this.editorReadControllers.get(controllerKey)
-    if (controller) {
-      controller.abort()
-      this.editorReadControllers.delete(controllerKey)
+  private async closeReadFileTaskHandle(
+    sftp: SFTPWrapper,
+    task: EditorFileReadTask
+  ): Promise<void> {
+    const handle = task.handle
+    if (!handle) {
+      return
     }
+
+    task.handle = undefined
+    await sftpClose(sftp, handle).catch(() => undefined)
   }
 
-  async writeFile(
+  private emitFileChunk(task: EditorFileReadTask, chunk: string): void {
+    if (!chunk) {
+      return
+    }
+
+    this.emitToRenderer(
+      'sftp:fileChunk',
+      this.withObservableMetadata(task.sessionId, {
+        streamId: task.streamId,
+        sessionId: task.sessionId,
+        remotePath: task.remotePath,
+        chunk,
+        transferred: task.transferred,
+        total: task.total
+      })
+    )
+  }
+
+  private emitFileStreamState(
+    task: EditorFileReadTask | EditorFileWriteTask,
+    status: SftpFileStreamStateEvent['status'],
+    error?: string,
+    encoding?: string
+  ): void {
+    if (task.terminalStatus) {
+      return
+    }
+
+    if (status === 'completed' || status === 'error' || status === 'cancelled') {
+      task.terminalStatus = status
+    }
+
+    const direction: SftpFileStreamDirection = task.kind === 'read' ? 'download' : 'upload'
+    const total = task.kind === 'read' ? task.total : task.transferred
+    const payload = {
+      streamId: task.streamId,
+      sessionId: task.sessionId,
+      remotePath: task.remotePath,
+      direction,
+      status,
+      transferred: task.transferred,
+      total,
+      ...(encoding ? { encoding } : {}),
+      ...(error ? { error } : {})
+    }
+
+    this.emitToRenderer(
+      'sftp:fileStreamState',
+      this.withObservableMetadata(task.sessionId, payload)
+    )
+    this.emitToRenderer(
+      'sftp:transfer',
+      this.withObservableMetadata(task.sessionId, {
+        sessionId: task.sessionId,
+        direction,
+        fileName: task.fileName,
+        localPath: '__editor__',
+        remotePath: task.remotePath,
+        transferred: task.transferred,
+        total,
+        status,
+        ...(error ? { error } : {})
+      })
+    )
+  }
+
+  async openFileWriteStream(
     sessionId: string,
     remotePath: string,
-    contents: string,
-    encoding?: string
-  ): Promise<void> {
+    encoding: string
+  ): Promise<SftpFileWriteStreamStart> {
     const runtime = this.requireSession(sessionId)
     const normalized = normalizeRemotePath(remotePath)
-    await sftpWriteFile(runtime.sftp, normalized, contents, encoding)
+    const handle = await sftpOpen(runtime.sftp, normalized, 'w')
+    const streamId = `sftp-write:${sessionId}:${randomUUID()}`
+    this.editorFileStreams.set(streamId, {
+      kind: 'write',
+      streamId,
+      sessionId,
+      remotePath: normalized,
+      fileName: path.posix.basename(normalized),
+      encoding,
+      transferred: 0,
+      state: 'open',
+      queue: Promise.resolve(),
+      handle,
+      sftp: runtime.sftp
+    })
+    return { streamId, sessionId, remotePath: normalized }
+  }
+
+  async writeFileChunk(streamId: string, chunk: string): Promise<void> {
+    const task = this.requireWriteFileStream(streamId)
+    const writeOperation = task.queue.then(async () => {
+      if (this.isWriteFileTaskUnavailable(task)) {
+        throw this.createWriteFileStreamUnavailableError(task)
+      }
+
+      const pendingPrefix = task.pendingHighSurrogate ?? ''
+      task.pendingHighSurrogate = undefined
+      const { content, pendingHighSurrogate } = splitTrailingHighSurrogate(
+        `${pendingPrefix}${chunk}`
+      )
+      task.pendingHighSurrogate = pendingHighSurrogate
+
+      if (!content) {
+        return
+      }
+
+      await this.writeFileTaskBuffer(task, encodeContent(content, task.encoding))
+    })
+    task.queue = writeOperation.catch(() => undefined)
+    return writeOperation
+  }
+
+  async closeFileWriteStream(streamId: string): Promise<void> {
+    const task = this.requireWriteFileStream(streamId)
+    task.state = 'closing'
+    this.editorFileStreams.delete(streamId)
+    await task.queue
+    if (task.failure) {
+      throw this.createWriteFileStreamUnavailableError(task)
+    }
+
+    await this.flushPendingWriteFileSurrogate(task)
+    if (task.failure) {
+      throw this.createWriteFileStreamUnavailableError(task)
+    }
+
+    try {
+      await this.commitWriteFileTaskHandle(task)
+    } catch (error) {
+      const failure = error instanceof Error ? error : new Error(String(error))
+      task.state = 'error'
+      task.failure = failure
+      this.emitFileStreamState(task, 'error', failure.message)
+      throw failure
+    }
+
+    task.state = 'closed'
+    this.emitFileStreamState(task, 'completed')
+  }
+
+  cancelFileStream(streamId: string): void {
+    const task = this.editorFileStreams.get(streamId)
+    if (!task) {
+      return
+    }
+
+    this.editorFileStreams.delete(streamId)
+    if (task.kind === 'read') {
+      this.pendingReadStreamStarts.delete(streamId)
+      task.controller.abort()
+      this.emitFileStreamState(task, 'cancelled')
+      void this.closeReadFileTaskHandle(task.sftp, task)
+    } else {
+      task.state = 'cancelled'
+      void this.closeWriteFileTaskHandle(task)
+      this.emitFileStreamState(task, 'cancelled')
+    }
+  }
+
+  private async releaseSessionEditorFileStreams(sessionId: string): Promise<void> {
+    const tasks = [...this.editorFileStreams.values()].filter(
+      (task) => task.sessionId === sessionId
+    )
+
+    await Promise.all(
+      tasks.map(async (task) => {
+        this.editorFileStreams.delete(task.streamId)
+
+        if (task.kind === 'read') {
+          this.pendingReadStreamStarts.delete(task.streamId)
+          task.controller.abort()
+          this.emitFileStreamState(task, 'cancelled')
+          await this.closeReadFileTaskHandle(task.sftp, task)
+          return
+        }
+
+        if (task.state !== 'cancelled' && task.state !== 'closed') {
+          task.state = 'cancelled'
+          this.emitFileStreamState(task, 'cancelled')
+        }
+        await this.closeWriteFileTaskHandle(task)
+      })
+    )
+  }
+
+  private requireWriteFileStream(streamId: string): EditorFileWriteTask {
+    const task = this.editorFileStreams.get(streamId)
+    if (!task || task.kind !== 'write' || task.state !== 'open') {
+      throw new Error(`SFTP file stream unavailable: ${streamId}`)
+    }
+
+    return task
+  }
+
+  private isWriteFileTaskUnavailable(task: EditorFileWriteTask): boolean {
+    return task.state === 'cancelled' || task.state === 'closed' || task.state === 'error'
+  }
+
+  private createWriteFileStreamUnavailableError(task: EditorFileWriteTask): Error {
+    return task.failure ?? new Error(`SFTP file stream unavailable: ${task.streamId}`)
+  }
+
+  private async writeFileTaskBuffer(task: EditorFileWriteTask, buffer: Buffer): Promise<void> {
+    if (this.isWriteFileTaskUnavailable(task)) {
+      throw this.createWriteFileStreamUnavailableError(task)
+    }
+
+    const handle = task.handle
+    if (!handle) {
+      throw this.createWriteFileStreamUnavailableError(task)
+    }
+
+    try {
+      await sftpWrite(task.sftp, handle, buffer, 0, buffer.byteLength, task.transferred)
+    } catch (error) {
+      throw await this.failWriteFileTask(task, error)
+    }
+
+    if (this.isWriteFileTaskUnavailable(task)) {
+      throw this.createWriteFileStreamUnavailableError(task)
+    }
+
+    task.transferred += buffer.byteLength
+    this.emitFileStreamState(task, 'running')
+  }
+
+  private async flushPendingWriteFileSurrogate(task: EditorFileWriteTask): Promise<void> {
+    const pendingHighSurrogate = task.pendingHighSurrogate
+    if (!pendingHighSurrogate) {
+      return
+    }
+
+    task.pendingHighSurrogate = undefined
+    await this.writeFileTaskBuffer(task, encodeContent(pendingHighSurrogate, task.encoding))
+  }
+
+  private async failWriteFileTask(task: EditorFileWriteTask, error: unknown): Promise<Error> {
+    const failure = error instanceof Error ? error : new Error(String(error))
+    if (task.state === 'error') {
+      return task.failure ?? failure
+    }
+
+    task.state = 'error'
+    task.failure = failure
+    this.editorFileStreams.delete(task.streamId)
+    await this.closeWriteFileTaskHandle(task)
+    this.emitFileStreamState(task, 'error', failure.message)
+    return failure
+  }
+
+  private async closeWriteFileTaskHandle(task: EditorFileWriteTask): Promise<void> {
+    const handle = task.handle
+    if (!handle) {
+      return
+    }
+
+    task.handle = undefined
+    await sftpClose(task.sftp, handle).catch(() => undefined)
+  }
+
+  private async commitWriteFileTaskHandle(task: EditorFileWriteTask): Promise<void> {
+    const handle = task.handle
+    if (!handle) {
+      return
+    }
+
+    task.handle = undefined
+    await sftpClose(task.sftp, handle)
   }
 
   async makeDirectory(sessionId: string, currentPath: string, name: string): Promise<void> {
@@ -1632,6 +2059,7 @@ export class SessionManager {
   dispose(): void {
     for (const runtime of this.sessions.values()) {
       runtime.finalizing = true
+      void this.releaseSessionEditorFileStreams(runtime.sessionId)
       for (const active of [...runtime.portForwards.values()]) {
         void this.releasePortForwardRuntime(runtime.sessionId, runtime, active)
       }
@@ -1657,74 +2085,9 @@ export class SessionManager {
     return new ConnectionFailure('connection_failed', message)
   }
 
-  private resolveJumpServer(server: Server): Server | null {
-    if (!server.jumpServerId) {
-      return null
-    }
-
-    const jumpServer = this.database.getServerById(server.jumpServerId)
-    if (!jumpServer) {
-      throw new ConnectionFailure('connection_failed', this.t('errors.jumpServerNotFound'))
-    }
-
-    if (jumpServer.id === server.id || jumpServer.jumpServerId) {
-      throw new ConnectionFailure('connection_failed', this.t('errors.jumpServerChainUnsupported'))
-    }
-
-    return jumpServer
-  }
-
-  private async resolveConnectionAuth(
-    server: Server,
-    request: ConnectionRequest
-  ): Promise<{
-    password?: string
-    passphrase?: string
-    privateKey?: string
-  }> {
-    const requestSecrets = request.secrets?.[server.id]
-    const password =
-      requestSecrets?.password ?? this.database.getServerPassword(server.id) ?? undefined
-    const passphrase =
-      requestSecrets?.passphrase ?? this.database.getServerPassphrase(server.id) ?? undefined
-
-    if (server.authType === 'password' && !password) {
-      throw new ConnectionFailure(
-        'secret_required',
-        this.t('errors.passwordRequired'),
-        server.id,
-        'password'
-      )
-    }
-
-    let privateKey: string | undefined
-    if (server.authType === 'privateKey') {
-      const storedPrivateKey = this.database.getServerPrivateKey(server.id)
-      if (storedPrivateKey?.trim()) {
-        privateKey = storedPrivateKey
-      } else if (server.privateKeyPath) {
-        privateKey = await fs.readFile(server.privateKeyPath, 'utf8')
-      }
-
-      if (!privateKey) {
-        throw new ConnectionFailure('connection_failed', this.t('errors.privateKeyMissing'))
-      }
-    }
-
-    return {
-      password,
-      passphrase,
-      privateKey
-    }
-  }
-
   private createConnectConfig(
     server: Server,
-    auth: {
-      password?: string
-      passphrase?: string
-      privateKey?: string
-    },
+    auth: ResolvedConnectionAuth,
     sock?: ClientChannel
   ): ConnectConfig {
     return {
@@ -1739,7 +2102,8 @@ export class SessionManager {
       passphrase: auth.passphrase,
       ...(sock ? { sock } : {}),
       hostVerifier: (key, verify) => {
-        this.verifyHost(server.name, server.host, server.port, key)
+        this.hostTrustService
+          .verifyHost({ serverName: server.name, host: server.host, port: server.port, key })
           .then(verify)
           .catch(() => verify(false))
       }
@@ -1748,11 +2112,7 @@ export class SessionManager {
 
   private async connectToServer(
     server: Server,
-    auth: {
-      password?: string
-      passphrase?: string
-      privateKey?: string
-    },
+    auth: ResolvedConnectionAuth,
     sock?: ClientChannel
   ): Promise<Client> {
     const client = new Client()
@@ -2529,6 +2889,7 @@ export class SessionManager {
     }
 
     runtime.finalizing = true
+    await this.releaseSessionEditorFileStreams(sessionId)
     await this.releaseSessionPortForwards(sessionId)
     this.releaseRuntimeClients(runtime)
     this.sessions.delete(sessionId)
@@ -2559,64 +2920,8 @@ export class SessionManager {
     )
   }
 
-  private async verifyHost(
-    serverName: string,
-    host: string,
-    port: number,
-    key: Buffer
-  ): Promise<boolean> {
-    const fingerprint = toFingerprint(key)
-    const known = this.database.getKnownHost(host, port)
-
-    if (known?.fingerprint === fingerprint) {
-      return true
-    }
-
-    const window = this.getWindow()
-
-    if (!window) {
-      return false
-    }
-
-    const requestId = randomUUID()
-    const kind = known ? 'hostChanged' : 'hostFirstSeen'
-
-    const request: HostTrustRequest = {
-      requestId,
-      kind,
-      serverName,
-      host,
-      port,
-      fingerprint,
-      knownFingerprint: known?.fingerprint
-    }
-
-    const trusted = await new Promise<boolean>((resolve) => {
-      this.hostTrustResolvers.set(requestId, resolve)
-      window.webContents.send('system:hostTrustRequest', request)
-    })
-
-    if (!trusted) {
-      return false
-    }
-
-    this.database.upsertKnownHost({
-      host,
-      port,
-      algorithm: 'sha256',
-      fingerprint,
-      verifiedAt: now()
-    })
-
-    return true
-  }
-
   resolveHostTrust(result: HostTrustResult): void {
-    const resolver = this.hostTrustResolvers.get(result.requestId)
-    if (resolver) {
-      this.hostTrustResolvers.delete(result.requestId)
-      resolver(result.trusted)
-    }
+    this.hostTrustService.resolveHostTrust(result)
   }
 
   private emitConnectionPhase(sessionId: string, phase: SessionConnectionPhase): void {

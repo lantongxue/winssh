@@ -12,11 +12,24 @@ import type {
   SessionErrorEvent,
   SessionExitEvent,
   SessionStateEvent,
+  SftpFileChunkEvent,
+  SftpFileStreamStateEvent,
   SystemMenuAction,
   TransferProgressEvent,
   UpdateState,
   WindowState
 } from './types'
+
+export interface TerminalBackpressureEvent {
+  sessionId: string
+  droppedFrames: number
+  queuedBytes: number
+}
+
+export interface TerminalDegradedEvent {
+  sessionId: string
+  reason: string
+}
 
 export interface IpcChannelMap {
   'commandHistory:added': CommandRecordedEvent
@@ -29,12 +42,16 @@ export interface IpcChannelMap {
   'sessions:error': SessionErrorEvent
   'sessions:exit': SessionExitEvent
   'sessions:state': SessionStateEvent
+  'sftp:fileChunk': SftpFileChunkEvent
+  'sftp:fileStreamState': SftpFileStreamStateEvent
   'sftp:transfer': TransferProgressEvent
   'system:hostTrustRequest': HostTrustRequest
   'system:menuAction': SystemMenuAction
   'system:appFocus': AppFocusEvent
   'system:appActivity': AppActivityEvent
   'system:windowState': WindowState
+  'terminal:backpressure': TerminalBackpressureEvent
+  'terminal:degraded': TerminalDegradedEvent
   'updates:state': UpdateState
 }
 

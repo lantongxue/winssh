@@ -1,5 +1,57 @@
 # Changelog
 
+## [1.2.3](https://github.com/lantongxue/winssh/compare/v1.2.2...v1.2.3) (2026-06-17)
+
+### Features
+
+* add incremental text decoder ([85c513d](https://github.com/lantongxue/winssh/commit/85c513db77ba1746ae91c302d1c627b66703f04b))
+* add osc history worker dispatcher ([90f1b85](https://github.com/lantongxue/winssh/commit/90f1b8558f6328583fe83979418fb005ddef2ede))
+* add port forward worker dispatcher ([4f7e1c2](https://github.com/lantongxue/winssh/commit/4f7e1c2620fe47ac0e4201dbf50b244aabcfb128))
+* add preload binary channel ([92125e8](https://github.com/lantongxue/winssh/commit/92125e8d3fa44623d1e0c82dfd864cdb2fbe082b))
+* add sftp worker dispatcher ([fae2ecc](https://github.com/lantongxue/winssh/commit/fae2ecc220c7bc24218655843804d33848017029))
+* add ssh core worker skeleton ([f1a1f0f](https://github.com/lantongxue/winssh/commit/f1a1f0ff7b566931d1871553afad1f6bcb83250a))
+* add ssh data aggregator ([9d41949](https://github.com/lantongxue/winssh/commit/9d419499d3caab70c53fcba2f1cce12df3d6e6a4))
+* add ssh terminal data frame codec ([bd17280](https://github.com/lantongxue/winssh/commit/bd17280a660e687166c62b36ad95a4ede5777962))
+* add ssh terminal web worker ([53be6ca](https://github.com/lantongxue/winssh/commit/53be6ca216fdd019e720b2bfa549c44fec062873))
+* add ssh worker control port ([518fb31](https://github.com/lantongxue/winssh/commit/518fb31b95fcdff95ba1903fdde123c874ccc665))
+* add ssh worker protocol baseline ([4de6e1b](https://github.com/lantongxue/winssh/commit/4de6e1bf4946317cc5d8c95bdeac4f494e910054))
+* add terminal worker host ([e05d668](https://github.com/lantongxue/winssh/commit/e05d6685d32275dc3c49f2b9bd38a279d49597e9))
+* add terminal worker protocol and isolation headers ([5089479](https://github.com/lantongxue/winssh/commit/5089479f5c191d8b4a02e21198a02be5f09d1d66))
+* add worker supervisor service ([0ed358b](https://github.com/lantongxue/winssh/commit/0ed358bd405147f2edbee357888d42cedec72072))
+* define sftp file stream api ([5b29811](https://github.com/lantongxue/winssh/commit/5b298116a1347a1153e79c13f427f529017301b2))
+* expand ssh worker connection protocol ([6b40940](https://github.com/lantongxue/winssh/commit/6b40940a318ff18aef431816e5b012dc0be48464))
+* expose ssh terminal data channel ([8b40bde](https://github.com/lantongxue/winssh/commit/8b40bde298590c7252d80ab278131040ea5b38b2))
+* move host trust checks behind worker ([5311368](https://github.com/lantongxue/winssh/commit/5311368983c1edb563005d7f1ce829237e108e87))
+* move resource snapshot behind worker ([6c15155](https://github.com/lantongxue/winssh/commit/6c151557cbcd3ba0f6dccf98c154596109ed6174))
+* route ssh sessions through worker runtime ([2963c39](https://github.com/lantongxue/winssh/commit/2963c39523979a420687fe0f608de8b9cae3419f))
+* route ssh terminal rendering through worker host ([896a512](https://github.com/lantongxue/winssh/commit/896a51296dcf5e1c4eade12c781ef8be7490e104))
+* route ssh worker data through message ports ([026973c](https://github.com/lantongxue/winssh/commit/026973c084914e81eb2a3831ec26ba33f10084b3))
+* **shell:** 优化 shell 集成安装与命令捕获 ([4304167](https://github.com/lantongxue/winssh/commit/4304167390306cc58758426e210a6d7ef44d107e))
+* stream sftp file editor in renderer ([c6343dd](https://github.com/lantongxue/winssh/commit/c6343dd2249d550bc77384d689994f9aad703cdb))
+* stream sftp file editor ipc in main ([6077d5e](https://github.com/lantongxue/winssh/commit/6077d5ef7d2b52ab4aefc372e58e650e0e12e81b))
+* 增加ctrl + "+" / "-" / "0" 快捷键调整终端字体大小 ([08d80b8](https://github.com/lantongxue/winssh/commit/08d80b86c78e0ec6a23cb9c007571a38509ce326))
+* 支持ctrl+鼠标滚动调整终端字体大小 ([ac3c1eb](https://github.com/lantongxue/winssh/commit/ac3c1ebacca775b23aa1cee5ca150d27940cdab8))
+
+### Bug Fixes
+
+* avoid sftp load chunk concatenation ([fa6da4a](https://github.com/lantongxue/winssh/commit/fa6da4a50dbb25aee9bbff30fed5e78b9a8277cb))
+* cancel pending sftp editor read stream ([b224ff2](https://github.com/lantongxue/winssh/commit/b224ff2e70b73b13dd715b4e628e95579bd0b462))
+* harden sftp file stream runtime ([bfd7f13](https://github.com/lantongxue/winssh/commit/bfd7f1367a81e937a94baba30ee754e9f58bbbc8))
+* harden sftp read stream lifecycle ([2060168](https://github.com/lantongxue/winssh/commit/2060168e478b74932b7b8b9bf6c323e6259d8876))
+* harden sftp stream edge cases ([093760f](https://github.com/lantongxue/winssh/commit/093760f45361cd15fe0cf0ca7c2f06b51695b370))
+* harden sftp streaming follow-ups ([1b0c609](https://github.com/lantongxue/winssh/commit/1b0c609aed3bd92dc3a3745958bc9343be82efe3))
+* ignore stale worker read stream starts ([a7fee3e](https://github.com/lantongxue/winssh/commit/a7fee3e5b566200c4dd72690749f65af3cd322ba))
+* order sftp stream events after open ack ([86a25e0](https://github.com/lantongxue/winssh/commit/86a25e06de4ecf6911f94ceefa5295346de26e02))
+* preserve smart decode utf8 detection ([562ec2c](https://github.com/lantongxue/winssh/commit/562ec2cbb247fcdbd6ca916a34076f0eddeea66b))
+* preserve split surrogate sftp writes ([cb6acf8](https://github.com/lantongxue/winssh/commit/cb6acf88b47d9e0e067f580c659b9598db8524b7))
+* prevent saving failed sftp editor loads ([4711184](https://github.com/lantongxue/winssh/commit/4711184dcec78a4eb5a4c9dad86dd4db32031cbc))
+* show sftp editor stream progress ([82a5ec5](https://github.com/lantongxue/winssh/commit/82a5ec53cf0dca9255dd7c0646a4252c144b3c2c))
+* stream sftp files through ssh worker ([005b386](https://github.com/lantongxue/winssh/commit/005b386445c2a032dd5e005abeef4d6930e6ab33))
+* 修复编辑器不支持ctrl+鼠标滚动调整字体大小的问题 ([c7e483d](https://github.com/lantongxue/winssh/commit/c7e483d4bea04a98a3a3e259edc800344c1842f0))
+* 修复资源监控骨架没对齐的问题 ([812cf02](https://github.com/lantongxue/winssh/commit/812cf0248ae07936559bc00ccabc629f16699e82))
+* **服务器编辑器:** 调整编辑页字段分组 ([4b5ef3d](https://github.com/lantongxue/winssh/commit/4b5ef3db4a2d64f506a3610027f147aaa2d63ee9))
+* 移除官网的部分交互动画，提升浏览器渲染性能 ([defadc1](https://github.com/lantongxue/winssh/commit/defadc1377ba5cc306d26543b01bd60f77b21d07))
+
 ## [1.2.2](https://github.com/lantongxue/winssh/compare/v1.2.1...v1.2.2) (2026-06-07)
 
 ### Features

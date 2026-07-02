@@ -41,6 +41,10 @@ function encodeBase64(text: string): string {
   return Buffer.from(text, 'utf8').toString('base64')
 }
 
+function encodeHex(text: string): string {
+  return Buffer.from(text, 'utf8').toString('hex')
+}
+
 function osc(payload: string): string {
   return `\x1b]${payload}\x07`
 }
@@ -71,6 +75,16 @@ describe('scanOscChunk', () => {
     const { handlers, events } = makeHandlers()
     const cmd = 'echo "hello world"\nls -la'
     const input = osc(`633;E;${encodeBase64(cmd)}`)
+    const out = scanOscChunk(state, input, handlers)
+    expect(out).toBe('')
+    expect(events.commandText).toEqual([cmd])
+  })
+
+  it('decodes hex command text from OSC 633;Eh', () => {
+    const state = createOscScannerState()
+    const { handlers, events } = makeHandlers()
+    const cmd = 'printf "older bash friendly"'
+    const input = osc(`633;Eh;${encodeHex(cmd)}`)
     const out = scanOscChunk(state, input, handlers)
     expect(out).toBe('')
     expect(events.commandText).toEqual([cmd])
@@ -120,7 +134,11 @@ describe('scanOscChunk', () => {
   it('extracts working directory from OSC 7 Windows file:// paths and strips leading slash', () => {
     const state = createOscScannerState()
     const { handlers, events } = makeHandlers()
-    const out = scanOscChunk(state, `prefix${osc('7;file://localhost/C:/Users/foo')}suffix`, handlers)
+    const out = scanOscChunk(
+      state,
+      `prefix${osc('7;file://localhost/C:/Users/foo')}suffix`,
+      handlers
+    )
     expect(out).toBe('prefixsuffix')
     expect(events.cwd).toEqual(['C:/Users/foo'])
   })

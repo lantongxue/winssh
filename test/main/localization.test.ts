@@ -34,10 +34,12 @@ describe('main localization', () => {
       })
     ).toContain('prod-bastion')
     expect(en('errors.themePluginDeleteBuiltin')).toBe('Built-in themes cannot be deleted.')
+    expect(en('session.workerCrashed')).toContain('SSH worker crashed')
     expect(
       zh('errors.themeBuiltinConflict', {
         value: 'winssh.dark-plus'
       })
     ).toContain('winssh.dark-plus')
+    expect(zh('session.workerCrashed')).toContain('SSH 工作线程')
   })
 })

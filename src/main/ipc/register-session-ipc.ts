@@ -1,14 +1,18 @@
-import { ipcMain } from 'electron'
+import { ipcMain, type MessagePortMain } from 'electron'
 import type { ConnectionRequest, PortForwardInput } from '@shared/types'
 import { connectionRequestSchema, portForwardSchema } from '@shared/validation'
 import type { SessionsApplicationService } from '../application/sessions-application-service'
 import { createLogger } from '../observability'
+import type { SshDataAggregator } from '../services/ssh-data-aggregator'
 
 function parseInput<T>(parser: { parse: (value: unknown) => T }, value: unknown): T {
   return parser.parse(value)
 }
 
-export function registerSessionIpc(service: SessionsApplicationService) {
+export function registerSessionIpc(
+  service: SessionsApplicationService,
+  dataAggregator?: Pick<SshDataAggregator, 'registerSessionPort'>
+) {
   const logger = createLogger('main')
   logger.info('Registering session IPC handlers', {
     data: { scope: 'sessions' }
@@ -36,6 +40,22 @@ export function registerSessionIpc(service: SessionsApplicationService) {
   ipcMain.handle('sessions:resize', (_event, sessionId: string, columns: number, rows: number) =>
     service.resize(sessionId, columns, rows)
   )
+  ipcMain.on('sessions:registerDataPort', (event, payload: { sessionId?: string }) => {
+    const port = event.ports[0] as MessagePortMain | undefined
+    const sessionId = payload?.sessionId
+    if (!port || !sessionId || !dataAggregator) {
+      port?.close()
+      return
+    }
+
+    port.start()
+    dataAggregator.registerSessionPort(sessionId, {
+      postMessage: (message, transferList) => {
+        port.postMessage(message, transferList as never)
+      },
+      close: () => port.close()
+    })
+  })
 
   ipcMain.handle('localTerminals:create', () => service.createLocalTerminal())
   ipcMain.handle('localTerminals:close', (_event, terminalId: string) =>
@@ -59,16 +79,25 @@ export function registerSessionIpc(service: SessionsApplicationService) {
   ipcMain.handle('sftp:createFile', (_event, sessionId: string, remotePath: string, name: string) =>
     service.createFile(sessionId, remotePath, name)
   )
-  ipcMain.handle('sftp:readFile', (_event, sessionId: string, remotePath: string) =>
-    service.readFile(sessionId, remotePath)
+  ipcMain.handle('sftp:openFileReadStream', (_event, sessionId: string, remotePath: string) =>
+    service.openFileReadStream(sessionId, remotePath)
   )
-  ipcMain.on('sftp:cancelReadFile', (_event, sessionId: string, remotePath: string) =>
-    service.cancelReadFile(sessionId, remotePath)
+  ipcMain.on('sftp:startFileReadStream', (_event, streamId: string) =>
+    service.startFileReadStream(streamId)
   )
   ipcMain.handle(
-    'sftp:writeFile',
-    (_event, sessionId: string, remotePath: string, contents: string, encoding?: string) =>
-      service.writeFile(sessionId, remotePath, contents, encoding)
+    'sftp:openFileWriteStream',
+    (_event, sessionId: string, remotePath: string, encoding: string) =>
+      service.openFileWriteStream(sessionId, remotePath, encoding)
+  )
+  ipcMain.handle('sftp:writeFileChunk', (_event, streamId: string, chunk: string) =>
+    service.writeFileChunk(streamId, chunk)
+  )
+  ipcMain.handle('sftp:closeFileWriteStream', (_event, streamId: string) =>
+    service.closeFileWriteStream(streamId)
+  )
+  ipcMain.on('sftp:cancelFileStream', (_event, streamId: string) =>
+    service.cancelFileStream(streamId)
   )
   ipcMain.handle('sftp:mkdir', (_event, sessionId: string, remotePath: string, name: string) =>
     service.makeDirectory(sessionId, remotePath, name)

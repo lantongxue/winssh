@@ -18,6 +18,8 @@ export function useSessionEvents() {
   const updateLocalTerminalState = useLocalTerminalsStore((state) => state.updateTerminalState)
   const updateSessionState = useSessionsStore((state) => state.updateSessionState)
   const setTerminalCwd = useSessionsStore((state) => state.setTerminalCwd)
+  const markTerminalBackpressure = useSessionsStore((state) => state.markTerminalBackpressure)
+  const markTerminalDegraded = useSessionsStore((state) => state.markTerminalDegraded)
   const appendOutput = useWorkbenchStore((state) => state.appendOutput)
   const pushProblem = useWorkbenchStore((state) => state.pushProblem)
   const revealPanel = useWorkbenchStore((state) => state.revealPanel)
@@ -220,6 +222,14 @@ export function useSessionEvents() {
       setTerminalCwd(event.sessionId, event.cwd)
     })
 
+    const unsubscribeTerminalBackpressure = sessionsClient.onTerminalBackpressure((event) => {
+      markTerminalBackpressure(event.sessionId)
+    })
+
+    const unsubscribeTerminalDegraded = sessionsClient.onTerminalDegraded((event) => {
+      markTerminalDegraded(event.sessionId, event.reason)
+    })
+
     return () => {
       unsubscribeState()
       unsubscribeError()
@@ -229,6 +239,8 @@ export function useSessionEvents() {
       unsubscribeLocalTerminalState()
       unsubscribeLocalTerminalExit()
       unsubscribeCwd()
+      unsubscribeTerminalBackpressure()
+      unsubscribeTerminalDegraded()
     }
   }, [
     appendOutput,
@@ -239,6 +251,8 @@ export function useSessionEvents() {
     updateLocalTerminalState,
     updateSessionState,
     setTerminalCwd,
+    markTerminalBackpressure,
+    markTerminalDegraded,
     upsertTransfer
   ])
 }

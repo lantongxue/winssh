@@ -7,7 +7,8 @@ import i18n from '@/i18n'
 import type {
   TerminalSearchController,
   TerminalSearchResultsState,
-  TerminalTransport
+  TerminalTransport,
+  TerminalWorkerOptions
 } from '@/hooks/use-terminal'
 
 const terminalInstances: MockTerminal[] = []
@@ -235,7 +236,8 @@ function TestTerminal({
   active = true,
   focusKey = null,
   onLinkTooltipChange,
-  onSearchResultsChange
+  onSearchResultsChange,
+  workerOptions
 }: {
   settings: AppSettings
   theme: ReturnType<typeof createThemeDefinition>
@@ -245,6 +247,7 @@ function TestTerminal({
     state: import('@/hooks/use-terminal').TerminalLinkTooltipState | null
   ) => void
   onSearchResultsChange?: (state: TerminalSearchResultsState | null) => void
+  workerOptions?: TerminalWorkerOptions
 }) {
   const { containerRef, search } = useTerminal(
     testTransport,
@@ -254,7 +257,8 @@ function TestTerminal({
     onLinkTooltipChange,
     onSearchResultsChange,
     active,
-    focusKey
+    focusKey,
+    workerOptions
   )
 
   useEffect(() => {
@@ -474,7 +478,7 @@ describe('useTerminal', () => {
     expect(terminalInstances[0]?.initialOptions.allowTransparency).toBe(false)
     expect(terminalInstances[0]?.initialOptions.allowProposedApi).toBe(true)
     expect(terminalInstances[0]?.initialOptions.fontFamily).toBe(
-      '"WinSSH Cascadia Mono", monospace'
+      '"WinSSH Cascadia Mono", Consolas, "Courier New", monospace'
     )
     expect(terminalInstances[0]?.unicode.activeVersion).toBe('11')
     expect(terminalInstances[0]?.options.theme).toMatchObject({
@@ -490,6 +494,30 @@ describe('useTerminal', () => {
     await waitFor(() => {
       expect(fitAddonInstances[0]?.fit).toHaveBeenCalled()
     })
+  })
+
+  it('uses terminal worker host when explicitly enabled', async () => {
+    const host = {
+      attach: vi.fn(async () => undefined),
+      detach: vi.fn(),
+      focus: vi.fn(),
+      resize: vi.fn()
+    }
+
+    const view = render(
+      <TestTerminal
+        settings={settings}
+        theme={darkTheme}
+        workerOptions={{ enabled: true, sessionId: 'session-1', terminalWorkerHost: host }}
+      />
+    )
+
+    await waitFor(() => expect(host.attach).toHaveBeenCalled())
+    expect(terminalInstances).toHaveLength(0)
+
+    view.unmount()
+
+    expect(host.detach).toHaveBeenCalledOnce()
   })
 
   it('enables xterm minimum contrast for high contrast themes', () => {
@@ -523,7 +551,9 @@ describe('useTerminal', () => {
     )
 
     expect(terminalInstances).toHaveLength(1)
-    expect(terminalInstances[0]?.options.fontFamily).toBe('"WinSSH IBM Plex Mono", monospace')
+    expect(terminalInstances[0]?.options.fontFamily).toBe(
+      '"WinSSH IBM Plex Mono", Consolas, "Courier New", monospace'
+    )
     expect(terminalInstances[0]?.options.fontSize).toBe(16)
     await waitFor(() => {
       expect(webFontsAddonInstances[0]?.relayout).toHaveBeenCalled()

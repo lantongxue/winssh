@@ -72,6 +72,7 @@ export type MainTranslationKey =
   | 'session.connected'
   | 'session.closed'
   | 'session.disconnected'
+  | 'session.workerCrashed'
 
 type MessageTree = {
   [key: string]: string | MessageTree
@@ -193,7 +194,8 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
       connecting: 'Establishing connection',
       connected: 'Connection established',
       closed: 'Connection closed',
-      disconnected: 'Connection lost'
+      disconnected: 'Connection lost',
+      workerCrashed: 'SSH worker crashed. Reconnect the session to continue.'
     }
   },
   'zh-CN': {
@@ -304,7 +306,8 @@ const messages: Record<ResolvedMainLanguage, MessageTree> = {
       connecting: '正在建立连接',
       connected: '连接成功',
       closed: '连接已关闭',
-      disconnected: '连接已断开'
+      disconnected: '连接已断开',
+      workerCrashed: 'SSH 工作线程已崩溃。请重新连接会话后继续。'
     }
   }
 }

@@ -1,5 +1,12 @@
 import { createWinsshApiMock } from '@test/renderer/helpers/create-winssh-api'
-import type { AppFocusEvent, AppActivityEvent } from '@shared/types'
+import type {
+  AppFocusEvent,
+  AppActivityEvent,
+  SftpFileChunkEvent,
+  SftpFileReadStreamStart,
+  SftpFileStreamStateEvent,
+  SftpFileWriteStreamStart
+} from '@shared/types'
 import type { WinsshApi } from '@shared/api'
 import type { IpcChannelMap } from '@shared/ipc-channels'
 
@@ -110,5 +117,46 @@ describe('away-reminder preload subscriptions', () => {
       unsub()
       expect(unsubscribed).toBe(true)
     })
+  })
+})
+
+describe('SFTP file stream API contract', () => {
+  it('exposes stream methods instead of whole-file editor methods', async () => {
+    type SftpApi = WinsshApi['sftp']
+    const _readStart: Awaited<ReturnType<SftpApi['openFileReadStream']>> =
+      {} as SftpFileReadStreamStart
+    const _writeStart: Awaited<ReturnType<SftpApi['openFileWriteStream']>> =
+      {} as SftpFileWriteStreamStart
+    const _startRead: Parameters<SftpApi['startFileReadStream']>[0] = 'stream-1'
+    const _chunk: Parameters<SftpApi['onFileChunk']>[0] = (_event: SftpFileChunkEvent) => {}
+    const _state: Parameters<SftpApi['onFileStreamState']>[0] = (
+      _event: SftpFileStreamStateEvent
+    ) => {}
+
+    const api = createWinsshApiMock()
+
+    const sftpApiRecord = api.sftp as unknown as Record<string, unknown>
+    expect(sftpApiRecord['readFile']).toBeUndefined()
+    expect(sftpApiRecord['writeFile']).toBeUndefined()
+    await expect(api.sftp.openFileReadStream('session-1', '/etc/hosts')).resolves.toMatchObject({
+      encoding: 'utf8',
+      remotePath: '/etc/hosts',
+      sessionId: 'session-1',
+      streamId: expect.any(String)
+    })
+    expect(api.sftp.startFileReadStream('read:session-1:/etc/hosts')).toBeUndefined()
+    await expect(
+      api.sftp.openFileWriteStream('session-1', '/etc/hosts', 'utf8')
+    ).resolves.toMatchObject({
+      remotePath: '/etc/hosts',
+      sessionId: 'session-1',
+      streamId: expect.any(String)
+    })
+
+    void _readStart
+    void _writeStart
+    void _startRead
+    void _chunk
+    void _state
   })
 })
