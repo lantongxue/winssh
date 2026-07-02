@@ -92,6 +92,21 @@ function CredentialFormDialog({
     enabled: Boolean(credential?.id)
   })
 
+  // Reset form when credential changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        name: credential?.name ?? '',
+        kind: credential?.kind ?? 'password',
+        username: credential?.username ?? '',
+        password: '',
+        privateKey: '',
+        passphrase: '',
+        note: credential?.note ?? ''
+      })
+    }
+  }, [credential, open, form])
+
   // Pre-fill secrets when editing
   useEffect(() => {
     if (secretQuery.data && credential) {

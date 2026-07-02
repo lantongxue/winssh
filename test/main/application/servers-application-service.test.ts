@@ -11,11 +11,6 @@ interface ServersDatabaseDouble {
   updateServer?: ReturnType<typeof vi.fn>
 }
 
-interface SecureStoreDouble {
-  deleteSecret?: ReturnType<typeof vi.fn>
-  getSecret?: ReturnType<typeof vi.fn>
-  setSecret?: ReturnType<typeof vi.fn>
-}
 
 function createServer(overrides: Partial<Server> = {}): Server {
   return {
@@ -51,13 +46,7 @@ describe('ServersApplicationService', () => {
     } satisfies ServersDatabaseDouble as unknown as ConstructorParameters<
       typeof ServersApplicationService
     >[0]
-    const secureStore = {
-      deleteSecret: vi.fn(async () => undefined)
-    } satisfies SecureStoreDouble as unknown as ConstructorParameters<
-      typeof ServersApplicationService
-    >[1]
-
-    const service = new ServersApplicationService(database, secureStore)
+    const service = new ServersApplicationService(database)
     const servers = await service.listServers()
 
     expect(servers).toHaveLength(1)
@@ -84,13 +73,7 @@ describe('ServersApplicationService', () => {
     } satisfies ServersDatabaseDouble as unknown as ConstructorParameters<
       typeof ServersApplicationService
     >[0]
-    const secureStore = {
-      deleteSecret: vi.fn(async () => undefined)
-    } satisfies SecureStoreDouble as unknown as ConstructorParameters<
-      typeof ServersApplicationService
-    >[1]
-
-    const service = new ServersApplicationService(database, secureStore)
+    const service = new ServersApplicationService(database)
     const secrets = await service.getSecrets('server-1')
 
     expect(secrets).toEqual({
@@ -109,13 +92,7 @@ describe('ServersApplicationService', () => {
     } satisfies ServersDatabaseDouble as unknown as ConstructorParameters<
       typeof ServersApplicationService
     >[0]
-    const secureStore = {
-      deleteSecret: vi.fn(async () => undefined)
-    } satisfies SecureStoreDouble as unknown as ConstructorParameters<
-      typeof ServersApplicationService
-    >[1]
-
-    const service = new ServersApplicationService(database, secureStore)
+    const service = new ServersApplicationService(database)
     const secrets = await service.getSecrets('server-1')
 
     expect(secrets.password).toBe('db-password')
@@ -124,39 +101,4 @@ describe('ServersApplicationService', () => {
     expect(database.getServerPassphrase).toHaveBeenCalledWith('server-1')
   })
 
-  it('cleans up keychain secrets after creating a server', async () => {
-    const createdServer = createServer()
-    const database = {
-      createServer: vi.fn(() => createdServer),
-      listServers: vi.fn(() => [createdServer])
-    } satisfies ServersDatabaseDouble as unknown as ConstructorParameters<
-      typeof ServersApplicationService
-    >[0]
-    const secureStore = {
-      deleteSecret: vi.fn(async () => undefined)
-    } satisfies SecureStoreDouble as unknown as ConstructorParameters<
-      typeof ServersApplicationService
-    >[1]
-
-    const service = new ServersApplicationService(database, secureStore)
-
-    await service.create({
-      authType: 'password',
-      favorite: false,
-      groupId: null,
-      host: 'example.com',
-      jumpServerId: null,
-      name: 'Example',
-      note: '',
-      password: 'top-secret',
-      port: 22,
-      rememberPassphrase: false,
-      rememberPassword: true,
-      tagIds: [],
-      username: 'tester'
-    })
-
-    expect(secureStore.deleteSecret).toHaveBeenCalledWith('server-1', 'password')
-    expect(secureStore.deleteSecret).toHaveBeenCalledWith('server-1', 'passphrase')
-  })
 })

@@ -8,7 +8,6 @@ import type {
   ConnectionSecretInput,
   ConnectionRequest,
   QuickConnectTarget,
-  RuntimeCapabilities,
   SecretKind,
   Server,
   ServerUpsertInput
@@ -17,7 +16,6 @@ import { localTerminalsClient } from '@/features/local-terminals/api/local-termi
 import { queryKeys } from '@/features/shared/query-keys'
 import { serversClient } from '@/features/servers/api/servers-client'
 import { sessionsClient } from '@/features/sessions/api/sessions-client'
-import { systemClient } from '@/features/system/api/system-client'
 import type { WorkbenchActivityId } from '@/lib/workbench'
 import {
   createLocalTerminalEditorDocument,
@@ -242,19 +240,6 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  const getCredentialStorageAvailable = async () => {
-    const cached = queryClient.getQueryData<RuntimeCapabilities>(queryKeys.capabilities)
-    if (cached) {
-      return cached.credentialStorage
-    }
-
-    const capabilities = await queryClient.fetchQuery({
-      queryKey: queryKeys.capabilities,
-      queryFn: () => systemClient.getCapabilities()
-    })
-
-    return capabilities.credentialStorage
-  }
 
   const getServers = async (options?: { force?: boolean }) => {
     const cached = !options?.force
@@ -375,7 +360,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     server: Server,
     options?: ConnectionSecretsRequestOptions
   ) => {
-    const canRemember = await getCredentialStorageAvailable()
+    const canRemember = true
     const secretKind =
       options?.secretKind ?? (server.authType === 'password' ? 'password' : 'passphrase')
     setQuickInput({
@@ -392,7 +377,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   }
 
   const requestQuickConnectSecrets = async (target: QuickConnectTarget) => {
-    const canRemember = await getCredentialStorageAvailable()
+    const canRemember = true
     setQuickInput({
       canRemember,
       kind: 'credentials',
@@ -573,7 +558,6 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     pendingSessionId?: string
   ) => {
     const server = await ensureQuickConnectServer(target)
-    const canRemember = await getCredentialStorageAvailable()
 
     await startConnection(
       server,
@@ -581,7 +565,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         secrets: {
           [server.id]: {
             password,
-            rememberPassword: canRemember ? remember : false
+            rememberPassword: remember
           }
         },
         serverId: server.id

@@ -109,9 +109,7 @@ const jumpServerSchema = z
 type JumpServerFormValues = z.output<typeof jumpServerSchema>
 type JumpServerFormInputValues = z.input<typeof jumpServerSchema>
 
-function createJumpServerDefaultValues(
-  credentialStorageAvailable: boolean
-): JumpServerFormInputValues {
+function createJumpServerDefaultValues(): JumpServerFormInputValues {
   return {
     authType: 'password',
     host: '',
@@ -120,15 +118,14 @@ function createJumpServerDefaultValues(
     password: '',
     port: 22,
     privateKey: '',
-    rememberPassphrase: false,
-    rememberPassword: credentialStorageAvailable,
+    rememberPassphrase: true,
+    rememberPassword: true,
     username: ''
   }
 }
 
 function toDefaultValues(
   server: Server | null,
-  credentialStorageAvailable: boolean,
   secrets?: ServerSecrets,
   options: { initialGroupId?: string | null } = {}
 ): ServerFormValues {
@@ -146,8 +143,8 @@ function toDefaultValues(
       password: secrets?.password ?? '',
       port: 22,
       privateKey: secrets?.privateKey ?? '',
-      rememberPassphrase: credentialStorageAvailable,
-      rememberPassword: credentialStorageAvailable,
+      rememberPassphrase: true,
+      rememberPassword: true,
       tagIds: [],
       username: '',
       credentialId: null
@@ -168,8 +165,8 @@ function toDefaultValues(
     password: secrets?.password ?? '',
     port: server.port,
     privateKey: secrets?.privateKey ?? '',
-    rememberPassphrase: credentialStorageAvailable ? server.hasPassphrase : false,
-    rememberPassword: credentialStorageAvailable ? server.hasPassword : false,
+    rememberPassphrase: server.hasPassphrase,
+    rememberPassword: server.hasPassword,
     tagIds: server.tags.map((tag) => tag.id),
     username: server.username,
     credentialId: server.credentialId ?? null
@@ -178,7 +175,6 @@ function toDefaultValues(
 
 function toPayload(
   values: ServerFormValues,
-  credentialStorageAvailable: boolean,
   options: { includeSecrets?: boolean } = {}
 ): ServerUpsertInput {
   const includeSecrets = options.includeSecrets ?? true
@@ -191,23 +187,22 @@ function toPayload(
     password: includeSecrets ? values.password : undefined,
     passphrase: includeSecrets ? values.passphrase : undefined,
     privateKey: values.privateKey?.trim() ? values.privateKey : null,
-    rememberPassphrase: credentialStorageAvailable ? values.rememberPassphrase : false,
-    rememberPassword: credentialStorageAvailable ? values.rememberPassword : false,
+    rememberPassphrase: Boolean(values.rememberPassphrase),
+    rememberPassword: Boolean(values.rememberPassword),
     credentialId: values.credentialId || null
   } as ServerUpsertInput
 }
 
 function buildConnectionRequest(
   serverId: string,
-  values: ServerFormValues,
-  credentialStorageAvailable: boolean
+  values: ServerFormValues
 ) {
   if (values.authType === 'password' && values.password) {
     return {
       secrets: {
         [serverId]: {
           password: values.password,
-          rememberPassword: credentialStorageAvailable ? values.rememberPassword : false
+          rememberPassword: Boolean(values.rememberPassword)
         }
       },
       serverId
@@ -219,7 +214,7 @@ function buildConnectionRequest(
       secrets: {
         [serverId]: {
           passphrase: values.passphrase,
-          rememberPassphrase: credentialStorageAvailable ? values.rememberPassphrase : false
+          rememberPassphrase: Boolean(values.rememberPassphrase)
         }
       },
       serverId
@@ -340,12 +335,11 @@ function getVisibleCustomIconDataUrl(
 
 function buildServerPayload(
   values: ServerFormValues,
-  credentialStorageAvailable: boolean,
   customIconDraft: CustomIconDraft,
   options: { includeSecrets?: boolean } = {}
 ): ServerUpsertInput {
   return {
-    ...toPayload(values, credentialStorageAvailable, options),
+    ...toPayload(values, options),
     ...getCustomIconPayload(customIconDraft)
   }
 }
@@ -375,17 +369,11 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     queryKey: queryKeys.tags,
     queryFn: () => tagsClient.list()
   })
-  const capabilitiesQuery = useQuery({
-    queryKey: queryKeys.capabilities,
-    queryFn: () => systemClient.getCapabilities()
-  })
   const credentialsQuery = useQuery({
     queryKey: queryKeys.credentials,
     queryFn: () => credentialsClient.list()
   })
-
   const server = (serversQuery.data ?? []).find((item) => item.id === document.serverId) ?? null
-  const credentialStorageAvailable = capabilitiesQuery.data?.credentialStorage ?? false
   const serverSecretsQuery = useQuery({
     queryKey: queryKeys.serverSecrets(document.serverId as string),
     queryFn: () => serversClient.getSecrets(document.serverId as string),
@@ -402,7 +390,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
 
   const form = useForm<ServerFormValues>({
     resolver: zodResolver(serverSchema as never),
-    defaultValues: toDefaultValues(server, credentialStorageAvailable, serverSecretsQuery.data, {
+    defaultValues: toDefaultValues(server, serverSecretsQuery.data, {
       initialGroupId: document.initialGroupId
     })
   })
@@ -415,20 +403,20 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
 
   const jumpServerForm = useForm<JumpServerFormInputValues, unknown, JumpServerFormValues>({
     resolver: zodResolver(jumpServerSchema),
-    defaultValues: createJumpServerDefaultValues(credentialStorageAvailable)
+    defaultValues: createJumpServerDefaultValues()
   })
 
   useEffect(() => {
     form.reset(
-      toDefaultValues(server, credentialStorageAvailable, undefined, {
+      toDefaultValues(server, undefined, {
         initialGroupId: document.initialGroupId
       })
     )
-  }, [credentialStorageAvailable, document.id, document.initialGroupId, form, server])
+  }, [document.id, document.initialGroupId, form, server])
 
   useEffect(() => {
-    jumpServerForm.reset(createJumpServerDefaultValues(credentialStorageAvailable))
-  }, [credentialStorageAvailable, jumpServerForm])
+    jumpServerForm.reset(createJumpServerDefaultValues())
+  }, [jumpServerForm])
 
   useEffect(() => {
     if (!document.serverId) {
@@ -574,7 +562,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   }
 
   const openJumpServerDialog = () => {
-    jumpServerForm.reset(createJumpServerDefaultValues(credentialStorageAvailable))
+    jumpServerForm.reset(createJumpServerDefaultValues())
     setJumpSecretVisible(false)
     setJumpServerDialogOpen(true)
   }
@@ -620,7 +608,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
 
   const resetEditor = () => {
     form.reset(
-      toDefaultValues(server, credentialStorageAvailable, serverSecretsQuery.data, {
+      toDefaultValues(server, serverSecretsQuery.data, {
         initialGroupId: document.initialGroupId
       })
     )
@@ -761,7 +749,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     options: { includeSecrets?: boolean } = {}
   ) => {
     const payload = validatePayload(
-      buildServerPayload(values, credentialStorageAvailable, customIconDraft, options)
+      buildServerPayload(values, customIconDraft, options)
     )
     const saved = document.serverId
       ? await serversClient.update(document.serverId, payload)
@@ -804,8 +792,8 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
       password: values.password,
       port: values.port,
       privateKey: values.privateKey?.trim() ? values.privateKey : null,
-      rememberPassphrase: credentialStorageAvailable ? values.rememberPassphrase : false,
-      rememberPassword: credentialStorageAvailable ? values.rememberPassword : false,
+      rememberPassphrase: Boolean(values.rememberPassphrase),
+      rememberPassword: Boolean(values.rememberPassword),
       tagIds: [jumpTag.id],
       username: values.username
     })
@@ -894,7 +882,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
 
                 await connectServer(
                   targetServer,
-                  buildConnectionRequest(targetServer.id, values, credentialStorageAvailable)
+                  buildConnectionRequest(targetServer.id, values)
                 )
               } catch (error) {
                 reportPersistenceError(error)
@@ -1237,15 +1225,12 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                         <div className="space-y-1">
                           <div className="font-medium leading-none">{rememberLabel}</div>
                           <div className="text-sm text-muted-foreground">
-                            {credentialStorageAvailable
-                              ? t('workbench.serverEditor.systemKeychain.available')
-                              : t('workbench.serverEditor.systemKeychain.unavailable')}
+                            {t('workbench.serverEditor.systemKeychain.available')}
                           </div>
                         </div>
                         <FormControl>
                           <Switch
-                            checked={field.value && credentialStorageAvailable}
-                            disabled={!credentialStorageAvailable}
+                            checked={Boolean(field.value)}
                             onCheckedChange={field.onChange}
                           />
                         </FormControl>
@@ -1645,15 +1630,12 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                       <div className="space-y-1">
                         <div className="font-medium leading-none">{jumpRememberLabel}</div>
                         <div className="text-sm text-muted-foreground">
-                          {credentialStorageAvailable
-                            ? t('workbench.serverEditor.systemKeychain.available')
-                            : t('workbench.serverEditor.systemKeychain.unavailable')}
+                          {t('workbench.serverEditor.systemKeychain.available')}
                         </div>
                       </div>
                       <FormControl>
                         <Switch
-                          checked={field.value && credentialStorageAvailable}
-                          disabled={!credentialStorageAvailable}
+                          checked={Boolean(field.value)}
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>

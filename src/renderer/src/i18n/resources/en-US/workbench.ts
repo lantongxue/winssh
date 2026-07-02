@@ -304,8 +304,8 @@ const workbench = {
         passphrase: 'Passphrase',
         port: 'Port',
         privateKeyFile: 'Private Key',
-        rememberPassphrase: 'Remember Passphrase',
-        rememberPassword: 'Remember Password',
+        rememberPassphrase: 'Save to Credential Vault',
+        rememberPassword: 'Save to Credential Vault',
         tagInput: 'Add Tag',
         tags: 'Tags',
         username: 'Username'
@@ -345,7 +345,7 @@ const workbench = {
         tags: 'Tags'
       },
       systemKeychain: {
-        available: 'Stored in the system keychain for reuse on future connections.',
+        available: 'Stored in the local credential database for reuse on future connections.',
         unavailable: 'No system keychain is available in the current environment.'
       },
       toasts: {
@@ -614,9 +614,9 @@ const workbench = {
       },
       security: {
         available:
-          'The current environment supports the system keychain, so passwords and passphrases are stored securely when possible.',
+          'Server accounts and passwords are saved directly in the local credential database.',
         unavailable:
-          'No system keychain was detected, so the app does not persist passwords or passphrases.'
+          'Server accounts and passwords are saved directly in the local credential database.'
       },
       subtitle: 'Adjust language, theme, terminal settings, and security options.',
       title: 'Settings Editor',

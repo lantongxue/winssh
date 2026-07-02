@@ -2,7 +2,7 @@
 
 **Updated:** 2026-05-26 · **Commit:** 50c93b3 · **Branch:** main
 
-Cross-platform SSH/SFTP desktop client. Electron 39 + React 19 + TypeScript 5 + Vite 7 + Tailwind 4. Core runtime: ssh2, node-pty, better-sqlite3, xterm.js, Monaco, electron-updater, keytar.
+Cross-platform SSH/SFTP desktop client. Electron 39 + React 19 + TypeScript 5 + Vite 7 + Tailwind 4. Core runtime: ssh2, node-pty, better-sqlite3, xterm.js, Monaco, electron-updater.
 
 > **Child AGENTS.md**: `src/main/`, `src/renderer/src/`, `test/`, `web/` — read domain-specific docs there.
 
@@ -97,9 +97,9 @@ Use these aliases in imports; both src and tests consume them.
 
 ## Native Dependencies
 
-- `better-sqlite3`, `node-pty`, `keytar`, and `ssh2` are native modules.
+- `better-sqlite3`, `node-pty`, and `ssh2` are native modules.
 - `electron.vite.config.ts` externalizes them via `externalizeDepsPlugin()`.
-- `electron-builder.yml` has `asarUnpack` entries for `better-sqlite3` and `keytar`. If adding a new native module that must load from disk at runtime, add it to `asarUnpack` too.
+- `electron-builder.yml` has `asarUnpack` entries for `better-sqlite3`. If adding a new native module that must load from disk at runtime, add it to `asarUnpack` too.
 - `postinstall` runs `electron-builder install-app-deps` to rebuild native modules for the Electron target.
 
 ## Code Style
@@ -114,8 +114,8 @@ Use these aliases in imports; both src and tests consume them.
 These are the facts an agent is most likely to get wrong:
 
 - **ESLint blocks `window.winsshApi`** in all `src/renderer/src/**` except `src/renderer/src/features/shared/api/**`. Always go through `features/*/api`.
-- **Credential model is hybrid** — do not assume a single source of truth: server password/passphrase uses `keytar`, credential vault secrets live in SQLite, server private keys are inline in `servers.private_key` DB column.
-- **`SessionManager` does NOT read credential vault directly** for connection auth. Only `servers:getSecrets` (display) and `resolveStoredPrivateKey()` use the vault. Connection auth uses `request.secrets[server.id]` or keytar fallback.
+- **Credential model** — server password/passphrase, credential vault secrets, and server private keys (inline in `servers.private_key` DB column) all live in the SQLite database.
+- **`SessionManager` does NOT read credential vault directly** for connection auth. Only `servers:getSecrets` (display) and `resolveStoredPrivateKey()` use the vault. Connection auth uses `request.secrets[server.id]` or database fallback.
 - **Jump server is single-hop only**. Nested jump chains are explicitly rejected.
 - **Auto-update is Windows-only** (NSIS builds). macOS/Linux and dev builds return `unsupported` — this is expected UI state, not an error.
 - **Resource monitoring is Linux-only** (`/proc/stat`, `/proc/meminfo`, etc.).

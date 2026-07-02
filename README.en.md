@@ -37,7 +37,7 @@ WinSSH is more than just a terminal emulator; it is a complete, closed-loop oper
 - 🏠 **Unified Workbench** — Manage SSH remote sessions and local terminals under a single tabbed interface. Utilizing a **keep-mounted strategy**, terminal instances (xterm.js) remain resident in memory when switching tabs, preventing disruption to active commands and output context.
 - 📁 **Deeply Integrated SFTP** — Provides a visual remote file manager supporting **two-way drag-and-drop upload/download** with local file explorers, batch actions, and permission management. **Integrated with Monaco Editor**, double-clicking remote text files allows inline editing with instant background sync on save.
 - ⚡ **Command Palette & Custom Commands** — Summon a global command palette with a keyboard shortcut. Besides tracking command history, you can save frequently-used operations commands for one-click execution to boost efficiency.
-- 🔒 **Credential Vault** — Leverages system-level secure credential storage (via keytar) to isolate sensitive account data, safely hosting passwords and private keys with support for Jump Server (single-hop proxy) traversal.
+- 🔒 **Credential Vault** — Safely hosts passwords and private keys to isolate sensitive account data, with support for Jump Server (single-hop proxy) traversal.
 - 📊 **Real-time Host Resource Monitoring** — Ready to use out of the box with no remote agent installation required. Displays real-time charts in the sidebar or bottom panel showing Linux server CPU, memory, network throughput, and disk I/O metrics.
 - 🌐 **Flexible Port Forwarding** — Supports Local Port Forwarding and Remote Port Forwarding, with automatic rule restoration after reconnection when network fluctuations occur.
 - 🎨 **VSCode-style Themes** — Built-in collection of beautiful, high-contrast themes, supporting standard VSCode JSON theme imports and automatic syncing with system Dark/Light modes.
@@ -60,7 +60,6 @@ WinSSH is built on top of a mature and modern frontend ecosystem for high perfor
   - [ssh2](https://github.com/mscdex/ssh2) - Efficient, pure Node.js SSH2 protocol library
   - [node-pty](https://github.com/microsoft/node-pty) - Local pseudo-terminal bridge
   - [better-sqlite3](https://github.com/WiseFlatfish/better-sqlite3) - High-speed embedded SQLite driver
-  - [keytar](https://github.com/atom/keytar) - Cross-platform system keychain access
   - [electron-updater](https://github.com/electron-userland/electron-builder) - Auto-update check and notification module
 
 ---
