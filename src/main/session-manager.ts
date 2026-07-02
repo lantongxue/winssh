@@ -170,49 +170,6 @@ interface PendingReadStreamStart {
   firstBytesRead: number
 }
 
-interface ExecResult {
-  stdout: string
-  stderr: string
-  code: number | null
-  signal?: string
-}
-
-interface CpuTimesSample {
-  idle: number
-  total: number
-}
-
-interface NetworkBytesSample {
-  rxBytes: number
-  sampledAt: number
-  txBytes: number
-}
-
-const RESOURCE_MONITOR_MARKERS = {
-  df: '__WINSSH_DF__',
-  platform: '__WINSSH_PLATFORM__',
-  procMeminfo: '__WINSSH_PROC_MEMINFO__',
-  procNetDev: '__WINSSH_PROC_NET_DEV__',
-  procStat: '__WINSSH_PROC_STAT__'
-} as const
-
-const LINUX_RESOURCE_SNAPSHOT_COMMAND = `LC_ALL=C sh -lc '
-set -eu
-platform="$(uname -s 2>/dev/null || echo unknown)"
-printf "%s\\n%s\\n" "${RESOURCE_MONITOR_MARKERS.platform}" "$platform"
-if [ "$platform" != "Linux" ]; then
-  exit 0
-fi
-printf "%s\\n" "${RESOURCE_MONITOR_MARKERS.procStat}"
-cat /proc/stat
-printf "%s\\n" "${RESOURCE_MONITOR_MARKERS.procMeminfo}"
-cat /proc/meminfo
-printf "%s\\n" "${RESOURCE_MONITOR_MARKERS.procNetDev}"
-cat /proc/net/dev
-printf "%s\\n" "${RESOURCE_MONITOR_MARKERS.df}"
-df -P -B1 /
-'`
-
 function now() {
   return new Date().toISOString()
 }
@@ -659,13 +616,12 @@ export class SessionManager {
   private readonly sessions = new Map<string, SessionRuntime>()
   private readonly history = new Map<string, ConnectionRequest>()
   private readonly portForwardSnapshots = new Map<string, PortForwardRule[]>()
-  private readonly resourceCpuBaselines = new Map<string, CpuTimesSample>()
-  private readonly resourceNetworkBaselines = new Map<string, NetworkBytesSample>()
   private readonly editorFileStreams = new Map<string, EditorFileReadTask | EditorFileWriteTask>()
   private readonly pendingReadStreamStarts = new Map<string, PendingReadStreamStart>()
   private readonly transferControllers = new Map<string, AbortController>()
   private readonly connectionResolver: SshConnectionResolver
   private readonly hostTrustService: HostTrustService
+  private readonly resourceMonitorService = new ResourceMonitorService()
 
   constructor(
     private readonly database: DatabaseService,
