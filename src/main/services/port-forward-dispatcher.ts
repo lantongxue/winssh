@@ -87,10 +87,7 @@ export class PortForwardDispatcher {
     this.requireWorkerPort(sessionId).postMessage({ type: 'disposeSession', sessionId })
   }
 
-  private request<TResult>(
-    sessionId: string,
-    message: Record<string, unknown>
-  ): Promise<TResult> {
+  private request<TResult>(sessionId: string, message: Record<string, unknown>): Promise<TResult> {
     const port = this.requireWorkerPort(sessionId)
     const requestId = `${String(message.type)}:${sessionId}:${randomUUID()}`
     const payload = { ...message, requestId }

@@ -812,6 +812,7 @@ const workbench = {
       }
     },
     titleBar: {
+      addServerTitle: '新增服务器',
       commandPaletteTitle: '命令面板',
       closeWindow: '关闭窗口',
       maximizeWindow: '最大化窗口',

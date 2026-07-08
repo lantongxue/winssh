@@ -45,12 +45,10 @@ describe('SettingsApplicationService', () => {
     const updateService = {
       setAutoCheckEnabled: vi.fn()
     } as unknown as ConstructorParameters<typeof SettingsApplicationService>[2]
-    const normalizeSettingsForPlatform = vi.fn(
-      (settings: AppSettings): AppSettings => ({
-        ...settings,
-        localTerminalShell: 'zsh'
-      })
-    )
+    const normalizeSettingsForPlatform = vi.fn((settings: AppSettings): AppSettings => ({
+      ...settings,
+      localTerminalShell: 'zsh'
+    }))
     const syncMainWindowTheme = vi.fn()
 
     const service = new SettingsApplicationService(

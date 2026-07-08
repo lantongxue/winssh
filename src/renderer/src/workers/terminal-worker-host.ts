@@ -1,7 +1,10 @@
 import type { TerminalDegradedReason } from '@shared/worker-protocol'
 import { terminalWorkerMessageSchema } from '@shared/worker-protocol'
 import { sessionsClient } from '@/features/sessions/api/sessions-client'
-import type { TerminalWorkerAttachInput, TerminalWorkerDegradedHandler } from './terminal-worker-types'
+import type {
+  TerminalWorkerAttachInput,
+  TerminalWorkerDegradedHandler
+} from './terminal-worker-types'
 
 interface WorkerLike {
   postMessage(message: unknown, transfer?: Transferable[]): void

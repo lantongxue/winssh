@@ -193,10 +193,7 @@ function toPayload(
   } as ServerUpsertInput
 }
 
-function buildConnectionRequest(
-  serverId: string,
-  values: ServerFormValues
-) {
+function buildConnectionRequest(serverId: string, values: ServerFormValues) {
   if (values.authType === 'password' && values.password) {
     return {
       secrets: {
@@ -748,9 +745,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
     announce = true,
     options: { includeSecrets?: boolean } = {}
   ) => {
-    const payload = validatePayload(
-      buildServerPayload(values, customIconDraft, options)
-    )
+    const payload = validatePayload(buildServerPayload(values, customIconDraft, options))
     const saved = document.serverId
       ? await serversClient.update(document.serverId, payload)
       : await serversClient.create(payload)
@@ -880,10 +875,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                     ? server
                     : await persistServer(values, Boolean(server), { includeSecrets: false })
 
-                await connectServer(
-                  targetServer,
-                  buildConnectionRequest(targetServer.id, values)
-                )
+                await connectServer(targetServer, buildConnectionRequest(targetServer.id, values))
               } catch (error) {
                 reportPersistenceError(error)
               }
@@ -1229,10 +1221,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                           </div>
                         </div>
                         <FormControl>
-                          <Switch
-                            checked={Boolean(field.value)}
-                            onCheckedChange={field.onChange}
-                          />
+                          <Switch checked={Boolean(field.value)} onCheckedChange={field.onChange} />
                         </FormControl>
                       </div>
                     </FormItem>
@@ -1634,10 +1623,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                         </div>
                       </div>
                       <FormControl>
-                        <Switch
-                          checked={Boolean(field.value)}
-                          onCheckedChange={field.onChange}
-                        />
+                        <Switch checked={Boolean(field.value)} onCheckedChange={field.onChange} />
                       </FormControl>
                     </FormItem>
                   )}

@@ -75,8 +75,19 @@ describe('WorkbenchTitlebar', () => {
     renderTitlebar()
 
     expect(screen.getByRole('img', { name: 'WinSSH' })).toHaveStyle('color: var(--workbench-logo)')
+    expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Quick Connect' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Open Local Terminal' })).toBeInTheDocument()
+  })
+
+  it('opens server editor from the title bar button', async () => {
+    renderTitlebar()
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+
+    await waitFor(() => {
+      expect(useWorkbenchStore.getState().activeActivityId).toBe('explorer')
+      expect(useWorkbenchStore.getState().activeDocumentId).toBe('server-editor:new')
+    })
   })
 
   it('opens a local terminal from the title bar button', async () => {

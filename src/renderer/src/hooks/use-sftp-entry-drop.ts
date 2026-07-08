@@ -9,11 +9,7 @@ import {
 import { sftpClient } from '@/features/sftp/api/sftp-client'
 
 export type DropValidationState =
-  | 'idle'
-  | 'valid'
-  | 'invalid-self'
-  | 'invalid-descendant'
-  | 'invalid-same-dir'
+  'idle' | 'valid' | 'invalid-self' | 'invalid-descendant' | 'invalid-same-dir'
 
 export interface SftpMoveCompleteEvent {
   destinationDirPath: string

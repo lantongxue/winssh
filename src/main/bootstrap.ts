@@ -139,8 +139,6 @@ function normalizeAppSettingsForPlatform(settings: AppSettings): AppSettings {
   }
 }
 
-
-
 export async function bootstrap(): Promise<void> {
   const logger = createLogger('main')
   electronApp.setAppUserModelId(APP_ID)
@@ -189,8 +187,7 @@ export async function bootstrap(): Promise<void> {
     }
   })
   const useWorkerTerminal =
-    process.env['WINSSH_WORKER_TERMINAL'] === '1' &&
-    process.env['WINSSH_LEGACY_TERMINAL'] !== '1'
+    process.env['WINSSH_WORKER_TERMINAL'] === '1' && process.env['WINSSH_LEGACY_TERMINAL'] !== '1'
   const sessionRuntime = useWorkerTerminal
     ? new WorkerSessionRuntime({
         database,

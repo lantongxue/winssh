@@ -161,16 +161,17 @@ export function WorkbenchQuickInput() {
               <div className="flex items-center justify-between rounded-sm border border-[var(--workbench-border)] bg-[var(--workbench-input)] px-3 py-3">
                 <div>
                   <div className="text-sm font-medium">
-                    {t(isPassword ? 'workbench.serverEditor.fields.rememberPassword' : 'workbench.serverEditor.fields.rememberPassphrase')}
+                    {t(
+                      isPassword
+                        ? 'workbench.serverEditor.fields.rememberPassword'
+                        : 'workbench.serverEditor.fields.rememberPassphrase'
+                    )}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {t('workbench.quickInput.credentials.keychainDescription')}
                   </div>
                 </div>
-                <Switch
-                  checked={remember}
-                  onCheckedChange={setRemember}
-                />
+                <Switch checked={remember} onCheckedChange={setRemember} />
               </div>
             </div>
             <DialogFooter className="border-t border-[var(--workbench-border)] px-4 py-3">

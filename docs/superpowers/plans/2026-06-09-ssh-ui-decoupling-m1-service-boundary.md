@@ -52,6 +52,7 @@
 ## 任务 1：共享协议基线
 
 **文件：**
+
 - 创建：`src/shared/ssh-protocol.ts`
 - 创建：`test/shared/ssh-protocol.test.ts`
 
@@ -211,6 +212,7 @@ git commit -m "feat: add ssh worker protocol baseline"
 ## 任务 2：终端数据帧纯函数
 
 **文件：**
+
 - 创建：`src/shared/ssh-data-frame.ts`
 - 创建：`test/shared/ssh-data-frame.test.ts`
 
@@ -312,6 +314,7 @@ git commit -m "feat: add ssh terminal data frame codec"
 ## 任务 3：SessionRuntime 接口与 legacy adapter
 
 **文件：**
+
 - 创建：`src/main/services/session-runtime.ts`
 - 创建：`src/main/services/legacy-session-runtime.ts`
 - 创建：`test/main/services/legacy-session-runtime.test.ts`
@@ -378,7 +381,12 @@ export interface SessionRuntime {
   createFile(sessionId: string, remotePath: string, name: string): Promise<void>
   readFile(sessionId: string, remotePath: string): Promise<unknown>
   cancelReadFile(sessionId: string, remotePath: string): void
-  writeFile(sessionId: string, remotePath: string, contents: string, encoding?: string): Promise<void>
+  writeFile(
+    sessionId: string,
+    remotePath: string,
+    contents: string,
+    encoding?: string
+  ): Promise<void>
   makeDirectory(sessionId: string, remotePath: string, name: string): Promise<void>
   rename(sessionId: string, remotePath: string, newName: string): Promise<void>
   move(sessionId: string, sourcePath: string, destinationDirPath: string): Promise<void>
@@ -436,6 +444,7 @@ git commit -m "refactor: introduce session runtime boundary"
 ## 任务 4：bootstrap 接入 legacy runtime
 
 **文件：**
+
 - 修改：`src/main/bootstrap.ts`
 - 创建：`test/main/application/sessions-application-service.test.ts`
 
@@ -530,6 +539,7 @@ git commit -m "refactor: wire session service through runtime adapter"
 ## 任务 5：WorkerSupervisor
 
 **文件：**
+
 - 创建：`src/main/services/worker-supervisor.ts`
 - 创建：`test/main/services/worker-supervisor.test.ts`
 
@@ -587,12 +597,7 @@ import { Worker } from 'node:worker_threads'
 import { createLogger } from '../observability'
 
 export type WorkerType =
-  | 'ssh-core'
-  | 'sftp'
-  | 'port-forward'
-  | 'osc-history'
-  | 'resource-monitor'
-  | 'host-trust'
+  'ssh-core' | 'sftp' | 'port-forward' | 'osc-history' | 'resource-monitor' | 'host-trust'
 
 export interface WorkerCrashRecord {
   workerId: string

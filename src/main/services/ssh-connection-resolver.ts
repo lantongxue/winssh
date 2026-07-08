@@ -14,10 +14,7 @@ export class SshConnectionResolver {
   constructor(
     private readonly database: Pick<
       DatabaseService,
-      | 'getServerById'
-      | 'getServerPassword'
-      | 'getServerPassphrase'
-      | 'getServerPrivateKey'
+      'getServerById' | 'getServerPassword' | 'getServerPassphrase' | 'getServerPrivateKey'
     >,
     private readonly t: MainTranslator
   ) {}

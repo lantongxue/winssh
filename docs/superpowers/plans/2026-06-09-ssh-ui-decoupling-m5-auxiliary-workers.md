@@ -39,6 +39,7 @@
 ## 任务 1：SFTP dispatcher 和 worker
 
 **文件：**
+
 - 创建：`src/main/services/sftp-dispatcher.ts`
 - 创建：`src/main/workers/sftp/index.ts`
 - 创建：`test/main/services/sftp-dispatcher.test.ts`
@@ -54,7 +55,10 @@ describe('SftpDispatcher', () => {
     const legacyRuntime = {
       readFile: vi.fn(async () => ({ content: 'hello', encoding: 'utf8' }))
     }
-    const dispatcher = new SftpDispatcher({ legacyRuntime: legacyRuntime as never, useWorker: false })
+    const dispatcher = new SftpDispatcher({
+      legacyRuntime: legacyRuntime as never,
+      useWorker: false
+    })
 
     await expect(dispatcher.readFile('session-1', '/tmp/a.txt')).resolves.toEqual({
       content: 'hello',
@@ -68,7 +72,7 @@ describe('SftpDispatcher', () => {
     const dispatcher = new SftpDispatcher({
       legacyRuntime: {} as never,
       useWorker: true,
-      getWorkerPort: () => ({ postMessage } as never)
+      getWorkerPort: () => ({ postMessage }) as never
     })
 
     dispatcher.cancelReadFile('session-1', '/tmp/a.txt')
@@ -91,6 +95,7 @@ describe('SftpDispatcher', () => {
 - [ ] **步骤 3：实现 dispatcher**
 
 实现要求：
+
 - `useWorker: false` 时全部委托 legacy runtime。
 - `useWorker: true` 时通过 worker port 请求 `list`、`readFile`、`writeFile`、`cancelReadFile`。
 - `readFile` 和 `writeFile` 对外仍是 string API。
@@ -100,6 +105,7 @@ describe('SftpDispatcher', () => {
 - [ ] **步骤 4：实现 sftp worker 入口**
 
 `src/main/workers/sftp/index.ts` 要处理：
+
 - `list`
 - `readFile`
 - `writeFile`
@@ -132,6 +138,7 @@ git commit -m "feat: add sftp worker dispatcher"
 ## 任务 2：PortForward dispatcher 和 worker
 
 **文件：**
+
 - 创建：`src/main/services/port-forward-dispatcher.ts`
 - 创建：`src/main/workers/port-forward/index.ts`
 - 创建：`test/main/services/port-forward-dispatcher.test.ts`
@@ -171,6 +178,7 @@ describe('PortForwardDispatcher', () => {
 - [ ] **步骤 3：实现 dispatcher**
 
 实现要求：
+
 - public 方法：`list`、`create`、`start`、`stop`、`remove`。
 - 默认 `useWorker: false` 委托 legacy runtime。
 - worker mode 不写 DB，只维护 session 内存规则。
@@ -179,6 +187,7 @@ describe('PortForwardDispatcher', () => {
 - [ ] **步骤 4：实现 worker 入口**
 
 `src/main/workers/port-forward/index.ts` 处理：
+
 - `create`
 - `start`
 - `stop`
@@ -208,6 +217,7 @@ git commit -m "feat: add port forward worker dispatcher"
 ## 任务 3：OSC/命令历史 dispatcher 和 worker
 
 **文件：**
+
 - 创建：`src/main/services/osc-history-dispatcher.ts`
 - 创建：`src/main/workers/osc-history/index.ts`
 - 创建：`test/main/services/osc-history-dispatcher.test.ts`
@@ -246,6 +256,7 @@ describe('OscHistoryDispatcher', () => {
 - [ ] **步骤 3：实现 dispatcher**
 
 实现要求：
+
 - worker 扫描 OSC，dispatcher 接收 command boundary。
 - dispatcher 不直接打开 DB；通过注入的 `recordCommand` 写入 main database service。
 - CWD 变化继续发送 `sessions:cwdChanged`。
@@ -276,6 +287,7 @@ git commit -m "feat: add osc history worker dispatcher"
 ## 任务 4：Resource monitor worker
 
 **文件：**
+
 - 创建：`src/main/workers/resource-monitor/index.ts`
 - 创建：`test/main/services/resource-monitor-worker.test.ts`
 - 修改：`src/main/services/worker-session-runtime.ts`
@@ -307,6 +319,7 @@ describe('resource monitor worker', () => {
 - [ ] **步骤 3：实现 worker helper**
 
 实现要求：
+
 - Linux 读取 `/proc/stat`、`/proc/meminfo` 等现有逻辑可复用。
 - 非 Linux 返回与当前 `SessionManager.getResourceSnapshot` 一致的 unsupported/empty shape。
 - 采样间隔仍由 main/session runtime 控制，不让 worker 自己无限 setInterval。
@@ -336,6 +349,7 @@ git commit -m "feat: move resource snapshot behind worker"
 ## 任务 5：Host trust worker
 
 **文件：**
+
 - 创建：`src/main/workers/host-trust/index.ts`
 - 创建：`test/main/services/host-trust-worker.test.ts`
 - 修改：`src/main/services/worker-session-runtime.ts`
@@ -375,6 +389,7 @@ describe('host trust worker', () => {
 - [ ] **步骤 3：实现 host trust worker helper**
 
 实现要求：
+
 - worker 不直接访问 renderer。
 - worker 只构造 host trust request 并发给 main。
 - main 继续通过 `system:hostTrustRequest` 发送给 renderer。

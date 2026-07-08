@@ -24,16 +24,16 @@ build/              # NSIS installer.nsh + platform icons + macOS entitlements
 
 ## WHERE TO LOOK
 
-| Task                     | Location                                                                                          | Notes                                            |
-| ------------------------ | ------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| Add new IPC method       | shared/types → shared/validation → main/ipc/register-_ → preload → features/_/api → query-keys    | 6-layer cross-cutting (see below)                |
-| Modify session lifecycle | main/session-manager + renderer/store/sessions-store + workbench-context                          | SessionManager is 2897 lines — most complex file |
-| Change theme             | shared/themes → main/theme-registry → themes/builtin/_/themes/_.json → renderer/lib/theme         | Theme packs are JSON, not CSS                    |
-| Add server table column  | main/database + main/application/servers-app-service + shared/validation                          | Also update ServerUpsertInput/serverSchema       |
-| Add SFTP feature         | main/session-manager editor file streaming API (`openFileReadStream`/`openFileWriteStream`/`writeFileChunk`/`closeFileWriteStream`/`cancelFileStream`) + renderer/features/sftp/api + workbench-sftp-\*-editor | SFTP editor streaming is text-only              |
-| Work on UI layout        | renderer/components/workbench/                                                                    | Keep-mounted for session/local-terminal editors  |
-| Write renderer tests     | test/renderer/ + test/renderer/helpers/create-winssh-api                                          | Never co-locate tests in src/                    |
-| Work on web/ site        | web/src/                                                                                          | Separate package.json, tsconfig, vite config     |
+| Task                     | Location                                                                                                                                                                                                       | Notes                                            |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Add new IPC method       | shared/types → shared/validation → main/ipc/register-_ → preload → features/_/api → query-keys                                                                                                                 | 6-layer cross-cutting (see below)                |
+| Modify session lifecycle | main/session-manager + renderer/store/sessions-store + workbench-context                                                                                                                                       | SessionManager is 2897 lines — most complex file |
+| Change theme             | shared/themes → main/theme-registry → themes/builtin/_/themes/_.json → renderer/lib/theme                                                                                                                      | Theme packs are JSON, not CSS                    |
+| Add server table column  | main/database + main/application/servers-app-service + shared/validation                                                                                                                                       | Also update ServerUpsertInput/serverSchema       |
+| Add SFTP feature         | main/session-manager editor file streaming API (`openFileReadStream`/`openFileWriteStream`/`writeFileChunk`/`closeFileWriteStream`/`cancelFileStream`) + renderer/features/sftp/api + workbench-sftp-\*-editor | SFTP editor streaming is text-only               |
+| Work on UI layout        | renderer/components/workbench/                                                                                                                                                                                 | Keep-mounted for session/local-terminal editors  |
+| Write renderer tests     | test/renderer/ + test/renderer/helpers/create-winssh-api                                                                                                                                                       | Never co-locate tests in src/                    |
+| Work on web/ site        | web/src/                                                                                                                                                                                                       | Separate package.json, tsconfig, vite config     |
 
 ## Commands
 
@@ -145,9 +145,7 @@ When writing renderer tests that call the preload bridge:
 import { createWinsshApi } from '@test/helpers/create-winssh-api'
 // The setup file (test/renderer/helpers/setup.ts) injects window.winsshApi automatically.
 // To override behavior in a specific test, mock the method:
-const api = createWinsshApi({
-  /* overrides */
-})
+const api = createWinsshApi({/* overrides */})
 ```
 
 ## Key Entry Points to Read First

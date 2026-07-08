@@ -23,17 +23,14 @@
 ## 任务 1：字体缩放纯函数
 
 **文件：**
+
 - 创建：`src/renderer/src/lib/font-zoom.ts`
 - 创建：`test/renderer/lib/font-zoom.test.ts`
 
 - [ ] **步骤 1：编写失败的测试**
 
 ```ts
-import {
-  clampFontZoomSize,
-  getWheelFontZoomDelta,
-  resolveTemporaryFontSize
-} from '@/lib/font-zoom'
+import { clampFontZoomSize, getWheelFontZoomDelta, resolveTemporaryFontSize } from '@/lib/font-zoom'
 
 describe('font zoom helpers', () => {
   it('clamps temporary font sizes to the supported range', () => {
@@ -90,6 +87,7 @@ export function resolveTemporaryFontSize(baseSize: number, offset: number) {
 ## 任务 2：终端页面临时缩放
 
 **文件：**
+
 - 修改：`src/renderer/src/hooks/use-terminal.ts`
 - 修改：`src/renderer/src/components/terminal-surface.tsx`
 - 修改：`test/renderer/components/terminal-pane.test.tsx`
@@ -173,6 +171,7 @@ const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
 ## 任务 3：SFTP 文件编辑器临时缩放
 
 **文件：**
+
 - 修改：`src/renderer/src/components/workbench/workbench-sftp-file-monaco-editor.tsx`
 - 修改：`test/renderer/components/workbench/workbench-sftp-file-monaco-editor.test.tsx`
 
@@ -221,10 +220,7 @@ it('temporarily zooms only the current Monaco editor with ctrl wheel', async () 
 
 ```ts
 const [fontZoomOffset, setFontZoomOffset] = useState(0)
-const temporaryFontSize = resolveTemporaryFontSize(
-  terminalAppearance.fontSize,
-  fontZoomOffset
-)
+const temporaryFontSize = resolveTemporaryFontSize(terminalAppearance.fontSize, fontZoomOffset)
 ```
 
 创建编辑器和更新 options 时使用 `temporaryFontSize`。在编辑器容器上添加 `data-sftp-editor-surface` 和 `onWheel`，Ctrl/Cmd + wheel 更新 offset 并阻止默认行为。
@@ -237,6 +233,7 @@ const temporaryFontSize = resolveTemporaryFontSize(
 ## 任务 4：集成验证
 
 **文件：**
+
 - 无新增文件，验证前面所有改动。
 
 - [ ] **步骤 1：运行相关测试**

@@ -746,9 +746,7 @@ describe('SessionManager SFTP file streams', () => {
       .filter(
         (event) =>
           event.streamId === start.streamId &&
-          (event.status === 'cancelled' ||
-            event.status === 'completed' ||
-            event.status === 'error')
+          (event.status === 'cancelled' || event.status === 'completed' || event.status === 'error')
       )
 
     expect(terminalStates.map((event) => event.status)).toEqual(['cancelled'])

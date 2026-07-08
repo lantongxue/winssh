@@ -43,13 +43,13 @@ describe('SshConnectionResolver', () => {
     } as unknown as DatabaseService
     const resolver = new SshConnectionResolver(database, (key) => key)
 
-    await expect(resolver.resolveAuth(createServer(), { serverId: 'server-1' })).rejects.toMatchObject(
-      {
-        code: 'secret_required',
-        serverId: 'server-1',
-        secretKind: 'password'
-      } satisfies Partial<ConnectionFailure>
-    )
+    await expect(
+      resolver.resolveAuth(createServer(), { serverId: 'server-1' })
+    ).rejects.toMatchObject({
+      code: 'secret_required',
+      serverId: 'server-1',
+      secretKind: 'password'
+    } satisfies Partial<ConnectionFailure>)
   })
 
   it('prefers stored private key content and falls back to legacy private key path', async () => {

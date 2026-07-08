@@ -1,40 +1,42 @@
-import { motion } from "motion/react";
-import { Github, Star } from "lucide-react";
-import { useLanguage } from "../i18n/LanguageContext";
-import { LanguageToggle } from "./LanguageToggle";
-import { useEffect, useState } from "react";
+import { motion } from 'motion/react'
+import { Github, Star } from 'lucide-react'
+import { useLanguage } from '../i18n/LanguageContext'
+import { LanguageToggle } from './LanguageToggle'
+import { useEffect, useState } from 'react'
 
 export function Navbar() {
-  const { t } = useLanguage();
-  const [stars, setStars] = useState<number | null>(null);
-  const [scrolled, setScrolled] = useState(false);
+  const { t } = useLanguage()
+  const [stars, setStars] = useState<number | null>(null)
+  const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+      setScrolled(window.scrollY > 20)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   useEffect(() => {
     fetch('https://api.github.com/repos/lantongxue/winssh')
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         if (typeof data.stargazers_count === 'number') {
-          setStars(data.stargazers_count);
+          setStars(data.stargazers_count)
         }
       })
-      .catch((e) => console.log('Error fetching stars', e));
-  }, []);
+      .catch((e) => console.log('Error fetching stars', e))
+  }, [])
 
   return (
-    <motion.nav 
+    <motion.nav
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4 transition-all duration-500 ${
-        scrolled ? "bg-black/40 backdrop-blur-xl border-b border-white/5 py-4" : "bg-transparent py-6 mix-blend-difference"
+        scrolled
+          ? 'bg-black/40 backdrop-blur-xl border-b border-white/5 py-4'
+          : 'bg-transparent py-6 mix-blend-difference'
       }`}
     >
       <div className="flex items-center gap-2">
@@ -42,14 +44,22 @@ export function Navbar() {
         <span className="font-display font-medium text-xl tracking-tight text-white">WinSSH</span>
       </div>
       <div className="hidden md:flex items-center gap-8 text-sm font-medium text-neutral-400">
-        <a href="#features" className="hover:text-white transition-colors">{t.nav.features}</a>
-        <a href="#sync" className="hover:text-white transition-colors">{t.nav.sync}</a>
-        <a href="#download" className="hover:text-white transition-colors">{t.nav.download}</a>
-        <a href="#changelog" className="hover:text-white transition-colors">{t.nav.changelog}</a>
+        <a href="#features" className="hover:text-white transition-colors">
+          {t.nav.features}
+        </a>
+        <a href="#sync" className="hover:text-white transition-colors">
+          {t.nav.sync}
+        </a>
+        <a href="#download" className="hover:text-white transition-colors">
+          {t.nav.download}
+        </a>
+        <a href="#changelog" className="hover:text-white transition-colors">
+          {t.nav.changelog}
+        </a>
       </div>
       <div className="flex items-center gap-4">
         <LanguageToggle />
-        <a 
+        <a
           href="https://github.com/lantongxue/winssh"
           target="_blank"
           rel="noopener noreferrer"
@@ -66,6 +76,5 @@ export function Navbar() {
         </a>
       </div>
     </motion.nav>
-  );
+  )
 }
-

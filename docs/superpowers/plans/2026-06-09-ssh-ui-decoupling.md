@@ -160,6 +160,7 @@
 ### 任务 1：共享协议基线
 
 **文件：**
+
 - 创建：`src/shared/ssh-protocol.ts`
 - 创建：`test/shared/ssh-protocol.test.ts`
 
@@ -319,6 +320,7 @@ git commit -m "feat: add ssh worker protocol baseline"
 ### 任务 2：终端数据帧纯函数
 
 **文件：**
+
 - 创建：`src/shared/ssh-data-frame.ts`
 - 创建：`test/shared/ssh-data-frame.test.ts`
 
@@ -425,6 +427,7 @@ git commit -m "feat: add ssh terminal data frame codec"
 ### 任务 3：SessionRuntime 接口与 legacy adapter
 
 **文件：**
+
 - 创建：`src/main/services/session-runtime.ts`
 - 创建：`src/main/services/legacy-session-runtime.ts`
 - 创建：`test/main/services/legacy-session-runtime.test.ts`
@@ -490,7 +493,12 @@ export interface SessionRuntime {
   createFile(sessionId: string, remotePath: string, name: string): Promise<void>
   readFile(sessionId: string, remotePath: string): Promise<unknown>
   cancelReadFile(sessionId: string, remotePath: string): void
-  writeFile(sessionId: string, remotePath: string, contents: string, encoding?: string): Promise<void>
+  writeFile(
+    sessionId: string,
+    remotePath: string,
+    contents: string,
+    encoding?: string
+  ): Promise<void>
   makeDirectory(sessionId: string, remotePath: string, name: string): Promise<void>
   rename(sessionId: string, remotePath: string, newName: string): Promise<void>
   move(sessionId: string, sourcePath: string, destinationDirPath: string): Promise<void>
@@ -674,6 +682,7 @@ git commit -m "refactor: introduce session runtime boundary"
 ### 任务 4：bootstrap 接入 legacy runtime
 
 **文件：**
+
 - 修改：`src/main/bootstrap.ts`
 - 修改：`test/main/application/sessions-application-service.test.ts`
 
@@ -756,6 +765,7 @@ git commit -m "refactor: wire session service through runtime adapter"
 ### 任务 5：WorkerSupervisor
 
 **文件：**
+
 - 创建：`src/main/services/worker-supervisor.ts`
 - 创建：`test/main/services/worker-supervisor.test.ts`
 
@@ -823,12 +833,7 @@ import { Worker } from 'node:worker_threads'
 import { createLogger } from '../observability'
 
 export type WorkerType =
-  | 'ssh-core'
-  | 'sftp'
-  | 'port-forward'
-  | 'osc-history'
-  | 'resource-monitor'
-  | 'host-trust'
+  'ssh-core' | 'sftp' | 'port-forward' | 'osc-history' | 'resource-monitor' | 'host-trust'
 
 export interface WorkerCrashRecord {
   workerId: string
@@ -908,6 +913,7 @@ git commit -m "feat: add worker supervisor service"
 ### 任务 6：M1 验证门
 
 **文件：**
+
 - 修改：无
 
 - [ ] **步骤 1：运行 targeted tests**
@@ -946,6 +952,7 @@ git commit --allow-empty -m "chore: mark ssh ui decoupling m1 boundary complete"
 ### 任务 7：SshControlPort request/response
 
 **文件：**
+
 - 创建：`src/main/services/ssh-control-port.ts`
 - 创建：`test/main/services/ssh-control-port.test.ts`
 
@@ -999,6 +1006,7 @@ describe('SshControlPort', () => {
 - [ ] **步骤 3：实现 SshControlPort**
 
 实现要点：
+
 - `request(message)` 生成或使用 `requestId`。
 - `worker.postMessage(message)`。
 - `message` 事件中按 `requestId` resolve。
@@ -1021,6 +1029,7 @@ git commit -m "feat: add ssh worker control port"
 ### 任务 8：ssh-core worker secret buffer
 
 **文件：**
+
 - 创建：`src/main/workers/ssh-core/secret-buffer.ts`
 - 创建：`test/main/workers/ssh-core/secret-buffer.test.ts`
 
@@ -1090,6 +1099,7 @@ git commit -m "security: zero ssh worker secret buffers"
 ### 任务 9：ssh-core worker runtime skeleton
 
 **文件：**
+
 - 创建：`src/main/workers/ssh-core/session-worker.ts`
 - 创建：`src/main/workers/ssh-core/index.ts`
 - 创建：`test/main/workers/ssh-core/session-worker.test.ts`
@@ -1146,6 +1156,7 @@ describe('SshCoreSessionWorker', () => {
 - [ ] **步骤 3：实现最小 worker session**
 
 实现要点：
+
 - `createClient` 默认返回 `new Client()`。
 - `connect(config)` 发送 `state`：`resolving`、`handshake`、`ready`。
 - `write(sessionId, data)` 只写当前 shell channel。
@@ -1156,6 +1167,7 @@ describe('SshCoreSessionWorker', () => {
 - [ ] **步骤 4：创建 worker 入口**
 
 `src/main/workers/ssh-core/index.ts` 负责：
+
 - 读取 `parentPort`。
 - 解析 `sshCoreInboundSchema`。
 - 分发 `connect` / `write` / `resize` / `disconnect`。
@@ -1186,6 +1198,7 @@ git commit -m "feat: add ssh core worker skeleton"
 ### 任务 10：WorkerSessionRuntime feature flag
 
 **文件：**
+
 - 创建：`src/main/services/worker-session-runtime.ts`
 - 修改：`src/main/bootstrap.ts`
 - 修改：`src/main/localization.ts`
@@ -1229,6 +1242,7 @@ describe('WorkerSessionRuntime', () => {
 - [ ] **步骤 3：实现 WorkerSessionRuntime**
 
 实现要点：
+
 - 实现 `SessionRuntime`。
 - SSH 控制方法走 `SshControlPort`。
 - SFTP/port-forward/resource/host-trust 方法在 M2 仍委托 legacy runtime，保证外部行为不变。
@@ -1256,6 +1270,7 @@ M2 初次合入时默认仍可设为 legacy；切默认值前必须完成 M2 验
 - [ ] **步骤 5：新增双语错误文案**
 
 在 `src/main/localization.ts` 增加：
+
 - `sessions.workerCrashed` 英文：`SSH worker crashed. Reconnect the session to continue.`
 - `sessions.workerCrashed` 中文：`SSH 工作线程已崩溃。请重新连接会话后继续。`
 
@@ -1284,6 +1299,7 @@ git commit -m "feat: route ssh sessions through worker runtime"
 ### 任务 11：SshDataAggregator
 
 **文件：**
+
 - 创建：`src/main/services/ssh-data-aggregator.ts`
 - 创建：`test/main/services/ssh-data-aggregator.test.ts`
 - 修改：`src/shared/ipc-channels.ts`
@@ -1319,6 +1335,7 @@ describe('SshDataAggregator', () => {
 - [ ] **步骤 3：实现 aggregator**
 
 实现要点：
+
 - `registerSessionPort(sessionId, port)` 保存端口。
 - `unregisterSessionPort(sessionId)` 关闭并删除端口。
 - `routeFrame(event)` 有端口则 `postMessage` transfer frame；无端口则走 legacy sender 发送 `sessions:data`。
@@ -1346,6 +1363,7 @@ git commit -m "feat: add ssh data aggregator"
 ### 任务 12：Preload BinaryChannel 和端口分配
 
 **文件：**
+
 - 创建：`src/preload/binary-channel.ts`
 - 创建：`src/preload/terminal-port-allocator.ts`
 - 修改：`src/preload/index.ts`
@@ -1385,6 +1403,7 @@ describe('BinaryChannel', () => {
 - [ ] **步骤 3：实现 BinaryChannel**
 
 实现要点：
+
 - 队列保存 `ArrayBuffer[]`。
 - `enqueue(frame)` 记录 queued bytes。
 - 超出 `highWaterMarkBytes` 时丢弃旧帧直到低于一半，并返回 drop count。
@@ -1443,6 +1462,7 @@ git commit -m "feat: add terminal data channel bridge"
 ### 任务 13：cross-origin isolation 前置检查
 
 **文件：**
+
 - 修改：`src/main/bootstrap.ts`
 - 创建：`test/main/cross-origin-isolation.test.ts`
 
@@ -1503,6 +1523,7 @@ git commit -m "feat: enable cross origin isolation headers"
 ### 任务 14：TerminalWorkerHost
 
 **文件：**
+
 - 创建：`src/renderer/src/workers/terminal-worker-host.ts`
 - 创建：`src/renderer/src/workers/terminal-worker-types.ts`
 - 创建：`test/renderer/workers/terminal-worker-host.test.ts`
@@ -1534,7 +1555,11 @@ describe('TerminalWorkerHost', () => {
 
     expect(createDataChannel).toHaveBeenCalledWith('session-1')
     expect(worker.postMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'attach', sessionId: 'session-1', useOffscreenCanvas: false }),
+      expect.objectContaining({
+        type: 'attach',
+        sessionId: 'session-1',
+        useOffscreenCanvas: false
+      }),
       expect.any(Array)
     )
 
@@ -1553,6 +1578,7 @@ describe('TerminalWorkerHost', () => {
 - [ ] **步骤 3：实现 host**
 
 实现要点：
+
 - `attach({ sessionId, container })` 创建 worker。
 - 调 `sessionsClient.createDataChannel(sessionId)`。
 - 如果 `container.querySelector('canvas')?.transferControlToOffscreen` 可用，则传 OffscreenCanvas；否则发送 fallback mode。
@@ -1580,6 +1606,7 @@ git commit -m "feat: add terminal worker host"
 ### 任务 15：TerminalWorker 实现与 use-terminal 分流
 
 **文件：**
+
 - 创建：`src/renderer/src/workers/terminal.worker.ts`
 - 修改：`src/renderer/src/hooks/use-terminal.ts`
 - 修改：`test/renderer/hooks/use-terminal.test.tsx`
@@ -1619,6 +1646,7 @@ it('uses terminal worker host for SSH sessions when enabled', async () => {
 - [ ] **步骤 3：实现 TerminalWorker**
 
 实现要点：
+
 - worker 接收 `attach`、`resize`、`focus`、`dispose`。
 - 创建 `Terminal` 和 addons。
 - data port 收到 frame 后 `terminal.write(Uint8Array)`。
@@ -1628,6 +1656,7 @@ it('uses terminal worker host for SSH sessions when enabled', async () => {
 - [ ] **步骤 4：修改 use-terminal**
 
 实现要点：
+
 - local terminal 继续旧路径。
 - SSH session 若 worker host 可用且未降级，走 `terminalWorkerHost.attach`。
 - 降级后复用原主线程 xterm 逻辑。
@@ -1658,6 +1687,7 @@ git commit -m "feat: move ssh terminal rendering behind worker host"
 ### 任务 16：SFTP dispatcher 切换到 worker
 
 **文件：**
+
 - 创建：`src/main/services/sftp-dispatcher.ts`
 - 创建：`src/main/workers/sftp/index.ts`
 - 创建：`test/main/services/sftp-dispatcher.test.ts`
@@ -1672,7 +1702,10 @@ describe('SftpDispatcher', () => {
     const legacyRuntime = {
       readFile: vi.fn(async () => ({ content: 'hello', encoding: 'utf8' }))
     }
-    const dispatcher = new SftpDispatcher({ legacyRuntime: legacyRuntime as never, useWorker: false })
+    const dispatcher = new SftpDispatcher({
+      legacyRuntime: legacyRuntime as never,
+      useWorker: false
+    })
 
     await expect(dispatcher.readFile('session-1', '/tmp/a.txt')).resolves.toEqual({
       content: 'hello',
@@ -1692,6 +1725,7 @@ describe('SftpDispatcher', () => {
 - [ ] **步骤 3：实现 dispatcher**
 
 实现要点：
+
 - M5 初始默认 `useWorker: false`。
 - worker mode 下通过 MessagePort 调 sftp worker。
 - `readFile` / `writeFile` 继续 string API。
@@ -1719,6 +1753,7 @@ git commit -m "feat: add sftp worker dispatcher"
 ### 任务 17：port-forward、osc-history、resource-monitor、host-trust dispatchers
 
 **文件：**
+
 - 创建：`src/main/services/port-forward-dispatcher.ts`
 - 创建：`src/main/services/osc-history-dispatcher.ts`
 - 创建：`src/main/workers/port-forward/index.ts`
@@ -1790,6 +1825,7 @@ npx vitest run test/main/services/port-forward-dispatcher.test.ts test/main/serv
 - [ ] **步骤 4：实现 dispatchers 与 worker 入口**
 
 实现要点：
+
 - `PortForwardDispatcher` 的 public 方法与现有 `SessionsApplicationService` 中 port forward 方法一一对应。
 - `OscHistoryDispatcher` 不直接写 DB；通过注入的 `recordCommand` 函数回到 main。
 - `resource-monitor` 只在 Linux 采样；非 Linux 返回 unsupported snapshot，行为与现有一致。
@@ -1820,6 +1856,7 @@ git commit -m "feat: add worker dispatchers for ssh auxiliary services"
 ### 任务 18：性能基准脚本
 
 **文件：**
+
 - 创建：`test/performance/ssh-data-lag.test.ts`
 - 创建：`test/performance/terminal-throughput.test.ts`
 - 修改：`vitest.config.ts`
@@ -1874,6 +1911,7 @@ git commit -m "test: add ssh data performance benchmarks"
 ### 任务 19：里程碑验收矩阵
 
 **文件：**
+
 - 创建：`docs/superpowers/checklists/ssh-ui-decoupling-acceptance.md`
 
 - [ ] **步骤 1：创建验收清单**

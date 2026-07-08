@@ -44,6 +44,7 @@
 ## 任务 1：worker protocol 与 cross-origin isolation headers
 
 **文件：**
+
 - 创建：`src/shared/worker-protocol.ts`
 - 创建：`test/shared/worker-protocol.test.ts`
 - 修改：`src/main/bootstrap.ts`
@@ -105,6 +106,7 @@ npx vitest run test/shared/worker-protocol.test.ts test/main/cross-origin-isolat
 - [ ] **步骤 4：实现 worker protocol**
 
 `src/shared/worker-protocol.ts` 定义：
+
 - `TerminalDegradedReason`：`offscreen_canvas_unavailable`、`shared_array_buffer_unavailable`、`terminal_worker_crashed`、`worker_init_failed`。
 - `terminalWorkerMessageSchema`：支持 `attach`、`resize`、`focus`、`dispose`、`degraded`、`ready`。
 
@@ -144,6 +146,7 @@ git commit -m "feat: add terminal worker protocol and isolation headers"
 ## 任务 2：TerminalWorkerHost
 
 **文件：**
+
 - 创建：`src/renderer/src/workers/terminal-worker-host.ts`
 - 创建：`src/renderer/src/workers/terminal-worker-types.ts`
 - 创建：`test/renderer/workers/terminal-worker-host.test.ts`
@@ -175,7 +178,11 @@ describe('TerminalWorkerHost', () => {
 
     expect(createDataChannel).toHaveBeenCalledWith('session-1')
     expect(worker.postMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'attach', sessionId: 'session-1', useOffscreenCanvas: false }),
+      expect.objectContaining({
+        type: 'attach',
+        sessionId: 'session-1',
+        useOffscreenCanvas: false
+      }),
       expect.any(Array)
     )
 
@@ -194,6 +201,7 @@ describe('TerminalWorkerHost', () => {
 - [ ] **步骤 3：实现 host**
 
 实现要求：
+
 - `attach({ sessionId, container })` 创建 worker。
 - 调 `sessionsClient.createDataChannel(sessionId)` 或注入的 `createDataChannel`。
 - 若 canvas 支持 `transferControlToOffscreen`，传 OffscreenCanvas；否则 `useOffscreenCanvas: false`。
@@ -222,6 +230,7 @@ git commit -m "feat: add terminal worker host"
 ## 任务 3：TerminalWorker 实现
 
 **文件：**
+
 - 创建：`src/renderer/src/workers/terminal.worker.ts`
 - 修改：`electron.vite.config.ts`
 
@@ -235,7 +244,9 @@ it('reports degraded when worker emits degraded message', async () => {
   const worker = {
     postMessage: vi.fn(),
     terminate: vi.fn(),
-    addEventListener: vi.fn((event: string, listener: EventListener) => listeners.set(event, listener)),
+    addEventListener: vi.fn((event: string, listener: EventListener) =>
+      listeners.set(event, listener)
+    ),
     removeEventListener: vi.fn()
   }
   const onDegraded = vi.fn()
@@ -267,6 +278,7 @@ it('reports degraded when worker emits degraded message', async () => {
 - [ ] **步骤 3：实现 `terminal.worker.ts`**
 
 实现要求：
+
 - worker 接收 `attach`，创建 `Terminal`。
 - data port 收到 `{ type: 'data', frame }` 后解码 payload 并 `terminal.write(...)`。
 - `terminal.onData` 把用户输入发回 data port。
@@ -305,6 +317,7 @@ git commit -m "feat: add ssh terminal web worker"
 ## 任务 4：use-terminal 分流与 degraded 状态
 
 **文件：**
+
 - 修改：`src/renderer/src/hooks/use-terminal.ts`
 - 修改：`src/renderer/src/features/sessions/api/sessions-client.ts`
 - 修改：`src/renderer/src/hooks/use-session-events.ts`
@@ -356,6 +369,7 @@ export const sessionsClient = getWinsshDomainClient('sessions')
 - [ ] **步骤 4：修改 `use-terminal.ts`**
 
 实现要求：
+
 - local terminal 继续旧路径。
 - SSH session 若 worker host 可用且未降级，调用 `terminalWorkerHost.attach`。
 - SSH worker degraded 后切回原主线程 xterm 初始化逻辑。

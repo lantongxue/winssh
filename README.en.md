@@ -151,7 +151,6 @@ WinSSH supports configuring specific runtime behaviors via environment variables
 
 ---
 
-
 ## 🤝 Contributing
 
 If you encounter any bugs or have ideas for improvements, feel free to open an issue or submit a pull request!
@@ -167,7 +166,6 @@ npm run typecheck && npm run test
 - **Code Formatting**: Run `npm run format` to format your code before committing.
 
 ---
-
 
 <div align="center">
   <p>Made with ❤️ by the WinSSH Team.</p>

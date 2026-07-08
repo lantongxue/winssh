@@ -12,9 +12,7 @@ vi.mock('electron', () => ({
 }))
 
 type MockClientBehavior =
-  | { type: 'auth-failed' }
-  | { type: 'error'; error: Error }
-  | { type: 'ready' }
+  { type: 'auth-failed' } | { type: 'error'; error: Error } | { type: 'ready' }
 
 const { clientBehaviors, connectConfigs, forwardOutCalls, sftpFiles } = vi.hoisted(() => ({
   clientBehaviors: [] as MockClientBehavior[],

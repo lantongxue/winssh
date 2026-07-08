@@ -553,10 +553,22 @@ button,
   margin-top: 1.25rem;
   margin-bottom: 0.5rem;
 }
-.changelog-html h1 { font-size: 1.4rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; }
-.changelog-html h2 { font-size: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.2rem; }
-.changelog-html h3 { font-size: 1.1rem; }
-.changelog-html h4 { font-size: 1rem; }
+.changelog-html h1 {
+  font-size: 1.4rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.25rem;
+}
+.changelog-html h2 {
+  font-size: 1.25rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.2rem;
+}
+.changelog-html h3 {
+  font-size: 1.1rem;
+}
+.changelog-html h4 {
+  font-size: 1rem;
+}
 
 .changelog-html p {
   margin-top: 0px;
@@ -640,4 +652,3 @@ button,
   margin-top: 1rem;
   margin-bottom: 1rem;
 }
-

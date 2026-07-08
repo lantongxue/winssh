@@ -60,8 +60,7 @@ type QuickConnectCredentialsQuickInputState = CredentialsQuickInputBaseState & {
 }
 
 type CredentialsQuickInputState =
-  | ServerCredentialsQuickInputState
-  | QuickConnectCredentialsQuickInputState
+  ServerCredentialsQuickInputState | QuickConnectCredentialsQuickInputState
 
 type EntityQuickInput = EntityQuickInputState & {
   kind: 'entity'
@@ -239,7 +238,6 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       )
     )
   }
-
 
   const getServers = async (options?: { force?: boolean }) => {
     const cached = !options?.force

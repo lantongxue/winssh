@@ -542,8 +542,7 @@ export class DatabaseService {
 
   private getGroupById(id: string): ServerGroup | null {
     const row = this.db.prepare('SELECT * FROM server_groups WHERE id = ?').get(id) as
-      | GroupRow
-      | undefined
+      GroupRow | undefined
     return row ? mapGroup(row) : null
   }
 
@@ -667,24 +666,21 @@ export class DatabaseService {
 
   getServerPrivateKey(id: string): string | null {
     const row = this.db.prepare('SELECT private_key FROM servers WHERE id = ?').get(id) as
-      | Pick<ServerRow, 'private_key'>
-      | undefined
+      Pick<ServerRow, 'private_key'> | undefined
 
     return row?.private_key ?? null
   }
 
   getServerPassword(id: string): string | null {
     const row = this.db.prepare('SELECT password FROM servers WHERE id = ?').get(id) as
-      | Pick<ServerRow, 'password'>
-      | undefined
+      Pick<ServerRow, 'password'> | undefined
 
     return row?.password ?? null
   }
 
   getServerPassphrase(id: string): string | null {
     const row = this.db.prepare('SELECT passphrase FROM servers WHERE id = ?').get(id) as
-      | Pick<ServerRow, 'passphrase'>
-      | undefined
+      Pick<ServerRow, 'passphrase'> | undefined
 
     return row?.passphrase ?? null
   }
@@ -739,7 +735,8 @@ export class DatabaseService {
     const existing = this.getServerById(input.id)
     const existingAssets = this.db
       .prepare('SELECT custom_icon_mime_type, custom_icon, credential_id FROM servers WHERE id = ?')
-      .get(input.id) as Pick<ServerRow, 'custom_icon_mime_type' | 'custom_icon' | 'credential_id'> | undefined
+      .get(input.id) as
+      Pick<ServerRow, 'custom_icon_mime_type' | 'custom_icon' | 'credential_id'> | undefined
     const customIconMimeType =
       input.customIconMimeType === undefined
         ? (existingAssets?.custom_icon_mime_type ?? null)
@@ -755,9 +752,8 @@ export class DatabaseService {
       const captureFlag = payload.captureCommandHistory === false ? 0 : 1
 
       // Handle "保存到凭据库" (Save to Credential Vault)
-      const shouldSaveToVault = payload.authType === 'password'
-        ? payload.rememberPassword
-        : payload.rememberPassphrase
+      const shouldSaveToVault =
+        payload.authType === 'password' ? payload.rememberPassword : payload.rememberPassphrase
 
       let credentialId = payload.credentialId || null
 
@@ -791,9 +787,9 @@ export class DatabaseService {
               credName,
               credKind,
               payload.username.trim(),
-              payload.authType === 'password' ? (payload.password || null) : null,
-              payload.authType === 'privateKey' ? (payload.privateKey || null) : null,
-              payload.authType === 'privateKey' ? (payload.passphrase || null) : null,
+              payload.authType === 'password' ? payload.password || null : null,
+              payload.authType === 'privateKey' ? payload.privateKey || null : null,
+              payload.authType === 'privateKey' ? payload.passphrase || null : null,
               now,
               credentialId
             )
@@ -813,9 +809,9 @@ export class DatabaseService {
               credName,
               credKind,
               payload.username.trim(),
-              payload.authType === 'password' ? (payload.password || null) : null,
-              payload.authType === 'privateKey' ? (payload.privateKey || null) : null,
-              payload.authType === 'privateKey' ? (payload.passphrase || null) : null,
+              payload.authType === 'password' ? payload.password || null : null,
+              payload.authType === 'privateKey' ? payload.privateKey || null : null,
+              payload.authType === 'privateKey' ? payload.passphrase || null : null,
               null,
               now,
               now
@@ -1046,8 +1042,7 @@ export class DatabaseService {
 
   getSettings(): AppSettings {
     const row = this.db.prepare('SELECT * FROM app_settings WHERE key = ?').get('app') as
-      | SettingsRow
-      | undefined
+      SettingsRow | undefined
     if (!row) {
       return DEFAULT_APP_SETTINGS
     }
@@ -1089,9 +1084,9 @@ export class DatabaseService {
   }
 
   getWebdavBackupPassword(): string | null {
-    const row = this.db.prepare('SELECT * FROM app_settings WHERE key = ?').get('webdav_backup_password') as
-      | SettingsRow
-      | undefined
+    const row = this.db
+      .prepare('SELECT * FROM app_settings WHERE key = ?')
+      .get('webdav_backup_password') as SettingsRow | undefined
     return row ? row.value : null
   }
 
@@ -1281,8 +1276,7 @@ export class DatabaseService {
 
     transaction()
     const row = this.db.prepare('SELECT * FROM command_history WHERE id = ?').get(id) as
-      | CommandHistoryRow
-      | undefined
+      CommandHistoryRow | undefined
     return row ? mapCommandHistory(row) : null
   }
 
@@ -1400,8 +1394,7 @@ export class DatabaseService {
     input: { name?: string; command?: string }
   ): CustomCommand | null {
     const existing = this.db.prepare('SELECT * FROM custom_commands WHERE id = ?').get(id) as
-      | CustomCommandRow
-      | undefined
+      CustomCommandRow | undefined
     if (!existing) return null
     const name = input.name ?? existing.name
     const command = input.command ?? existing.command

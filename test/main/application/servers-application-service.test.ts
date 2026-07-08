@@ -11,7 +11,6 @@ interface ServersDatabaseDouble {
   updateServer?: ReturnType<typeof vi.fn>
 }
 
-
 function createServer(overrides: Partial<Server> = {}): Server {
   return {
     authType: 'password',
@@ -100,5 +99,4 @@ describe('ServersApplicationService', () => {
     expect(database.getServerPassword).toHaveBeenCalledWith('server-1')
     expect(database.getServerPassphrase).toHaveBeenCalledWith('server-1')
   })
-
 })

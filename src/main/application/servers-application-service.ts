@@ -6,9 +6,7 @@ import { createLogger, createOperationContext } from '../observability'
 export class ServersApplicationService {
   private readonly logger = createLogger('main')
 
-  constructor(
-    private readonly database: DatabaseService
-  ) {}
+  constructor(private readonly database: DatabaseService) {}
 
   async listServers() {
     const context = createOperationContext('main', 'servers', 'list')

@@ -1,8 +1,8 @@
-import { motion } from "motion/react";
-import { useLanguage } from "../i18n/LanguageContext";
+import { motion } from 'motion/react'
+import { useLanguage } from '../i18n/LanguageContext'
 
 export function Hero() {
-  const { t, lang } = useLanguage();
+  const { t, lang } = useLanguage()
 
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden pt-20">
@@ -19,21 +19,28 @@ export function Hero() {
         {/* Static Orbs — radial-gradient instead of filter:blur for GPU performance */}
         <div
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full mix-blend-screen"
-          style={{ background: 'radial-gradient(circle, transparent 30%, rgba(37,99,235,0.4) 70%, transparent 100%)' }}
+          style={{
+            background:
+              'radial-gradient(circle, transparent 30%, rgba(37,99,235,0.4) 70%, transparent 100%)'
+          }}
         />
         <div
           className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full mix-blend-screen"
-          style={{ background: 'radial-gradient(circle, transparent 30%, rgba(147,51,234,0.3) 70%, transparent 100%)' }}
+          style={{
+            background:
+              'radial-gradient(circle, transparent 30%, rgba(147,51,234,0.3) 70%, transparent 100%)'
+          }}
         />
         <div
           className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] rounded-full mix-blend-screen"
-          style={{ background: 'radial-gradient(circle, transparent 25%, rgba(8,145,178,0.2) 70%, transparent 100%)' }}
+          style={{
+            background:
+              'radial-gradient(circle, transparent 25%, rgba(8,145,178,0.2) 70%, transparent 100%)'
+          }}
         />
       </div>
 
-      <div
-        className="relative z-10 w-full pt-12 flex flex-col items-center"
-      >
+      <div className="relative z-10 w-full pt-12 flex flex-col items-center">
         <div className="max-w-7xl mx-auto px-6 flex flex-col items-center text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -42,7 +49,9 @@ export function Hero() {
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md mb-8"
           >
             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-            <span className="text-xs font-medium text-neutral-300 tracking-wide uppercase">{t.hero.tagline}</span>
+            <span className="text-xs font-medium text-neutral-300 tracking-wide uppercase">
+              {t.hero.tagline}
+            </span>
           </motion.div>
 
           <motion.h1
@@ -67,9 +76,7 @@ export function Hero() {
           </motion.p>
         </div>
 
-        <div
-          className="mt-20 w-full max-w-[1600px] px-4 sm:px-6 md:px-12"
-        >
+        <div className="mt-20 w-full max-w-[1600px] px-4 sm:px-6 md:px-12">
           <div className="relative w-full rounded-[24px] overflow-hidden shadow-[0_0_80px_-20px_rgba(37,99,235,0.2)] p-[3px]">
             {/* Inner Content Block */}
             <div className="relative w-full h-full rounded-[21px] overflow-hidden border border-white/10">
@@ -77,12 +84,12 @@ export function Hero() {
                 src={lang === 'zh' ? '/winssh-shell-zh.png' : '/winssh-shell-en.png'}
                 alt="WinSSH Main Interface"
                 className="w-full h-auto block object-cover"
-                style={{ imageRendering: "high-quality" }}
+                style={{ imageRendering: 'high-quality' }}
               />
             </div>
           </div>
         </div>
       </div>
     </section>
-  );
+  )
 }

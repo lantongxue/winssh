@@ -291,7 +291,7 @@ export function WorkbenchSftpFileMonacoEditor({
       )
 
       try {
-        for (let offset = 0; offset < contents.length; ) {
+        for (let offset = 0; offset < contents.length;) {
           const end = getSftpFileSaveChunkEnd(contents, offset)
           await sftpClient.writeFileChunk(stream.streamId, contents.slice(offset, end))
           offset = end

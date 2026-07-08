@@ -1,6 +1,7 @@
 const common = {
   appName: 'WinSSH',
   actions: {
+    add: '新增',
     browse: '浏览',
     cancel: '取消',
     clear: '清除',

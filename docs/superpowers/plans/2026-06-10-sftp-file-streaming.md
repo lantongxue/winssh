@@ -34,6 +34,7 @@
 ## 任务 1：增量编码 helper
 
 **文件：**
+
 - 修改：`src/main/encoding.ts`
 - 修改：`test/main/encoding.test.ts`
 
@@ -77,7 +78,8 @@ describe('createIncrementalTextDecoder', () => {
     const text = 'Hello 你好'
     const buffer = iconv.encode(text, 'gbk')
     const decoder = createIncrementalTextDecoder(buffer)
-    const decoded = decoder.write(buffer.subarray(0, 5)) + decoder.write(buffer.subarray(5)) + decoder.end()
+    const decoded =
+      decoder.write(buffer.subarray(0, 5)) + decoder.write(buffer.subarray(5)) + decoder.end()
 
     expect(decoded).toBe(text)
     expect(decoder.encoding).toBe('gbk')
@@ -149,7 +151,7 @@ export function createIncrementalTextDecoder(initialSample: Buffer): Incremental
 Update `smartDecode()` to call `detectEncoding(buffer)` after BOM/UTF-8 checks only by replacing the duplicated detection section with:
 
 ```ts
-  const encoding = detectEncoding(buffer)
+const encoding = detectEncoding(buffer)
 ```
 
 and keep the existing try/catch decode fallback.
@@ -170,6 +172,7 @@ git commit -m "feat: add incremental text decoder"
 ## 任务 2：替换 shared/preload API 契约
 
 **文件：**
+
 - 修改：`src/shared/types.ts`
 - 修改：`src/shared/ipc-channels.ts`
 - 修改：`src/shared/api.ts`
@@ -381,6 +384,7 @@ git commit -m "feat: define sftp file stream api"
 ## 任务 3：主进程 stream runtime
 
 **文件：**
+
 - 修改：`src/main/services/session-runtime.ts`
 - 修改：`src/main/services/legacy-session-runtime.ts`
 - 修改：`src/main/services/worker-session-runtime.ts`
@@ -446,11 +450,12 @@ describe('SessionManager SFTP file streams', () => {
           callback(undefined, slice.byteLength)
         }
       ),
-      stat: vi.fn((_remotePath: string, callback: (error: Error | undefined, stats: unknown) => void) =>
-        callback(undefined, {
-          isDirectory: () => false,
-          size: contents.byteLength
-        })
+      stat: vi.fn(
+        (_remotePath: string, callback: (error: Error | undefined, stats: unknown) => void) =>
+          callback(undefined, {
+            isDirectory: () => false,
+            size: contents.byteLength
+          })
       ),
       write: vi.fn(
         (
@@ -506,7 +511,10 @@ describe('SessionManager SFTP file streams', () => {
 在该测试文件靠近 helper 区域添加：
 
 ```ts
-async function waitForFileStreamCompletion(emitToRenderer: ReturnType<typeof vi.fn>, streamId: string) {
+async function waitForFileStreamCompletion(
+  emitToRenderer: ReturnType<typeof vi.fn>,
+  streamId: string
+) {
   await vi.waitFor(() => {
     expect(
       emitToRenderer.mock.calls.some(
@@ -632,23 +640,23 @@ In `src/main/application/sessions-application-service.ts`, delete old methods an
 In `src/main/ipc/register-session-ipc.ts`, delete old handlers and add:
 
 ```ts
-  ipcMain.handle('sftp:openFileReadStream', (_event, sessionId: string, remotePath: string) =>
-    service.openFileReadStream(sessionId, remotePath)
-  )
-  ipcMain.handle(
-    'sftp:openFileWriteStream',
-    (_event, sessionId: string, remotePath: string, encoding: string) =>
-      service.openFileWriteStream(sessionId, remotePath, encoding)
-  )
-  ipcMain.handle('sftp:writeFileChunk', (_event, streamId: string, chunk: string) =>
-    service.writeFileChunk(streamId, chunk)
-  )
-  ipcMain.handle('sftp:closeFileWriteStream', (_event, streamId: string) =>
-    service.closeFileWriteStream(streamId)
-  )
-  ipcMain.on('sftp:cancelFileStream', (_event, streamId: string) =>
-    service.cancelFileStream(streamId)
-  )
+ipcMain.handle('sftp:openFileReadStream', (_event, sessionId: string, remotePath: string) =>
+  service.openFileReadStream(sessionId, remotePath)
+)
+ipcMain.handle(
+  'sftp:openFileWriteStream',
+  (_event, sessionId: string, remotePath: string, encoding: string) =>
+    service.openFileWriteStream(sessionId, remotePath, encoding)
+)
+ipcMain.handle('sftp:writeFileChunk', (_event, streamId: string, chunk: string) =>
+  service.writeFileChunk(streamId, chunk)
+)
+ipcMain.handle('sftp:closeFileWriteStream', (_event, streamId: string) =>
+  service.closeFileWriteStream(streamId)
+)
+ipcMain.on('sftp:cancelFileStream', (_event, streamId: string) =>
+  service.cancelFileStream(streamId)
+)
 ```
 
 - [ ] **步骤 4：实现最少 read stream 代码**
@@ -802,51 +810,51 @@ Also emit equivalent `sftp:transfer` with `localPath: '__editor__'` for running/
 在同一个 describe 中添加：
 
 ```ts
-  it('writes acknowledged chunks incrementally and closes the remote handle', async () => {
-    const { manager } = createManagerWithSftpEmitSpy()
-    const runtime = createRuntime('session-1', new MockClient())
-    const written: string[] = []
-    const sftp = createFileSftp(Buffer.alloc(0))
-    sftp.write.mockImplementation(
-      (
-        _handle: Buffer,
-        buffer: Buffer,
-        offset: number,
-        length: number,
-        _position: number,
-        callback: (error?: Error) => void
-      ) => {
-        written.push(buffer.subarray(offset, offset + length).toString('utf8'))
-        callback()
-      }
-    )
-    runtime.sftp = sftp as never
-    getSessionsMap(manager).set('session-1', runtime)
+it('writes acknowledged chunks incrementally and closes the remote handle', async () => {
+  const { manager } = createManagerWithSftpEmitSpy()
+  const runtime = createRuntime('session-1', new MockClient())
+  const written: string[] = []
+  const sftp = createFileSftp(Buffer.alloc(0))
+  sftp.write.mockImplementation(
+    (
+      _handle: Buffer,
+      buffer: Buffer,
+      offset: number,
+      length: number,
+      _position: number,
+      callback: (error?: Error) => void
+    ) => {
+      written.push(buffer.subarray(offset, offset + length).toString('utf8'))
+      callback()
+    }
+  )
+  runtime.sftp = sftp as never
+  getSessionsMap(manager).set('session-1', runtime)
 
-    const start = await manager.openFileWriteStream('session-1', '/etc/app.conf', 'utf8')
-    await manager.writeFileChunk(start.streamId, 'alpha')
-    await manager.writeFileChunk(start.streamId, '\nbeta')
-    await manager.closeFileWriteStream(start.streamId)
+  const start = await manager.openFileWriteStream('session-1', '/etc/app.conf', 'utf8')
+  await manager.writeFileChunk(start.streamId, 'alpha')
+  await manager.writeFileChunk(start.streamId, '\nbeta')
+  await manager.closeFileWriteStream(start.streamId)
 
-    expect(written.join('')).toBe('alpha\nbeta')
-    expect(sftp.close).toHaveBeenCalledOnce()
-  })
+  expect(written.join('')).toBe('alpha\nbeta')
+  expect(sftp.close).toHaveBeenCalledOnce()
+})
 
-  it('cancels file streams by stream id and closes the remote handle', async () => {
-    const { manager } = createManagerWithSftpEmitSpy()
-    const runtime = createRuntime('session-1', new MockClient())
-    const sftp = createFileSftp(Buffer.alloc(0))
-    runtime.sftp = sftp as never
-    getSessionsMap(manager).set('session-1', runtime)
+it('cancels file streams by stream id and closes the remote handle', async () => {
+  const { manager } = createManagerWithSftpEmitSpy()
+  const runtime = createRuntime('session-1', new MockClient())
+  const sftp = createFileSftp(Buffer.alloc(0))
+  runtime.sftp = sftp as never
+  getSessionsMap(manager).set('session-1', runtime)
 
-    const start = await manager.openFileWriteStream('session-1', '/etc/app.conf', 'utf8')
-    manager.cancelFileStream(start.streamId)
+  const start = await manager.openFileWriteStream('session-1', '/etc/app.conf', 'utf8')
+  manager.cancelFileStream(start.streamId)
 
-    await expect(manager.writeFileChunk(start.streamId, 'late')).rejects.toThrow(
-      /stream unavailable/i
-    )
-    expect(sftp.close).toHaveBeenCalledOnce()
-  })
+  await expect(manager.writeFileChunk(start.streamId, 'late')).rejects.toThrow(
+    /stream unavailable/i
+  )
+  expect(sftp.close).toHaveBeenCalledOnce()
+})
 ```
 
 - [ ] **步骤 7：运行 write/cancel 测试验证失败**
@@ -929,6 +937,7 @@ git commit -m "feat: stream sftp file editor ipc in main"
 ## 任务 4：Renderer Monaco 编辑器迁移到 stream
 
 **文件：**
+
 - 修改：`src/renderer/src/features/shared/query-keys.ts`
 - 修改：`src/renderer/src/components/workbench/workbench-sftp-file-monaco-editor.tsx`
 - 修改：`test/renderer/components/workbench/workbench-sftp-file-monaco-editor.test.tsx`
@@ -1013,10 +1022,7 @@ it('appends streamed chunks and marks the editor clean after completion', async 
   renderEditor()
 
   await waitFor(() => {
-    expect(stream.api.openFileReadStream).toHaveBeenCalledWith(
-      'session-1',
-      '/etc/nginx/nginx.conf'
-    )
+    expect(stream.api.openFileReadStream).toHaveBeenCalledWith('session-1', '/etc/nginx/nginx.conf')
   })
 
   act(() => {
@@ -1095,14 +1101,17 @@ useEffect(() => {
   loadedContentRef.current = ''
   modelRef.current?.setValue('')
 
-  void sftpClient.openFileReadStream(document.sessionId, document.remotePath).then((start) => {
-    if (cancelled) {
-      sftpClient.cancelFileStream(start.streamId)
-      return
-    }
-    activeReadStreamIdRef.current = start.streamId
-    setFileEncoding(start.encoding)
-  }).catch(() => setLoadState('error'))
+  void sftpClient
+    .openFileReadStream(document.sessionId, document.remotePath)
+    .then((start) => {
+      if (cancelled) {
+        sftpClient.cancelFileStream(start.streamId)
+        return
+      }
+      activeReadStreamIdRef.current = start.streamId
+      setFileEncoding(start.encoding)
+    })
+    .catch(() => setLoadState('error'))
 
   return () => {
     cancelled = true
@@ -1328,6 +1337,7 @@ git commit -m "feat: stream sftp file editor in renderer"
 ## 任务 5：旧 API 清理和全量验证
 
 **文件：**
+
 - 修改：`src/main/services/sftp-dispatcher.ts`
 - 修改：`src/main/workers/sftp/index.ts`
 - 修改：`src/shared/ssh-protocol.ts`

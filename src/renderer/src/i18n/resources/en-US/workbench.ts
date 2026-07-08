@@ -834,6 +834,7 @@ const workbench = {
       }
     },
     titleBar: {
+      addServerTitle: 'Add Server',
       commandPaletteTitle: 'Command Palette',
       closeWindow: 'Close Window',
       maximizeWindow: 'Maximize Window',

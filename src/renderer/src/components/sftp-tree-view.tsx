@@ -507,7 +507,15 @@ export const SftpTreeView = forwardRef<SftpTreeViewHandle, SftpTreeViewProps>(fu
 
     walk(entries, 0)
     return nodes
-  }, [viewMode, entries, expandedPaths, recentlyLoadedPaths, queryClient, session.sessionId, searchQuery])
+  }, [
+    viewMode,
+    entries,
+    expandedPaths,
+    recentlyLoadedPaths,
+    queryClient,
+    session.sessionId,
+    searchQuery
+  ])
 
   useEffect(() => {
     if (viewMode !== 'tree') return

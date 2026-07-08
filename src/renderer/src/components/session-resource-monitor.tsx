@@ -99,10 +99,7 @@ function MetricPillSkeleton({
   detail?: boolean
 }) {
   return (
-    <MetricPillShell
-      className={className}
-      data-testid="session-resource-monitor-skeleton-pill"
-    >
+    <MetricPillShell className={className} data-testid="session-resource-monitor-skeleton-pill">
       <div className="flex min-w-0 items-baseline gap-1.5">
         <Skeleton className="h-2.5 w-8 shrink-0 rounded-sm" />
         <Skeleton className="h-3 w-6 shrink-0 rounded-sm" />

@@ -44,7 +44,10 @@ const mockCredentials = [
   }
 ]
 
-const mockSecrets: Record<string, { password: string | null, passphrase: string | null, privateKey: string | null }> = {
+const mockSecrets: Record<
+  string,
+  { password: string | null; passphrase: string | null; privateKey: string | null }
+> = {
   'cred-1': { password: 'pass-val', passphrase: null, privateKey: null },
   'cred-2': { password: null, passphrase: 'phrase-val', privateKey: 'key-val' }
 }
@@ -59,7 +62,8 @@ describe('CredentialVault', () => {
     const api = createWinsshApiMock({
       credentials: {
         list: async () => mockCredentials,
-        getSecret: async (id) => mockSecrets[id] ?? { password: null, passphrase: null, privateKey: null }
+        getSecret: async (id) =>
+          mockSecrets[id] ?? { password: null, passphrase: null, privateKey: null }
       }
     })
     window.winsshApi = api

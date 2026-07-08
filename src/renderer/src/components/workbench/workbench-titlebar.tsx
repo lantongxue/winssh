@@ -100,7 +100,7 @@ function WindowControlButton({
 
 export function WorkbenchTitlebar() {
   const { t } = useTranslation()
-  const { openLocalTerminal } = useWorkbenchContext()
+  const { openLocalTerminal, openServerEditor } = useWorkbenchContext()
   const togglePanel = useWorkbenchStore((state) => state.togglePanel)
   const toggleSidebar = useWorkbenchStore((state) => state.toggleSidebar)
   const panelOpen = useWorkbenchStore((state) => state.panelOpen)
@@ -118,6 +118,7 @@ export function WorkbenchTitlebar() {
   const platform = useMemo(() => getPlatform(), [])
   const isMac = platform.includes('mac')
   const isWindows = isWindowsPlatform(platform)
+  const AddServerIcon = actionIcons.newConnection
   const QuickOpenIcon = actionIcons.quickOpen
   const OpenTerminalIcon = actionIcons.openTerminal
   const CommandPaletteIcon = actionIcons.commandPalette
@@ -220,6 +221,14 @@ export function WorkbenchTitlebar() {
             style={{ color: 'var(--workbench-logo)' }}
           />
         </div>
+        <TitlebarButton
+          size="sm"
+          tooltip={t('workbench.titleBar.addServerTitle')}
+          onClick={() => openServerEditor()}
+        >
+          <AddServerIcon className="size-3.5" />
+          {t('common.actions.add')}
+        </TitlebarButton>
         <TitlebarButton
           size="sm"
           tooltip={t('workbench.titleBar.quickOpenTitle')}

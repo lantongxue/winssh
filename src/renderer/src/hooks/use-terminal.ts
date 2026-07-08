@@ -264,8 +264,8 @@ export function useTerminal(
   const workerActive =
     Boolean(
       terminalWorkerOptions?.enabled &&
-        terminalWorkerOptions.terminalWorkerHost &&
-        terminalWorkerOptions.sessionId
+      terminalWorkerOptions.terminalWorkerHost &&
+      terminalWorkerOptions.sessionId
     ) && !workerDegraded
   const searchController = useMemo<TerminalSearchController>(
     () => ({
@@ -394,15 +394,13 @@ export function useTerminal(
     const host = terminalWorkerOptions.terminalWorkerHost
     const sessionId = terminalWorkerOptions.sessionId
 
-    void host
-      .attach({ sessionId, container: containerRef.current })
-      .catch(() => {
-        if (disposed) {
-          return
-        }
-        setWorkerDegraded(true)
-        terminalWorkerOptions.onDegraded?.(sessionId, 'worker_init_failed')
-      })
+    void host.attach({ sessionId, container: containerRef.current }).catch(() => {
+      if (disposed) {
+        return
+      }
+      setWorkerDegraded(true)
+      terminalWorkerOptions.onDegraded?.(sessionId, 'worker_init_failed')
+    })
 
     return () => {
       disposed = true

@@ -42,6 +42,7 @@
 ## 任务 1：SshControlPort request/response
 
 **文件：**
+
 - 创建：`src/main/services/ssh-control-port.ts`
 - 创建：`test/main/services/ssh-control-port.test.ts`
 
@@ -107,6 +108,7 @@ describe('SshControlPort', () => {
 - [ ] **步骤 3：实现 `SshControlPort`**
 
 实现要求：
+
 - constructor 接收 `Pick<Worker, 'on' | 'postMessage'>`。
 - `request(message)` 使用 message 上已有 `requestId`，没有时生成 `${Date.now()}-${counter}`。
 - `worker.postMessage(message)` 后建立 pending promise。
@@ -135,6 +137,7 @@ git commit -m "feat: add ssh worker control port"
 ## 任务 2：worker 内 secret buffer
 
 **文件：**
+
 - 创建：`src/main/workers/ssh-core/secret-buffer.ts`
 - 创建：`test/main/workers/ssh-core/secret-buffer.test.ts`
 
@@ -211,6 +214,7 @@ git commit -m "security: zero ssh worker secret buffers"
 ## 任务 3：ssh-core worker runtime skeleton
 
 **文件：**
+
 - 创建：`src/main/workers/ssh-core/session-worker.ts`
 - 创建：`src/main/workers/ssh-core/index.ts`
 - 创建：`test/main/workers/ssh-core/session-worker.test.ts`
@@ -271,6 +275,7 @@ describe('SshCoreSessionWorker', () => {
 - [ ] **步骤 3：实现 `SshCoreSessionWorker`**
 
 实现要求：
+
 - 默认 `createClient` 返回 `new Client()`。
 - `connect(config)` 发送 `state`：`handshake`、`ready`。
 - `client.connect()` 参数来自 `SshConnectConfig`。
@@ -284,6 +289,7 @@ describe('SshCoreSessionWorker', () => {
 - [ ] **步骤 4：实现 worker 入口**
 
 `src/main/workers/ssh-core/index.ts` 要：
+
 - 从 `node:worker_threads` 读取 `parentPort`。
 - 用 `sshCoreInboundSchema.parse(message)` 校验输入。
 - 分发 `connect`、`write`、`resize`、`disconnect`。
@@ -314,6 +320,7 @@ git commit -m "feat: add ssh core worker skeleton"
 ## 任务 4：WorkerSessionRuntime 与 feature flag
 
 **文件：**
+
 - 创建：`src/main/services/worker-session-runtime.ts`
 - 修改：`src/main/bootstrap.ts`
 - 修改：`src/main/localization.ts`
@@ -352,6 +359,7 @@ describe('WorkerSessionRuntime', () => {
 - [ ] **步骤 3：实现 `WorkerSessionRuntime`**
 
 实现要求：
+
 - 实现 `SessionRuntime`。
 - SSH 方法 `connect`、`disconnect`、`reconnect`、`write`、`resize` 走 `SshControlPort`。
 - SFTP、port-forward、resource snapshot、host-trust 方法委托 `legacyRuntime`。
@@ -380,6 +388,7 @@ const sessionRuntime = useLegacyTerminal
 - [ ] **步骤 5：新增双语错误文案**
 
 在 `src/main/localization.ts` 增加：
+
 - 英文 key `sessions.workerCrashed`：`SSH worker crashed. Reconnect the session to continue.`
 - 中文 key `sessions.workerCrashed`：`SSH 工作线程已崩溃。请重新连接会话后继续。`
 

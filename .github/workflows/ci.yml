@@ -11,32 +11,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '24'
-        cache: 'npm'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
 
-    - name: Install dependencies
-      shell: bash
-      run: |
-        npm ci
-        if [ $? -ne 0 ]; then
-          rm -rf node_modules package-lock.json
-          npm install
-        fi
+      - name: Install dependencies
+        shell: bash
+        run: |
+          npm ci
+          if [ $? -ne 0 ]; then
+            rm -rf node_modules package-lock.json
+            npm install
+          fi
 
-    - name: Run typecheck
-      run: npm run typecheck
+      - name: Run typecheck
+        run: npm run typecheck
 
-    - name: Run tests
-      run: npm run test
+      - name: Run tests
+        run: npm run test
 
-    - name: Build
-      run: npm run build
+      - name: Build
+        run: npm run build
 
   build:
     needs: test
@@ -47,43 +47,43 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '24'
-        cache: 'npm'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
 
-    - name: Install dependencies
-      shell: bash
-      run: |
-        npm ci
-        if [ $? -ne 0 ]; then
-          rm -rf node_modules package-lock.json
-          npm install
-        fi
+      - name: Install dependencies
+        shell: bash
+        run: |
+          npm ci
+          if [ $? -ne 0 ]; then
+            rm -rf node_modules package-lock.json
+            npm install
+          fi
 
-    - name: Build
-      run: npm run build
+      - name: Build
+        run: npm run build
 
-    - name: Build distributables
-      shell: bash
-      run: |
-        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-          npm run dist:linux
-        elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-          npm run dist:win
-        elif [ "${{ matrix.os }}" == "macos-latest" ]; then
-          npm run dist:mac
-        fi
-      env:
-        WINSSH_UPDATE_BASE_URL: ${{ secrets.WINSSH_UPDATE_BASE_URL }}
-        SKIP_PUBLISH: 'true'
+      - name: Build distributables
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+            npm run dist:linux
+          elif [ "${{ matrix.os }}" == "windows-latest" ]; then
+            npm run dist:win
+          elif [ "${{ matrix.os }}" == "macos-latest" ]; then
+            npm run dist:mac
+          fi
+        env:
+          WINSSH_UPDATE_BASE_URL: ${{ secrets.WINSSH_UPDATE_BASE_URL }}
+          SKIP_PUBLISH: 'true'
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: winssh-${{ matrix.os }}
-        path: release/
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: winssh-${{ matrix.os }}
+          path: release/

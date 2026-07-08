@@ -75,7 +75,11 @@ export function TerminalSurface({
     undefined,
     temporaryFontSize
   )
-  const { containerRef: terminalRef, search, focus: focusTerminal = () => undefined } = terminalState
+  const {
+    containerRef: terminalRef,
+    search,
+    focus: focusTerminal = () => undefined
+  } = terminalState
   const searchResultSummary =
     searchQuery.length === 0
       ? t('workbench.terminal.search.shortcut')

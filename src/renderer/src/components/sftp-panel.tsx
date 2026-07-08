@@ -1017,9 +1017,9 @@ export function SftpPanel({
               ) : null}
 
               {!listingQuery.isLoading &&
-                entries.length > 0 &&
-                filteredEntries.length === 0 &&
-                searchQuery.trim() ? (
+              entries.length > 0 &&
+              filteredEntries.length === 0 &&
+              searchQuery.trim() ? (
                 <div className="m-3 rounded-md border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
                   {t('workbench.sftp.empty.noSearchResults')}
                 </div>

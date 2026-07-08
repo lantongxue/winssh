@@ -2,12 +2,7 @@ import type { Worker } from 'node:worker_threads'
 import { createLogger } from '../observability'
 
 export type WorkerType =
-  | 'ssh-core'
-  | 'sftp'
-  | 'port-forward'
-  | 'osc-history'
-  | 'resource-monitor'
-  | 'host-trust'
+  'ssh-core' | 'sftp' | 'port-forward' | 'osc-history' | 'resource-monitor' | 'host-trust'
 
 export interface WorkerCrashRecord {
   workerId: string

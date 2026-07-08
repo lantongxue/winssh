@@ -100,9 +100,7 @@ export class UpdateService extends EventEmitter {
     super()
 
     const unsupportedReason = resolveUnsupportedReason(options)
-    this.updater = unsupportedReason
-      ? null
-      : (options.updaterFactory ?? createUpdater)(options)
+    this.updater = unsupportedReason ? null : (options.updaterFactory ?? createUpdater)(options)
 
     this.state = {
       autoCheckEnabled: options.autoCheckEnabled,

@@ -30,11 +30,15 @@ describe('bootstrap session runtime wiring', () => {
   it('constructs SessionsApplicationService with the selected SessionRuntime', () => {
     const source = readFileSync(join(process.cwd(), 'src/main/bootstrap.ts'), 'utf8')
 
-    expect(source).toContain("import { LegacySessionRuntime } from './services/legacy-session-runtime'")
+    expect(source).toContain(
+      "import { LegacySessionRuntime } from './services/legacy-session-runtime'"
+    )
     expect(source).toContain(
       "import { WorkerSessionRuntime } from './services/worker-session-runtime'"
     )
-    expect(source).toContain('const legacySessionRuntime = new LegacySessionRuntime(sessionManager)')
+    expect(source).toContain(
+      'const legacySessionRuntime = new LegacySessionRuntime(sessionManager)'
+    )
     expect(source).toContain("process.env['WINSSH_WORKER_TERMINAL'] === '1'")
     expect(source).toContain("process.env['WINSSH_LEGACY_TERMINAL'] !== '1'")
     expect(source).toContain('new WorkerSessionRuntime({')

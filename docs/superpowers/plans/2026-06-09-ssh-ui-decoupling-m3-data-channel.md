@@ -41,6 +41,7 @@
 ## 任务 1：SshDataAggregator
 
 **文件：**
+
 - 创建：`src/main/services/ssh-data-aggregator.ts`
 - 创建：`test/main/services/ssh-data-aggregator.test.ts`
 - 修改：`src/shared/ipc-channels.ts`
@@ -93,6 +94,7 @@ describe('SshDataAggregator', () => {
 - [ ] **步骤 3：实现 aggregator**
 
 实现要求：
+
 - `registerSessionPort(sessionId, port)` 保存端口。
 - `unregisterSessionPort(sessionId)` 关闭并删除端口。
 - `routeFrame(event)` 有端口时 `postMessage({ type: 'data', ... }, [frame])`。
@@ -139,6 +141,7 @@ git commit -m "feat: add ssh data aggregator"
 ## 任务 2：Preload BinaryChannel
 
 **文件：**
+
 - 创建：`src/preload/binary-channel.ts`
 - 创建：`test/preload/binary-channel.test.ts`
 
@@ -182,6 +185,7 @@ describe('BinaryChannel', () => {
 - [ ] **步骤 3：实现 BinaryChannel**
 
 实现要求：
+
 - 队列保存 `ArrayBuffer[]`。
 - `enqueue(frame)` 增加 queued bytes 并返回 `{ droppedFrames, queuedBytes }`。
 - 超出 `highWaterMarkBytes` 时丢弃最旧帧直到小于等于一半水位。
@@ -209,6 +213,7 @@ git commit -m "feat: add preload binary channel"
 ## 任务 3：TerminalPortAllocator 与 API 扩展
 
 **文件：**
+
 - 创建：`src/preload/terminal-port-allocator.ts`
 - 创建：`test/preload/terminal-port-allocator.test.ts`
 - 修改：`src/preload/index.ts`
@@ -243,6 +248,7 @@ describe('TerminalPortAllocator', () => {
 - [ ] **步骤 3：实现 TerminalPortAllocator**
 
 实现要求：
+
 - `create(sessionId)` 创建 `new MessageChannel()`。
 - 调用注入的 `registerMainPort(sessionId, channel.port1)`。
 - 返回 `channel.port2` 给 renderer。
@@ -296,6 +302,7 @@ git commit -m "feat: expose ssh terminal data channel"
 ## 任务 4：M3 接线与兼容验证
 
 **文件：**
+
 - 修改：`src/main/services/worker-session-runtime.ts`
 - 修改：`src/main/ipc/register-session-ipc.ts`
 - 修改：`src/main/bootstrap.ts`
@@ -335,6 +342,7 @@ it('forwards worker data frames to the data aggregator', () => {
 - [ ] **步骤 3：接入 aggregator**
 
 实现要求：
+
 - `WorkerSessionRuntime` 接收 `dataAggregator` 依赖。
 - ssh-core worker 的 `data` outbound 交给 `dataAggregator.routeFrame`。
 - `register-session-ipc.ts` 新增内部 handler 用于接收 preload 传来的 main port。
