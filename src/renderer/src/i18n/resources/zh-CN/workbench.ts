@@ -568,13 +568,14 @@ const workbench = {
         actions: {
           check: '立即检查更新',
           download: '下载更新',
-          install: '重启并安装'
+          install: '重启并安装',
+          mountAndOpen: '打开安装包'
         },
         autoCheck: {
           description: '应用启动时自动检查更新，但不会自动下载更新包。',
           title: '自动检查更新'
         },
-        description: 'Windows 构建会检查已配置的更新源，并由你决定何时下载和安装新版本。',
+        description: '检查已配置的更新源，由你决定何时下载和安装新版本。',
         status: {
           available: '发现新版本 {{version}}。',
           buildUnsupported: '当前构建不支持自动更新。',
@@ -584,6 +585,7 @@ const workbench = {
           error: '更新失败。',
           feedMissing: '当前构建没有配置更新源。',
           idle: '你可以随时手动检查更新。',
+          mounted: '更新已下载并打开，请将 WinSSH 拖入 Applications 文件夹完成安装。',
           notAvailable: '当前已经是最新版本。',
           platformUnsupported: '当前构建暂不支持在 {{platform}} 上自动更新。'
         },
@@ -631,12 +633,14 @@ const workbench = {
       actions: {
         download: '下载更新',
         install: '重启并安装',
+        mountAndOpen: '打开安装包',
         later: '稍后'
       },
       description: '发现新版本 WinSSH {{version}}。你可以现在下载，也可以稍后处理。',
       descriptions: {
         checking: '正在检查更新源。',
         downloaded: '更新已下载完成，可以立即安装。',
+        mounted: '安装包已打开。请将 WinSSH 拖入 Applications 文件夹完成更新，然后重启应用。',
         downloading: '正在下载更新... {{percent}}%',
         error: '检查或下载更新时发生错误。',
         idle: '正在准备更新流程。',
@@ -647,6 +651,7 @@ const workbench = {
       titles: {
         checking: '正在检查更新',
         downloaded: '可以安装更新',
+        mounted: '安装更新',
         downloading: '正在下载更新',
         error: '更新失败',
         notAvailable: '当前已是最新版本',

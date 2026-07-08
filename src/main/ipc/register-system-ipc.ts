@@ -220,8 +220,8 @@ export function registerSystemIpc(options: {
   ipcMain.handle('updates:getState', () => updateService.getState())
   ipcMain.handle('updates:check', () => updateService.check())
   ipcMain.handle('updates:download', () => updateService.download())
-  ipcMain.handle('updates:quitAndInstall', () => {
-    updateService.quitAndInstall()
+  ipcMain.handle('updates:quitAndInstall', async () => {
+    await updateService.quitAndInstall()
   })
   ipcMain.handle('backup:list', () => webdavBackupService.list())
   ipcMain.handle('system:getAppInfo', () => appInfo)

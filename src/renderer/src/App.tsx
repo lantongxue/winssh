@@ -4,6 +4,7 @@ import type { ThemeDefinition } from '@shared/themes'
 import type { ThemeMode } from '@shared/types'
 import { useTranslation } from 'react-i18next'
 import { Toaster } from 'sonner'
+import { FolderOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AppErrorBoundary } from '@/components/app-error-boundary'
 import {
@@ -106,11 +107,13 @@ function UpdateDialog() {
           ? t('workbench.updateDialog.titles.downloading')
           : updateState?.phase === 'downloaded'
             ? t('workbench.updateDialog.titles.downloaded')
-            : updateState?.phase === 'error'
-              ? t('workbench.updateDialog.titles.error')
-              : updateState?.phase === 'unsupported'
-                ? t('workbench.updateDialog.titles.unsupported')
-                : t('workbench.updateDialog.title')
+            : updateState?.phase === 'mounted'
+              ? t('workbench.updateDialog.titles.mounted')
+              : updateState?.phase === 'error'
+                ? t('workbench.updateDialog.titles.error')
+                : updateState?.phase === 'unsupported'
+                  ? t('workbench.updateDialog.titles.unsupported')
+                  : t('workbench.updateDialog.title')
 
   const dialogDescription =
     updateState?.phase === 'checking'
@@ -127,11 +130,13 @@ function UpdateDialog() {
               })
             : updateState?.phase === 'downloaded'
               ? t('workbench.updateDialog.descriptions.downloaded')
-              : updateState?.phase === 'error'
-                ? (updateState.errorMessage ?? t('workbench.updateDialog.descriptions.error'))
-                : updateState?.phase === 'unsupported'
-                  ? t('workbench.updateDialog.descriptions.unsupported')
-                  : t('workbench.updateDialog.descriptions.idle')
+              : updateState?.phase === 'mounted'
+                ? t('workbench.updateDialog.descriptions.mounted')
+                : updateState?.phase === 'error'
+                  ? (updateState.errorMessage ?? t('workbench.updateDialog.descriptions.error'))
+                  : updateState?.phase === 'unsupported'
+                    ? t('workbench.updateDialog.descriptions.unsupported')
+                    : t('workbench.updateDialog.descriptions.idle')
 
   const showDialog =
     dialogMode === 'manual'
@@ -145,7 +150,7 @@ function UpdateDialog() {
   }
 
   const canDownload = updateState.phase === 'available'
-  const canInstall = updateState.phase === 'downloaded'
+  const canInstall = updateState.phase === 'downloaded' || updateState.phase === 'mounted'
   const closeLabel =
     updateState.phase === 'available'
       ? t('workbench.updateDialog.actions.later')
@@ -184,8 +189,14 @@ function UpdateDialog() {
               disabled={installUpdate.isPending}
               onClick={() => installUpdate.mutate()}
             >
-              <RestartIcon className="size-4" />
-              {t('workbench.updateDialog.actions.install')}
+              {updateState.requiresManualInstall ? (
+                <FolderOpen className="size-4" />
+              ) : (
+                <RestartIcon className="size-4" />
+              )}
+              {updateState.requiresManualInstall
+                ? t('workbench.updateDialog.actions.mountAndOpen')
+                : t('workbench.updateDialog.actions.install')}
             </Button>
           ) : null}
         </DialogFooter>

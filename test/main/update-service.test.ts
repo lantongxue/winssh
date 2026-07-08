@@ -13,12 +13,14 @@ class FakeUpdater extends EventEmitter implements UpdaterAdapter {
 function createService(overrides: Partial<ConstructorParameters<typeof UpdateService>[0]> = {}) {
   const updater = new FakeUpdater()
   const service = new UpdateService({
+    arch: 'x64',
     autoCheckEnabled: true,
     currentVersion: '1.0.0',
     githubOwner: 'lantongxue',
     githubRepo: 'winssh',
     isPackaged: true,
     platform: 'win32',
+    productName: 'WinSSH',
     updaterFactory: () => updater,
     ...overrides
   })
@@ -162,5 +164,31 @@ describe('UpdateService', () => {
     service.setAutoCheckEnabled(false)
 
     expect(service.getState().autoCheckEnabled).toBe(false)
+  })
+
+  it('sets requiresManualInstall to true on darwin', () => {
+    const { service } = createService({ platform: 'darwin' })
+    expect(service.getState().requiresManualInstall).toBe(true)
+  })
+
+  it('sets requiresManualInstall to false on win32', () => {
+    const { service } = createService({ platform: 'win32' })
+    expect(service.getState().requiresManualInstall).toBe(false)
+  })
+
+  it('does not call updater.downloadUpdate on darwin', async () => {
+    const { service, updater } = createService({ platform: 'darwin' })
+
+    updater.emit('update-available', {
+      version: '0.2.0',
+      releaseDate: null,
+      releaseName: '0.2.0',
+      releaseNotes: null
+    })
+
+    // Custom download on darwin won't succeed without a real server, but it
+    // should not invoke updater.downloadUpdate()
+    await service.download()
+    expect(updater.downloadUpdate).not.toHaveBeenCalled()
   })
 })

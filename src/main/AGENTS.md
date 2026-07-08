@@ -57,7 +57,7 @@ src/main/
 - **Error normalization**: ssh2 errors wrapped in `ConnectionFailure` with structured codes (`client-authentication`, `host-untrusted`, etc.).
 - **Logging**: Use `createLogger('main')` from `observability.ts`. Not `console.log`.
 - **Transaction pattern**: Database multi-step writes use `better-sqlite3` synchronous `transaction()`.
-- **NsisUpdater only**: `update-service.ts` uses `NsisUpdater` (not generic `autoUpdater`). Non-win32 → `unsupported`.
+- **Platform-specific updaters**: `update-service.ts` uses `NsisUpdater` on win32 (full auto-update), `MacUpdater` on darwin (check-only, DMG download is custom), `AppImageUpdater` on linux. Non-standard platforms → `unsupported`.
 
 ## ANTI-PATTERNS
 

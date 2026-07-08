@@ -583,7 +583,8 @@ const workbench = {
         actions: {
           check: 'Check for Updates',
           download: 'Download Update',
-          install: 'Restart to Install'
+          install: 'Restart to Install',
+          mountAndOpen: 'Open Installer'
         },
         autoCheck: {
           description:
@@ -591,7 +592,7 @@ const workbench = {
           title: 'Automatically check for updates'
         },
         description:
-          'Windows builds can check the configured update feed and let you choose when to download and install a new version.',
+          'Check the configured update feed and choose when to download and install a new version.',
         status: {
           available: 'Update {{version}} is available.',
           buildUnsupported: 'The current build does not support automatic updates.',
@@ -601,6 +602,8 @@ const workbench = {
           error: 'Update failed.',
           feedMissing: 'This build was not configured with an update feed.',
           idle: 'Automatic updates are ready when you want to check.',
+          mounted:
+            'The update has been downloaded and opened. Drag WinSSH to Applications to install.',
           notAvailable: 'You are already on the latest version.',
           platformUnsupported: 'Automatic updates are not supported on {{platform}} in this build.'
         },
@@ -651,12 +654,15 @@ const workbench = {
       actions: {
         download: 'Download Update',
         install: 'Restart to Install',
+        mountAndOpen: 'Open Installer',
         later: 'Later'
       },
       description: 'WinSSH {{version}} is available. Download it now or come back to it later.',
       descriptions: {
         checking: 'Checking the update feed now.',
         downloaded: 'The update has finished downloading and is ready to install.',
+        mounted:
+          'The DMG has been opened. Drag WinSSH to the Applications folder to complete the update, then restart the app.',
         downloading: 'Downloading the update... {{percent}}%',
         error: 'Something went wrong while checking or downloading updates.',
         idle: 'Preparing the update workflow.',
@@ -667,6 +673,7 @@ const workbench = {
       titles: {
         checking: 'Checking for Updates',
         downloaded: 'Ready to Install',
+        mounted: 'Install Update',
         downloading: 'Downloading Update',
         error: 'Update Failed',
         notAvailable: 'You Are Up to Date',

@@ -117,7 +117,7 @@ These are the facts an agent is most likely to get wrong:
 - **Credential model** — server password/passphrase, credential vault secrets, and server private keys (inline in `servers.private_key` DB column) all live in the SQLite database.
 - **`SessionManager` does NOT read credential vault directly** for connection auth. Only `servers:getSecrets` (display) and `resolveStoredPrivateKey()` use the vault. Connection auth uses `request.secrets[server.id]` or database fallback.
 - **Jump server is single-hop only**. Nested jump chains are explicitly rejected.
-- **Auto-update is Windows-only** (NSIS builds). macOS/Linux and dev builds return `unsupported` — this is expected UI state, not an error.
+- **Auto-update**: Windows uses `NsisUpdater` for full silent updates. macOS downloads and mounts DMG for manual drag-install (no code signing required). Linux and dev builds return `unsupported`.
 - **Resource monitoring is Linux-only** (`/proc/stat`, `/proc/meminfo`, etc.).
 - **Port forwarding is session-scoped memory only** — no DB persistence.
 - **`session-editor` and `local-terminal-editor` use keep-mounted strategy** (visible via visibility toggle, not conditional render) to avoid xterm re-initialization on tab switch. Do not change this.

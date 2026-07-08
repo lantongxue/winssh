@@ -162,11 +162,13 @@ export async function bootstrap(): Promise<void> {
     autoCheckEnabled: themeRegistry.normalizeSettings(
       normalizeAppSettingsForPlatform(database.getSettings())
     ).autoUpdateCheckEnabled,
+    arch: process.arch,
     currentVersion: appInfo.version,
     githubOwner: 'lantongxue',
     githubRepo: 'winssh',
     isPackaged: app.isPackaged,
-    platform: process.platform
+    platform: process.platform,
+    productName: APP_NAME
   })
   const sessionManager = new SessionManager(
     database,
