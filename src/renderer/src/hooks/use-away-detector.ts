@@ -5,6 +5,7 @@ import { systemClient } from '@/features/system/api/system-client'
 import { settingsClient } from '@/features/settings/api/settings-client'
 import { queryKeys } from '@/features/shared/query-keys'
 import { useAwayReminderStore } from '@/store/away-reminder-store'
+import { useWorkbenchStore } from '@/store/workbench-store'
 
 export function useAwayDetector() {
   const settingsQuery = useQuery({
@@ -31,13 +32,24 @@ export function useAwayDetector() {
       return
     }
 
+    const hasActiveSession = () =>
+      useWorkbenchStore
+        .getState()
+        .openDocuments.some((document) => document.kind === 'session-editor')
+
     const handleFocusEvent = (event: AppFocusEvent) => {
       if (event.phase === 'blurred') {
-        useAwayReminderStore.getState().markAway()
+        if (hasActiveSession()) {
+          useAwayReminderStore.getState().markAway()
+        }
         return
       }
 
       if (event.phase === 'focused') {
+        if (!hasActiveSession()) {
+          useAwayReminderStore.getState().reset()
+          return
+        }
         const timeoutMs = settingsRef.current?.awayReminderTimeoutMs ?? 30000
         useAwayReminderStore.getState().handleFocusReturn(timeoutMs)
       }
@@ -45,11 +57,17 @@ export function useAwayDetector() {
 
     const handleActivityEvent = (event: AppActivityEvent) => {
       if (event.phase === 'sleep' || event.phase === 'lock-screen') {
-        useAwayReminderStore.getState().markAway()
+        if (hasActiveSession()) {
+          useAwayReminderStore.getState().markAway()
+        }
         return
       }
 
       if (event.phase === 'wake' || event.phase === 'unlock-screen') {
+        if (!hasActiveSession()) {
+          useAwayReminderStore.getState().reset()
+          return
+        }
         const timeoutMs = settingsRef.current?.awayReminderTimeoutMs ?? 30000
         useAwayReminderStore.getState().handleFocusReturn(timeoutMs)
       }

@@ -104,6 +104,29 @@ describe('WorkbenchAwayReminderOverlay', () => {
     expect(screen.queryByText('Safety Reminder')).not.toBeInTheDocument()
   })
 
+  it('does not render when only local terminal documents are open (no SSH sessions)', () => {
+    window.winsshApi = createWinsshApiMock({
+      settings: {
+        get: vi.fn().mockResolvedValue({ awayReminderEnabled: true })
+      }
+    })
+
+    useLocalTerminalsStore.getState().addTerminal({
+      cwd: '/Users/tester',
+      shell: 'zsh',
+      startedAt: new Date().toISOString(),
+      status: 'running',
+      terminalId: 'local-terminal-1',
+      title: 'zsh'
+    })
+    useWorkbenchStore.getState().openDocument(createLocalTerminalEditorDocument('local-terminal-1'))
+    useAwayReminderStore.setState({ overlayVisible: true })
+
+    renderOverlay()
+
+    expect(screen.queryByText('Safety Reminder')).not.toBeInTheDocument()
+  })
+
   it('renders overlay with title and description when visible with open documents', async () => {
     window.winsshApi = createWinsshApiMock({
       servers: {
@@ -170,13 +193,27 @@ describe('WorkbenchAwayReminderOverlay', () => {
     })
   })
 
-  it('displays local terminal identity with shell type', async () => {
+  it('displays local terminal identity with shell type when SSH session is also open', async () => {
     window.winsshApi = createWinsshApiMock({
+      servers: {
+        list: vi.fn().mockResolvedValue([createdServer])
+      },
       settings: {
         get: vi.fn().mockResolvedValue({ awayReminderEnabled: true })
       }
     })
 
+    useSessionsStore.getState().addSession({
+      connectedAt: new Date().toISOString(),
+      currentPath: '/root',
+      host: '203.0.113.10',
+      port: 22,
+      serverId: 'server-1',
+      serverName: 'Test Host',
+      sessionId: 'session-1',
+      status: 'ready'
+    })
+    useWorkbenchStore.getState().openDocument(createSessionEditorDocument('session-1'))
     useLocalTerminalsStore.getState().addTerminal({
       cwd: '/Users/tester',
       shell: 'zsh',
@@ -186,6 +223,7 @@ describe('WorkbenchAwayReminderOverlay', () => {
       title: 'zsh'
     })
     useWorkbenchStore.getState().openDocument(createLocalTerminalEditorDocument('local-terminal-1'))
+    useWorkbenchStore.getState().setActiveDocument(createLocalTerminalEditorDocument('local-terminal-1').id)
     useAwayReminderStore.setState({ overlayVisible: true })
 
     renderOverlay()
@@ -301,13 +339,27 @@ describe('WorkbenchAwayReminderOverlay', () => {
     })
   })
 
-  it('shows shell type label for local terminals', async () => {
+  it('shows shell type label for local terminals when SSH session is also open', async () => {
     window.winsshApi = createWinsshApiMock({
+      servers: {
+        list: vi.fn().mockResolvedValue([createdServer])
+      },
       settings: {
         get: vi.fn().mockResolvedValue({ awayReminderEnabled: true })
       }
     })
 
+    useSessionsStore.getState().addSession({
+      connectedAt: new Date().toISOString(),
+      currentPath: '/root',
+      host: '203.0.113.10',
+      port: 22,
+      serverId: 'server-1',
+      serverName: 'Test Host',
+      sessionId: 'session-1',
+      status: 'ready'
+    })
+    useWorkbenchStore.getState().openDocument(createSessionEditorDocument('session-1'))
     useLocalTerminalsStore.getState().addTerminal({
       cwd: '/Users/tester',
       shell: 'powershell',
@@ -317,6 +369,7 @@ describe('WorkbenchAwayReminderOverlay', () => {
       title: 'powershell'
     })
     useWorkbenchStore.getState().openDocument(createLocalTerminalEditorDocument('local-terminal-1'))
+    useWorkbenchStore.getState().setActiveDocument(createLocalTerminalEditorDocument('local-terminal-1').id)
     useAwayReminderStore.setState({ overlayVisible: true })
 
     renderOverlay()

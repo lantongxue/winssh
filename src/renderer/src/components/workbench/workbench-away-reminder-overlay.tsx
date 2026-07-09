@@ -35,7 +35,11 @@ export function WorkbenchAwayReminderOverlay() {
 
   const awayReminderEnabled = settingsQuery.data?.awayReminderEnabled ?? true
 
-  const shouldShowOverlay = overlayVisible && awayReminderEnabled && openDocuments.length > 0
+  const hasActiveSession = openDocuments.some(
+    (document) => document.kind === 'session-editor'
+  )
+
+  const shouldShowOverlay = overlayVisible && awayReminderEnabled && hasActiveSession
 
   // When the overlay becomes visible, blur the active element (e.g. xterm textarea)
   // and focus the confirm button so keyboard input goes to the overlay, not the terminal.

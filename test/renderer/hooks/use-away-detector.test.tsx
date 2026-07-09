@@ -8,6 +8,8 @@ import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import { queryKeys } from '@/features/shared/query-keys'
 import { createWinsshApiMock } from '@test/renderer/helpers/create-winssh-api'
 import { useAwayReminderStore } from '@/store/away-reminder-store'
+import { useWorkbenchStore } from '@/store/workbench-store'
+import { createSessionEditorDocument } from '@/lib/workbench'
 import { useAwayDetector } from '@/hooks/use-away-detector'
 
 function defaultSettings(overrides: Partial<AppSettings> = {}): AppSettings {
@@ -37,6 +39,8 @@ describe('useAwayDetector', () => {
 
   beforeEach(() => {
     useAwayReminderStore.getState().reset()
+    useWorkbenchStore.getState().reset()
+    useWorkbenchStore.getState().openDocument(createSessionEditorDocument('session-1'))
 
     focusCallbacks = []
     activityCallbacks = []
@@ -124,6 +128,21 @@ describe('useAwayDetector', () => {
 
     expect(useAwayReminderStore.getState().awayTimestamp).toBe(Date.now())
     expect(useAwayReminderStore.getState().overlayVisible).toBe(false)
+
+    unmount()
+  })
+
+  it('blurred event without active SSH session → does not markAway()', async () => {
+    useWorkbenchStore.getState().reset()
+    const { unmount } = await renderAwayDetector()
+
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-28T12:00:00Z'))
+    useAwayReminderStore.getState().reset()
+
+    emitFocusEvent({ phase: 'blurred' })
+
+    expect(useAwayReminderStore.getState().awayTimestamp).toBeNull()
 
     unmount()
   })
