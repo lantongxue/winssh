@@ -1,15 +1,6 @@
 import { EventEmitter } from 'node:events'
-import { createWriteStream } from 'node:fs'
-import { get as httpsGet } from 'node:https'
-import { get as httpGet, type IncomingMessage } from 'node:http'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { exec } from 'node:child_process'
-import { promisify } from 'node:util'
 
 import type { UpdateState, UpdateUnsupportedReason, UpdateVersionInfo } from '@shared/types'
-
-const execAsync = promisify(exec)
 
 type UpdateEventMap = {
   'checking-for-update': () => void
@@ -103,24 +94,22 @@ function createUpdater(options: UpdateServiceOptions): UpdaterAdapter {
   return new electronUpdater.AppImageUpdater(config)
 }
 
+function buildReleasesUrl(githubOwner: string, githubRepo: string): string | null {
+  if (!githubOwner.trim() || !githubRepo.trim()) {
+    return null
+  }
+  return `https://github.com/${githubOwner}/${githubRepo}/releases`
+}
+
 export class UpdateService extends EventEmitter {
   private readonly updater: UpdaterAdapter | null
   private state: UpdateState
   private readonly platform: string
-  private readonly arch: string
-  private readonly githubOwner: string
-  private readonly githubRepo: string
-  private readonly productName: string
-  private downloadedDmgPath: string | null = null
 
   constructor(options: UpdateServiceOptions) {
     super()
 
     this.platform = options.platform
-    this.arch = options.arch
-    this.githubOwner = options.githubOwner
-    this.githubRepo = options.githubRepo
-    this.productName = options.productName
 
     const unsupportedReason = resolveUnsupportedReason(options)
     this.updater = unsupportedReason ? null : (options.updaterFactory ?? createUpdater)(options)
@@ -134,7 +123,8 @@ export class UpdateService extends EventEmitter {
       phase: unsupportedReason ? 'unsupported' : 'idle',
       supported: unsupportedReason === null,
       unsupportedReason,
-      requiresManualInstall: options.platform !== 'win32'
+      requiresManualInstall: options.platform !== 'win32',
+      releasesUrl: buildReleasesUrl(options.githubOwner, options.githubRepo)
     }
 
     if (this.updater) {
@@ -178,8 +168,9 @@ export class UpdateService extends EventEmitter {
       return this.getState()
     }
 
-    if (this.platform === 'darwin') {
-      return this.downloadForMacOS()
+    // macOS and Linux require manual download — no in-app download support
+    if (this.platform !== 'win32') {
+      return this.getState()
     }
 
     try {
@@ -199,8 +190,8 @@ export class UpdateService extends EventEmitter {
       return
     }
 
-    if (this.platform === 'darwin' && this.downloadedDmgPath) {
-      await this.mountAndReveal()
+    // macOS and Linux do not support in-app installation
+    if (this.platform !== 'win32') {
       return
     }
 
@@ -209,135 +200,6 @@ export class UpdateService extends EventEmitter {
     }
 
     this.updater.quitAndInstall()
-  }
-
-  private async downloadForMacOS(): Promise<UpdateState> {
-    const version = this.state.availableUpdate?.version
-    if (!version) {
-      return this.getState()
-    }
-
-    this.setState({
-      downloadProgressPercent: 0,
-      errorMessage: null,
-      phase: 'downloading'
-    })
-
-    try {
-      const destPath = join(tmpdir(), `${this.productName}-Mac-${version}-${this.arch}.dmg`)
-      const url = this.buildDmgUrl(version)
-      await this.downloadFile(url, destPath)
-      this.downloadedDmgPath = destPath
-      this.setState({
-        downloadProgressPercent: 100,
-        phase: 'downloaded'
-      })
-    } catch (error) {
-      this.downloadedDmgPath = null
-      this.setState({
-        errorMessage: error instanceof Error ? error.message : 'Failed to download the update.',
-        phase: 'error'
-      })
-    }
-
-    return this.getState()
-  }
-
-  private buildDmgUrl(version: string): string {
-    return `https://github.com/${this.githubOwner}/${this.githubRepo}/releases/download/v${version}/${this.productName}-Mac-${version}-${this.arch}.dmg`
-  }
-
-  private downloadFile(url: string, destPath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const follow = (targetUrl: string, redirectCount = 0): void => {
-        if (redirectCount > 10) {
-          reject(new Error('Too many redirects'))
-          return
-        }
-
-        const get = targetUrl.startsWith('https') ? httpsGet : httpGet
-        get(targetUrl, (res: IncomingMessage) => {
-          if (res.statusCode === 301 || res.statusCode === 302) {
-            const location = res.headers.location
-            if (!location) {
-              reject(new Error('Redirect without location header'))
-              return
-            }
-            res.resume()
-            follow(location, redirectCount + 1)
-            return
-          }
-
-          if (res.statusCode !== 200) {
-            res.resume()
-            reject(new Error(`Download failed: HTTP ${res.statusCode}`))
-            return
-          }
-
-          const total = parseInt(res.headers['content-length'] ?? '0', 10)
-          let received = 0
-          const file = createWriteStream(destPath)
-
-          res.on('data', (chunk: Buffer) => {
-            received += chunk.length
-            if (total > 0) {
-              this.setState({
-                downloadProgressPercent: (received / total) * 100,
-                phase: 'downloading'
-              })
-            }
-          })
-
-          res.pipe(file)
-          file.on('finish', () => {
-            file.close()
-            resolve()
-          })
-          file.on('error', (err: Error) => {
-            file.close()
-            reject(err)
-          })
-        }).on('error', reject)
-      }
-
-      follow(url)
-    })
-  }
-
-  private async mountAndReveal(): Promise<void> {
-    if (!this.downloadedDmgPath) {
-      return
-    }
-
-    try {
-      const { existsSync } = require('node:fs')
-
-      const version = this.state.availableUpdate?.version
-      const expectedMountPoint = version
-        ? `/Volumes/${this.productName} ${version}`
-        : `/Volumes/${this.productName}`
-      const fallbackMountPoint = `/Volumes/${this.productName}`
-
-      let targetPath = expectedMountPoint
-      if (!existsSync(expectedMountPoint) && existsSync(fallbackMountPoint)) {
-        targetPath = fallbackMountPoint
-      }
-
-      if (!existsSync(targetPath)) {
-        // Run hdiutil attach without -nobrowse so Finder opens it automatically
-        await execAsync(`hdiutil attach "${this.downloadedDmgPath}"`)
-      }
-
-      // Use macOS 'open' command to reliably open the folder and bring Finder to foreground
-      await execAsync(`open "${targetPath}"`)
-
-      this.setState({ phase: 'mounted' })
-    } catch (error) {
-      this.setState({
-        errorMessage: error instanceof Error ? error.message : 'Failed to mount the update.',
-        phase: 'error'
-      })
-    }
   }
 
   private attachUpdaterEvents(updater: UpdaterAdapter) {

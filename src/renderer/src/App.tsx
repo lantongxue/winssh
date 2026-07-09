@@ -4,7 +4,6 @@ import type { ThemeDefinition } from '@shared/themes'
 import type { ThemeMode } from '@shared/types'
 import { useTranslation } from 'react-i18next'
 import { Toaster } from 'sonner'
-import { FolderOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AppErrorBoundary } from '@/components/app-error-boundary'
 import {
@@ -107,31 +106,31 @@ function UpdateDialog() {
           ? t('workbench.updateDialog.titles.downloading')
           : updateState?.phase === 'downloaded'
             ? t('workbench.updateDialog.titles.downloaded')
-            : updateState?.phase === 'mounted'
-              ? t('workbench.updateDialog.titles.mounted')
-              : updateState?.phase === 'error'
-                ? t('workbench.updateDialog.titles.error')
-                : updateState?.phase === 'unsupported'
-                  ? t('workbench.updateDialog.titles.unsupported')
-                  : t('workbench.updateDialog.title')
+            : updateState?.phase === 'error'
+              ? t('workbench.updateDialog.titles.error')
+              : updateState?.phase === 'unsupported'
+                ? t('workbench.updateDialog.titles.unsupported')
+                : t('workbench.updateDialog.title')
 
   const dialogDescription =
     updateState?.phase === 'checking'
       ? t('workbench.updateDialog.descriptions.checking')
       : updateState?.phase === 'not-available'
         ? t('workbench.updateDialog.descriptions.notAvailable')
-        : updateState?.phase === 'available'
-          ? t('workbench.updateDialog.description', {
+        : updateState?.phase === 'available' && updateState.requiresManualInstall
+          ? t('workbench.updateDialog.descriptions.manualDownload', {
               version: updateState.availableUpdate?.version ?? updateState.currentVersion
             })
-          : updateState?.phase === 'downloading'
-            ? t('workbench.updateDialog.descriptions.downloading', {
-                percent: Math.round(updateState.downloadProgressPercent ?? 0)
+          : updateState?.phase === 'available'
+            ? t('workbench.updateDialog.description', {
+                version: updateState.availableUpdate?.version ?? updateState.currentVersion
               })
-            : updateState?.phase === 'downloaded'
-              ? t('workbench.updateDialog.descriptions.downloaded')
-              : updateState?.phase === 'mounted'
-                ? t('workbench.updateDialog.descriptions.mounted')
+            : updateState?.phase === 'downloading'
+              ? t('workbench.updateDialog.descriptions.downloading', {
+                  percent: Math.round(updateState.downloadProgressPercent ?? 0)
+                })
+              : updateState?.phase === 'downloaded'
+                ? t('workbench.updateDialog.descriptions.downloaded')
                 : updateState?.phase === 'error'
                   ? (updateState.errorMessage ?? t('workbench.updateDialog.descriptions.error'))
                   : updateState?.phase === 'unsupported'
@@ -149,8 +148,10 @@ function UpdateDialog() {
     return null
   }
 
-  const canDownload = updateState.phase === 'available'
-  const canInstall = updateState.phase === 'downloaded' || updateState.phase === 'mounted'
+  const canDownload = updateState.phase === 'available' && !updateState.requiresManualInstall
+  const canInstall = updateState.phase === 'downloaded'
+  const showManualDownload =
+    updateState.phase === 'available' && updateState.requiresManualInstall
   const closeLabel =
     updateState.phase === 'available'
       ? t('workbench.updateDialog.actions.later')
@@ -173,6 +174,15 @@ function UpdateDialog() {
           <Button type="button" variant="ghost" onClick={handleClose}>
             {closeLabel}
           </Button>
+          {showManualDownload && updateState.releasesUrl ? (
+            <Button
+              type="button"
+              onClick={() => window.open(updateState.releasesUrl!, '_blank', 'noopener,noreferrer')}
+            >
+              <DownloadIcon className="size-4" />
+              {t('workbench.updateDialog.actions.goToDownload')}
+            </Button>
+          ) : null}
           {canDownload ? (
             <Button
               type="button"
@@ -189,14 +199,8 @@ function UpdateDialog() {
               disabled={installUpdate.isPending}
               onClick={() => installUpdate.mutate()}
             >
-              {updateState.requiresManualInstall ? (
-                <FolderOpen className="size-4" />
-              ) : (
-                <RestartIcon className="size-4" />
-              )}
-              {updateState.requiresManualInstall
-                ? t('workbench.updateDialog.actions.mountAndOpen')
-                : t('workbench.updateDialog.actions.install')}
+              <RestartIcon className="size-4" />
+              {t('workbench.updateDialog.actions.install')}
             </Button>
           ) : null}
         </DialogFooter>

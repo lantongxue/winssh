@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { APP_NAME } from '@shared/constants'
 import type { AppInfo, ReleaseChannel, UpdateState } from '@shared/types'
-import { RefreshCcw, FolderOpen } from 'lucide-react'
+import { RefreshCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { queryKeys } from '@/features/shared/query-keys'
@@ -61,6 +61,11 @@ function getUpdateStatusMessage(
     case 'checking':
       return t('workbench.settings.updates.status.checking')
     case 'available':
+      if (updateState.requiresManualInstall) {
+        return t('workbench.settings.updates.status.manualDownload', {
+          version: updateState.availableUpdate?.version ?? updateState.currentVersion
+        })
+      }
       return t('workbench.settings.updates.status.available', {
         version: updateState.availableUpdate?.version ?? updateState.currentVersion
       })
@@ -72,8 +77,6 @@ function getUpdateStatusMessage(
       })
     case 'downloaded':
       return t('workbench.settings.updates.status.downloaded')
-    case 'mounted':
-      return t('workbench.settings.updates.status.mounted')
     case 'error':
       return updateState.errorMessage || t('workbench.settings.updates.status.error')
     case 'idle':
@@ -149,7 +152,8 @@ export function WorkbenchUpdatesEditor() {
         phase: 'checking',
         supported: true,
         unsupportedReason: null,
-        requiresManualInstall: appInfoQuery.data.platform !== 'win32'
+        requiresManualInstall: appInfoQuery.data.platform !== 'win32',
+        releasesUrl: null
       })
     },
     onSuccess: (state) => {
@@ -195,8 +199,11 @@ export function WorkbenchUpdatesEditor() {
   const updateStatusMessage = getUpdateStatusMessage(updateState, appInfoQuery.data, t)
   const updateActionPending =
     checkForUpdates.isPending || downloadUpdate.isPending || quitAndInstallUpdate.isPending
-  const showDownloadAction = updateState?.phase === 'available'
-  const showInstallAction = updateState?.phase === 'downloaded' || updateState?.phase === 'mounted'
+  const showDownloadAction =
+    updateState?.phase === 'available' && !updateState?.requiresManualInstall
+  const showInstallAction = updateState?.phase === 'downloaded'
+  const showManualDownloadAction =
+    updateState?.phase === 'available' && updateState?.requiresManualInstall
   const availableReleaseDate = updateState?.availableUpdate?.releaseDate
     ? formatDateTime(updateState.availableUpdate.releaseDate)
     : null
@@ -323,6 +330,22 @@ export function WorkbenchUpdatesEditor() {
                   />
                   {t('workbench.settings.updates.actions.check')}
                 </Button>
+                {showManualDownloadAction && updateState?.releasesUrl ? (
+                  <Button
+                    type="button"
+                    disabled={updateActionPending}
+                    onClick={() =>
+                      window.open(
+                        updateState.releasesUrl!,
+                        '_blank',
+                        'noopener,noreferrer'
+                      )
+                    }
+                  >
+                    <DownloadIcon className="size-4" />
+                    {t('workbench.settings.updates.actions.goToDownload')}
+                  </Button>
+                ) : null}
                 {showDownloadAction ? (
                   <Button
                     type="button"
@@ -339,14 +362,8 @@ export function WorkbenchUpdatesEditor() {
                     disabled={updateActionPending}
                     onClick={() => quitAndInstallUpdate.mutate()}
                   >
-                    {updateState?.requiresManualInstall ? (
-                      <FolderOpen className="size-4" />
-                    ) : (
-                      <RestartIcon className="size-4" />
-                    )}
-                    {updateState?.requiresManualInstall
-                      ? t('workbench.settings.updates.actions.mountAndOpen')
-                      : t('workbench.settings.updates.actions.install')}
+                    <RestartIcon className="size-4" />
+                    {t('workbench.settings.updates.actions.install')}
                   </Button>
                 ) : null}
               </div>

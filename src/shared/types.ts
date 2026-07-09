@@ -28,7 +28,6 @@ export const UPDATE_PHASES = [
   'not-available',
   'downloading',
   'downloaded',
-  'mounted',
   'error'
 ] as const
 export type UpdatePhase = (typeof UPDATE_PHASES)[number]
@@ -182,6 +181,7 @@ export interface UpdateState {
   errorMessage: string | null
   unsupportedReason: UpdateUnsupportedReason | null
   requiresManualInstall: boolean
+  releasesUrl: string | null
 }
 
 export interface GroupInput {

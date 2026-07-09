@@ -171,9 +171,24 @@ describe('UpdateService', () => {
     expect(service.getState().requiresManualInstall).toBe(true)
   })
 
+  it('sets requiresManualInstall to true on linux', () => {
+    const { service } = createService({ platform: 'linux' })
+    expect(service.getState().requiresManualInstall).toBe(true)
+  })
+
   it('sets requiresManualInstall to false on win32', () => {
     const { service } = createService({ platform: 'win32' })
     expect(service.getState().requiresManualInstall).toBe(false)
+  })
+
+  it('exposes releasesUrl when githubOwner and githubRepo are set', () => {
+    const { service } = createService()
+    expect(service.getState().releasesUrl).toBe('https://github.com/lantongxue/winssh/releases')
+  })
+
+  it('sets releasesUrl to null when githubOwner is empty', () => {
+    const { service } = createService({ githubOwner: '' })
+    expect(service.getState().releasesUrl).toBeNull()
   })
 
   it('does not call updater.downloadUpdate on darwin', async () => {
@@ -186,8 +201,20 @@ describe('UpdateService', () => {
       releaseNotes: null
     })
 
-    // Custom download on darwin won't succeed without a real server, but it
-    // should not invoke updater.downloadUpdate()
+    await service.download()
+    expect(updater.downloadUpdate).not.toHaveBeenCalled()
+  })
+
+  it('does not call updater.downloadUpdate on linux', async () => {
+    const { service, updater } = createService({ platform: 'linux' })
+
+    updater.emit('update-available', {
+      version: '0.2.0',
+      releaseDate: null,
+      releaseName: '0.2.0',
+      releaseNotes: null
+    })
+
     await service.download()
     expect(updater.downloadUpdate).not.toHaveBeenCalled()
   })

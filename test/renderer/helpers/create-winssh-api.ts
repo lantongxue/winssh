@@ -386,7 +386,8 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
         phase: 'not-available',
         supported: false,
         unsupportedReason: 'platform_not_supported',
-        requiresManualInstall: false
+        requiresManualInstall: false,
+        releasesUrl: null
       }),
       download: async () => ({
         autoCheckEnabled: true,
@@ -397,7 +398,8 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
         phase: 'not-available',
         supported: false,
         unsupportedReason: 'platform_not_supported',
-        requiresManualInstall: false
+        requiresManualInstall: false,
+        releasesUrl: null
       }),
       getState: async () => ({
         autoCheckEnabled: true,
@@ -408,7 +410,8 @@ export function createWinsshApiMock(overrides: DeepPartial<WinsshApi> = {}): Win
         phase: 'unsupported',
         supported: false,
         unsupportedReason: 'platform_not_supported',
-        requiresManualInstall: false
+        requiresManualInstall: false,
+        releasesUrl: null
       }),
       onStateChange: () => noopUnsubscribe,
       quitAndInstall: async () => undefined,
