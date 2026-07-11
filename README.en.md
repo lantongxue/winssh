@@ -118,7 +118,6 @@ winssh/
 │   ├── renderer/          # React renderer process - workbench interaction layer, state management, and feature API clients
 │   └── shared/            # Shared codebase - validation schemas (Zod), global types, constants, and IPC channel definitions
 ├── themes/                # Built-in VSCode-style JSON themes
-├── official-website/      # Brand official website & online documentation (Vite + React)
 ├── docs/                  # Supplementary design and theme development guidelines
 ├── scripts/               # Scripts for builds, package patches, mock update server, etc.
 └── build/                 # App icons and custom NSIS installer configurations (.nsh)
@@ -136,8 +135,6 @@ winssh/
 | `npm run typecheck`  | Separately performs TS type checks on both main (Node) and renderer (Web) processes |
 | `npm run format`     | Formats all code with Prettier to maintain a consistent style                       |
 | `npm run lint`       | Runs ESLint to check for code style issues and rules violation                      |
-| `npm run site:dev`   | Starts the local dev server for the brand website in `official-website/`            |
-| `npm run site:build` | Builds the static production assets for the brand website                           |
 
 ---
 

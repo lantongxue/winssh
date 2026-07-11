@@ -118,7 +118,6 @@ winssh/
 │   ├── renderer/          # React 渲染进程 — Workbench 交互层、状态管理、模块 API 代理
 │   └── shared/            # 共享资源层 — 数据校验 Schema (Zod)、全局类型、常量、IPC 通道定义
 ├── themes/                # 内置 VSCode 风格 JSON 主题包
-├── official-website/      # 品牌官方网站与在线文档工程 (Vite + React)
 ├── docs/                  # 辅助设计与主题包开发指南文档
 ├── scripts/               # 构建、打包补丁、Mock 更新静态服务器等脚本
 └── build/                 # 打包图标以及平台安装器定制配置 (.nsh)
@@ -136,8 +135,6 @@ winssh/
 | `npm run typecheck`  | 独立对 Node 进程与 Web 渲染进程运行 TS 类型检查   |
 | `npm run format`     | 执行 Prettier 格式化，规范全局代码风格            |
 | `npm run lint`       | 运行 ESLint 代码规范扫描与约束排查                |
-| `npm run site:dev`   | 启动 `official-website/` 品牌官网的本地开发服务器 |
-| `npm run site:build` | 打包构建品牌官网静态部署产物                      |
 
 ---
 
