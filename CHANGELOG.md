@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.2.4](https://github.com/lantongxue/winssh/compare/v1.2.3...v1.2.4) (2026-07-21)
+
+### Features
+
+* macos和 linux 更新暂时手动打开页面下载安装包 ([d430551](https://github.com/lantongxue/winssh/commit/d430551c48ed80f073b9a220a712d26c1feb17ab))
+* SFTP管理面板增加搜索功能 ([38d924b](https://github.com/lantongxue/winssh/commit/38d924b48eecafcb020154f2bba3fe9d8829530d))
+* update deps ([cf0a0b3](https://github.com/lantongxue/winssh/commit/cf0a0b3741f5ff41660c1bfcdfacc9b6bf7811e7))
+* 增加会话标签中：SFTP资源管理面板、端口转发面板、命令面板的位置记忆和宽度记忆 ([658c3f8](https://github.com/lantongxue/winssh/commit/658c3f86fc11983545fe5d9f150c2e77fb01e1a8))
+* 增加服务器代理支持 ([c068360](https://github.com/lantongxue/winssh/commit/c068360ff4261b9332ac63ac85f950fa49eabf39))
+* 改善 macos 下自动更新的问题（还没解决完） ([1b1778f](https://github.com/lantongxue/winssh/commit/1b1778f66ed276c4630b79b2c292ddd2d10650ee))
+* 顶部工具栏增加[新增]服务器按钮 ([9ff5f17](https://github.com/lantongxue/winssh/commit/9ff5f1778a0270791911a12ac238b4850f70b262))
+
+### Bug Fixes
+
+* 优化安全提醒逻辑：必须有服务器连接了才触发提醒 ([7ee8276](https://github.com/lantongxue/winssh/commit/7ee8276d3d559e80585ed03608cfd3440b8a1dce))
+* 修复在凭据保险柜中编辑凭据时弹出表单没有填充对应值的问题 ([4c01566](https://github.com/lantongxue/winssh/commit/4c01566e695b135e40d02429a259a1f85d0d3046))
+* 修复资源监控报错 ([92a5393](https://github.com/lantongxue/winssh/commit/92a53933dbbaf39d754f9e6bc2af3b49ab7e0824))
+
 ## [1.2.3](https://github.com/lantongxue/winssh/compare/v1.2.2...v1.2.3) (2026-06-17)
 
 ### Features
