@@ -71,7 +71,7 @@ describeDatabase('DatabaseService server persistence', () => {
   const Database = betterSqliteModule?.default
   const DatabaseService = databaseModule?.DatabaseService
 
-  it('adds brand, icon, and jump server columns when opening an older database', () => {
+  it('adds brand, icon, jump server, and proxy columns when opening an older database', () => {
     if (!Database || !DatabaseService) {
       return
     }
@@ -135,7 +135,11 @@ describeDatabase('DatabaseService server persistence', () => {
         'custom_icon_mime_type',
         'jump_server_id',
         'password',
-        'passphrase'
+        'passphrase',
+        'proxy_mode',
+        'proxy_type',
+        'proxy_host',
+        'proxy_port'
       ])
     )
   })
@@ -167,6 +171,30 @@ describeDatabase('DatabaseService server persistence', () => {
     service.deleteServer(jumpServer.id)
 
     expect(service.getServerById(targetServer.id)?.jumpServerId).toBeNull()
+  })
+
+  it('persists per-server proxy settings', () => {
+    if (!DatabaseService) {
+      return
+    }
+
+    const databasePath = createTempDatabasePath()
+    const service = new DatabaseService(databasePath)
+    const server = service.createServer(
+      createServerInput({
+        proxyMode: 'custom',
+        proxyType: 'http',
+        proxyHost: 'proxy.internal',
+        proxyPort: 3128
+      })
+    )
+
+    expect(service.getServerById(server.id)).toMatchObject({
+      proxyMode: 'custom',
+      proxyType: 'http',
+      proxyHost: 'proxy.internal',
+      proxyPort: 3128
+    })
   })
 
   it('persists nested groups and keeps server assignment at any depth', () => {
@@ -320,5 +348,28 @@ describeDatabase('DatabaseService server persistence', () => {
 
     expect(updated.resourceMonitorIntervalMs).toBe(5000)
     expect(service.getSettings().resourceMonitorIntervalMs).toBe(5000)
+  })
+
+  it('persists the global proxy settings', () => {
+    if (!DatabaseService) {
+      return
+    }
+
+    const databasePath = createTempDatabasePath()
+    const service = new DatabaseService(databasePath)
+    const updated = service.updateSettings({
+      proxyMode: 'manual',
+      proxyType: 'http',
+      proxyHost: 'proxy.internal',
+      proxyPort: 3128
+    })
+
+    expect(updated).toMatchObject({
+      proxyMode: 'manual',
+      proxyType: 'http',
+      proxyHost: 'proxy.internal',
+      proxyPort: 3128
+    })
+    expect(service.getSettings()).toMatchObject(updated)
   })
 })

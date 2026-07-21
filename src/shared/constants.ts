@@ -58,5 +58,9 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   sftpDownloadConcurrency: 3,
   commandHistoryEnabled: true,
   awayReminderEnabled: true,
-  awayReminderTimeoutMs: 30000
+  awayReminderTimeoutMs: 30000,
+  proxyMode: 'none',
+  proxyType: 'socks5',
+  proxyHost: '127.0.0.1',
+  proxyPort: 1080
 }

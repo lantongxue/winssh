@@ -14,6 +14,9 @@ export type SessionConnectionPhase = (typeof SESSION_CONNECTION_PHASES)[number]
 export type RemoteEntryKind = 'file' | 'directory' | 'symlink'
 export type SecretKind = 'password' | 'passphrase'
 export type WindowTitleBarStyle = 'native' | 'custom'
+export type ProxyProtocol = 'socks5' | 'http'
+export type AppProxyMode = 'none' | 'manual'
+export type ServerProxyMode = 'global' | 'none' | 'custom'
 export type PortForwardKind = 'local' | 'remote'
 export type PortForwardStatus = 'starting' | 'active' | 'stopped' | 'error'
 export type SessionConnectFailureCode = 'secret_required' | 'auth_failed' | 'connection_failed'
@@ -72,6 +75,10 @@ export interface Server {
   groupId: string | null
   credentialId: string | null
   jumpServerId: string | null
+  proxyMode: ServerProxyMode
+  proxyType: ProxyProtocol
+  proxyHost: string | null
+  proxyPort: number
   favorite: boolean
   captureCommandHistory: boolean
   createdAt: string
@@ -131,6 +138,16 @@ export interface AppSettings {
   commandHistoryEnabled: boolean
   awayReminderEnabled: boolean
   awayReminderTimeoutMs: number
+  proxyMode: AppProxyMode
+  proxyType: ProxyProtocol
+  proxyHost: string
+  proxyPort: number
+}
+
+export interface ProxyConfiguration {
+  type: ProxyProtocol
+  host: string
+  port: number
 }
 
 export interface WebDAVBackupState {
@@ -234,6 +251,10 @@ export interface ServerUpsertInput {
   note?: string
   groupId?: string | null
   jumpServerId?: string | null
+  proxyMode?: ServerProxyMode
+  proxyType?: ProxyProtocol
+  proxyHost?: string | null
+  proxyPort?: number
   tagIds: string[]
   favorite: boolean
   captureCommandHistory?: boolean

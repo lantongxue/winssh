@@ -10,6 +10,7 @@ import {
   Cloud,
   KeyRound,
   Languages,
+  Network,
   ShieldCheck,
   SlidersHorizontal,
   TerminalSquare
@@ -72,6 +73,7 @@ import WinsshFullLogo from '@/assets/logo-full.svg?react'
 const settingsSections = [
   { id: 'appearance', labelKey: 'workbench.settings.sections.appearance' },
   { id: 'terminal', labelKey: 'workbench.settings.sections.terminal' },
+  { id: 'proxy', labelKey: 'workbench.settings.sections.proxy' },
   { id: 'security', labelKey: 'workbench.settings.sections.security' },
   { id: 'credentialVault', labelKey: 'workbench.settings.sections.credentialVault' },
   { id: 'backup', labelKey: 'workbench.settings.sections.backup' },
@@ -83,6 +85,7 @@ const settingsSectionIcons = {
   appearance: SlidersHorizontal,
   backup: Cloud,
   credentialVault: KeyRound,
+  proxy: Network,
   security: ShieldCheck,
   terminal: TerminalSquare
 } as const
@@ -1103,6 +1106,146 @@ export function WorkbenchSettingsEditor() {
                     )}
                   />
                 </div>
+              </section>
+            ) : null}
+
+            {selectedSection === 'proxy' ? (
+              <section className="space-y-5 border border-[var(--workbench-border)] p-5">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <Network className="size-4 text-primary" />
+                  {t('workbench.settings.sections.proxy')}
+                </div>
+                <FormField
+                  control={form.control}
+                  name="proxyMode"
+                  render={({ field }) => (
+                    <FormItem className="max-w-md">
+                      <FormLabel>{t('workbench.settings.proxy.mode')}</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={(value) => {
+                          field.onChange(value)
+                          void handleSettingSave('proxyMode', value as AppSettings['proxyMode'])
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">
+                            {t('workbench.settings.proxy.modes.none')}
+                          </SelectItem>
+                          <SelectItem value="manual">
+                            {t('workbench.settings.proxy.modes.manual')}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        {t('workbench.settings.proxy.modeDescription')}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {form.watch('proxyMode') === 'manual' ? (
+                  <div className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.5fr)_minmax(0,0.7fr)]">
+                    <FormField
+                      control={form.control}
+                      name="proxyType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('workbench.settings.proxy.protocol')}</FormLabel>
+                          <Select
+                            value={field.value}
+                            onValueChange={(value) => {
+                              field.onChange(value)
+                              void handleSettingSave('proxyType', value as AppSettings['proxyType'])
+                            }}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="socks5">SOCKS5</SelectItem>
+                              <SelectItem value="http">HTTP</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="proxyHost"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('workbench.settings.proxy.host')}</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder={t('workbench.settings.proxy.hostPlaceholder')}
+                              onBlur={() => {
+                                field.onBlur()
+                                const parsed = settingsSchema.shape.proxyHost.safeParse(
+                                  form.getValues('proxyHost')
+                                )
+                                if (!parsed.success) {
+                                  resetSavedField(
+                                    'proxyHost',
+                                    savedSettingsRef.current?.proxyHost ??
+                                      DEFAULT_SETTINGS_FORM_VALUES.proxyHost
+                                  )
+                                  toast.error(t('workbench.settings.validation.failed'))
+                                  return
+                                }
+                                void handleSettingSave('proxyHost', parsed.data)
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="proxyPort"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('workbench.settings.proxy.port')}</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="number"
+                              min={1}
+                              max={65535}
+                              onBlur={() => {
+                                field.onBlur()
+                                const parsed = settingsSchema.shape.proxyPort.safeParse(
+                                  form.getValues('proxyPort')
+                                )
+                                if (!parsed.success) {
+                                  resetSavedField(
+                                    'proxyPort',
+                                    savedSettingsRef.current?.proxyPort ??
+                                      DEFAULT_SETTINGS_FORM_VALUES.proxyPort
+                                  )
+                                  toast.error(t('workbench.settings.validation.failed'))
+                                  return
+                                }
+                                void handleSettingSave('proxyPort', parsed.data)
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                ) : null}
               </section>
             ) : null}
 

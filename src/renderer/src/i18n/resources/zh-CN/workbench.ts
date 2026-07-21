@@ -276,6 +276,8 @@ const workbench = {
         existing: '{{username}}@{{host}}:{{port}}',
         jumpServer: '选择已有跳板机，或快速新建一个最小化 Jump Server 配置。',
         new: '新的 SSH 连接',
+        proxy:
+          '继承全局代理、直接连接，或仅为当前服务器使用自定义代理。选择 Jump Server 时，外层连接使用 Jump Server 自己的代理设置。',
         tagsInput: '输入标签名后按 Enter，命中已有标签会直接选中，不存在则立即创建。'
       },
       empty: {
@@ -298,6 +300,10 @@ const workbench = {
         passphrase: '私钥口令',
         port: '端口',
         privateKeyFile: '私钥内容',
+        proxyHost: '代理主机',
+        proxyMode: '代理模式',
+        proxyPort: '代理端口',
+        proxyType: '代理协议',
         rememberPassphrase: '保存到凭据库',
         rememberPassword: '保存到凭据库',
         tagInput: '添加标签',
@@ -312,6 +318,7 @@ const workbench = {
         note: '记录环境说明、跳板关系或维护信息。',
         privateKeyFile: '粘贴私钥内容，或从 PEM / KEY / PPK 文件导入',
         privateKeySecret: '留空表示无口令',
+        proxyHost: '127.0.0.1 或 proxy.example.com',
         savedPassword: '留空则沿用已保存密码',
         tag: '输入标签名称后按 Enter',
         ungrouped: '未分组',
@@ -327,6 +334,13 @@ const workbench = {
           password: '请输入 jumpserver 密码'
         }
       },
+      proxy: {
+        modes: {
+          custom: '使用自定义代理',
+          global: '使用全局代理设置',
+          none: '直接连接'
+        }
+      },
       sections: {
         basic: '基础信息',
         brand: '品牌',
@@ -334,6 +348,7 @@ const workbench = {
         credentials: '凭据策略',
         note: '备注',
         privateKey: '私钥文件',
+        proxy: '代理',
         strategy: '连接策略',
         tags: '标签'
       },
@@ -435,6 +450,7 @@ const workbench = {
         appearance: '调整语言、主题和窗口标题栏模式。',
         backup: '配置 WebDAV 定时备份，将数据安全同步到远程存储。',
         credentialVault: '集中管理可复用的密码、私钥与口令记录。',
+        proxy: '配置由服务器继承使用的全局代理。',
         security: '查看凭据存储能力与已信任主机列表。',
         updates: '查看当前更新状态，并决定何时下载或安装新版本。',
         terminal: '调整本地终端 shell、终端字体、光标、复制行为与实验性渲染选项。'
@@ -504,9 +520,22 @@ const workbench = {
         appearance: '界面',
         backup: '备份',
         credentialVault: '保险柜',
+        proxy: '代理',
         security: '安全',
         updates: '更新',
         terminal: '终端'
+      },
+      proxy: {
+        host: '代理主机',
+        hostPlaceholder: '127.0.0.1 或 proxy.example.com',
+        mode: '全局代理',
+        modeDescription: '设置为使用全局代理的服务器会继承此配置。',
+        modes: {
+          manual: '手动配置代理',
+          none: '不使用代理'
+        },
+        port: '代理端口',
+        protocol: '代理协议'
       },
       backup: {
         actions: {
@@ -585,8 +614,7 @@ const workbench = {
           error: '更新失败。',
           feedMissing: '当前构建没有配置更新源。',
           idle: '你可以随时手动检查更新。',
-          manualDownload:
-            '发现新版本 WinSSH {{version}}，请前往下载页面下载最新版本并手动安装。',
+          manualDownload: '发现新版本 WinSSH {{version}}，请前往下载页面下载最新版本并手动安装。',
           notAvailable: '当前已经是最新版本。',
           platformUnsupported: '当前构建暂不支持在 {{platform}} 上自动更新。'
         },
@@ -641,8 +669,7 @@ const workbench = {
       descriptions: {
         checking: '正在检查更新源。',
         downloaded: '更新已下载完成，可以立即安装。',
-        manualDownload:
-          '发现新版本 WinSSH {{version}}，请前往下载页面下载最新版本并手动安装。',
+        manualDownload: '发现新版本 WinSSH {{version}}，请前往下载页面下载最新版本并手动安装。',
         downloading: '正在下载更新... {{percent}}%',
         error: '检查或下载更新时发生错误。',
         idle: '正在准备更新流程。',

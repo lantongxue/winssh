@@ -33,6 +33,16 @@ const validation = {
         min: 'Port must be at least 1.'
       }
     },
+    proxy: {
+      host: {
+        max: 'Proxy host is too long.',
+        required: 'Enter a proxy host.'
+      },
+      port: {
+        max: 'Proxy port must be 65535 or lower.',
+        min: 'Proxy port must be at least 1.'
+      }
+    },
     group: {
       name: {
         max: 'Group name must be 40 characters or fewer.',

@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events'
 import { PassThrough } from 'node:stream'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import type { Server } from '@shared/types'
 
 vi.mock('electron', () => ({
@@ -14,11 +15,30 @@ vi.mock('electron', () => ({
 type MockClientBehavior =
   { type: 'auth-failed' } | { type: 'error'; error: Error } | { type: 'ready' }
 
-const { clientBehaviors, connectConfigs, forwardOutCalls, sftpFiles } = vi.hoisted(() => ({
-  clientBehaviors: [] as MockClientBehavior[],
-  connectConfigs: [] as Array<Record<string, unknown>>,
-  forwardOutCalls: [] as Array<{ dstIP: string; dstPort: number; srcIP: string; srcPort: number }>,
-  sftpFiles: new Map<string, string>()
+const { clientBehaviors, connectConfigs, forwardOutCalls, proxyConnectionCalls, sftpFiles } =
+  vi.hoisted(() => ({
+    clientBehaviors: [] as MockClientBehavior[],
+    connectConfigs: [] as Array<Record<string, unknown>>,
+    forwardOutCalls: [] as Array<{
+      dstIP: string
+      dstPort: number
+      srcIP: string
+      srcPort: number
+    }>,
+    proxyConnectionCalls: [] as Array<{
+      destination: { host: string; port: number }
+      proxy: { type: string; host: string; port: number }
+      socket: { destroy: ReturnType<typeof vi.fn> }
+    }>,
+    sftpFiles: new Map<string, string>()
+  }))
+
+vi.mock('@main/services/proxy-connection', () => ({
+  connectThroughProxy: vi.fn(async (proxy, destination) => {
+    const socket = { destroy: vi.fn() }
+    proxyConnectionCalls.push({ destination, proxy, socket })
+    return socket
+  })
 }))
 
 vi.mock('ssh2', () => ({
@@ -129,7 +149,12 @@ function createPasswordServer(overrides: Partial<Server> = {}): Server {
     groupId: null,
     credentialId: null,
     jumpServerId: null,
+    proxyMode: 'global',
+    proxyType: 'socks5',
+    proxyHost: null,
+    proxyPort: 1080,
     favorite: false,
+    captureCommandHistory: true,
     createdAt: '',
     updatedAt: '',
     lastConnectedAt: null,
@@ -157,6 +182,7 @@ function createManager() {
     getServerById: vi.fn((id: string): Server | null =>
       id === 'server-1' ? createPasswordServer() : null
     ),
+    getSettings: vi.fn(() => DEFAULT_APP_SETTINGS),
     recordRecentSession: vi.fn(),
     updateServerBrand: vi.fn(),
     updateServerPassphrase: vi.fn(),
@@ -181,6 +207,7 @@ beforeEach(() => {
   clientBehaviors.length = 0
   connectConfigs.length = 0
   forwardOutCalls.length = 0
+  proxyConnectionCalls.length = 0
   sftpFiles.clear()
 })
 
@@ -289,6 +316,33 @@ describe('SessionManager connect', () => {
         passphrase: 'secret',
         privateKey: '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----'
       })
+    )
+  })
+
+  it('passes a custom proxy socket to the SSH client', async () => {
+    const { database, manager } = createManager()
+    database.getServerById.mockReturnValue(
+      createPasswordServer({
+        proxyMode: 'custom',
+        proxyType: 'socks5',
+        proxyHost: 'proxy.internal',
+        proxyPort: 1081
+      })
+    )
+    database.getServerPassword.mockReturnValue('correct-password')
+    clientBehaviors.push({ type: 'ready' })
+
+    const result = await manager.connect({ serverId: 'server-1' })
+
+    expect(result.ok).toBe(true)
+    expect(proxyConnectionCalls).toEqual([
+      expect.objectContaining({
+        destination: { host: '127.0.0.1', port: 22 },
+        proxy: { type: 'socks5', host: 'proxy.internal', port: 1081 }
+      })
+    ])
+    expect(connectConfigs[0]).toEqual(
+      expect.objectContaining({ sock: proxyConnectionCalls[0]?.socket })
     )
   })
 

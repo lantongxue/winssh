@@ -193,6 +193,10 @@ function buildServerGroupUpdatePayload(
     name: server.name,
     note: server.note ?? '',
     port: server.port,
+    proxyHost: server.proxyHost,
+    proxyMode: server.proxyMode,
+    proxyPort: server.proxyPort,
+    proxyType: server.proxyType,
     privateKey:
       server.authType === 'privateKey' && !server.credentialId
         ? options.privateKey?.trim()

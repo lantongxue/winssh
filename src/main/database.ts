@@ -84,6 +84,10 @@ type ServerRow = {
   group_id: string | null
   credential_id: string | null
   jump_server_id: string | null
+  proxy_mode: 'global' | 'none' | 'custom'
+  proxy_type: 'socks5' | 'http'
+  proxy_host: string | null
+  proxy_port: number
   favorite: number
   capture_command_history: number
   created_at: string
@@ -209,6 +213,10 @@ function mapServer(row: ServerRow, tags: Tag[]): Server {
     groupId: row.group_id,
     credentialId: row.credential_id,
     jumpServerId: row.jump_server_id,
+    proxyMode: row.proxy_mode ?? 'global',
+    proxyType: row.proxy_type ?? 'socks5',
+    proxyHost: row.proxy_host ?? null,
+    proxyPort: row.proxy_port ?? 1080,
     favorite: Boolean(row.favorite),
     captureCommandHistory:
       row.capture_command_history === null ? true : Boolean(row.capture_command_history),
@@ -355,6 +363,10 @@ export class DatabaseService {
         note TEXT,
         group_id TEXT REFERENCES server_groups(id) ON DELETE SET NULL,
         jump_server_id TEXT REFERENCES servers(id) ON DELETE SET NULL,
+        proxy_mode TEXT NOT NULL DEFAULT 'global' CHECK (proxy_mode IN ('global', 'none', 'custom')),
+        proxy_type TEXT NOT NULL DEFAULT 'socks5' CHECK (proxy_type IN ('socks5', 'http')),
+        proxy_host TEXT,
+        proxy_port INTEGER NOT NULL DEFAULT 1080,
         favorite INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
@@ -488,6 +500,18 @@ export class DatabaseService {
       this.db.exec(
         'ALTER TABLE servers ADD COLUMN capture_command_history INTEGER NOT NULL DEFAULT 1'
       )
+    }
+    if (!serverColumns.some((column) => column.name === 'proxy_mode')) {
+      this.db.exec("ALTER TABLE servers ADD COLUMN proxy_mode TEXT NOT NULL DEFAULT 'global'")
+    }
+    if (!serverColumns.some((column) => column.name === 'proxy_type')) {
+      this.db.exec("ALTER TABLE servers ADD COLUMN proxy_type TEXT NOT NULL DEFAULT 'socks5'")
+    }
+    if (!serverColumns.some((column) => column.name === 'proxy_host')) {
+      this.db.exec('ALTER TABLE servers ADD COLUMN proxy_host TEXT')
+    }
+    if (!serverColumns.some((column) => column.name === 'proxy_port')) {
+      this.db.exec('ALTER TABLE servers ADD COLUMN proxy_port INTEGER NOT NULL DEFAULT 1080')
     }
   }
 
@@ -747,6 +771,13 @@ export class DatabaseService {
         : input.customIconData
           ? Buffer.from(input.customIconData)
           : null
+    const proxyMode = input.proxyMode ?? existing?.proxyMode ?? 'global'
+    const proxyType = input.proxyType ?? existing?.proxyType ?? 'socks5'
+    const proxyHost =
+      input.proxyHost === undefined
+        ? (existing?.proxyHost ?? null)
+        : input.proxyHost?.trim() || null
+    const proxyPort = input.proxyPort ?? existing?.proxyPort ?? 1080
 
     const transaction = this.db.transaction((payload: ServerUpsertInput & { id: string }) => {
       const captureFlag = payload.captureCommandHistory === false ? 0 : 1
@@ -844,6 +875,10 @@ export class DatabaseService {
                 note = ?,
                 group_id = ?,
                 jump_server_id = ?,
+                proxy_mode = ?,
+                proxy_type = ?,
+                proxy_host = ?,
+                proxy_port = ?,
                 favorite = ?,
                 capture_command_history = ?,
                 credential_id = ?,
@@ -866,6 +901,10 @@ export class DatabaseService {
             payload.note?.trim() || null,
             payload.groupId || null,
             payload.jumpServerId || null,
+            proxyMode,
+            proxyType,
+            proxyHost,
+            proxyPort,
             payload.favorite ? 1 : 0,
             captureFlag,
             credentialId,
@@ -879,8 +918,9 @@ export class DatabaseService {
               INSERT INTO servers (
                 id, name, host, port, username, auth_type, brand_id, custom_icon_mime_type,
                 custom_icon, private_key, private_key_path, password, passphrase, note, group_id, jump_server_id,
+                proxy_mode, proxy_type, proxy_host, proxy_port,
                 favorite, capture_command_history, credential_id, created_at, updated_at, last_connected_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `
           )
           .run(
@@ -900,6 +940,10 @@ export class DatabaseService {
             payload.note?.trim() || null,
             payload.groupId || null,
             payload.jumpServerId || null,
+            proxyMode,
+            proxyType,
+            proxyHost,
+            proxyPort,
             payload.favorite ? 1 : 0,
             captureFlag,
             credentialId,

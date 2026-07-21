@@ -25,6 +25,7 @@ import {
 } from '../../encoding'
 import { formatRemoteEntryPermissions } from '../../session-manager'
 import { createShellIntegrationScript } from '../../shell-integration'
+import { connectThroughProxy } from '../../services/proxy-connection'
 
 interface PostMessagePort {
   postMessage(message: unknown, transferList?: Array<ArrayBuffer>): void
@@ -653,11 +654,16 @@ export class SshCoreSessionWorker {
     })
   }
 
-  private connectClient(
+  private async connectClient(
     sessionId: string,
     server: SshResolvedServer,
-    sock?: ClientChannel
+    sock?: ConnectConfig['sock']
   ): Promise<Client> {
+    const connectionSocket =
+      sock ??
+      (server.proxy
+        ? await connectThroughProxy(server.proxy, { host: server.host, port: server.port })
+        : undefined)
     const client = this.createClient()
 
     return new Promise<Client>((resolve, reject) => {
@@ -667,6 +673,7 @@ export class SshCoreSessionWorker {
           return
         }
         settled = true
+        connectionSocket?.destroy()
         reject(error)
       }
 
@@ -680,7 +687,7 @@ export class SshCoreSessionWorker {
       client.once('error', fail)
 
       try {
-        client.connect(this.createConnectConfig(sessionId, server, sock))
+        client.connect(this.createConnectConfig(sessionId, server, connectionSocket))
       } catch (error) {
         fail(error)
       }
@@ -690,7 +697,7 @@ export class SshCoreSessionWorker {
   private createConnectConfig(
     sessionId: string,
     server: SshResolvedServer,
-    sock?: ClientChannel
+    sock?: ConnectConfig['sock']
   ): ConnectConfig {
     return {
       host: server.host,

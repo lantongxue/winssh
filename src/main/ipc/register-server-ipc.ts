@@ -63,9 +63,20 @@ export function registerServerIpc(options: {
   ipcMain.handle('servers:create', (_event, input: ServerUpsertInput) =>
     serversService.create(parseInput(serverSchema, input))
   )
-  ipcMain.handle('servers:update', (_event, id: string, input: ServerUpsertInput) =>
-    serversService.update(id, parseInput(serverSchema, { ...input, id }))
-  )
+  ipcMain.handle('servers:update', (_event, id: string, input: ServerUpsertInput) => {
+    const existing = database.getServerById(id)
+    return serversService.update(
+      id,
+      parseInput(serverSchema, {
+        ...input,
+        id,
+        proxyMode: input.proxyMode ?? existing?.proxyMode,
+        proxyType: input.proxyType ?? existing?.proxyType,
+        proxyHost: input.proxyHost === undefined ? existing?.proxyHost : input.proxyHost,
+        proxyPort: input.proxyPort ?? existing?.proxyPort
+      })
+    )
+  })
   ipcMain.handle('servers:delete', (_event, id: string) => serversService.delete(id))
   ipcMain.handle('servers:toggleFavorite', (_event, id: string) =>
     serversService.toggleFavorite(id)

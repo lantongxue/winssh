@@ -282,6 +282,8 @@ const workbench = {
         jumpServer:
           'Choose an existing jump server, or quickly create a minimal one for this route.',
         new: 'New SSH connection',
+        proxy:
+          'Inherit the global proxy, connect directly, or use a proxy only for this server. When a jump server is selected, its proxy settings control the outer connection.',
         tagsInput: 'Press Enter to select an existing tag or create a new one inline.'
       },
       empty: {
@@ -304,6 +306,10 @@ const workbench = {
         passphrase: 'Passphrase',
         port: 'Port',
         privateKeyFile: 'Private Key',
+        proxyHost: 'Proxy host',
+        proxyMode: 'Proxy mode',
+        proxyPort: 'Proxy port',
+        proxyType: 'Proxy protocol',
         rememberPassphrase: 'Save to Credential Vault',
         rememberPassword: 'Save to Credential Vault',
         tagInput: 'Add Tag',
@@ -318,6 +324,7 @@ const workbench = {
         note: 'Record environment notes, jump-host topology, or maintenance details.',
         privateKeyFile: 'Paste the private key content, or import it from a PEM / KEY / PPK file',
         privateKeySecret: 'Leave empty if there is no passphrase',
+        proxyHost: '127.0.0.1 or proxy.example.com',
         savedPassword: 'Leave empty to keep the saved password',
         tag: 'Type a tag name and press Enter',
         ungrouped: 'Ungrouped',
@@ -334,6 +341,13 @@ const workbench = {
           password: 'Enter the jump server password'
         }
       },
+      proxy: {
+        modes: {
+          custom: 'Use a custom proxy',
+          global: 'Use global proxy settings',
+          none: 'Connect directly'
+        }
+      },
       sections: {
         basic: 'Basic',
         brand: 'Brand',
@@ -341,6 +355,7 @@ const workbench = {
         credentials: 'Credentials',
         note: 'Notes',
         privateKey: 'Private Key',
+        proxy: 'Proxy',
         strategy: 'Connection Strategy',
         tags: 'Tags'
       },
@@ -445,6 +460,7 @@ const workbench = {
         appearance: 'Adjust language, theme, and window title bar mode.',
         backup: 'Configure WebDAV scheduled backups to sync data to remote storage safely.',
         credentialVault: 'Manage reusable passwords, private keys, and passphrases.',
+        proxy: 'Configure the global proxy inherited by servers.',
         security: 'Review credential storage support and trusted hosts.',
         updates:
           'Check the current update status and decide when to download or install new versions.',
@@ -518,9 +534,22 @@ const workbench = {
         appearance: 'Appearance',
         backup: 'Backup',
         credentialVault: 'Credential Vault',
+        proxy: 'Proxy',
         security: 'Security',
         updates: 'Updates',
         terminal: 'Terminal'
+      },
+      proxy: {
+        host: 'Proxy host',
+        hostPlaceholder: '127.0.0.1 or proxy.example.com',
+        mode: 'Global proxy',
+        modeDescription: 'Servers set to use global settings inherit this proxy.',
+        modes: {
+          manual: 'Manual proxy configuration',
+          none: 'Do not use a proxy'
+        },
+        port: 'Proxy port',
+        protocol: 'Proxy protocol'
       },
       backup: {
         actions: {

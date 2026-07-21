@@ -8,6 +8,12 @@ const serverIconMimeTypeSchema = z.enum(SERVER_ICON_MIME_TYPES)
 const serverIconDataSchema = z.custom<Uint8Array>((value) => value instanceof Uint8Array, {
   message: 'validation.server.customIcon.invalid'
 })
+const proxyHostSchema = z.string().trim().max(255, 'validation.proxy.host.max')
+const proxyPortSchema = z.coerce
+  .number()
+  .int()
+  .min(1, 'validation.proxy.port.min')
+  .max(65535, 'validation.proxy.port.max')
 
 export const groupSchema = z.object({
   name: z
@@ -85,6 +91,10 @@ export const serverSchema = z
     note: z.string().trim().max(400, 'validation.server.note.max').optional(),
     groupId: z.string().trim().nullable().optional(),
     jumpServerId: z.string().trim().nullable().optional(),
+    proxyMode: z.enum(['global', 'none', 'custom']).default('global'),
+    proxyType: z.enum(['socks5', 'http']).default('socks5'),
+    proxyHost: proxyHostSchema.nullable().optional(),
+    proxyPort: proxyPortSchema.default(1080),
     tagIds: z.array(z.string()).default([]),
     favorite: z.boolean().default(false),
     captureCommandHistory: z.boolean().optional(),
@@ -108,6 +118,14 @@ export const serverSchema = z
         code: z.ZodIssueCode.custom,
         path: ['jumpServerId'],
         message: 'validation.server.jumpServer.self'
+      })
+    }
+
+    if (value.proxyMode === 'custom' && !value.proxyHost?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['proxyHost'],
+        message: 'validation.proxy.host.required'
       })
     }
 
@@ -206,7 +224,11 @@ export const settingsSchema = z.object({
   sftpDownloadConcurrency: z.coerce.number().int().min(1).max(16),
   commandHistoryEnabled: z.boolean(),
   awayReminderEnabled: z.boolean(),
-  awayReminderTimeoutMs: z.coerce.number().int().min(5000).max(3600000)
+  awayReminderTimeoutMs: z.coerce.number().int().min(5000).max(3600000),
+  proxyMode: z.enum(['none', 'manual']),
+  proxyType: z.enum(['socks5', 'http']),
+  proxyHost: proxyHostSchema.min(1, 'validation.proxy.host.required'),
+  proxyPort: proxyPortSchema
 })
 
 export const hostTrustRequestSchema = z.object({

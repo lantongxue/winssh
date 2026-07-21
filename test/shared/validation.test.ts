@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { portForwardSchema, serverSchema } from '@shared/validation'
+import { DEFAULT_APP_SETTINGS } from '@shared/constants'
+import { portForwardSchema, serverSchema, settingsSchema } from '@shared/validation'
 
 describe('portForwardSchema', () => {
   it('accepts valid local and remote forwarding inputs', () => {
@@ -165,6 +166,26 @@ describe('serverSchema', () => {
     ).toBe(false)
   })
 
+  it('requires a host for custom server proxies', () => {
+    expect(
+      serverSchema.safeParse({
+        authType: 'password',
+        favorite: false,
+        host: '10.0.0.11',
+        name: 'Proxy Host',
+        port: 22,
+        proxyHost: '',
+        proxyMode: 'custom',
+        proxyPort: 1080,
+        proxyType: 'socks5',
+        rememberPassphrase: false,
+        rememberPassword: true,
+        tagIds: [],
+        username: 'root'
+      }).success
+    ).toBe(false)
+  })
+
   it('accepts a valid custom server icon payload', () => {
     expect(
       serverSchema.parse({
@@ -207,6 +228,35 @@ describe('serverSchema', () => {
         rememberPassword: true,
         tagIds: [],
         username: 'root'
+      }).success
+    ).toBe(false)
+  })
+})
+
+describe('settingsSchema proxy settings', () => {
+  it('accepts a valid manual global proxy', () => {
+    expect(
+      settingsSchema.parse({
+        ...DEFAULT_APP_SETTINGS,
+        proxyMode: 'manual',
+        proxyType: 'http',
+        proxyHost: 'proxy.internal',
+        proxyPort: 3128
+      })
+    ).toMatchObject({
+      proxyMode: 'manual',
+      proxyType: 'http',
+      proxyHost: 'proxy.internal',
+      proxyPort: 3128
+    })
+  })
+
+  it('rejects an empty global proxy host and an invalid port', () => {
+    expect(
+      settingsSchema.safeParse({
+        ...DEFAULT_APP_SETTINGS,
+        proxyHost: '',
+        proxyPort: 65536
       }).success
     ).toBe(false)
   })

@@ -60,6 +60,11 @@ const savedServer = {
   host: '10.0.0.8',
   id: 'server-1',
   jumpServerId: null,
+  proxyMode: 'global' as const,
+  proxyType: 'socks5' as const,
+  proxyHost: null,
+  proxyPort: 1080,
+  captureCommandHistory: true,
   lastConnectedAt: null,
   name: 'Production Bastion',
   note: null,
@@ -113,6 +118,42 @@ beforeEach(async () => {
 })
 
 describe('WorkbenchServerEditor credentials field', () => {
+  it('saves a custom proxy for an individual server', async () => {
+    const createServer = vi.fn().mockResolvedValue(savedServer)
+    window.winsshApi = createWinsshApiMock({
+      servers: {
+        create: createServer
+      }
+    })
+
+    renderServerEditor()
+
+    const proxyModeSelect = await screen.findByRole('combobox', { name: 'Proxy mode' })
+    expect(proxyModeSelect).toHaveTextContent('Use global proxy settings')
+    fireEvent.click(proxyModeSelect)
+    fireEvent.click(await screen.findByRole('option', { name: 'Use a custom proxy' }))
+
+    fireEvent.change(screen.getByLabelText('Proxy host'), {
+      target: { value: 'server.proxy' }
+    })
+    fireEvent.change(screen.getByLabelText('Proxy port'), { target: { value: '1081' } })
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Proxy Server' } })
+    fireEvent.change(screen.getByLabelText('Host'), { target: { value: '10.0.0.10' } })
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'root' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(createServer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          proxyMode: 'custom',
+          proxyType: 'socks5',
+          proxyHost: 'server.proxy',
+          proxyPort: 1081
+        })
+      )
+    })
+  })
+
   it('toggles password visibility from the eye button', async () => {
     renderServerEditor()
 

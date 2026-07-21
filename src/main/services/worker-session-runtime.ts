@@ -3,6 +3,7 @@ import { posix } from 'node:path'
 import { Worker } from 'node:worker_threads'
 import { decodeSshDataFrame, encodeSshDataFrame } from '@shared/ssh-data-frame'
 import { normalizeRemotePath } from '@shared/sftp'
+import { resolveServerProxy } from '@shared/proxy'
 import type {
   CommandHistoryEntry,
   CommandRecordedEvent,
@@ -546,9 +547,9 @@ export class WorkerSessionRuntime implements SessionRuntime {
       this.connectionResolver.resolveAuth(server, request),
       jumpServer ? this.connectionResolver.resolveAuth(jumpServer, request) : Promise.resolve(null)
     ])
+    const settings = this.options.database.getSettings()
     const commandHistoryEnabled =
-      Boolean(server.captureCommandHistory) &&
-      this.options.database.getSettings().commandHistoryEnabled
+      Boolean(server.captureCommandHistory) && settings.commandHistoryEnabled
 
     this.emitConnectionPhase(sessionId, 'handshake')
     const worker = this.spawnWorker(sessionId)
@@ -582,8 +583,10 @@ export class WorkerSessionRuntime implements SessionRuntime {
         correlationId: sessionId,
         config: {
           sessionId,
-          target: toResolvedServer(server, targetAuth),
-          ...(jumpServer && jumpAuth ? { jump: toResolvedServer(jumpServer, jumpAuth) } : {}),
+          target: toResolvedServer(server, targetAuth, settings),
+          ...(jumpServer && jumpAuth
+            ? { jump: toResolvedServer(jumpServer, jumpAuth, settings) }
+            : {}),
           commandHistory: commandHistoryEnabled,
           terminal: this.terminalDefaults
         }
@@ -1109,8 +1112,11 @@ export class WorkerSessionRuntime implements SessionRuntime {
 
 function toResolvedServer(
   server: Server,
-  auth: { password?: string; passphrase?: string; privateKey?: string }
+  auth: { password?: string; passphrase?: string; privateKey?: string },
+  settings: ReturnType<WorkerSessionRuntimeOptions['database']['getSettings']>
 ) {
+  const proxy = resolveServerProxy(server, settings)
+
   return {
     id: server.id,
     name: server.name,
@@ -1118,7 +1124,8 @@ function toResolvedServer(
     port: server.port,
     username: server.username,
     authType: server.authType,
-    auth
+    auth,
+    ...(proxy ? { proxy } : {})
   }
 }
 

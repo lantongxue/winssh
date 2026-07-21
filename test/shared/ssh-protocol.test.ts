@@ -49,6 +49,34 @@ describe('ssh protocol schemas', () => {
     expect(result.config.commandHistory).toBe(true)
   })
 
+  it('accepts resolved proxy settings on connect control messages', () => {
+    const result = sshCoreInboundSchema.parse({
+      type: 'connect',
+      requestId: 'req-proxy',
+      correlationId: 'session-1',
+      config: {
+        sessionId: 'session-1',
+        target: {
+          id: 'server-1',
+          name: 'Example',
+          host: 'example.com',
+          port: 22,
+          username: 'alice',
+          authType: 'password',
+          auth: { password: 'secret' },
+          proxy: { type: 'http', host: 'proxy.internal', port: 3128 }
+        },
+        terminal: { cols: 120, rows: 34 }
+      }
+    })
+
+    expect(result.config.target.proxy).toEqual({
+      type: 'http',
+      host: 'proxy.internal',
+      port: 3128
+    })
+  })
+
   it('rejects a write control message without binary data', () => {
     expect(() =>
       sshCoreInboundSchema.parse({

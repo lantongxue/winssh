@@ -37,6 +37,10 @@ const servers = [
     note: null,
     port: 22,
     privateKeyPath: null,
+    proxyHost: 'proxy.internal',
+    proxyMode: 'custom' as const,
+    proxyPort: 3128,
+    proxyType: 'http' as const,
     tags: [],
     updatedAt: '',
     username: 'root'
@@ -463,6 +467,10 @@ describe('WorkbenchPrimarySidebar', () => {
           groupId: 'group-1',
           host: '103.205.241.248',
           name: '103.205.241.248',
+          proxyHost: 'proxy.internal',
+          proxyMode: 'custom',
+          proxyPort: 3128,
+          proxyType: 'http',
           tagIds: [],
           username: 'root'
         })

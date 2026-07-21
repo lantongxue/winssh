@@ -12,6 +12,7 @@ import {
 } from 'ssh2'
 import { dialog, type BrowserWindow, type OpenDialogOptions } from 'electron'
 import { normalizeRemotePath, sortRemoteEntries } from '@shared/sftp'
+import { resolveServerProxy } from '@shared/proxy'
 import { runWithConcurrency } from './concurrency-pool'
 import {
   createIncrementalTextDecoder,
@@ -65,6 +66,7 @@ import {
   type ResolvedConnectionAuth
 } from './services/ssh-connection-resolver'
 import { HostTrustService } from './services/host-trust-service'
+import { connectThroughProxy } from './services/proxy-connection'
 import {
   isShellIntegrationInternal,
   createShellIntegrationScript,
@@ -2044,7 +2046,7 @@ export class SessionManager {
   private createConnectConfig(
     server: Server,
     auth: ResolvedConnectionAuth,
-    sock?: ClientChannel
+    sock?: ConnectConfig['sock']
   ): ConnectConfig {
     return {
       host: server.host,
@@ -2069,8 +2071,20 @@ export class SessionManager {
   private async connectToServer(
     server: Server,
     auth: ResolvedConnectionAuth,
-    sock?: ClientChannel
+    sock?: ConnectConfig['sock']
   ): Promise<Client> {
+    let connectionSocket = sock
+    if (!connectionSocket) {
+      try {
+        const proxy = resolveServerProxy(server, this.database.getSettings())
+        connectionSocket = proxy
+          ? await connectThroughProxy(proxy, { host: server.host, port: server.port })
+          : undefined
+      } catch (error) {
+        throw this.normalizeHopConnectionFailure(server, error)
+      }
+    }
+
     const client = new Client()
 
     return new Promise<Client>((resolve, reject) => {
@@ -2082,6 +2096,7 @@ export class SessionManager {
         }
 
         settled = true
+        connectionSocket?.destroy()
         reject(this.normalizeHopConnectionFailure(server, error))
       }
 
@@ -2098,7 +2113,7 @@ export class SessionManager {
       })
 
       try {
-        client.connect(this.createConnectConfig(server, auth, sock))
+        client.connect(this.createConnectConfig(server, auth, connectionSocket))
       } catch (error) {
         rejectWith(error)
       }

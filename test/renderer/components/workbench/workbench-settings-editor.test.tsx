@@ -6,6 +6,7 @@ import {
   DEFAULT_DARK_THEME_ID,
   DEFAULT_PIXEL_THEME_ID
 } from '@shared/themes'
+import { DEFAULT_APP_SETTINGS } from '@shared/constants'
 import type { AppSettings } from '@shared/types'
 import { toast } from 'sonner'
 import i18n from '@/i18n'
@@ -89,6 +90,41 @@ beforeEach(async () => {
 })
 
 describe('WorkbenchSettingsEditor theme selection', () => {
+  it('configures a manual global proxy with protocol, host, and port', async () => {
+    let persistedSettings = DEFAULT_APP_SETTINGS
+    const updateSettings = vi.fn().mockImplementation(async (patch: Partial<AppSettings>) => {
+      persistedSettings = { ...persistedSettings, ...patch }
+      return persistedSettings
+    })
+    window.winsshApi = createWinsshApiMock({
+      settings: {
+        get: vi.fn().mockResolvedValue(persistedSettings),
+        update: updateSettings
+      }
+    })
+
+    renderSettingsEditor()
+    fireEvent.click(await screen.findByRole('button', { name: 'Proxy' }))
+
+    const modeSelect = screen.getByRole('combobox', { name: 'Global proxy' })
+    expect(modeSelect).toHaveTextContent('Do not use a proxy')
+    fireEvent.click(modeSelect)
+    fireEvent.click(await screen.findByRole('option', { name: 'Manual proxy configuration' }))
+
+    await waitFor(() => {
+      expect(updateSettings).toHaveBeenCalledWith({ proxyMode: 'manual' })
+    })
+    expect(screen.getByRole('combobox', { name: 'Proxy protocol' })).toHaveTextContent('SOCKS5')
+
+    const hostInput = screen.getByLabelText('Proxy host')
+    fireEvent.change(hostInput, { target: { value: 'proxy.internal' } })
+    fireEvent.blur(hostInput)
+
+    await waitFor(() => {
+      expect(updateSettings).toHaveBeenCalledWith({ proxyHost: 'proxy.internal' })
+    })
+  })
+
   it('uses cached settings on the first render when the workbench has already bootstrapped', async () => {
     const api = createWinsshApiMock()
     const queryClient = createTestQueryClient()

@@ -2,6 +2,22 @@ import { EventEmitter } from 'node:events'
 import iconv from 'iconv-lite'
 import { SshCoreSessionWorker } from '@main/workers/ssh-core/session-worker'
 
+const { proxyConnectionCalls } = vi.hoisted(() => ({
+  proxyConnectionCalls: [] as Array<{
+    destination: { host: string; port: number }
+    proxy: { type: string; host: string; port: number }
+    socket: { destroy: ReturnType<typeof vi.fn> }
+  }>
+}))
+
+vi.mock('@main/services/proxy-connection', () => ({
+  connectThroughProxy: vi.fn(async (proxy, destination) => {
+    const socket = { destroy: vi.fn() }
+    proxyConnectionCalls.push({ destination, proxy, socket })
+    return socket
+  })
+}))
+
 class FakeChannel extends EventEmitter {
   stderr = new EventEmitter()
   write = vi.fn()
@@ -134,6 +150,10 @@ async function connectWorkerSession(worker: SshCoreSessionWorker, client: FakeCl
 }
 
 describe('SshCoreSessionWorker', () => {
+  beforeEach(() => {
+    proxyConnectionCalls.length = 0
+  })
+
   it('emits ready after client ready and shell/sftp open', async () => {
     const client = new FakeClient()
     const postMessage = vi.fn()
@@ -167,6 +187,43 @@ describe('SshCoreSessionWorker', () => {
     )
     expect(postMessage).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'state', phase: 'attach' })
+    )
+  })
+
+  it('opens the target SSH connection through a resolved proxy', async () => {
+    const client = new FakeClient()
+    const worker = new SshCoreSessionWorker({
+      createClient: () => client as never,
+      postMessage: vi.fn()
+    })
+
+    const promise = worker.connect({
+      sessionId: 'session-proxy',
+      target: {
+        id: 'server-1',
+        name: 'Production',
+        host: 'example.com',
+        port: 22,
+        username: 'alice',
+        authType: 'password',
+        auth: { password: 'secret' },
+        proxy: { type: 'socks5', host: 'proxy.internal', port: 1080 }
+      },
+      terminal: { cols: 80, rows: 24 }
+    })
+
+    await vi.waitFor(() => expect(client.connect).toHaveBeenCalledOnce())
+    client.emit('ready')
+    await promise
+
+    expect(proxyConnectionCalls).toEqual([
+      expect.objectContaining({
+        destination: { host: 'example.com', port: 22 },
+        proxy: { type: 'socks5', host: 'proxy.internal', port: 1080 }
+      })
+    ])
+    expect(client.connect).toHaveBeenCalledWith(
+      expect.objectContaining({ sock: proxyConnectionCalls[0]?.socket })
     )
   })
 

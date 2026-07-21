@@ -12,6 +12,12 @@ const sshResolvedAuthSchema = z.object({
   privateKey: z.string().optional()
 })
 
+const proxyConfigurationSchema = z.object({
+  type: z.enum(['socks5', 'http']),
+  host: z.string().min(1),
+  port: z.number().int().min(1).max(65535)
+})
+
 const sshResolvedServerSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -19,7 +25,8 @@ const sshResolvedServerSchema = z.object({
   port: z.number().int().min(1).max(65535),
   username: z.string().min(1),
   authType: z.enum(['password', 'privateKey']),
-  auth: sshResolvedAuthSchema
+  auth: sshResolvedAuthSchema,
+  proxy: proxyConfigurationSchema.optional()
 })
 
 export const sshConnectConfigSchema = z.object({

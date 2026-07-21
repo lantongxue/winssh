@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { type ServerIconMimeType } from '@shared/server-brands'
-import { Eye, EyeOff, KeyRound, LockKeyhole, ShieldCheck } from 'lucide-react'
+import { Eye, EyeOff, KeyRound, LockKeyhole, Network, ShieldCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -136,6 +136,10 @@ function toDefaultValues(
       captureCommandHistory: true,
       groupId: options.initialGroupId ?? null,
       jumpServerId: null,
+      proxyMode: 'global',
+      proxyType: 'socks5',
+      proxyHost: '',
+      proxyPort: 1080,
       host: '',
       name: '',
       note: '',
@@ -157,6 +161,10 @@ function toDefaultValues(
     captureCommandHistory: server.captureCommandHistory,
     groupId: server.groupId,
     jumpServerId: server.jumpServerId,
+    proxyMode: server.proxyMode,
+    proxyType: server.proxyType,
+    proxyHost: server.proxyHost ?? '',
+    proxyPort: server.proxyPort,
     host: server.host,
     id: server.id,
     name: server.name,
@@ -183,6 +191,7 @@ function toPayload(
     ...values,
     groupId: values.groupId || null,
     jumpServerId: values.jumpServerId || null,
+    proxyHost: values.proxyHost?.trim() || null,
     note: values.note || '',
     password: includeSecrets ? values.password : undefined,
     passphrase: includeSecrets ? values.passphrase : undefined,
@@ -441,6 +450,7 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
   const authType = form.watch('authType')
   const credentialId = form.watch('credentialId')
   const jumpServerId = form.watch('jumpServerId')
+  const proxyMode = form.watch('proxyMode')
   const tags = tagsQuery.data ?? []
   const isPrivateKeyAuth = authType === 'privateKey'
   const availableJumpServers = (serversQuery.data ?? []).filter(
@@ -1229,6 +1239,99 @@ export function WorkbenchServerEditor({ document }: { document: ServerEditorDocu
                 />
               </div>
             </div>
+          </section>
+
+          <section className="border border-[var(--workbench-border)] px-6 py-5">
+            <div className="mb-4 flex items-center gap-2 text-base font-semibold">
+              <Network className="size-4 text-primary" />
+              {t('workbench.serverEditor.sections.proxy')}
+            </div>
+            <FormField
+              control={form.control}
+              name="proxyMode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('workbench.serverEditor.fields.proxyMode')}</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger className="bg-[var(--workbench-editor)]">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="global">
+                        {t('workbench.serverEditor.proxy.modes.global')}
+                      </SelectItem>
+                      <SelectItem value="none">
+                        {t('workbench.serverEditor.proxy.modes.none')}
+                      </SelectItem>
+                      <SelectItem value="custom">
+                        {t('workbench.serverEditor.proxy.modes.custom')}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    {t('workbench.serverEditor.descriptions.proxy')}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {proxyMode === 'custom' ? (
+              <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.5fr)_minmax(0,0.7fr)]">
+                <FormField
+                  control={form.control}
+                  name="proxyType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('workbench.serverEditor.fields.proxyType')}</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="socks5">SOCKS5</SelectItem>
+                          <SelectItem value="http">HTTP</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="proxyHost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('workbench.serverEditor.fields.proxyHost')}</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          value={field.value ?? ''}
+                          placeholder={t('workbench.serverEditor.placeholders.proxyHost')}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="proxyPort"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('workbench.serverEditor.fields.proxyPort')}</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" min={1} max={65535} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            ) : null}
           </section>
 
           <section className="border border-[var(--workbench-border)] px-6 py-5">

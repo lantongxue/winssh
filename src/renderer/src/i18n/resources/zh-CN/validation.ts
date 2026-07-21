@@ -33,6 +33,16 @@ const validation = {
         min: '端口最小为 1。'
       }
     },
+    proxy: {
+      host: {
+        max: '代理主机地址过长。',
+        required: '请输入代理主机地址。'
+      },
+      port: {
+        max: '代理端口最大为 65535。',
+        min: '代理端口最小为 1。'
+      }
+    },
     group: {
       name: {
         max: '分组名称不能超过 40 个字符。',

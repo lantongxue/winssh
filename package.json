@@ -88,6 +88,7 @@
     "react-i18next": "^17.0.2",
     "react-resizable-panels": "^4.8.0",
     "react-router-dom": "^7.9.2",
+    "socks": "^2.8.9",
     "sonner": "^2.0.7",
     "ssh2": "^1.17.0",
     "tailwind-merge": "^3.3.1",
