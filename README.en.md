@@ -2,6 +2,9 @@
   <a href="./README.md">简体中文</a> | <strong>English</strong>
 </p>
 
+> [!WARNING]
+> **This repository is no longer maintained.** WinSSH has fully moved to [winsh-pro](https://github.com/lantongxue/winssh-pro). Future updates, fixes, and releases will be published in the new repository. Please visit **[lantongxue/winssh-pro](https://github.com/lantongxue/winssh-pro)** for the latest version.
+
 <div align="center">
   <img src="resources/icon.png" width="120" alt="WinSSH Logo" />
   <h1>WinSSH</h1>
